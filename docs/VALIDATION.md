@@ -629,3 +629,34 @@ on 390×844 has no document overflow.
   whole-history verification is explicit, and business changes and their audit events
   are not universally one transaction. External storage automation, audit UI, retention
   and large-scale soak remain open. Contract: [AUDIT.md](AUDIT.md).
+
+## Installed maintenance commands (2026-10-04)
+
+- Backup, restore and audit CLI implementations now live in the Python package with
+  three console entry points. Existing checkout scripts delegate to those same modules.
+  This closes the missing maintenance-command path in wheel/Docker package installation;
+  no backend business behavior or frontend source is changed.
+- A normal isolated `pip wheel --no-deps` build succeeds. Wheel SHA-256:
+  `1a8d8923b13f9d09472c4e33f784183f5a493fde5f1b772b78cbca2e5cf03edb`.
+  The initial non-isolated build failed because the development environment lacks
+  bdist_wheel; the standard isolated build installs its own build requirements.
+- `scripts/review_installed_commands.py` installs that wheel without dependencies or
+  an index in a fresh temporary venv, removes PYTHONPATH/PYTHONHOME, runs outside the
+  checkout, and verifies imported code belongs to the installed prefix. All three
+  actual installed executables succeed on a synthetic schema-2 fixture.
+- Rehearsal verifies Unicode/space/question-mark paths, mode-0600 backup, overwrite
+  refusal, check-only validation, audit export/comparison, preserved records and revoked
+  sessions, workspace-lock refusal, preservation of pre-restore data, and refusal to
+  restore a tampered backup before destination creation. Result:
+  `artifacts/package-review/installed-commands.json`.
+- Targeted audit/backup regression: **11 passed**, one existing Starlette/httpx warning.
+  The prior full 186-test regression is not rerun for this CLI packaging relocation.
+- The main preview's specific running session remains live. Checkout wrappers create
+  and validate an online backup containing three traffic records and 84 audit events;
+  it verifies against the existing seq-83 checkpoint. Artifact:
+  `artifacts/package-review/live-preview-backup.db`. No scan, server restart or restore
+  into the main workspace occurs.
+- Docker is unavailable (`command not found`), so image build, container start/health/
+  shutdown and volume permissions remain unverified. The wheel excludes built web
+  assets; it is not a complete standalone web release. Container operations and the
+  repeatable isolated CLI rehearsal are documented in [OPERATIONS.md](OPERATIONS.md).

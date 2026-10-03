@@ -56,7 +56,42 @@ backup으로 `.pre-schema2-<id>.db`를 만들고 트랜잭션으로 이전한다
 `--check-only`는 원본·대상 파일을 수정하지 않는다. 백업의 생성 시각이나 완전성은
 무결성 확인만으로 보장되지 않는다. 작업 수·기록 수와 기대한 시점을 확인한다.
 
-## 오프라인 복구
+## 설치 패키지·컨테이너의 유지보수 명령
+
+패키지 설치 후에는 저장소 위치와 관계없이 `aegis-backup`, `aegis-restore`,
+`aegis-verify-audit` 명령을 사용할 수 있다. `start.sh`로 설치한 로컬 환경에서는
+`.venv/bin/` 아래에 있다. 기존 `python scripts/*.py` 진입점도 같은 구현을 호출한다.
+
+Dockerfile은 패키지 설치 과정에서 세 명령을 포함한다. 이미지 변경 후 재빌드해야
+한다. 다음 절차는 명령의 사용 계약이며 Docker 볼륨에서의 실제 실행은 아직
+검증하지 않았다. 설치 wheel의 명령은 별도 가상환경에서 검증했다.
+
+온라인 백업은 쓰기 가능한 데이터 볼륨 안에 생성하고 호스트의 별도 위치로 복사한다.
+아래 파일명은 예시이며 이미 존재하면 덮어쓰지 않는다.
+
+```sh
+docker compose exec -T aegis aegis-backup --source /app/data/aegis.db --output /app/data/backups/before-update.db
+docker compose exec -T aegis aegis-restore --source /app/data/backups/before-update.db --check-only
+mkdir -p backups
+docker compose cp aegis:/app/data/backups/before-update.db backups/before-update.db
+```
+
+복구 전 서버를 중지하고 같은 볼륨을 사용하는 일회성 컨테이너에서 복구한다.
+같은 데이터 디렉터리를 사용하는 다른 서버가 있으면 잠금으로 거절한다.
+Compose에 필요한 `.env` 설정은 유지한다.
+
+```sh
+docker compose stop aegis
+docker compose run --rm --no-deps aegis aegis-restore --source /app/data/backups/before-update.db --destination /app/data/aegis.db
+docker compose run --rm --no-deps aegis aegis-verify-audit --source /app/data/aegis.db
+docker compose up -d aegis
+```
+
+호스트 복사본과 볼륨 내부 복사본은 자동으로 동기화되지 않는다. 다른 장비/볼륨으로
+복구할 때에는 백업을 먼저 해당 볼륨으로 전달해야 한다. 독립 저장소의 백업·감사
+체크포인트 보관은 별도로 관리한다.
+
+## 로컬 오프라인 복구
 
 1. 서버를 정상 종료한다.
 2. 백업을 `--check-only`로 확인한다.
@@ -85,6 +120,20 @@ AEGIS_DATA_DIR=recovery-test AEGIS_PORT=8791 .venv/bin/python -m aegis
 버전 0 백업을 복구하면 다음 서버 시작에서 스키마 마이그레이션을 진행한다.
 
 ## 검증된 범위
+
+설치 아티팩트의 유지보수 명령을 재현하려면 wheel을 빌드하고 아래 리허설을 실행한다.
+별도 임시 가상환경에 wheel만 설치하며 합성 DB만 생성한다. 저장소 밖에서 세 명령을
+실행하고 백업·복구·감사 비교·사용 중 거절·롤백 보존·변조 거절을 확인한 뒤 임시
+설치와 데이터를 제거한다. Linux/macOS용이며 출력 JSON에 wheel SHA-256을 포함한다.
+
+```sh
+.venv/bin/python -m pip wheel --no-deps --wheel-dir artifacts/package-review .
+.venv/bin/python scripts/review_installed_commands.py --wheel artifacts/package-review/open_aegis-0.1.0-py3-none-any.whl
+```
+
+이 wheel은 Python 서비스·유지보수 코드만 포함한다. 프런트엔드 dist는 Docker의
+별도 빌드 단계 또는 로컬 `start.sh`가 생성한다. 명령 리허설은 전체 서버 설치나
+컨테이너·TLS·공개 릴리스 검증을 대신하지 않는다.
 
 자동 테스트는 실행 중 복구 거절, 원본 덮어쓰기 거절, 변경 전 복사본 보존,
 손상/최신 스키마 거절, 한글·공백·물음표 경로, 복구 후 이전 세션 폐기,

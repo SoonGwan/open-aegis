@@ -68,6 +68,9 @@ http://127.0.0.1:8787 에 접속하고 관리자 비밀번호 및 설치 토큰�
 기본 포트 공개 범위는 호스트의 loopback입니다. Docker 실행은 현재 로컬 환경에
 Docker가 없어 검증하지 못했습니다. 로컬 Python 실행 및 프런트엔드 빌드는 검증했습니다.
 
+설치 패키지에는 `aegis-backup`, `aegis-restore`, `aegis-verify-audit` 유지보수
+명령이 포함됩니다. [백업·복구 운영 절차](docs/OPERATIONS.md)를 따르세요.
+
 ## 첫 검증
 
 1. **자산**에서 검증 권한이 있는 URL을 등록합니다. scheme·hostname·port·경로가
