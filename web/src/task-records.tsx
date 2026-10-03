@@ -1,4 +1,12 @@
-import { useState } from "react";
+import { useCallback } from "react";
+import {
+  readDetail,
+  readTaskCollection,
+  type TaskCollectionKind,
+  type TaskCollectionState,
+  type HistoryMode,
+  type ListPosition,
+} from "./navigation-state";
 import { useRecords, Pagination, RecordState } from "./records";
 
 type Finding = {
@@ -31,14 +39,34 @@ const status: Record<string, string> = {
 export function TaskRecords({
   taskId,
   onFinding,
+  collections,
+  onChange,
 }: {
   taskId: string;
   onFinding: (id: string) => void;
+  collections: Record<TaskCollectionKind, TaskCollectionState>;
+  onChange: (
+    kind: TaskCollectionKind,
+    changes: Partial<TaskCollectionState>,
+    mode?: HistoryMode,
+  ) => void;
 }) {
   return (
     <>
-      <TaskCollection taskId={taskId} kind="findings" onFinding={onFinding} />
-      <TaskCollection taskId={taskId} kind="events" onFinding={onFinding} />
+      <TaskCollection
+        taskId={taskId}
+        kind="findings"
+        onFinding={onFinding}
+        state={collections.findings}
+        onChange={onChange}
+      />
+      <TaskCollection
+        taskId={taskId}
+        kind="events"
+        onFinding={onFinding}
+        state={collections.events}
+        onChange={onChange}
+      />
     </>
   );
 }
@@ -46,17 +74,39 @@ function TaskCollection({
   taskId,
   kind,
   onFinding,
+  state,
+  onChange,
 }: {
   taskId: string;
   kind: "findings" | "events";
   onFinding: (id: string) => void;
+  state: TaskCollectionState;
+  onChange: (
+    kind: TaskCollectionKind,
+    changes: Partial<TaskCollectionState>,
+    mode?: HistoryMode,
+  ) => void;
 }) {
-  const [search, setSearch] = useState("");
+  const { search } = state;
+  const changePosition = useCallback(
+    (position: ListPosition, mode?: HistoryMode) => {
+      const detail = readDetail(location.search);
+      if (
+        detail?.kind !== "task" ||
+        detail.id !== taskId ||
+        JSON.stringify(readTaskCollection(location.search, kind)) !==
+          JSON.stringify(state)
+      )
+        return;
+      onChange(kind, position, mode);
+    },
+    [taskId, kind, state, onChange],
+  );
   const records = useRecords<Finding | Event>(
     kind,
     search,
     {},
-    undefined,
+    { ...state, onPositionChange: changePosition },
     `/tasks/${encodeURIComponent(taskId)}/${kind}`,
   );
   const name = kind === "findings" ? "작업의 발견 사항" : "작업 실행 기록";
@@ -71,7 +121,9 @@ function TaskCollection({
           aria-label={`${name} 검색`}
           maxLength={200}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            onChange(kind, { search: e.target.value }, "replace")
+          }
         />
       </label>
       <Pagination records={records} />

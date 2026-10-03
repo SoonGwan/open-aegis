@@ -48,6 +48,12 @@ export function detailQuery(
   const query = new URLSearchParams(search);
   const previous = readDetail(search);
   if (
+    detail?.kind !== "task" ||
+    previous?.kind !== "task" ||
+    previous.id !== detail.id
+  )
+    clearTaskCollections(query);
+  if (
     detail?.kind !== "finding" ||
     previous?.kind !== "finding" ||
     previous.id !== detail.id
@@ -72,7 +78,69 @@ export function detailQuery(
         readFindingCollection(query.toString(), kind),
       );
   } else clearFindingCollections(query);
+  if (valid?.kind === "task") {
+    for (const kind of taskCollectionKinds)
+      writeTaskCollection(
+        query,
+        kind,
+        readTaskCollection(query.toString(), kind),
+      );
+  } else clearTaskCollections(query);
   return query.toString();
+}
+export const taskCollectionKinds = ["findings", "events"] as const;
+export type TaskCollectionKind = (typeof taskCollectionKinds)[number];
+export type TaskCollectionState = ListPosition & { search: string };
+function clearTaskCollections(query: URLSearchParams) {
+  for (const kind of taskCollectionKinds)
+    for (const field of ["q", "offset", "snapshot"])
+      query.delete(`task_${kind}_${field}`);
+}
+export function readTaskCollection(
+  search: string,
+  kind: TaskCollectionKind,
+): TaskCollectionState {
+  const query = new URLSearchParams(search);
+  if (readDetail(search)?.kind !== "task")
+    return { search: "", offset: 0, snapshot: null };
+  const prefix = `task_${kind}_`;
+  return {
+    search: searchText(query.get(prefix + "q")),
+    offset:
+      Math.floor(
+        (integer(query.get(prefix + "offset"), 10_000_000) || 0) / 25,
+      ) * 25,
+    snapshot: integer(query.get(prefix + "snapshot"), Number.MAX_SAFE_INTEGER),
+  };
+}
+function writeTaskCollection(
+  query: URLSearchParams,
+  kind: TaskCollectionKind,
+  state: TaskCollectionState,
+) {
+  const prefix = `task_${kind}_`;
+  for (const field of ["q", "offset", "snapshot"]) query.delete(prefix + field);
+  if (state.search) query.set(prefix + "q", searchText(state.search));
+  if (state.offset) query.set(prefix + "offset", String(state.offset));
+  if (state.snapshot !== null)
+    query.set(prefix + "snapshot", String(state.snapshot));
+}
+export function updateTaskCollectionQuery(
+  search: string,
+  kind: TaskCollectionKind,
+  changes: Partial<TaskCollectionState>,
+): string {
+  const detail = readDetail(search);
+  if (detail?.kind !== "task") return detailQuery(search, detail);
+  const query = new URLSearchParams(search);
+  const previous = readTaskCollection(search, kind);
+  const next = { ...previous, ...changes };
+  if ("search" in changes && changes.search !== previous.search) {
+    next.offset = 0;
+    next.snapshot = null;
+  }
+  writeTaskCollection(query, kind, next);
+  return detailQuery(query.toString(), detail);
 }
 export const findingCollectionKinds = ["evidence", "retests"] as const;
 export type FindingCollectionKind = (typeof findingCollectionKinds)[number];

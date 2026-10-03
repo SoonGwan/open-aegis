@@ -975,3 +975,28 @@ on 390×844 has no document overflow.
   are unchanged, so full backend/frontend suites are not rerun for this UI change.
   Actual screen readers, mobile/zoom, all routes/bookmarks and keyboard sequences remain
   separate verification requirements; the full accessibility checkbox stays open.
+
+## Task detail collection bookmarks (2026-10-04)
+
+- Task finding/event collections now use independent URL search, offset and insertion
+  snapshot state. Search replaces the current entry and resets only that collection's
+  position; pages push and asynchronous correction replaces. Different/closed details
+  clear task collection fields, while Back restores the prior entry. Position callbacks
+  check current task ID and list state before applying an asynchronous response.
+- Frontend **31 passed**, TypeScript/Vite build passes. Three added tests cover independent
+  round trips and source list preservation, search reset, same/different/closed details,
+  invalid bookmark normalization and Unicode-safe bounds. Final bundle:
+  `index-B0mQGkrx.js` / `index-DOqw8joG.css`. Backend source is unchanged; prior 245-test
+  backend regression is not rerun.
+- A separate synthetic workspace receives 61 labelled event fixtures. Browser QA verifies
+  event search and offset 25/snapshot 71, independent empty-result finding search, both
+  searches and the second event page in a new document, third page 51–61, clearing URL
+  fields on close, and Back reopening the third page with both searches. Changing event
+  search yields 1–1 and clears its position without changing finding search. A generic
+  close locator matched both modal close buttons; the explicit aria-label close control
+  is used. No backend/target execution is inferred from seeded task completion fields.
+- `artifacts/v1-task-record-bookmark.jpg` is captured and visually inspected. QA tabs
+  leave the fixture and its server shuts down. Fixture target traffic stays zero, main
+  target traffic stays three and main health is good. Finding-list multi-page UI, native
+  Forward, error recovery, mobile/assistive technology and individual record details or
+  scroll restoration are not claimed verified. Chat/triage positions remain separate.

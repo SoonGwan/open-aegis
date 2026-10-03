@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  readTaskCollection,
+  updateTaskCollectionQuery,
+  type TaskCollectionKind,
+  type TaskCollectionState,
   readFindingCollection,
   updateFindingCollectionQuery,
   type FindingCollectionKind,
@@ -48,6 +52,10 @@ export function useNavigation(allowedPages: readonly string[]) {
   const [state, setState] = useState(() => ({
     ...readNavigation(location.search, allowedPages),
     detail: readDetail(location.search),
+    taskCollections: {
+      findings: readTaskCollection(location.search, "findings"),
+      events: readTaskCollection(location.search, "events"),
+    },
     findingCollections: {
       evidence: readFindingCollection(location.search, "evidence"),
       retests: readFindingCollection(location.search, "retests"),
@@ -79,6 +87,10 @@ export function useNavigation(allowedPages: readonly string[]) {
       setState({
         ...readNavigation(location.search, allowedPages),
         detail: readDetail(location.search),
+        taskCollections: {
+          findings: readTaskCollection(location.search, "findings"),
+          events: readTaskCollection(location.search, "events"),
+        },
         findingCollections: {
           evidence: readFindingCollection(location.search, "evidence"),
           retests: readFindingCollection(location.search, "retests"),
@@ -134,8 +146,19 @@ export function useNavigation(allowedPages: readonly string[]) {
     },
     [],
   );
+  const updateTaskCollection = useCallback(
+    (
+      kind: TaskCollectionKind,
+      changes: Partial<TaskCollectionState>,
+      mode: HistoryMode = "push",
+    ) => {
+      commit(updateTaskCollectionQuery(location.search, kind, changes), mode);
+    },
+    [],
+  );
   return {
     ...state,
+    updateTaskCollection,
     updateFindingCollection,
     updateList,
     navigate,

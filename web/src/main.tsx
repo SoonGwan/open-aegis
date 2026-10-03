@@ -2660,6 +2660,8 @@ function App() {
             <TaskRecords
               key={`task-records-${selectedTask.id}`}
               taskId={selectedTask.id}
+              collections={navigation.taskCollections}
+              onChange={navigation.updateTaskCollection}
               onFinding={(id) => {
                 void openFinding(id);
               }}
