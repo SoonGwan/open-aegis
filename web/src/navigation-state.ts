@@ -30,6 +30,35 @@ export type ListState = ListPosition & {
 };
 export type NavigationState = { page: string; list: ListState };
 export type HistoryMode = "push" | "replace";
+export type DetailState = { kind: "task" | "finding"; id: string };
+export function readDetail(search: string): DetailState | null {
+  const query = new URLSearchParams(search);
+  const kind = query.get("detail"),
+    id = query.get("detail_id");
+  return (kind === "task" || kind === "finding") &&
+    id &&
+    /^[A-Za-z0-9_-]{1,80}$/.test(id)
+    ? { kind, id }
+    : null;
+}
+export function detailQuery(
+  search: string,
+  detail: DetailState | null,
+): string {
+  const query = new URLSearchParams(search);
+  query.delete("detail");
+  query.delete("detail_id");
+  if (detail) {
+    query.set("detail", detail.kind);
+    query.set("detail_id", detail.id);
+  }
+  const valid = readDetail(query.toString());
+  if (!valid) {
+    query.delete("detail");
+    query.delete("detail_id");
+  }
+  return query.toString();
+}
 export const defaultList = (): ListState => ({
   search: "",
   filter: "all",
@@ -135,10 +164,14 @@ export function navigateQuery(
   allowedPages: readonly string[],
   page: string,
   fresh = false,
+  preserveDetail = false,
 ): string {
   const query = new URLSearchParams(search);
   const target = allowedPages.includes(page) ? page : "overview";
   query.set("page", target);
   writeList(query, target, fresh ? defaultList() : readList(query, target));
-  return query.toString();
+  return detailQuery(
+    query.toString(),
+    preserveDetail ? readDetail(search) : null,
+  );
 }

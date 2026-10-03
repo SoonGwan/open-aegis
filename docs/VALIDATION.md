@@ -382,3 +382,27 @@ on 390×844 has no document overflow.
 - Limits are process-local; individual Python/native operations remain cooperative and
   multi-process quotas, retention and load/soak verification remain outstanding.
   Configuration and contracts: [REPORTS.md](REPORTS.md).
+
+
+## Task and finding detail bookmarks (2026-10-04)
+
+- Frontend TypeScript/Vite build and **12** navigation tests passed. The selected nine
+  semantic contrast pairs still pass. Backend source is unchanged in this increment.
+- Tests verify detail ID/type validation, removal of invalid bookmarks, source list and
+  graph query preservation, closing without losing list position, normal screen navigation
+  clearing details and initial navigation preserving valid detail bookmarks.
+- Browser QA opened the existing 100-finding task from a searched task list, reloaded its
+  URL and recovered the same task and background search. Task → finding → Back → Forward
+  restored the correct IDs; Close → previous navigation reopened the finding.
+- A fresh second tab opened the copied finding URL and loaded the same title/source with
+  one dialog and focus on its close control. A missing task shows an explicit error/retry;
+  retry remains an error and Close returns to the searched list. No target scan ran.
+- A malformed `/bad` detail ID is removed on initial navigation and leaves the searched
+  list with no dialog. The main preview restored its existing coverage task via a direct
+  task URL with the current built frontend; no backend restart was needed.
+- Capture: `artifacts/v1-detail-bookmark-desktop.jpg`. IDs restore only after authentication.
+  Task polling starts after the first successful read, skips overlapping requests and
+  aborts on navigation. Older responses also check the live URL before applying results.
+- Nested proof/retest/task/chat search and position, scroll, unsaved triage inputs and
+  other modals are not URL state yet. Full mobile/accessibility regression remains pending.
+  Contract: [PAGINATION.md](PAGINATION.md).

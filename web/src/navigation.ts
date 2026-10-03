@@ -3,6 +3,9 @@ import {
   navigateQuery,
   readNavigation,
   updateListQuery,
+  readDetail,
+  detailQuery,
+  type DetailState,
   type ListState,
   type HistoryMode,
 } from "./navigation-state";
@@ -38,9 +41,10 @@ function commit(query: string, mode: HistoryMode) {
 }
 export function useNavigation(allowedPages: readonly string[]) {
   const allowedKey = JSON.stringify(allowedPages);
-  const [state, setState] = useState(() =>
-    readNavigation(location.search, allowedPages),
-  );
+  const [state, setState] = useState(() => ({
+    ...readNavigation(location.search, allowedPages),
+    detail: readDetail(location.search),
+  }));
   const [position, setPosition] = useState(() => {
     const { index, maximum } = metadata();
     return { index, maximum };
@@ -64,7 +68,10 @@ export function useNavigation(allowedPages: readonly string[]) {
         location.href,
       );
       setPosition({ index: current.index, maximum: maximum.current });
-      setState(readNavigation(location.search, allowedPages));
+      setState({
+        ...readNavigation(location.search, allowedPages),
+        detail: readDetail(location.search),
+      });
     };
     window.addEventListener("popstate", sync);
     window.addEventListener(changed, sync);
@@ -78,7 +85,10 @@ export function useNavigation(allowedPages: readonly string[]) {
       "",
       location.href,
     );
-    commit(navigateQuery(location.search, allowedPages, state.page), "replace");
+    commit(
+      navigateQuery(location.search, allowedPages, state.page, false, true),
+      "replace",
+    );
     return () => {
       window.removeEventListener("popstate", sync);
       window.removeEventListener(changed, sync);
@@ -96,10 +106,14 @@ export function useNavigation(allowedPages: readonly string[]) {
     },
     [allowedKey],
   );
+  const openDetail = useCallback((detail: DetailState | null) => {
+    commit(detailQuery(location.search, detail), "push");
+  }, []);
   return {
     ...state,
     updateList,
     navigate,
+    openDetail,
     canBack: position.index > 0,
     canForward: position.index < position.maximum,
     back: () => {

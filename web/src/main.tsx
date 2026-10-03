@@ -53,6 +53,7 @@ import { TaskRecords } from "./task-records";
 import { ChatPanel } from "./chat-panel";
 import {
   readNavigation,
+  readDetail,
   TASK_STATUSES,
   type ListPosition,
   type HistoryMode,
@@ -538,40 +539,7 @@ function App() {
       if (eventRefresh) clearTimeout(eventRefresh);
     };
   }, [auth?.authenticated, refresh]);
-  useEffect(() => {
-    if (!selectedTask) return;
-    let active = true;
-    let sequence = 0;
-    let controller: AbortController | null = null;
-    const load = () => {
-      controller?.abort();
-      controller = new AbortController();
-      const signal = controller.signal;
-      const request = ++sequence;
-      return api<{
-        task: Task;
-        events: Event[];
-        coverage: Coverage[];
-        findings: Finding[];
-      }>("/tasks/" + selectedTask.id, "GET", undefined, signal)
-        .then((d) => {
-          if (!active || signal.aborted || request !== sequence) return;
-          setSelectedTask(d.task);
-          setTaskDetail(d);
-        })
-        .catch((e) => {
-          if (active && !signal.aborted && request === sequence)
-            setError(e.message);
-        });
-    };
-    void load();
-    const timer = setInterval(load, 2500);
-    return () => {
-      active = false;
-      controller?.abort();
-      clearInterval(timer);
-    };
-  }, [selectedTask?.id]);
+
   async function act(
     path: string,
     method = "POST",
@@ -604,13 +572,13 @@ function App() {
   const closeTask = useCallback(() => {
     setSelectedTask(null);
     setTaskDetail(null);
-  }, []);
-  const findingRequest = useRef(0);
+    navigation.openDetail(null);
+  }, [navigation.openDetail]);
   const [findingReload, setFindingReload] = useState(0);
   const closeFinding = useCallback(() => {
-    findingRequest.current++;
     setSelectedFinding(null);
-  }, []);
+    navigation.openDetail(null);
+  }, [navigation.openDetail]);
   const closeTraffic = useCallback(() => setTrafficDetail(null), []);
   const recordKind = auth?.authenticated
     ? (
@@ -674,7 +642,6 @@ function App() {
     setError("");
   };
   useEffect(() => {
-    findingRequest.current++;
     setSelectedTask(null);
     setTaskDetail(null);
     setSelectedFinding(null);
@@ -682,32 +649,116 @@ function App() {
     setModal(null);
     setArchivingAsset(null);
   }, [page]);
+  const [detailReload, setDetailReload] = useState(0);
+  const [detailError, setDetailError] = useState({ key: "", message: "" });
+  const detailKey = navigation.detail
+    ? `${navigation.detail.kind}:${navigation.detail.id}`
+    : "";
+  const lastDetailKey = useRef("");
   useEffect(() => {
-    const close = () => {
-      findingRequest.current++;
-      setSelectedTask(null);
-      setTaskDetail(null);
-      setSelectedFinding(null);
+    const closeDrafts = () => {
       setTrafficDetail(null);
       setModal(null);
       setArchivingAsset(null);
     };
-    window.addEventListener("popstate", close);
-    return () => window.removeEventListener("popstate", close);
+    window.addEventListener("popstate", closeDrafts);
+    return () => window.removeEventListener("popstate", closeDrafts);
   }, []);
-  async function openFinding(id: string, reload = false) {
-    const request = ++findingRequest.current;
-    try {
-      const result = await api<NonNullable<typeof selectedFinding>>(
-        "/findings/" + id,
-      );
-      if (request === findingRequest.current) {
-        setSelectedFinding(result);
-        if (reload) setFindingReload((v) => v + 1);
-      }
-    } catch (e) {
-      if (request === findingRequest.current) setError((e as Error).message);
+  useEffect(() => {
+    const detail = navigation.detail;
+    if (lastDetailKey.current !== detailKey || !auth?.authenticated) {
+      setSelectedTask(null);
+      setTaskDetail(null);
+      setSelectedFinding(null);
+      lastDetailKey.current = detailKey;
     }
+    setDetailError({ key: detailKey, message: "" });
+    if (!detail || !auth?.authenticated) return;
+    let active = true;
+    let sequence = 0;
+    let loaded = false;
+    let inFlight = false;
+    let controller: AbortController | null = null;
+    const load = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      controller = new AbortController();
+      const signal = controller.signal;
+      const request = ++sequence;
+      const current = () => {
+        const live = readDetail(location.search);
+        return (
+          active &&
+          !signal.aborted &&
+          request === sequence &&
+          live?.kind === detail.kind &&
+          live.id === detail.id
+        );
+      };
+      try {
+        if (detail.kind === "task") {
+          const result = await api<{
+            task: Task;
+            events: Event[];
+            coverage: Coverage[];
+            findings: Finding[];
+          }>(
+            `/tasks/${encodeURIComponent(detail.id)}`,
+            "GET",
+            undefined,
+            signal,
+          );
+          if (current()) {
+            loaded = true;
+            setSelectedTask(result.task);
+            setTaskDetail(result);
+          }
+        } else {
+          const result = await api<NonNullable<typeof selectedFinding>>(
+            `/findings/${encodeURIComponent(detail.id)}`,
+            "GET",
+            undefined,
+            signal,
+          );
+          if (current()) {
+            setSelectedFinding(result);
+            if (detailReload) setFindingReload((value) => value + 1);
+          }
+        }
+        if (current()) setDetailError({ key: detailKey, message: "" });
+      } catch (e) {
+        if (current())
+          setDetailError({ key: detailKey, message: (e as Error).message });
+      } finally {
+        if (request === sequence) inFlight = false;
+      }
+    };
+    void load();
+    const timer =
+      detail.kind === "task"
+        ? setInterval(() => {
+            if (loaded) void load();
+          }, 2500)
+        : null;
+    return () => {
+      active = false;
+      controller?.abort();
+      if (timer) clearInterval(timer);
+    };
+  }, [detailKey, page, auth?.authenticated, detailReload]);
+  const detailHistory = (
+    <nav className="pagination" aria-label="상세 탐색 이력">
+      <button disabled={!navigation.canBack} onClick={navigation.back}>
+        이전 화면
+      </button>
+      <button disabled={!navigation.canForward} onClick={navigation.forward}>
+        다음 화면
+      </button>
+    </nav>
+  );
+  async function openFinding(id: string, reload = false) {
+    if (reload) setDetailReload((value) => value + 1);
+    else navigation.openDetail({ kind: "finding", id });
   }
   async function submitForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -1146,7 +1197,9 @@ function App() {
                         <button
                           className="task-row"
                           key={t.id}
-                          onClick={() => setSelectedTask(t)}
+                          onClick={() =>
+                            navigation.openDetail({ kind: "task", id: t.id })
+                          }
                         >
                           <span className="row-icon">
                             <Workflow size={18} />
@@ -1523,7 +1576,12 @@ function App() {
                             <td>
                               <button
                                 className="table-link"
-                                onClick={() => setSelectedTask(t)}
+                                onClick={() =>
+                                  navigation.openDetail({
+                                    kind: "task",
+                                    id: t.id,
+                                  })
+                                }
                               >
                                 <Workflow size={17} />
                                 <div>
@@ -1562,7 +1620,12 @@ function App() {
                             <td>
                               <button
                                 className="icon-button"
-                                onClick={() => setSelectedTask(t)}
+                                onClick={() =>
+                                  navigation.openDetail({
+                                    kind: "task",
+                                    id: t.id,
+                                  })
+                                }
                                 aria-label={t.name + " 상세"}
                               >
                                 <ChevronRight size={17} />
@@ -2503,210 +2566,266 @@ function App() {
         </Modal>
       )}
 
-      {selectedTask && (
-        <Modal
-          title={selectedTask.name}
-          subtitle={selectedTask.goal}
-          onClose={closeTask}
-        >
-          <div className="detail-summary">
-            <Badge value={selectedTask.status} />
-            <span>
-              {selectedTask.done} / {selectedTask.asset_ids.length} 자산 처리
-            </span>
-            <span>{selectedTask.errors}개 오류</span>
-          </div>
-          {selectedTask.termination_reason && (
-            <p className="remediation">
-              종료 사유:{" "}
-              {{
-                timeout: "작업 실행 시간 초과",
-                queue_timeout: "대기열 시간 초과",
-                operator_stop: "운영자 중지",
-                shutdown: "서버 종료",
-                internal_error: "내부 오류",
-              }[selectedTask.termination_reason] ||
-                selectedTask.termination_reason}
-            </p>
-          )}
-          {selectedTask.queue_wait_ms !== undefined && (
-            <p className="subtle">
-              실행 전 대기: {(selectedTask.queue_wait_ms / 1000).toFixed(1)}초
-            </p>
-          )}
-          {selectedTask.execution_policy && (
-            <details>
-              <summary>승인한 실행 정책</summary>
-              <PolicySummary policy={selectedTask.execution_policy} />
-            </details>
-          )}
-          {selectedTask.retry_of && (
-            <p className="subtle">
-              원본 작업: {selectedTask.retry_of} · 현재 범위로 만든 재실행 계획
-            </p>
-          )}
-          <h4 className="detail-heading">승인 범위</h4>
-          <div className="scope-list">
-            {selectedTask.scope_snapshot.map((a) => (
-              <code key={a.id}>{a.url}</code>
-            ))}
-          </div>
-          <div className="tags">
-            {(selectedTask.plan || selectedTask.checks).map((c) => (
-              <span key={c}>{tools.find((t) => t.id === c)?.name || c}</span>
-            ))}
-          </div>
-          <h4 className="detail-heading">도구별 실행 결과</h4>
-          {taskDetail && (
-            <CoverageTable
-              rows={taskDetail.coverage}
-              assets={selectedTask.scope_snapshot}
-              tools={tools}
+      {navigation.detail &&
+        !(
+          (navigation.detail.kind === "task" &&
+            selectedTask?.id === navigation.detail.id) ||
+          (navigation.detail.kind === "finding" &&
+            selectedFinding?.finding.id === navigation.detail.id)
+        ) && (
+          <Modal
+            title={
+              navigation.detail.kind === "task" ? "작업 상세" : "발견 상세"
+            }
+            subtitle={navigation.detail.id}
+            onClose={closeTask}
+          >
+            {detailHistory}
+            {detailError.key === detailKey && detailError.message ? (
+              <>
+                <p role="alert">{detailError.message}</p>
+                <button onClick={() => setDetailReload((value) => value + 1)}>
+                  상세 다시 불러오기
+                </button>
+              </>
+            ) : (
+              <p role="status">상세 기록을 불러오는 중…</p>
+            )}
+          </Modal>
+        )}
+      {selectedTask &&
+        navigation.detail?.kind === "task" &&
+        navigation.detail.id === selectedTask.id && (
+          <Modal
+            title={selectedTask.name}
+            subtitle={selectedTask.goal}
+            onClose={closeTask}
+          >
+            {detailHistory}
+            {detailError.key === detailKey && detailError.message && (
+              <div role="alert">
+                <p>{detailError.message} · 마지막으로 받은 상세 기록입니다.</p>
+                <button onClick={() => setDetailReload((value) => value + 1)}>
+                  상세 다시 불러오기
+                </button>
+              </div>
+            )}
+            <div className="detail-summary">
+              <Badge value={selectedTask.status} />
+              <span>
+                {selectedTask.done} / {selectedTask.asset_ids.length} 자산 처리
+              </span>
+              <span>{selectedTask.errors}개 오류</span>
+            </div>
+            {selectedTask.termination_reason && (
+              <p className="remediation">
+                종료 사유:{" "}
+                {{
+                  timeout: "작업 실행 시간 초과",
+                  queue_timeout: "대기열 시간 초과",
+                  operator_stop: "운영자 중지",
+                  shutdown: "서버 종료",
+                  internal_error: "내부 오류",
+                }[selectedTask.termination_reason] ||
+                  selectedTask.termination_reason}
+              </p>
+            )}
+            {selectedTask.queue_wait_ms !== undefined && (
+              <p className="subtle">
+                실행 전 대기: {(selectedTask.queue_wait_ms / 1000).toFixed(1)}초
+              </p>
+            )}
+            {selectedTask.execution_policy && (
+              <details>
+                <summary>승인한 실행 정책</summary>
+                <PolicySummary policy={selectedTask.execution_policy} />
+              </details>
+            )}
+            {selectedTask.retry_of && (
+              <p className="subtle">
+                원본 작업: {selectedTask.retry_of} · 현재 범위로 만든 재실행
+                계획
+              </p>
+            )}
+            <h4 className="detail-heading">승인 범위</h4>
+            <div className="scope-list">
+              {selectedTask.scope_snapshot.map((a) => (
+                <code key={a.id}>{a.url}</code>
+              ))}
+            </div>
+            <div className="tags">
+              {(selectedTask.plan || selectedTask.checks).map((c) => (
+                <span key={c}>{tools.find((t) => t.id === c)?.name || c}</span>
+              ))}
+            </div>
+            <h4 className="detail-heading">도구별 실행 결과</h4>
+            {taskDetail && (
+              <CoverageTable
+                rows={taskDetail.coverage}
+                assets={selectedTask.scope_snapshot}
+                tools={tools}
+              />
+            )}
+            <TaskRecords
+              key={`task-records-${selectedTask.id}`}
+              taskId={selectedTask.id}
+              onFinding={(id) => {
+                void openFinding(id);
+              }}
             />
-          )}
-          <TaskRecords
-            key={`task-records-${selectedTask.id}`}
-            taskId={selectedTask.id}
-            onFinding={(id) => {
-              closeTask();
-              void openFinding(id);
-            }}
-          />
-          <ChatPanel
-            key={`chat-${selectedTask.id}`}
-            taskId={selectedTask.id}
-            canOperate={canOperate}
-          />
-          <div className="modal-actions">
-            <a
-              className="button"
-              href={
-                "/api/reports/export?format=markdown&task_id=" + selectedTask.id
+            <ChatPanel
+              key={`chat-${selectedTask.id}`}
+              taskId={selectedTask.id}
+              canOperate={canOperate}
+            />
+            <div className="modal-actions">
+              <a
+                className="button"
+                href={
+                  "/api/reports/export?format=markdown&task_id=" +
+                  selectedTask.id
+                }
+                download
+              >
+                <ArrowDownToLine size={15} />
+                보고서
+              </a>
+              {["failed", "interrupted", "stopped"].includes(
+                selectedTask.status,
+              ) && (
+                <button
+                  className="primary"
+                  disabled={busy || !canOperate}
+                  onClick={async () => {
+                    const result = await act(
+                      "/tasks/" + selectedTask.id + "/retry",
+                      "POST",
+                      undefined,
+                      "재실행 계획을 만들었습니다. 현재 범위와 정책을 승인하세요.",
+                    );
+                    if (result) {
+                      closeTask();
+                      navigate("approvals", true);
+                    }
+                  }}
+                >
+                  <RefreshCw size={15} />
+                  재실행 계획
+                </button>
+              )}
+              {selectedTask.status === "pending" ? (
+                <button
+                  className="primary"
+                  disabled={busy || !canApprove}
+                  onClick={async () => {
+                    await act("/tasks/" + selectedTask.id + "/approve");
+                    closeTask();
+                  }}
+                >
+                  승인하고 실행
+                  <Check size={15} />
+                </button>
+              ) : ["running", "queued", "stopping"].includes(
+                  selectedTask.status,
+                ) ? (
+                <button
+                  className="danger"
+                  disabled={
+                    busy || !canOperate || selectedTask.status === "stopping"
+                  }
+                  onClick={() =>
+                    void act("/tasks/" + selectedTask.id + "/stop")
+                  }
+                >
+                  <Square size={14} />
+                  작업 중지
+                </button>
+              ) : (
+                <button onClick={closeTask}>닫기</button>
+              )}
+            </div>
+          </Modal>
+        )}
+
+      {selectedFinding &&
+        navigation.detail?.kind === "finding" &&
+        navigation.detail.id === selectedFinding.finding.id && (
+          <Modal
+            title={selectedFinding.finding.title}
+            subtitle={
+              selectedFinding.finding.asset_name +
+              " · " +
+              confidenceNames[selectedFinding.finding.confidence]
+            }
+            onClose={closeFinding}
+          >
+            {detailHistory}
+            {detailError.key === detailKey && detailError.message && (
+              <div role="alert">
+                <p>{detailError.message} · 마지막으로 받은 상세 기록입니다.</p>
+                <button onClick={() => setDetailReload((value) => value + 1)}>
+                  상세 다시 불러오기
+                </button>
+              </div>
+            )}
+            <div className="detail-summary">
+              <Badge value={selectedFinding.finding.severity} />
+              <Badge value={selectedFinding.finding.status} />
+              <span>{date(selectedFinding.finding.created_at)}</span>
+            </div>
+            <FindingTriage
+              key={`${selectedFinding.finding.id}:${selectedFinding.finding.triage_revision || 1}:${findingReload}`}
+              finding={selectedFinding.finding}
+              canOperate={canOperate}
+              onReload={() =>
+                void openFinding(selectedFinding.finding.id, true)
               }
-              download
-            >
-              <ArrowDownToLine size={15} />
-              보고서
-            </a>
-            {["failed", "interrupted", "stopped"].includes(
-              selectedTask.status,
-            ) && (
+              onUpdated={(value) => {
+                setSelectedFinding((current) =>
+                  current?.finding.id === value.id
+                    ? { ...current, finding: { ...current.finding, ...value } }
+                    : current,
+                );
+                window.dispatchEvent(new Event("aegis-records-changed"));
+                void refresh();
+              }}
+            />
+            <h4 className="detail-heading">관찰 증거</h4>
+            <pre>
+              {JSON.stringify(selectedFinding.finding.evidence, null, 2)}
+            </pre>
+            <h4 className="detail-heading">수정 가이드</h4>
+            <p className="remediation">{selectedFinding.finding.remediation}</p>
+            <FindingRecords
+              key={selectedFinding.finding.id}
+              findingId={selectedFinding.finding.id}
+              checkNames={Object.fromEntries(
+                tools.map((tool) => [tool.id, tool.name]),
+              )}
+            />
+            <div className="modal-actions">
               <button
                 className="primary"
                 disabled={busy || !canOperate}
                 onClick={async () => {
                   const result = await act(
-                    "/tasks/" + selectedTask.id + "/retry",
+                    "/findings/" + selectedFinding.finding.id + "/retest",
                     "POST",
                     undefined,
-                    "재실행 계획을 만들었습니다. 현재 범위와 정책을 승인하세요.",
+                    "재검증 계획을 만들었습니다. 범위를 승인하세요.",
                   );
                   if (result) {
-                    closeTask();
+                    closeFinding();
                     navigate("approvals", true);
                   }
                 }}
               >
                 <RefreshCw size={15} />
-                재실행 계획
+                재검증 계획
               </button>
-            )}
-            {selectedTask.status === "pending" ? (
-              <button
-                className="primary"
-                disabled={busy || !canApprove}
-                onClick={async () => {
-                  await act("/tasks/" + selectedTask.id + "/approve");
-                  closeTask();
-                }}
-              >
-                승인하고 실행
-                <Check size={15} />
-              </button>
-            ) : ["running", "queued", "stopping"].includes(
-                selectedTask.status,
-              ) ? (
-              <button
-                className="danger"
-                disabled={
-                  busy || !canOperate || selectedTask.status === "stopping"
-                }
-                onClick={() => void act("/tasks/" + selectedTask.id + "/stop")}
-              >
-                <Square size={14} />
-                작업 중지
-              </button>
-            ) : (
-              <button onClick={closeTask}>닫기</button>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {selectedFinding && (
-        <Modal
-          title={selectedFinding.finding.title}
-          subtitle={
-            selectedFinding.finding.asset_name +
-            " · " +
-            confidenceNames[selectedFinding.finding.confidence]
-          }
-          onClose={closeFinding}
-        >
-          <div className="detail-summary">
-            <Badge value={selectedFinding.finding.severity} />
-            <Badge value={selectedFinding.finding.status} />
-            <span>{date(selectedFinding.finding.created_at)}</span>
-          </div>
-          <FindingTriage
-            key={`${selectedFinding.finding.id}:${selectedFinding.finding.triage_revision || 1}:${findingReload}`}
-            finding={selectedFinding.finding}
-            canOperate={canOperate}
-            onReload={() => void openFinding(selectedFinding.finding.id, true)}
-            onUpdated={(value) => {
-              setSelectedFinding((current) =>
-                current?.finding.id === value.id
-                  ? { ...current, finding: { ...current.finding, ...value } }
-                  : current,
-              );
-              window.dispatchEvent(new Event("aegis-records-changed"));
-              void refresh();
-            }}
-          />
-          <h4 className="detail-heading">관찰 증거</h4>
-          <pre>{JSON.stringify(selectedFinding.finding.evidence, null, 2)}</pre>
-          <h4 className="detail-heading">수정 가이드</h4>
-          <p className="remediation">{selectedFinding.finding.remediation}</p>
-          <FindingRecords
-            key={selectedFinding.finding.id}
-            findingId={selectedFinding.finding.id}
-            checkNames={Object.fromEntries(
-              tools.map((tool) => [tool.id, tool.name]),
-            )}
-          />
-          <div className="modal-actions">
-            <button
-              className="primary"
-              disabled={busy || !canOperate}
-              onClick={async () => {
-                const result = await act(
-                  "/findings/" + selectedFinding.finding.id + "/retest",
-                  "POST",
-                  undefined,
-                  "재검증 계획을 만들었습니다. 범위를 승인하세요.",
-                );
-                if (result) {
-                  closeFinding();
-                  navigate("approvals", true);
-                }
-              }}
-            >
-              <RefreshCw size={15} />
-              재검증 계획
-            </button>
-          </div>
-        </Modal>
-      )}
+            </div>
+          </Modal>
+        )}
       {trafficDetail && (
         <Modal
           title="HTTP 요청 기록"

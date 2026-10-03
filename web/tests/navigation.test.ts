@@ -208,3 +208,62 @@ test("observation bookmarks restore independently from the asset preview", () =>
   assert.equal(readNavigation(fresh, pages).list.search, "");
   assert.equal(readNavigation(fresh, pages).list.snapshot, null);
 });
+
+test("detail bookmarks preserve the source list and close without losing its position", async () => {
+  const { readDetail, detailQuery } =
+    await import("../src/navigation-state.ts");
+  const original =
+    "page=tasks&tasks_q=loopback&tasks_status=completed&tasks_offset=25&tasks_snapshot=99&graph_task=source";
+  const task = detailQuery(original, { kind: "task", id: "task-123" });
+  assert.deepEqual(readDetail(task), { kind: "task", id: "task-123" });
+  assert.deepEqual(
+    readNavigation(task, pages),
+    readNavigation(original, pages),
+  );
+  const finding = detailQuery(task, { kind: "finding", id: "finding_123" });
+  assert.deepEqual(readDetail(finding), { kind: "finding", id: "finding_123" });
+  assert.equal(new URLSearchParams(finding).get("graph_task"), "source");
+  assert.equal(detailQuery(finding, null), original);
+  assert.equal(readDetail(navigateQuery(task, pages, "findings")), null);
+  assert.deepEqual(
+    readDetail(navigateQuery(task, pages, "tasks", false, true)),
+    readDetail(task),
+  );
+});
+
+test("malformed detail IDs cannot become API paths; canonicalization removes invalid bookmarks", async () => {
+  const { readDetail, detailQuery } =
+    await import("../src/navigation-state.ts");
+  for (const id of [
+    "",
+    "../private",
+    "task/id",
+    "task?x=1",
+    "한글",
+    "x".repeat(81),
+  ]) {
+    const input = new URLSearchParams({
+      page: "tasks",
+      detail: "task",
+      detail_id: id,
+    }).toString();
+    assert.equal(readDetail(input), null);
+    assert.equal(
+      new URLSearchParams(
+        navigateQuery(input, pages, "tasks", false, true),
+      ).has("detail_id"),
+      false,
+    );
+  }
+  assert.equal(readDetail("detail=traffic&detail_id=id"), null);
+  assert.equal(readDetail("detail=task"), null);
+  assert.equal(readDetail("detail_id=id"), null);
+  assert.equal(
+    readDetail(detailQuery("page=tasks", { kind: "task", id: "/invalid" })),
+    null,
+  );
+  assert.deepEqual(readDetail("detail=finding&detail_id=" + "a".repeat(80)), {
+    kind: "finding",
+    id: "a".repeat(80),
+  });
+});
