@@ -565,3 +565,40 @@ on 390×844 has no document overflow.
 - Individual proof disclosure/scroll, triage drafts, decision-history/task/chat nested
   positions and remaining modals are not covered by this increment. Mobile and actual
   assistive-technology regression remain open. Contract: [PAGINATION.md](PAGINATION.md).
+
+
+## Responsive document-width review and report card repair (2026-10-04)
+
+- An isolated loopback fixture embeds the real built app in a width-controlled frame.
+  App-origin metrics confirm innerWidth=320/390, rather than assuming the outer browser
+  resized. With ordinary vertical scrollbars rootClient/rootScroll are 305/375; both
+  remain equal. This is desktop Chromium responsive rendering, not a phone simulator.
+- Fourteen main screens were measured at both widths: overview, tasks, assets,
+  observations, findings, graph, approvals, traffic, reports, schedules, notes, agents,
+  settings and users. Selected visible controls/headings/sections show no uncontained
+  horizontal overflow. Table/graph controls outside the viewport have a horizontally
+  scrolling ancestor; this observation does not prove they are touch/keyboard reachable.
+- The initial 320px report screenshot showed the new download control squeezed into
+  the icon card's second column, wrapping its action text. At <=600px the description
+  and download now span both columns and the icon occupies only the heading row. The
+  subsequent 320px screenshot shows the action on one line with a wider description.
+- Changed report cards were rechecked at 320/390px, and 1280px shows no root/uncontained
+  overflow. The 320px task dialog is 296px wide with no detected uncontained overflow;
+  a 390px finding dialog is 366px wide. Initial and updated screenshots were inspected.
+- Artifacts: `artifacts/mobile-geometry-review.json`, `artifacts/v1-mobile-reports-320.jpg`,
+  `artifacts/v1-mobile-reports-320-after.jpg`, `artifacts/v1-mobile-reports-390-after.jpg`,
+  `artifacts/v1-mobile-task-320.jpg`, `artifacts/v1-mobile-finding-before.jpg`. Metrics
+  cover geometry, not every content/state or all visual clipping.
+- TypeScript/Vite build passed, and nine selected Montage contrast pairs pass AA. No
+  new tests mirror this CSS change; prior 23 frontend and 178 backend tests are not
+  rerun. The saved manual QA launcher compiles and booted against the same fixture.
+- The manual launcher permits only same-origin QA embedding and adds a metrics script;
+  normal production CSP/X-Frame-Options and runtime entry are unchanged. Instructions:
+  [web/tests/browser/README.md](../web/tests/browser/README.md). Screens are navigated
+  through visible fixture controls, with no browser storage/state injection or scan.
+- Final measurement artifact contains 14 entries per width. Fixture target traffic stays
+  at 33, and the normal main preview serves the latest build with X-Frame-Options=DENY
+  and frame-ancestors none. The QA server shut down cleanly after review.
+- Touch gestures, real iOS/Android browser behavior, zoom, focus through every journey,
+  keyboard table scrolling, full modal/error/recovery states and actual screen-reader
+  output remain unverified. The global mobile/accessibility gates stay incomplete.

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+  <meta charset="utf-8" /><title>Open Aegis responsive review</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f4f4f5;
+      color: #171719;
+      font: 16px system-ui;
+    }
+    header {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    button {
+      font: inherit;
+      padding: 8px;
+      border: 2px solid #171719;
+      background: white;
+    }
+    iframe {
+      display: block;
+      width: 390px;
+      height: 844px;
+      border: 3px solid #171719;
+      background: white;
+      box-shadow: 5px 5px 0 #171719;
+      margin: auto;
+    }
+    label {
+      margin-left: 16px;
+    }
+    p {
+      text-align: center;
+    }
+  </style>
+  <header>
+    <strong>실제 CSS viewport 검수</strong
+    ><button data-width="320">320px</button
+    ><button data-width="390">390px</button
+    ><button data-width="768">768px</button
+    ><button data-width="1280">1280px</button
+    ><button id="finding">발견 상세</button><button id="task">작업 상세</button
+    ><button data-page="graph">검수: 탐색 경로</button
+    ><button data-page="overview">검수: 대시보드</button
+    ><button data-page="tasks">검수: 검증 작업</button
+    ><button data-page="assets">검수: 자산</button
+    ><button data-page="observations">검수: 관찰 링크</button
+    ><button data-page="findings">검수: 발견 사항</button
+    ><button data-page="reports">검수: 보고서</button
+    ><button data-page="approvals">검수: 실행 승인</button
+    ><button data-page="traffic">검수: 트래픽 기록</button
+    ><button data-page="schedules">검수: 예약 검증</button
+    ><button data-page="notes">검수: 워크스페이스</button
+    ><button data-page="agents">검수: 에이전트 & 도구</button
+    ><button data-page="settings">검수: 시스템 설정</button
+    ><button data-page="users">검수: 사용자 관리</button>
+  </header>
+  <p>
+    390 × 844 CSS 픽셀 · 실제 앱 · 검수용 프레임 허용 서버 · 터치/기기
+    에뮬레이션 아님
+  </p>
+  <iframe title="실제 앱의 모바일 viewport" src="/?page=overview"></iframe>
+  <pre
+    id="metrics"
+    style="
+      position: fixed;
+      left: 24px;
+      top: 160px;
+      width: 320px;
+      white-space: pre-wrap;
+      font-size: 12px;
+    "
+  ></pre>
+  <script id="review-config" type="application/json">
+    {{REVIEW_CONFIG}}
+  </script>
+  <script src="/responsive-review.js"></script>
+</html>

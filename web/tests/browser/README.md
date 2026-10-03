@@ -23,3 +23,34 @@ focus back to Close on every background refresh.
 
 This fixture is a manual browser regression, not part of `npm test`. Full mobile, assistive
 technology and all workspace journeys require separate verification.
+
+## Real document viewport review
+
+Build the frontend first (`npm --prefix web run build`), then launch a separate loopback
+QA server against an isolated workspace:
+
+```sh
+.venv/bin/python scripts/responsive_review.py --data-dir artifacts/mobile-qa --port 8811
+```
+
+Use a copied QA database or set up the new workspace and authenticate at
+`http://localhost:8811/` before opening `http://localhost:8811/responsive-review` in the
+same browser. The existing workspace lease applies; do not share a data directory with
+another running server. Add `--finding-id ID --task-id ID` to enable the two detail
+buttons. Add `--lab` only for owned local lab assets. The tool never automatically runs
+scans or submits changes. Product controls in the embedded app retain their real actions.
+
+The controls select actual iframe document widths of 320, 390, 768 and 1280 CSS pixels.
+Displayed metrics originate in that app document: viewport width, root client/scroll
+width, heading, dialog width, and selected controls/sections outside the viewport.
+`containedOverflow` counts elements inside an ancestor with horizontal scrolling and
+is separate from uncontained overflow. It is not a comprehensive visual/accessibility
+checker: overlap, clipped text, touch targets, scroll reachability and responsive dialogs
+need visual/manual review. No mobile browser/device/zoom emulation is performed.
+
+This server intentionally changes frame-ancestors to self and removes X-Frame-Options
+so the diagnostic page can embed the actual built app. It inserts a same-origin DOM
+metrics script in that app HTML. These overrides exist only in this manually launched
+QA entry, bound to 127.0.0.1; they are not in create_app, the normal launchers, Vite's
+production entry or the production bundle. Authentication and operation checks remain.
+Use isolated QA data and stop this server after review. This fixture is not an npm test.

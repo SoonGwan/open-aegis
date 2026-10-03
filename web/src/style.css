@@ -3428,3 +3428,17 @@ pre,
 .chat-recovery p:last-child {
   margin: 10px 0 0;
 }
+
+@media (max-width: 600px) {
+  .report-card {
+    grid-template-columns: 40px minmax(0, 1fr);
+    column-gap: 12px;
+  }
+  .report-card .section-icon {
+    grid-row: 1;
+  }
+  .report-card > p,
+  .report-card > .report-download {
+    grid-column: 1 / -1;
+  }
+}
