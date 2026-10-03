@@ -143,3 +143,35 @@ on 390×844 has no document overflow.
   `artifacts/v1-runtime-mobile.jpg`. Mobile document width did not exceed the viewport.
 - Execution/clock/OS limitations: [RUNTIME.md](RUNTIME.md). Container execution,
   live external LLM keys, production load/soak and full v1 release are not verified.
+
+## Main-list URL navigation and query recovery (2026-10-04)
+
+- `npm --prefix web test`: **8 passed** on Node 22.18.0. Bookmark round trips,
+  scoped filters, graph parameter preservation, reset rules, malformed numeric bounds,
+  literal Unicode/punctuation and surrogate boundaries are covered.
+- `tests/test_records.py tests/test_graph.py`: **13 passed**, one existing
+  Starlette/httpx deprecation warning. Backend code is unchanged in this increment.
+- TypeScript/Vite production build passed. The nine selected semantic color pairs pass AA;
+  this does not constitute a full accessibility audit.
+- Isolated owned loopback fixture: 32 active assets, 3 archived assets, 32 actual GETs,
+  160 findings, two completed tasks and 28 pending plans. No external hosts were tested.
+- Browser: paginated all six main lists; a new tab restored asset search and rows 26–32.
+  Task status Back/Forward restored search, position and insertion watermark. Changing
+  a finding severity/search reset position; an offset of 10,000,000 clamped to the last page.
+- Creating another plan with an old unmatched approval query opened a fresh approval list
+  and showed the new pending plan (29 pending). That plan was not approved or executed.
+- A real fixture-server shutdown displayed the localized connection error and retry control
+  without a false empty result. After restarting the same data directory, the four-second
+  automatic refresh recovered to the actual empty search result. The manual retry click was
+  not observed: automatic recovery had already removed its button.
+- Native history through the app's Back/Forward controls was verified, including replacing
+  a forward branch with a new route and disabling Forward at the new end.
+- Existing graph evidence bookmarks loaded the selected proof. Changing a graph filter
+  preserved app history metadata; Back returned to assets. Archived asset filtering returned
+  exactly the three archived fixtures and reset pagination.
+- Desktop captures: `artifacts/v1-navigation-desktop.jpg`, `artifacts/v1-navigation-error.jpg`
+  (local artifacts, excluded from Git). History buttons measure 44×44 CSS pixels.
+- A requested 390×844 viewport override did not change the observed document viewport
+  (1810 CSS pixels), so this increment has **no verified mobile capture**. Mobile regression
+  remains on the v1 checklist. Evidence/observation/note/schedule lists and detail URL state
+  also remain outside this increment; see [PAGINATION.md](PAGINATION.md).

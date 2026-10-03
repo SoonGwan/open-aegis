@@ -8,6 +8,7 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  ChevronLeft,
   Clock3,
   Code2,
   FileText,
@@ -44,7 +45,14 @@ import {
   type Coverage,
   type CoverageSummary,
 } from "./coverage";
-import { useRecords, Pagination, AssetPicker } from "./records";
+import { useRecords, Pagination, AssetPicker, RecordState } from "./records";
+import { useNavigation } from "./navigation";
+import {
+  readNavigation,
+  TASK_STATUSES,
+  type ListPosition,
+  type HistoryMode,
+} from "./navigation-state";
 import Modal from "./components/Modal";
 import { UserPanel, PasswordPanel, roleNames, type User } from "./identity";
 
@@ -384,19 +392,21 @@ function App() {
   const [overview, setOverview] = useState<Overview>(initial),
     [tools, setTools] = useState<Tool[]>([]),
     [settings, setSettings] = useState<Settings | null>(null);
-  const [page, setPage] = useState(() => {
-      const requested = new URLSearchParams(location.search).get("page");
-      return pages.some((item) => item.id === requested)
-        ? requested!
-        : "overview";
-    }),
-    [search, setSearch] = useState(""),
-    [modal, setModal] = useState<"asset" | "task" | "import" | "note" | null>(
-      null,
-    );
+  const navigation = useNavigation(pages.map((item) => item.id));
+  const { page, list } = navigation;
+  const search = list.search,
+    filter = list.filter,
+    showArchived = list.archived;
+  const setSearch = (value: string) =>
+    navigation.updateList({ search: value }, "replace");
+  const setFilter = (value: string) => navigation.updateList({ filter: value });
+  const setShowArchived = (value: boolean) =>
+    navigation.updateList({ archived: value });
+  const [modal, setModal] = useState<
+    "asset" | "task" | "import" | "note" | null
+  >(null);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [archivingAsset, setArchivingAsset] = useState<Asset | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
   const [taskAssetId, setTaskAssetId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null),
     [taskDetail, setTaskDetail] = useState<{
@@ -421,8 +431,7 @@ function App() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [connection, setConnection] = useState(true);
-  const [filter, setFilter] = useState("all"),
-    [formError, setFormError] = useState("");
+  const [formError, setFormError] = useState("");
   const actionInFlight = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshSequence = useRef(0);
@@ -473,10 +482,6 @@ function App() {
   useEffect(() => {
     if (auth && !auth.authenticated) {
       setOverviewLoaded(false);
-      const requested = new URLSearchParams(location.search).get("page");
-      setPage(
-        pages.some((item) => item.id === requested) ? requested! : "overview",
-      );
       setSelectedTask(null);
       setSelectedFinding(null);
       setTrafficDetail(null);
@@ -519,8 +524,6 @@ function App() {
     };
   }, [auth?.authenticated, refresh]);
   useEffect(() => {
-    setSearch("");
-    setFilter("all");
     if (!auth?.authenticated) return;
     if (page === "notes")
       api<Note[]>("/notes")
@@ -594,8 +597,6 @@ function App() {
     setSelectedFinding(null);
   }, []);
   const closeTraffic = useCallback(() => setTrafficDetail(null), []);
-  const matches = (...values: string[]) =>
-    values.join(" ").toLowerCase().includes(search.toLowerCase());
   const recordKind = auth?.authenticated
     ? (
         {
@@ -613,10 +614,28 @@ function App() {
   if (page === "approvals") recordFilters.status = "pending";
   else if (page === "tasks" && filter !== "all") recordFilters.status = filter;
   if (page === "findings" && filter !== "all") recordFilters.severity = filter;
+  const navigationKey = JSON.stringify({ page, list });
+  const changeRecordPosition = useCallback(
+    (position: ListPosition, mode: HistoryMode = "push") => {
+      // An old response/event must not rewrite a newly visited route or filter.
+      if (
+        JSON.stringify(
+          readNavigation(
+            location.search,
+            pages.map((item) => item.id),
+          ),
+        ) !== navigationKey
+      )
+        return;
+      navigation.updateList(position, mode);
+    },
+    [navigationKey, navigation.updateList],
+  );
   const records = useRecords<Asset | Task | Finding | Traffic>(
     recordKind,
     search,
     recordFilters,
+    { ...list, onPositionChange: changeRecordPosition },
   );
   const visibleTasks = recordKind === "tasks" ? (records.items as Task[]) : [];
   const visibleFindings =
@@ -627,27 +646,32 @@ function App() {
     page === "approvals"
       ? visibleTasks
       : overview.tasks.filter((t) => t.status === "pending");
-  useEffect(() => {
-    const back = () => {
-      const requested = new URLSearchParams(location.search).get("page");
-      setPage(
-        pages.some((item) => item.id === requested) ? requested! : "overview",
-      );
-    };
-    window.addEventListener("popstate", back);
-    return () => window.removeEventListener("popstate", back);
-  }, []);
-  const navigate = (value: string) => {
-    const query = new URLSearchParams(location.search);
-    query.set("page", value);
-    history.pushState(
-      null,
-      "",
-      location.pathname + "?" + query + location.hash,
-    );
-    setPage(value);
+  const navigate = (value: string, fresh = false) => {
+    navigation.navigate(value, fresh);
     setError("");
   };
+  useEffect(() => {
+    findingRequest.current++;
+    setSelectedTask(null);
+    setTaskDetail(null);
+    setSelectedFinding(null);
+    setTrafficDetail(null);
+    setModal(null);
+    setArchivingAsset(null);
+  }, [page]);
+  useEffect(() => {
+    const close = () => {
+      findingRequest.current++;
+      setSelectedTask(null);
+      setTaskDetail(null);
+      setSelectedFinding(null);
+      setTrafficDetail(null);
+      setModal(null);
+      setArchivingAsset(null);
+    };
+    window.addEventListener("popstate", close);
+    return () => window.removeEventListener("popstate", close);
+  }, []);
   async function openFinding(id: string, reload = false) {
     const request = ++findingRequest.current;
     try {
@@ -715,7 +739,7 @@ function App() {
           interval ? { ...body, interval_hours: interval } : body,
         );
         if (interval) setSchedules(await api("/schedules"));
-        navigate(interval ? "schedules" : "approvals");
+        navigate(interval ? "schedules" : "approvals", true);
         message(
           interval
             ? "예약을 만들었습니다. 생성된 작업은 승인이 필요합니다."
@@ -845,9 +869,29 @@ function App() {
       <main className="main">
         <header className="topbar">
           <div>
-            <span>워크스페이스</span>
-            <ChevronRight size={13} />
-            <strong>{title}</strong>
+            <nav className="navigation-controls" aria-label="탐색 이력">
+              <button
+                aria-label="이전 탐색"
+                title="이전 탐색"
+                disabled={!navigation.canBack}
+                onClick={navigation.back}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                aria-label="다음 탐색"
+                title="다음 탐색"
+                disabled={!navigation.canForward}
+                onClick={navigation.forward}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </nav>
+            <div className="navigation-crumb">
+              <span>워크스페이스</span>
+              <ChevronRight size={13} />
+              <strong>{title}</strong>
+            </div>
           </div>
           <div className="topbar-right">
             <span className="connection">
@@ -864,7 +908,7 @@ function App() {
           </div>
         </header>
         <div className="content">
-          {error && (
+          {error && (!recordKind || error !== records.error) && (
             <div className="error-banner" role="alert">
               <span>{error}</span>
               <button aria-label="오류 닫기" onClick={() => setError("")}>
@@ -1182,6 +1226,8 @@ function App() {
                 setSearch={setSearch}
                 placeholder="이름, 주소, 소유자로 검색"
                 count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
               >
                 <button
                   onClick={() => setShowArchived(!showArchived)}
@@ -1190,7 +1236,9 @@ function App() {
                   {showArchived ? "활성 자산 보기" : "보관함 보기"}
                 </button>
               </Toolbar>
-              {visibleAssets.length ? (
+              {!records.ready ? (
+                <RecordState records={records} />
+              ) : visibleAssets.length ? (
                 <div className="asset-grid">
                   {visibleAssets.map((a) => (
                     <section className="panel asset-card" key={a.id}>
@@ -1288,7 +1336,9 @@ function App() {
                         ? "검색 결과가 없습니다"
                         : showArchived
                           ? "보관된 자산이 없습니다"
-                          : "아직 등록된 자산이 없습니다"
+                          : overview.stats.assets
+                            ? "표시할 자산이 없습니다"
+                            : "아직 등록된 자산이 없습니다"
                     }
                     description="검증 권한이 있는 웹사이트 또는 API 주소를 연결하세요."
                     action={
@@ -1297,7 +1347,8 @@ function App() {
                         disabled={!canOperate}
                         onClick={() => openModal("asset")}
                       >
-                        <Plus size={16} />첫 자산 등록
+                        <Plus size={16} />
+                        {overview.stats.assets ? "자산 등록" : "첫 자산 등록"}
                       </button>
                     }
                   />
@@ -1335,6 +1386,8 @@ function App() {
                 setSearch={setSearch}
                 placeholder="작업 이름으로 검색"
                 count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
               >
                 <select
                   aria-label="작업 상태"
@@ -1342,17 +1395,17 @@ function App() {
                   onChange={(e) => setFilter(e.target.value)}
                 >
                   <option value="all">모든 상태</option>
-                  {["pending", "running", "completed", "failed", "stopped"].map(
-                    (s) => (
-                      <option key={s} value={s}>
-                        {statusNames[s]}
-                      </option>
-                    ),
-                  )}
+                  {TASK_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {statusNames[s]}
+                    </option>
+                  ))}
                 </select>
               </Toolbar>
               <section className="panel">
-                {visibleTasks.length ? (
+                {!records.ready ? (
+                  <RecordState records={records} />
+                ) : visibleTasks.length ? (
                   <div className="table-scroll">
                     <table>
                       <thead>
@@ -1424,7 +1477,7 @@ function App() {
                 ) : (
                   <Empty
                     title={
-                      search || filter !== "all"
+                      search || filter !== "all" || overview.stats.tasks
                         ? "일치하는 작업이 없습니다"
                         : "아직 검증 작업이 없습니다"
                     }
@@ -1442,6 +1495,8 @@ function App() {
                 setSearch={setSearch}
                 placeholder="발견 사항 또는 자산으로 검색"
                 count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
               >
                 <select
                   aria-label="심각도"
@@ -1457,7 +1512,9 @@ function App() {
                 </select>
               </Toolbar>
               <section className="panel">
-                {visibleFindings.length ? (
+                {!records.ready ? (
+                  <RecordState records={records} />
+                ) : visibleFindings.length ? (
                   <div className="table-scroll">
                     <table>
                       <thead>
@@ -1524,6 +1581,14 @@ function App() {
 
           {page === "approvals" && (
             <>
+              <Toolbar
+                search={search}
+                setSearch={setSearch}
+                placeholder="승인할 작업으로 검색"
+                count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
+              />
               <div className="info-strip">
                 <LockKeyhole size={18} />
                 <span>
@@ -1531,7 +1596,9 @@ function App() {
                   범위 밖 주소로는 이동하지 않습니다.
                 </span>
               </div>
-              {pending.length ? (
+              {!records.ready ? (
+                <RecordState records={records} />
+              ) : pending.length ? (
                 <div className="approval-grid">
                   {pending.map((t) => (
                     <section className="panel approval-card" key={t.id}>
@@ -1605,7 +1672,7 @@ function App() {
               ) : (
                 <section className="panel">
                   <Empty
-                    title="대기 중인 실행 요청이 없습니다"
+                    title="표시할 승인 요청이 없습니다"
                     description="새 검증 작업과 재검증은 이곳에서 범위를 확인하고 승인합니다."
                   />
                 </section>
@@ -1627,9 +1694,13 @@ function App() {
                 setSearch={setSearch}
                 placeholder="요청 URL로 검색"
                 count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
               />
               <section className="panel">
-                {traffic.length ? (
+                {!records.ready ? (
+                  <RecordState records={records} />
+                ) : traffic.length ? (
                   <div className="table-scroll">
                     <table>
                       <thead>
@@ -1676,7 +1747,7 @@ function App() {
                   </div>
                 ) : (
                   <Empty
-                    title="기록된 HTTP 요청이 없습니다"
+                    title="표시할 HTTP 요청이 없습니다"
                     description="검증을 실행하면 응답 메타데이터와 본문 해시가 저장됩니다."
                   />
                 )}
@@ -1690,6 +1761,14 @@ function App() {
 
           {page === "reports" && (
             <>
+              <Toolbar
+                search={search}
+                setSearch={setSearch}
+                placeholder="보고서를 내보낼 작업으로 검색"
+                count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
+              />
               <div className="report-options">
                 {[
                   {
@@ -1732,7 +1811,9 @@ function App() {
                 <div className="panel-head">
                   <h3>작업별 보고서</h3>
                 </div>
-                {visibleTasks.length ? (
+                {!records.ready ? (
+                  <RecordState records={records} />
+                ) : visibleTasks.length ? (
                   visibleTasks.map((t) => (
                     <div className="report-row" key={t.id}>
                       <span className="row-icon">
@@ -1758,7 +1839,9 @@ function App() {
                   ))
                 ) : (
                   <div className="quiet-state">
-                    검증 작업을 만들면 작업별 보고서를 내보낼 수 있습니다.
+                    {overview.stats.tasks
+                      ? "현재 조건에 맞는 작업이 없습니다."
+                      : "검증 작업을 만들면 작업별 보고서를 내보낼 수 있습니다."}
                   </div>
                 )}
               </section>
@@ -2391,7 +2474,7 @@ function App() {
                   );
                   if (result) {
                     closeTask();
-                    navigate("approvals");
+                    navigate("approvals", true);
                   }
                 }}
               >
@@ -2497,7 +2580,7 @@ function App() {
                 );
                 if (result) {
                   closeFinding();
-                  navigate("approvals");
+                  navigate("approvals", true);
                 }
               }}
             >
@@ -2554,12 +2637,16 @@ function Toolbar({
   setSearch,
   placeholder,
   count,
+  loading = false,
+  error = "",
   children,
 }: {
   search: string;
   setSearch: (v: string) => void;
   placeholder: string;
   count: number;
+  loading?: boolean;
+  error?: string;
   children?: React.ReactNode;
 }) {
   return (
@@ -2570,10 +2657,13 @@ function Toolbar({
           aria-label={placeholder}
           placeholder={placeholder}
           value={search}
+          maxLength={200}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      <span className="subtle">{count}개 항목</span>
+      <span className="subtle">
+        {error ? "조회 실패" : loading ? "불러오는 중…" : `${count}개 항목`}
+      </span>
       {children}
     </div>
   );

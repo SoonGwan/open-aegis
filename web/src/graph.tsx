@@ -188,7 +188,7 @@ export function EvidenceGraph({
     if (selected) q.set("graph_node", selected);
     else q.delete("graph_node");
     history.replaceState(
-      null,
+      history.state,
       "",
       location.pathname + (q.size ? "?" + q : "") + location.hash,
     );

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
+import type { ListPosition, HistoryMode } from "./navigation-state";
 
 type Result<T> = {
   items: T[];
@@ -22,6 +23,9 @@ export function useRecords<T>(
   kind: string | null,
   search: string,
   filters: Record<string, string>,
+  external?: ListPosition & {
+    onPositionChange: (position: ListPosition, mode?: HistoryMode) => void;
+  },
 ) {
   const key = JSON.stringify([kind, search, filters]);
   const [position, setPosition] = useState({
@@ -30,31 +34,47 @@ export function useRecords<T>(
     snapshot: null as number | null,
   });
   const current =
-    position.key === key ? position : { key, offset: 0, snapshot: null };
+    external ||
+    (position.key === key ? position : { key, offset: 0, snapshot: null });
+  const onPositionChange = external?.onPositionChange;
+  const move = useCallback(
+    (next: ListPosition, mode: HistoryMode = "push") => {
+      if (onPositionChange) onPositionChange(next, mode);
+      else setPosition({ key, ...next });
+    },
+    [key, onPositionChange],
+  );
   const [result, setResult] = useState<{ key: string; data: Result<T> }>({
     key: "",
     data: empty,
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [request, setRequest] = useState({
+    key: "",
+    loading: false,
+    error: "",
+  });
   const [revision, setRevision] = useState(0);
   const sequence = useRef(0);
-  const requestKey = `${key}:${current.offset}:${current.snapshot}`;
+  const requestKey = JSON.stringify([key, current.offset, current.snapshot]);
   useEffect(() => {
+    if (!kind) return;
     const update = () => setRevision((value) => value + 1);
+    const mutation = () => {
+      move({ offset: current.offset, snapshot: null }, "replace");
+      update();
+    };
     const timer = setInterval(update, 4000);
-    window.addEventListener("aegis-records-changed", update);
+    window.addEventListener("aegis-records-changed", mutation);
     return () => {
       clearInterval(timer);
-      window.removeEventListener("aegis-records-changed", update);
+      window.removeEventListener("aegis-records-changed", mutation);
     };
-  }, []);
+  }, [kind, requestKey, move]);
   useEffect(() => {
     const requestSequence = ++sequence.current;
     if (!kind) return;
     const controller = new AbortController();
-    setLoading(true);
-    setError("");
+    setRequest({ key: requestKey, loading: true, error: "" });
     const timer = setTimeout(() => {
       const query = new URLSearchParams({
         limit: "25",
@@ -73,56 +93,84 @@ export function useRecords<T>(
         .then((data) => {
           if (sequence.current !== requestSequence || controller.signal.aborted)
             return;
-          if (data.total > 0 && current.offset >= data.total) {
-            setPosition({
-              key,
-              offset: Math.floor((data.total - 1) / 25) * 25,
-              snapshot: data.snapshot,
-            });
-          } else setResult({ key: requestKey, data });
+          const last = Math.max(0, Math.floor((data.total - 1) / 25) * 25);
+          if (current.offset > last)
+            move({ offset: last, snapshot: data.snapshot }, "replace");
+          else setResult({ key: requestKey, data });
         })
         .catch((error) => {
           if (
             !controller.signal.aborted &&
             sequence.current === requestSequence
           )
-            setError(error.message);
+            setRequest({
+              key: requestKey,
+              loading: false,
+              error: error.message,
+            });
         })
         .finally(() => {
           if (
             !controller.signal.aborted &&
             sequence.current === requestSequence
           )
-            setLoading(false);
+            setRequest((value) => ({ ...value, loading: false }));
         });
     }, 250);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [requestKey, revision]);
-  const data = result.key === requestKey ? result.data : (empty as Result<T>);
+  }, [requestKey, revision, move]);
+  const ready = result.key === requestKey;
+  const data = ready ? result.data : (empty as Result<T>);
+  const error = request.key === requestKey ? request.error : "";
+  const loading =
+    Boolean(kind) &&
+    ((!ready && !error) || (request.key === requestKey && request.loading));
   return {
     ...data,
+    offset: current.offset,
     loading,
+    ready,
     error,
-    next: () =>
-      setPosition({
-        key,
-        offset: current.offset + 25,
-        snapshot: data.snapshot,
-      }),
+    next: () => move({ offset: current.offset + 25, snapshot: data.snapshot }),
     previous: () =>
-      setPosition({
-        key,
+      move({
         offset: Math.max(0, current.offset - 25),
         snapshot: data.snapshot,
       }),
     reload: () => {
-      setPosition({ key, offset: 0, snapshot: null });
+      move({ offset: 0, snapshot: null });
       setRevision((value) => value + 1);
     },
   };
+}
+
+/** Use before an empty-state: an unfinished or failed query is not an empty result. */
+export function RecordState({
+  records,
+}: {
+  records: ReturnType<typeof useRecords>;
+}) {
+  return (
+    <div className="record-state" aria-busy={records.loading}>
+      {records.error ? (
+        <>
+          <p role="alert">{records.error}</p>
+          <button
+            type="button"
+            onClick={records.reload}
+            disabled={records.loading}
+          >
+            목록 다시 불러오기
+          </button>
+        </>
+      ) : (
+        <p role="status">목록을 불러오는 중…</p>
+      )}
+    </div>
+  );
 }
 
 export function Pagination({
@@ -133,13 +181,21 @@ export function Pagination({
   return (
     <nav className="pagination" aria-label="목록 페이지">
       <span aria-live="polite">
-        {records.loading
-          ? "불러오는 중"
-          : records.total
-            ? `${records.offset + 1}–${records.offset + records.items.length} / 전체 ${records.total.toLocaleString()}개`
-            : "검색 결과 0개"}
+        {records.error
+          ? records.ready
+            ? "조회 실패 · 마지막으로 받은 목록"
+            : "목록 조회 실패"
+          : records.loading
+            ? records.ready
+              ? "목록 갱신 중"
+              : "불러오는 중"
+            : records.total
+              ? `${records.offset + 1}–${records.offset + records.items.length} / 전체 ${records.total.toLocaleString()}개`
+              : "검색 결과 0개"}
       </span>
-      {records.error && <span role="alert">{records.error}</span>}
+      {records.error && records.ready && (
+        <span role="alert">{records.error}</span>
+      )}
       <button
         type="button"
         onClick={records.previous}
@@ -204,6 +260,7 @@ export function AssetPicker({ initialId }: { initialId: string | null }) {
           </button>
         </div>
       ))}
+      {!records.ready && <RecordState records={records} />}
       <div className="selection-list">
         {records.items.map((asset) => (
           <label className="selection" key={asset.id}>

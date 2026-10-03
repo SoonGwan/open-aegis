@@ -3319,3 +3319,39 @@ pre,
     padding-inline: 12px;
   }
 }
+
+.record-state {
+  padding: 24px;
+  border: var(--stroke) solid var(--ink);
+  background: var(--panel);
+  margin-block: 12px;
+}
+.record-state p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
+.record-state p:last-child {
+  margin-bottom: 0;
+}
+
+.navigation-controls,
+.navigation-crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.navigation-controls button {
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .navigation-crumb > span,
+  .navigation-crumb > svg {
+    display: none;
+  }
+  .topbar > div {
+    gap: 10px;
+  }
+}

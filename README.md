@@ -167,6 +167,7 @@ MCP 2025-03-26 stdio 방식입니다. 클라이언트가 다음 프로세스를 
 .venv/bin/python -m pytest -q
 cd web
 npm ci
+npm test
 npm run build
 ```
 
