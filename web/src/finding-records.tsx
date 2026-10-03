@@ -1,4 +1,12 @@
-import { useState } from "react";
+import { useCallback } from "react";
+import {
+  readDetail,
+  readFindingCollection,
+  type FindingCollectionState,
+  type FindingCollectionKind,
+  type HistoryMode,
+  type ListPosition,
+} from "./navigation-state";
 import { useRecords, Pagination, RecordState } from "./records";
 
 type Evidence = {
@@ -27,20 +35,32 @@ function timestamp(value: number) {
 export function FindingRecords({
   findingId,
   checkNames,
+  collections,
+  onChange,
 }: {
   findingId: string;
   checkNames: Record<string, string>;
+  collections: Record<FindingCollectionKind, FindingCollectionState>;
+  onChange: (
+    kind: FindingCollectionKind,
+    changes: Partial<FindingCollectionState>,
+    mode?: HistoryMode,
+  ) => void;
 }) {
   return (
     <>
       <FindingCollection
         findingId={findingId}
         kind="evidence"
+        state={collections.evidence}
+        onChange={onChange}
         checkNames={checkNames}
       />
       <FindingCollection
         findingId={findingId}
         kind="retests"
+        state={collections.retests}
+        onChange={onChange}
         checkNames={checkNames}
       />
     </>
@@ -49,19 +69,40 @@ export function FindingRecords({
 function FindingCollection({
   findingId,
   kind,
+  state,
+  onChange,
   checkNames,
 }: {
   findingId: string;
-  kind: "evidence" | "retests";
+  kind: FindingCollectionKind;
+  state: FindingCollectionState;
+  onChange: (
+    kind: FindingCollectionKind,
+    changes: Partial<FindingCollectionState>,
+    mode?: HistoryMode,
+  ) => void;
   checkNames: Record<string, string>;
 }) {
-  const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  const { search, expanded } = state;
+  const changePosition = useCallback(
+    (position: ListPosition, mode?: HistoryMode) => {
+      const detail = readDetail(location.search);
+      if (
+        detail?.kind !== "finding" ||
+        detail.id !== findingId ||
+        JSON.stringify(readFindingCollection(location.search, kind)) !==
+          JSON.stringify(state)
+      )
+        return;
+      onChange(kind, position, mode);
+    },
+    [findingId, kind, state, onChange],
+  );
   const records = useRecords<Evidence | Retest>(
     expanded ? kind : null,
     search,
     {},
-    undefined,
+    { ...state, onPositionChange: changePosition },
     `/findings/${encodeURIComponent(findingId)}/${kind}`,
   );
   const name = kind === "evidence" ? "증거 이력" : "재검증 이력";
@@ -71,7 +112,7 @@ function FindingCollection({
       <button
         type="button"
         aria-expanded={expanded}
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => onChange(kind, { expanded: !expanded })}
       >
         {expanded ? `${name} 접기` : `${name} 보기`}
       </button>
@@ -85,7 +126,9 @@ function FindingCollection({
               aria-label={`${name} 검색`}
               value={search}
               maxLength={200}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) =>
+                onChange(kind, { search: e.target.value }, "replace")
+              }
             />
           </label>
           <Pagination records={records} />

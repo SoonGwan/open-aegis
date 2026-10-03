@@ -46,6 +46,13 @@ export function detailQuery(
   detail: DetailState | null,
 ): string {
   const query = new URLSearchParams(search);
+  const previous = readDetail(search);
+  if (
+    detail?.kind !== "finding" ||
+    previous?.kind !== "finding" ||
+    previous.id !== detail.id
+  )
+    clearFindingCollections(query);
   query.delete("detail");
   query.delete("detail_id");
   if (detail) {
@@ -57,7 +64,75 @@ export function detailQuery(
     query.delete("detail");
     query.delete("detail_id");
   }
+  if (valid?.kind === "finding") {
+    for (const kind of findingCollectionKinds)
+      writeFindingCollection(
+        query,
+        kind,
+        readFindingCollection(query.toString(), kind),
+      );
+  } else clearFindingCollections(query);
   return query.toString();
+}
+export const findingCollectionKinds = ["evidence", "retests"] as const;
+export type FindingCollectionKind = (typeof findingCollectionKinds)[number];
+export type FindingCollectionState = ListPosition & {
+  search: string;
+  expanded: boolean;
+};
+function clearFindingCollections(query: URLSearchParams) {
+  for (const kind of findingCollectionKinds)
+    for (const field of ["q", "open", "offset", "snapshot"])
+      query.delete(`finding_${kind}_${field}`);
+}
+export function readFindingCollection(
+  search: string,
+  kind: FindingCollectionKind,
+): FindingCollectionState {
+  const query = new URLSearchParams(search);
+  if (readDetail(search)?.kind !== "finding")
+    return { search: "", expanded: false, offset: 0, snapshot: null };
+  const prefix = `finding_${kind}_`;
+  return {
+    search: searchText(query.get(prefix + "q")),
+    expanded: query.get(prefix + "open") === "true",
+    offset:
+      Math.floor(
+        (integer(query.get(prefix + "offset"), 10_000_000) || 0) / 25,
+      ) * 25,
+    snapshot: integer(query.get(prefix + "snapshot"), Number.MAX_SAFE_INTEGER),
+  };
+}
+function writeFindingCollection(
+  query: URLSearchParams,
+  kind: FindingCollectionKind,
+  state: FindingCollectionState,
+) {
+  const prefix = `finding_${kind}_`;
+  for (const field of ["q", "open", "offset", "snapshot"])
+    query.delete(prefix + field);
+  if (state.search) query.set(prefix + "q", state.search);
+  if (state.expanded) query.set(prefix + "open", "true");
+  if (state.offset) query.set(prefix + "offset", String(state.offset));
+  if (state.snapshot !== null)
+    query.set(prefix + "snapshot", String(state.snapshot));
+}
+export function updateFindingCollectionQuery(
+  search: string,
+  kind: FindingCollectionKind,
+  changes: Partial<FindingCollectionState>,
+): string {
+  if (readDetail(search)?.kind !== "finding")
+    return detailQuery(search, readDetail(search));
+  const query = new URLSearchParams(search);
+  const previous = readFindingCollection(search, kind);
+  const next = { ...previous, ...changes };
+  if ("search" in changes && changes.search !== previous.search) {
+    next.offset = 0;
+    next.snapshot = null;
+  }
+  writeFindingCollection(query, kind, next);
+  return detailQuery(query.toString(), readDetail(search));
 }
 export const defaultList = (): ListState => ({
   search: "",

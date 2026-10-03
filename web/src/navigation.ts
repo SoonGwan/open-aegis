@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  readFindingCollection,
+  updateFindingCollectionQuery,
+  type FindingCollectionKind,
+  type FindingCollectionState,
   navigateQuery,
   readNavigation,
   updateListQuery,
@@ -44,6 +48,10 @@ export function useNavigation(allowedPages: readonly string[]) {
   const [state, setState] = useState(() => ({
     ...readNavigation(location.search, allowedPages),
     detail: readDetail(location.search),
+    findingCollections: {
+      evidence: readFindingCollection(location.search, "evidence"),
+      retests: readFindingCollection(location.search, "retests"),
+    },
   }));
   const [position, setPosition] = useState(() => {
     const { index, maximum } = metadata();
@@ -71,6 +79,10 @@ export function useNavigation(allowedPages: readonly string[]) {
       setState({
         ...readNavigation(location.search, allowedPages),
         detail: readDetail(location.search),
+        findingCollections: {
+          evidence: readFindingCollection(location.search, "evidence"),
+          retests: readFindingCollection(location.search, "retests"),
+        },
       });
     };
     window.addEventListener("popstate", sync);
@@ -109,8 +121,22 @@ export function useNavigation(allowedPages: readonly string[]) {
   const openDetail = useCallback((detail: DetailState | null) => {
     commit(detailQuery(location.search, detail), "push");
   }, []);
+  const updateFindingCollection = useCallback(
+    (
+      kind: FindingCollectionKind,
+      changes: Partial<FindingCollectionState>,
+      mode: HistoryMode = "push",
+    ) => {
+      commit(
+        updateFindingCollectionQuery(location.search, kind, changes),
+        mode,
+      );
+    },
+    [],
+  );
   return {
     ...state,
+    updateFindingCollection,
     updateList,
     navigate,
     openDetail,

@@ -540,3 +540,28 @@ on 390×844 has no document overflow.
   bound. Individual task payloads, JSON relationship arrays and the archived asset's
   paused-schedule audit ID list remain size dependent. No long-running soak is proven.
   Contracts: [RUNTIME.md](RUNTIME.md), [PAGINATION.md](PAGINATION.md).
+
+
+## Finding collection bookmark restoration (2026-10-04)
+
+- Frontend **23 tests passed** and TypeScript/Vite build passed. Four new tests verify
+  independent nested collection state, search/page reset, collapse preservation, detail
+  change/close cleanup, background list preservation and malformed Unicode/position
+  normalization. Backend source is unchanged; the prior 178-test backend result stands.
+- Browser QA uses the existing explicitly synthetic 31-proof/33-retest finding. Evidence
+  searched for security_headers and retests for 판정, each moved to offset 25 with its
+  own insertion watermark. The DOM contains six proof rows (26–31/31) and eight retest
+  rows (26–33/33). A fresh tab opened the copied URL and restored those same rows,
+  searches and expanded sections without injecting browser state.
+- The modal's previous navigation restores retests to the first page while leaving
+  evidence on its second page; next restores retests to offset 25. Collapsing and
+  reopening evidence preserves its second page. Closing the copied detail removes
+  both collection prefixes and returns to page=findings. No target scan runs.
+- Capture: `artifacts/v1-finding-collection-bookmark-desktop.jpg`. Main preview serves
+  the current bundle without backend restart. Fixture traffic remains 33.
+- Async page correction checks the live detail ID and collection state before changing
+  the URL. Search input replaces history; toggles/page moves push history. Existing
+  background list/detail-ID navigation tests still pass.
+- Individual proof disclosure/scroll, triage drafts, decision-history/task/chat nested
+  positions and remaining modals are not covered by this increment. Mobile and actual
+  assistive-technology regression remain open. Contract: [PAGINATION.md](PAGINATION.md).

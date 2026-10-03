@@ -2789,6 +2789,8 @@ function App() {
             <FindingRecords
               key={selectedFinding.finding.id}
               findingId={selectedFinding.finding.id}
+              collections={navigation.findingCollections}
+              onChange={navigation.updateFindingCollection}
               checkNames={Object.fromEntries(
                 tools.map((tool) => [tool.id, tool.name]),
               )}
