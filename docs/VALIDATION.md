@@ -862,3 +862,22 @@ on 390×844 has no document overflow.
   the same chain. Health is good; main assets remain two/target traffic three and fixture
   target traffic zero. External checkpoint automation, signatures, permanent status and
   workload validation remain open in [AUDIT.md](AUDIT.md).
+
+## Threat model and current architecture reconciliation (2026-10-04)
+
+- Added [THREAT-MODEL.md](THREAT-MODEL.md): protected assets and operating assumptions,
+  browser/API, approval/execution, target transport, provider, storage, MCP/CLI and
+  export trust boundaries; concrete threat paths, current controls, residual risks,
+  source/test references, release gaps and incident preservation guidance.
+- Inspected current authentication/setup/Origin handling, password/session helpers,
+  DNS scope/pinning/TLS, LLM payload, request limits, reporting CSV escaping and audit
+  code. The document explicitly identifies shared-workspace/OS file access, optional
+  Secure cookies, absent Origin allowance, cooperative bounds, GET side effects and
+  independent checkpoint limitations. These are documented limits, not newly proven
+  defenses or an independent security audit.
+- Updated stale security/architecture text for implemented audit review, actual graph
+  relationships, configurable runtime defaults and schema 2. README and v1 tracking
+  link the model; the overall release gate remains incomplete.
+- Checked **79 local links** across the new model and four linked/updated entry
+  documents, with zero missing targets. Main preview health remains good. Runtime code
+  is unchanged; the previous 239 backend/28 frontend results were not rerun for docs.

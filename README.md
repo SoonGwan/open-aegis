@@ -216,7 +216,7 @@ Linux/macOS에서 실행하며 Windows는 WSL 또는 컨테이너를 사용하�
 현재 단일 워크스페이스·단일 프로세스·SQLite 구성입니다. 역할별 권한은 지원하지만
 고객사별 데이터 격리, PostgreSQL, 여러 서버 인스턴스는 아직 지원하지 않습니다.
 외부 보안 감사도 수행되지 않았습니다.
-[보안 정책](SECURITY.md), [아키텍처](docs/ARCHITECTURE.md),
+[보안 정책](SECURITY.md), [위협 모델](docs/THREAT-MODEL.md), [아키텍처](docs/ARCHITECTURE.md),
 [기여 가이드](CONTRIBUTING.md)를 참고하세요.
 
 ## 계정과 권한

@@ -54,14 +54,16 @@ Traffic stores a bounded-body hash and allowlisted response headers. Cookies,
 Authorization, query values, and response bodies are excluded. User-entered
 metadata is not automatically a safe place for secrets.
 
-The UI uses server data rather than seeded production findings. Graph columns
-are aggregate relationships; they are not a claim of a complete attack graph.
+The UI uses server data rather than seeded production findings. Its relationship graph
+links actual assets, task scope, checks, findings, evidence and observed links, with
+selection and paginated detail views. It is not a complete attack graph; see [GRAPH.md](GRAPH.md).
 
 ## Operational limits
 
 One server process, shared workspace with admin/operator/viewer roles, SQLite WAL; no distributed scheduling or tenant isolation.
-Task concurrency is capped at 2; workers per task at 4; target requests per
-asset at 24. Socket timeout is 8 seconds. Stop is cooperative, not a forced
+Default task concurrency is 2, workers per task at most 4, target requests per
+asset 24 and HTTP timeout 8 seconds. Runtime policy controls the configurable
+limits; see [RUNTIME.md](RUNTIME.md). Stop is cooperative, not a forced
 thread interruption. Records require an operator-controlled backup
 and retention policy. Existing report exports include finding lifecycle state
 as of export time, not an immutable historical status snapshot.
@@ -71,3 +73,9 @@ credentials move transactionally to the admin account after an automatic backup;
 legacy sessions are revoked. Server and restore share an OS workspace lease.
 Offline restore normalizes the staging DB to DELETE journal mode before replacing
 the database, so session deletion cannot remain only in an uninstalled WAL file.
+
+Schema version 2 adds atomic event hash links and local chain state. Read-only CLI
+and administrator UI verify complete snapshots and optionally compare a previously
+retained checkpoint. They do not authenticate all business data or guarantee its
+changes and audit events share a transaction. External checkpoint automation remains
+unimplemented. See [AUDIT.md](AUDIT.md) and the [threat model](THREAT-MODEL.md).

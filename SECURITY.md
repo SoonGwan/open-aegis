@@ -15,8 +15,12 @@ Only admins approve execution and manage accounts; operators manage plans,
 assets and results; viewers can read and export. Role/status/password changes
 revoke existing sessions. Role decisions apply when each request is authorized;
 a previously authorized in-flight action is not retroactively canceled.
-Tenant isolation, tamper-evident audit storage, encryption at rest and an
-independent security review remain incomplete.
+Local hash-linked audit verification and manual checkpoint comparison are implemented.
+They do not authenticate a completely rewritten database without a trusted independently
+retained checkpoint. Tenant isolation, automatic external audit checkpoint storage,
+encryption at rest and an independent security review remain incomplete.
+See the [threat model](docs/THREAT-MODEL.md) for trust boundaries, implemented controls,
+residual risks and test coverage, and [audit integrity](docs/AUDIT.md) for its limits.
 
 The runtime blocks out-of-scope origins/paths and reserved addresses, pins
 target connections to validated DNS results, and checks redirects. Lab mode
