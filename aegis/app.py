@@ -231,9 +231,7 @@ def create_app(data_dir=None, allow_private=None):
     def scheduler():
         while not scheduler_stop.wait(5) and not shutdown_requested.is_set():
             with store.lock:
-                for schedule in store.all('schedules'):
-                    if not schedule['enabled'] or schedule['next_at'] > now():
-                        continue
+                for schedule in store.due_schedules(now()):
                     # Scheduled tasks also require explicit approval; never silently widen authorization.
                     try:
                         create_task(TaskInput(**schedule['task']), schedule_id=schedule['id'])
@@ -440,16 +438,19 @@ def create_app(data_dir=None, allow_private=None):
                           'requests': store.count('traffic')}}
 
     @app.get('/api/records/{kind}', dependencies=auth)
-    def records(kind: Literal['assets', 'tasks', 'findings', 'traffic'],
+    def records(kind: Literal['assets', 'tasks', 'findings', 'traffic', 'notes', 'schedules'],
                 limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
                 snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
                 search: str = Query('', max_length=200), status: str | None = Query(None, max_length=80),
                 severity: str | None = Query(None, max_length=80), asset_id: str | None = Query(None, max_length=80),
-                task_id: str | None = Query(None, max_length=80), archived: bool | None = None):
+                task_id: str | None = Query(None, max_length=80), archived: bool | None = None,
+                enabled: bool | None = None):
         if archived is not None and kind != 'assets':
             raise HTTPException(422, '보관 필터는 자산에만 사용할 수 있습니다.')
+        if enabled is not None and kind != 'schedules':
+            raise HTTPException(422, '활성 필터는 예약에만 사용할 수 있습니다.')
         return store.page(kind, limit=limit, offset=offset, snapshot=snapshot, search=search, archived=archived,
-                          filters={k: v for k, v in {'status': status, 'severity': severity, 'asset_id': asset_id, 'task_id': task_id}.items() if v is not None})
+                          filters={k: v for k, v in {'status': status, 'severity': severity, 'asset_id': asset_id, 'task_id': task_id, 'enabled': enabled}.items() if v is not None})
 
     @app.get('/api/assets', dependencies=auth)
     def assets(response: Response, include_archived: bool = False):
@@ -711,8 +712,8 @@ def create_app(data_dir=None, allow_private=None):
                            {'id': 'retester', 'name': 'Retester', 'role': '기존 발견 사항을 독립 작업으로 재검증', 'tools': list(CHECK_IDS)}]}
 
     @app.get('/api/notes', dependencies=auth)
-    def notes():
-        return store.all('notes')
+    def notes(response: Response):
+        return legacy_page(response, 'notes')
 
     @app.post('/api/notes', dependencies=operations)
     def add_note(data: NoteInput):
@@ -727,8 +728,8 @@ def create_app(data_dir=None, allow_private=None):
         return {'ok': True}
 
     @app.get('/api/schedules', dependencies=auth)
-    def schedules():
-        return store.all('schedules')
+    def schedules(response: Response):
+        return legacy_page(response, 'schedules')
 
     @app.post('/api/schedules', dependencies=operations)
     def add_schedule(data: ScheduleInput):

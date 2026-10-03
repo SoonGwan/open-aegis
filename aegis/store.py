@@ -28,6 +28,7 @@ class Store:
         with self.connect() as db:
             db.execute('PRAGMA journal_mode=WAL')
             db.execute("CREATE INDEX IF NOT EXISTS records_task_status_approval ON records(json_extract(data,'$.status'),json_extract(data,'$.approved_at')) WHERE kind='tasks'")
+            db.execute("CREATE INDEX IF NOT EXISTS records_schedule_due ON records(kind,json_extract(data,'$.next_at')) WHERE kind='schedules' AND json_extract(data,'$.enabled')=1")
 
     def connect(self):
         db = sqlite3.connect(self.path, timeout=15, factory=ClosingConnection)
@@ -67,12 +68,16 @@ class Store:
             'coverage': ('check', 'status'),
             'observations': ('url', 'title'),
             'finding_history': ('action', 'reason'),
+            'notes': ('title', 'content'),
+            'schedules': ('task.name', 'task.goal'),
         }
         if kind not in fields or not 1 <= limit <= 1000 or offset < 0 or (snapshot is not None and snapshot < 0):
             raise ValueError('Invalid record query')
         filters = filters or {}
-        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id'}:
+        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id', 'enabled'}:
             raise ValueError('Unknown record filter')
+        if 'enabled' in filters and kind != 'schedules':
+            raise ValueError('Enabled filter is only valid for schedules')
         with self.connect() as db:
             db.execute('BEGIN')
             if snapshot is None:
@@ -88,6 +93,8 @@ class Store:
                     clauses.append("EXISTS (SELECT 1 FROM json_each(records.data,'$.task_ids') WHERE value=?)")
                 elif key == 'asset_id' and kind == 'tasks':
                     clauses.append("EXISTS (SELECT 1 FROM json_each(records.data,'$.asset_ids') WHERE value=?)")
+                elif key == 'asset_id' and kind == 'schedules':
+                    clauses.append("EXISTS (SELECT 1 FROM json_each(records.data,'$.task.asset_ids') WHERE value=?)")
                 else:
                     clauses.append(f"json_extract(data,'$.{key}')=?")
                 args.append(value)
@@ -110,6 +117,14 @@ class Store:
                     item['coverage_summary'] = latest.get(item['id'])
         return {'items': items, 'total': total,
                 'limit': limit, 'offset': offset, 'snapshot': snapshot, 'has_more': offset + len(rows) < total}
+
+    def due_schedules(self, timestamp, limit=100):
+        """Only materialize the oldest due, enabled schedules for one scheduler batch."""
+        if not 1 <= limit <= 100:
+            raise ValueError('Invalid schedule batch size')
+        with self.connect() as db:
+            rows = db.execute("SELECT data FROM records WHERE kind='schedules' AND json_extract(data,'$.enabled')=1 AND json_extract(data,'$.next_at')<=? ORDER BY json_extract(data,'$.next_at'),rowid LIMIT ?", (timestamp, limit)).fetchall()
+        return [json.loads(row['data']) for row in rows]
 
     def count(self, kind, *, statuses=None, active_assets=False):
         clauses, args = ['kind=?'], [kind]

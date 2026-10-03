@@ -15,6 +15,8 @@ const pages = [
   "reports",
   "graph",
   "settings",
+  "notes",
+  "schedules",
 ];
 
 test("a bookmarked query restores search, filter and insertion watermark", () => {
@@ -163,4 +165,32 @@ test("canonicalization drops defaults and normalizes invalid bookmarked inputs",
   assert.equal(parsed.has("tasks_status"), false);
   assert.equal(parsed.has("tasks_snapshot"), false);
   assert.equal(parsed.get("unrelated"), "keep");
+});
+
+test("notes and schedule bookmarks preserve nested-list filters independently", () => {
+  const notes = updateListQuery("page=notes", pages, {
+    search: "복구 메모",
+    offset: 25,
+    snapshot: 90,
+  });
+  // Search changes always reset a previous position; a later page move retains it.
+  const notePage = updateListQuery(notes, pages, { offset: 25, snapshot: 90 });
+  const schedules = updateListQuery(
+    navigateQuery(notePage, pages, "schedules"),
+    pages,
+    { filter: "false", search: "주간 검증" },
+  );
+  assert.equal(
+    new URLSearchParams(schedules).get("schedules_enabled"),
+    "false",
+  );
+  assert.equal(readNavigation(schedules, pages).list.filter, "false");
+  assert.equal(
+    readNavigation(navigateQuery(schedules, pages, "notes"), pages).list.offset,
+    25,
+  );
+  assert.equal(
+    readNavigation("page=schedules&schedules_enabled=maybe", pages).list.filter,
+    "all",
+  );
 });

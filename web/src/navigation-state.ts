@@ -18,6 +18,8 @@ export const LIST_PAGES = [
   "traffic",
   "approvals",
   "reports",
+  "notes",
+  "schedules",
 ];
 export type ListPosition = { offset: number; snapshot: number | null };
 export type ListState = ListPosition & {
@@ -47,7 +49,8 @@ function searchText(raw: string | null) {
 export function readList(query: URLSearchParams, page: string): ListState {
   if (!LIST_PAGES.includes(page)) return defaultList();
   const status = query.get(`${page}_status`),
-    severity = query.get(`${page}_severity`);
+    severity = query.get(`${page}_severity`),
+    enabled = query.get("schedules_enabled");
   return {
     search: searchText(query.get(`${page}_q`)),
     filter:
@@ -56,7 +59,9 @@ export function readList(query: URLSearchParams, page: string): ListState {
         ? status!
         : page === "findings" && severities.includes(severity || "")
           ? severity!
-          : "all",
+          : page === "schedules" && ["true", "false"].includes(enabled || "")
+            ? enabled!
+            : "all",
     archived: page === "assets" && query.get("assets_archived") === "true",
     offset:
       Math.floor((integer(query.get(`${page}_offset`), 10_000_000) || 0) / 25) *
@@ -87,6 +92,7 @@ export function writeList(
     "archived",
     "offset",
     "snapshot",
+    "enabled",
   ])
     query.delete(`${page}_${suffix}`);
   if (state.search) query.set(`${page}_q`, searchText(state.search));
@@ -94,6 +100,8 @@ export function writeList(
     query.set("tasks_status", state.filter);
   if (page === "findings" && state.filter !== "all")
     query.set("findings_severity", state.filter);
+  if (page === "schedules" && state.filter !== "all")
+    query.set("schedules_enabled", state.filter);
   if (page === "assets" && state.archived) query.set("assets_archived", "true");
   if (state.offset) query.set(`${page}_offset`, String(state.offset));
   if (state.snapshot !== null)

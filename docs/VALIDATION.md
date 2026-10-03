@@ -175,3 +175,29 @@ on 390×844 has no document overflow.
   (1810 CSS pixels), so this increment has **no verified mobile capture**. Mobile regression
   remains on the v1 checklist. Evidence/observation/note/schedule lists and detail URL state
   also remain outside this increment; see [PAGINATION.md](PAGINATION.md).
+
+## Bounded notes and scheduled-work lists (2026-10-04)
+
+- Full backend suite: **122 passed**, one existing Starlette/httpx deprecation warning.
+  The five new workspace tests passed again after removing a test observation race
+  between task insertion and schedule completion bookkeeping.
+- Frontend navigation suite: **9 passed**; TypeScript/Vite production build passed.
+- New tests populate 1,050 notes and 1,100 schedules and reject unbounded `Store.all`
+  reads during queries. They cover literal content search, nested schedule goal/asset
+  filters, boolean enabled validation, watermarks, live updates, legacy 1,000-row caps
+  with count headers and viewer read/mutation permissions.
+- Scheduler tests verify oldest-due-first batches, future/paused exclusion, the next
+  50 due rows after processing the first 100 and the actual SQLite due-index query plan.
+  The real scheduler thread generated one pending plan with zero loopback requests.
+- Browser fixture: 61 notes and 40 future schedules (35 active, 5 paused). Deleting the
+  only note on page two retained the search and replaced the position with page one
+  (25 remaining matches). Creating a note cleared the previous search and displayed it.
+- Browser: searched 35 active weekly schedules, moved to page two and paused one;
+  the page remained at offset 25 with 34 active matches. The paused filter returned that
+  exact schedule. A new tab restored active search, filter and page two.
+- Desktop capture: `artifacts/v1-workspace-schedules.jpg` and
+  `artifacts/v1-workspace-notes.jpg` (local artifacts, excluded from Git).
+  No new mobile verification is claimed in this increment.
+- The main local server was restarted with the latest backend; the isolated review
+  server was shut down after verification. Evidence/observation pagination, unbounded
+  report/MCP collections and other remaining v1 work are still tracked separately.

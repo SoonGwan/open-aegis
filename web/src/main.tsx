@@ -424,9 +424,7 @@ function App() {
       state_note?: string;
     }[];
   } | null>(null);
-  const [trafficDetail, setTrafficDetail] = useState<Traffic | null>(null),
-    [notes, setNotes] = useState<Note[]>([]),
-    [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [trafficDetail, setTrafficDetail] = useState<Traffic | null>(null);
   const [toast, setToast] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -524,17 +522,6 @@ function App() {
     };
   }, [auth?.authenticated, refresh]);
   useEffect(() => {
-    if (!auth?.authenticated) return;
-    if (page === "notes")
-      api<Note[]>("/notes")
-        .then(setNotes)
-        .catch((e) => setError(e.message));
-    if (page === "schedules")
-      api<Schedule[]>("/schedules")
-        .then(setSchedules)
-        .catch((e) => setError(e.message));
-  }, [page, auth?.authenticated]);
-  useEffect(() => {
     if (!selectedTask) return;
     let active = true;
     const load = () =>
@@ -606,6 +593,8 @@ function App() {
           reports: "tasks",
           findings: "findings",
           traffic: "traffic",
+          notes: "notes",
+          schedules: "schedules",
         } as Record<string, string>
       )[page] || null
     : null;
@@ -614,6 +603,7 @@ function App() {
   if (page === "approvals") recordFilters.status = "pending";
   else if (page === "tasks" && filter !== "all") recordFilters.status = filter;
   if (page === "findings" && filter !== "all") recordFilters.severity = filter;
+  if (page === "schedules" && filter !== "all") recordFilters.enabled = filter;
   const navigationKey = JSON.stringify({ page, list });
   const changeRecordPosition = useCallback(
     (position: ListPosition, mode: HistoryMode = "push") => {
@@ -631,17 +621,19 @@ function App() {
     },
     [navigationKey, navigation.updateList],
   );
-  const records = useRecords<Asset | Task | Finding | Traffic>(
-    recordKind,
-    search,
-    recordFilters,
-    { ...list, onPositionChange: changeRecordPosition },
-  );
+  const records = useRecords<
+    Asset | Task | Finding | Traffic | Note | Schedule
+  >(recordKind, search, recordFilters, {
+    ...list,
+    onPositionChange: changeRecordPosition,
+  });
   const visibleTasks = recordKind === "tasks" ? (records.items as Task[]) : [];
   const visibleFindings =
     page === "findings" ? (records.items as Finding[]) : [];
   const visibleAssets = page === "assets" ? (records.items as Asset[]) : [];
   const traffic = page === "traffic" ? (records.items as Traffic[]) : [];
+  const notes = page === "notes" ? (records.items as Note[]) : [];
+  const schedules = page === "schedules" ? (records.items as Schedule[]) : [];
   const pending =
     page === "approvals"
       ? visibleTasks
@@ -738,7 +730,6 @@ function App() {
           "POST",
           interval ? { ...body, interval_hours: interval } : body,
         );
-        if (interval) setSchedules(await api("/schedules"));
         navigate(interval ? "schedules" : "approvals", true);
         message(
           interval
@@ -750,7 +741,7 @@ function App() {
           title: data.get("title"),
           content: data.get("content"),
         });
-        setNotes(await api("/notes"));
+        navigate("notes", true);
         message("노트를 저장했습니다.");
       }
       await refresh();
@@ -1850,6 +1841,24 @@ function App() {
 
           {page === "schedules" && (
             <>
+              <Toolbar
+                search={search}
+                setSearch={setSearch}
+                placeholder="예약 이름 또는 목표로 검색"
+                count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
+              >
+                <select
+                  aria-label="예약 상태"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                >
+                  <option value="all">모든 예약</option>
+                  <option value="true">활성</option>
+                  <option value="false">일시 중지</option>
+                </select>
+              </Toolbar>
               <div className="info-strip">
                 <Clock3 size={18} />
                 <span>
@@ -1858,7 +1867,9 @@ function App() {
                 </span>
               </div>
               <section className="panel">
-                {schedules.length ? (
+                {!records.ready ? (
+                  <RecordState records={records} />
+                ) : schedules.length ? (
                   schedules.map((s) => (
                     <div className="report-row" key={s.id}>
                       <span className="row-icon">
@@ -1876,7 +1887,6 @@ function App() {
                         disabled={busy || !canOperate}
                         onClick={async () => {
                           await act("/schedules/" + s.id + "/toggle");
-                          setSchedules(await api("/schedules"));
                         }}
                       >
                         {s.enabled ? "일시 중지" : "재개"}
@@ -1885,7 +1895,7 @@ function App() {
                   ))
                 ) : (
                   <Empty
-                    title="예약된 검증이 없습니다"
+                    title="표시할 예약이 없습니다"
                     description="매일 또는 매주 필요한 검증 계획을 자동으로 준비하세요."
                   />
                 )}
@@ -1894,52 +1904,67 @@ function App() {
           )}
 
           {page === "notes" && (
-            <div className="notes-grid">
-              {notes.length ? (
-                notes.map((n) => (
-                  <section className="panel note-card" key={n.id}>
-                    <div className="note-heading">
-                      <BookOpen size={18} />
-                      <button
-                        className="icon-button"
-                        aria-label={n.title + " 삭제"}
-                        disabled={busy || !canOperate}
-                        onClick={async () => {
-                          await act(
-                            "/notes/" + n.id,
-                            "DELETE",
-                            undefined,
-                            "노트를 삭제했습니다.",
-                          );
-                          setNotes(await api("/notes"));
-                        }}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                    <h3>{n.title}</h3>
-                    <p>{n.content}</p>
-                    <small>{date(n.created_at)}</small>
+            <>
+              <Toolbar
+                search={search}
+                setSearch={setSearch}
+                placeholder="노트 제목 또는 내용으로 검색"
+                count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
+              />
+              <div className="notes-grid">
+                {!records.ready ? (
+                  <RecordState records={records} />
+                ) : notes.length ? (
+                  notes.map((n) => (
+                    <section className="panel note-card" key={n.id}>
+                      <div className="note-heading">
+                        <BookOpen size={18} />
+                        <button
+                          className="icon-button"
+                          aria-label={n.title + " 삭제"}
+                          disabled={busy || !canOperate}
+                          onClick={async () => {
+                            await act(
+                              "/notes/" + n.id,
+                              "DELETE",
+                              undefined,
+                              "노트를 삭제했습니다.",
+                            );
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                      <h3>{n.title}</h3>
+                      <p>{n.content}</p>
+                      <small>{date(n.created_at)}</small>
+                    </section>
+                  ))
+                ) : (
+                  <section className="panel">
+                    <Empty
+                      title={
+                        search
+                          ? "검색 결과가 없습니다"
+                          : "표시할 노트가 없습니다"
+                      }
+                      description="검증 메모와 운영 지식을 저장하세요. 인증정보는 기록하지 마세요."
+                      action={
+                        <button
+                          disabled={!canOperate}
+                          onClick={() => openModal("note")}
+                        >
+                          <Plus size={15} />
+                          노트 작성
+                        </button>
+                      }
+                    />
                   </section>
-                ))
-              ) : (
-                <section className="panel">
-                  <Empty
-                    title="팀의 첫 기록을 남겨보세요"
-                    description="검증 메모와 운영 지식을 저장하세요. 인증정보는 기록하지 마세요."
-                    action={
-                      <button
-                        disabled={!canOperate}
-                        onClick={() => openModal("note")}
-                      >
-                        <Plus size={15} />
-                        노트 작성
-                      </button>
-                    }
-                  />
-                </section>
-              )}
-            </div>
+                )}
+              </div>
+            </>
           )}
 
           {page === "agents" && (
