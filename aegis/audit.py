@@ -76,8 +76,10 @@ def append_event(db, values):
     db.execute('UPDATE audit_state SET last_seq=?,head_hash=? WHERE id=1', (row['seq'], digest))
 
 
-def verify_chain(db, checkpoint=None):
+def verify_chain(db, checkpoint=None, *, check_cancelled=None):
     """Caller owns a consistent read transaction; stream rows without collecting history."""
+    if check_cancelled:
+        check_cancelled()
     state = db.execute('SELECT * FROM audit_state WHERE id=1').fetchone()
     validate_state(state)
     if checkpoint is not None:
@@ -90,6 +92,8 @@ def verify_chain(db, checkpoint=None):
     matched = checkpoint is None or (checkpoint['seq'] == 0 and checkpoint['hash'] == GENESIS)
     legacy_found = state['sealed_legacy_until'] == 0
     for row in db.execute('SELECT e.*,h.previous_hash,h.event_hash FROM events e LEFT JOIN event_hashes h ON h.seq=e.seq ORDER BY e.seq'):
+        if check_cancelled:
+            check_cancelled()
         digest = event_hash(row, previous)
         if row['previous_hash'] != previous or row['event_hash'] != digest:
             raise AuditIntegrityError(f"감사 로그 연결 검증에 실패했습니다: seq={row['seq']}")
@@ -106,5 +110,7 @@ def verify_chain(db, checkpoint=None):
         raise AuditIntegrityError('원본이 없는 감사 로그 연결이 있습니다.')
     if not matched:
         raise AuditIntegrityError('외부 체크포인트를 현재 로그에서 확인할 수 없습니다.')
+    if check_cancelled:
+        check_cancelled()
     return {'valid': True, 'events': count, 'sealed_legacy_until': state['sealed_legacy_until'],
             'checkpoint': {'format': FORMAT, 'chain_id': state['chain_id'], 'seq': last, 'hash': previous}}

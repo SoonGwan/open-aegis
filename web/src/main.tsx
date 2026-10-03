@@ -62,6 +62,7 @@ import Modal from "./components/Modal";
 import { ReportDownload } from "./ReportDownload";
 import { PolicyExport } from "./PolicyExport";
 import { PolicyRulesEditor } from "./PolicyRulesEditor";
+import { AuditPanel } from "./AuditPanel";
 import type { ReportFormat } from "./report-download";
 import { UserPanel, PasswordPanel, roleNames, type User } from "./identity";
 
@@ -2212,6 +2213,7 @@ function App() {
                 }}
               />
               <RuntimePanel />
+              {auth.user?.role === "admin" && <AuditPanel />}
               <section className="panel settings-panel">
                 <div className="panel-head">
                   <h3>실행 정책</h3>

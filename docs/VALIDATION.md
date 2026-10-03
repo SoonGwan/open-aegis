@@ -822,3 +822,43 @@ on 390×844 has no document overflow.
   real phone browsers, screen readers and the maximum 20-rule workload remain open.
 - QA tabs leave the fixture and both isolated servers stop. Main preview remains
   healthy at version 0.1.0 with two assets and three target traffic records, unchanged.
+
+## On-demand audit review UI/API (2026-10-04)
+
+- Administrators can manually verify the complete local audit chain in system settings,
+  optionally comparing a previously independently retained checkpoint. Results distinguish
+  local match, checkpoint match, mismatch and incomplete verification; changing input or
+  starting another request clears previous results. No automatic verification polling.
+  The panel uses existing Montage tokens, solid borders and button states. Initial
+  browser inspection exposed a narrow default textarea; the final layout adds full-width
+  input, spacing and a wrapping checkpoint display.
+- The administrator-only POST is read-only, omits event content, and returns no-store.
+  It skips generic POST audit insertion so verification on a damaged chain can still
+  return a result without repair or append. The service permits one concurrent scan,
+  rejects extras with 429/Retry-After: 5, and checks a 10-second cooperative deadline
+  between events and SQLite operations. A single event's encoding/hashing is not
+  forcibly preempted; disconnect does not guarantee immediate server scan termination.
+- Focused audit tests: **26 passed**. Full backend: **239 passed** with the existing
+  Starlette/httpx warning. New tests prove auth/role gates, strict checkpoint fields,
+  no event/detail leakage, unchanged audit state after scans, matching prefix and wrong
+  hash comparison, altered-event detection without repair, retryable 429, zero-deadline
+  incomplete results, no missing-DB creation and capacity release after completion.
+  Frontend: **28 passed**, TypeScript/Vite build passes. Final assets:
+  `index-B694Rvti.js` / `index-BrFX8zqJ.css`.
+- Isolated synthetic browser QA verifies local match, matching/wrong checkpoints,
+  malformed JSON, server 422 with input retained, and a deliberately altered event
+  producing mismatch with only its seq exposed. The altered fixture message is restored
+  exactly and CLI verification passes again at 10 events. Final desktop success/error
+  captures are visually inspected: `artifacts/v1-audit-review-success.jpg` and
+  `artifacts/v1-audit-review-mismatch.jpg`. These fixture comparisons prove functionality,
+  not independent checkpoint storage or authentic historical content.
+- Real app settings documents at 320/390px have equal root client/scroll widths 305/375
+  and no selected uncontained horizontal overflow. Evidence:
+  `artifacts/audit-review-mobile-geometry.json`. The audit panel is below the initial
+  viewport; full mobile interaction, expanded results, touch, screen readers and maximum
+  input/long-running scans require separate review.
+- QA tabs leave the isolated app and its server shuts down. Main preview restarts cleanly
+  and its new panel verifies 88 events with legacy sealing through seq 83. CLI confirms
+  the same chain. Health is good; main assets remain two/target traffic three and fixture
+  target traffic zero. External checkpoint automation, signatures, permanent status and
+  workload validation remain open in [AUDIT.md](AUDIT.md).

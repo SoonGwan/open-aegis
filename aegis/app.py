@@ -35,6 +35,7 @@ from .reporting import report_stream, ReportResponse
 from .export_limits import ExportPolicy, ExportPool
 from .policy_models import AuthorizationRule
 from .reproduction import build_manifest, MAX_MANIFEST_BYTES
+from .audit_review import AuditReview, AuditReviewBusy, AuditReviewInput
 
 
 class Credentials(BaseModel):
@@ -177,6 +178,7 @@ def create_app(data_dir=None, allow_private=None):
         lease.close()
         raise
     private = allow_private if allow_private is not None else os.environ.get('AEGIS_LAB_MODE') == '1'
+    audit_review = AuditReview(store.path)
     engine = Engine(store, private, policy=policy)
     scheduler_stop = threading.Event()
     shutdown_requested = threading.Event()
@@ -269,7 +271,9 @@ def create_app(data_dir=None, allow_private=None):
                 return JSONResponse({'detail': '다른 출처의 변경 요청은 허용하지 않습니다.'}, status_code=403)
         actor = store.session_user(request.cookies.get('aegis_session', ''))
         response = await call_next(request)
-        if actor and request.method not in ('GET', 'HEAD', 'OPTIONS') and request.url.path.startswith('/api/'):
+        # Audit verification is a read-only POST (optional checkpoint body). It must
+        # work on a damaged chain and must not mutate the snapshot it just reviewed.
+        if actor and request.method not in ('GET', 'HEAD', 'OPTIONS') and request.url.path.startswith('/api/') and request.url.path != '/api/audit/verify':
             store.event(None, '사용자 변경 요청', detail={'actor_id': actor['id'], 'username': actor['username'], 'role': actor['role'], 'method': request.method, 'path': request.url.path, 'status': response.status_code})
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
@@ -604,6 +608,15 @@ def create_app(data_dir=None, allow_private=None):
     @app.get('/api/runtime', dependencies=auth)
     def runtime():
         return {**engine.metrics(), 'exports':exports.metrics()}
+
+    @app.post('/api/audit/verify', dependencies=admins)
+    def verify_audit(data: AuditReviewInput):
+        try:
+            result = audit_review.run(data.checkpoint.model_dump() if data.checkpoint else None)
+        except AuditReviewBusy:
+            raise HTTPException(429, '다른 감사 검증이 진행 중입니다. 완료 후 다시 시도하세요.',
+                                headers={'Retry-After': '5', 'Cache-Control': 'no-store'})
+        return JSONResponse(result, headers={'Cache-Control': 'no-store'})
 
     @app.post('/api/tasks/{task_id}/stop', dependencies=operations)
     def stop(task_id: str):
