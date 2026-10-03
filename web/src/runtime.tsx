@@ -14,6 +14,13 @@ export type ExecutionPolicy = {
   pending_limit: number;
 };
 type Runtime = {
+  authentication?: {
+    active: number;
+    parallel: number;
+    tracked_addresses: number;
+    address_limit: number;
+    denied: { rate: number; capacity: number; busy: number };
+  };
   exports?: {
     policy: { parallel: number; timeout: number };
     active: number;
@@ -161,6 +168,22 @@ export function RuntimePanel() {
                 ],
                 ["요청 재시도", data.requests.retries],
                 ["DNS 처리 / 대기", `${data.dns.active} / ${data.dns.queued}`],
+                ...(data.authentication
+                  ? [
+                      [
+                        "로그인 검증 / 한도",
+                        `${data.authentication.active} / ${data.authentication.parallel}`,
+                      ],
+                      [
+                        "로그인 제한 주소 기록 / 한도",
+                        `${data.authentication.tracked_addresses} / ${data.authentication.address_limit}`,
+                      ],
+                      [
+                        "로그인 거절 · 횟수 / 주소 / 동시",
+                        `${data.authentication.denied.rate} / ${data.authentication.denied.capacity} / ${data.authentication.denied.busy}`,
+                      ],
+                    ]
+                  : []),
                 ...(data.exports
                   ? [
                       [
@@ -184,7 +207,7 @@ export function RuntimePanel() {
             </div>
             <p className="subtle">
               작업 수와 시간 초과는 저장된 전체 기록 기준입니다.
-              요청·재시도·속도 제한·보고서 지표는 서버를 재시작하면
+              요청·재시도·속도 제한·보고서·로그인 지표는 서버를 재시작하면
               초기화됩니다.
             </p>
             <p className="subtle">

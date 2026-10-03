@@ -36,6 +36,7 @@ from .export_limits import ExportPolicy, ExportPool
 from .policy_models import AuthorizationRule
 from .reproduction import build_manifest, MAX_MANIFEST_BYTES
 from .audit_review import AuditReview, AuditReviewBusy, AuditReviewInput
+from .login_limits import LoginGate, LoginLimited
 
 
 class Credentials(BaseModel):
@@ -183,7 +184,7 @@ def create_app(data_dir=None, allow_private=None):
     scheduler_stop = threading.Event()
     shutdown_requested = threading.Event()
     auth_lock = threading.Lock()
-    login_attempts = {}
+    login_gate = LoginGate()
 
     def create_task(data, retest_of=None, schedule_id=None, retry_of=None):
         with store.lock:
@@ -340,22 +341,20 @@ def create_app(data_dir=None, allow_private=None):
     @app.post('/api/auth/login')
     def login(data: Credentials, request: Request, response: Response):
         address = request.client.host if request.client else 'unknown'
-        with auth_lock:
-            attempts = [t for t in login_attempts.get(address, []) if t > now() - 300]
-            if len(attempts) >= 10:
-                raise HTTPException(429, '로그인 시도가 많습니다. 5분 후 다시 시도하세요.')
-            attempts.append(now())
-            login_attempts[address] = attempts
-        user = store.user(username=data.username.lower())
-        # Unknown usernames still incur the same password derivation cost.
-        expected = user or {'salt': '00' * 16, 'password_hash': '00' * 32}
-        valid = hmac.compare_digest(password_hash(data.password, expected['salt']), expected['password_hash'])
-        if not valid or not user or user['disabled']:
-            raise HTTPException(401, '비밀번호를 확인하세요.')
-        with auth_lock:
-            login_attempts.pop(address, None)
-        store.event(None, '로그인 성공', detail={'actor_id': user['id'], 'username': user['username']})
-        return begin_session(response, user)
+        try:
+            with login_gate.attempt(address) as attempt:
+                user = store.user(username=data.username.lower())
+                # Unknown usernames still incur the same password derivation cost.
+                expected = user or {'salt': '00' * 16, 'password_hash': '00' * 32}
+                valid = hmac.compare_digest(password_hash(data.password, expected['salt']), expected['password_hash'])
+                if not valid or not user or user['disabled']:
+                    raise HTTPException(401, '비밀번호를 확인하세요.')
+                attempt.succeeded()
+                store.event(None, '로그인 성공', detail={'actor_id': user['id'], 'username': user['username']})
+                return begin_session(response, user)
+        except LoginLimited as exc:
+            raise HTTPException(429, f'로그인 요청이 제한되었습니다. {exc.retry_after}초 후 다시 시도하세요.',
+                                headers={'Retry-After': str(exc.retry_after)}) from exc
 
     @app.post('/api/auth/logout', dependencies=auth)
     def logout(request: Request, response: Response):
@@ -607,7 +606,7 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/runtime', dependencies=auth)
     def runtime():
-        return {**engine.metrics(), 'exports':exports.metrics()}
+        return {**engine.metrics(), 'exports':exports.metrics(), 'authentication':login_gate.metrics()}
 
     @app.post('/api/audit/verify', dependencies=admins)
     def verify_audit(data: AuditReviewInput):

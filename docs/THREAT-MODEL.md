@@ -55,7 +55,7 @@ flowchart LR
 | 위협과 구체적 경로 | 현재 조치 및 코드 | 잔여 위험·추가 검증 |
 |---|---|---|
 | 비로그인 호출, 조회자/운영자의 승인·계정 관리 시도 | 요청마다 서버 세션과 역할 검사, 사용자 상태·역할·암호 변경 시 기존 세션 폐기. [app.py](../aegis/app.py), [store.py](../aegis/store.py) | 이미 권한 검사를 통과한 실행을 소급 취소하지 않는다. 고객사별 격리·MFA는 없다. |
-| 암호 추측과 세션 토큰 노출 | 임의 salt와 PBKDF2-HMAC-SHA256 600,000회, 비교 시 일정 시간 비교 함수 사용. 서버에는 세션 토큰 SHA-256 해시, 쿠키는 HttpOnly·SameSite=Strict·8시간. 로그인은 주소별 5분/10회 제한. [auth.py](../aegis/auth.py), [app.py](../aegis/app.py) | Secure는 설정으로 활성화해야 한다. 로그인 제한은 프로세스 메모리이며 재시작·다수 주소·프록시 환경의 영향을 받는다. 전체 인증 부하와 주소 집합 메모리는 별도 검증이 필요하다. |
+| 암호 추측과 세션 토큰 노출 | 임의 salt와 PBKDF2-HMAC-SHA256 600,000회, 비교 시 일정 시간 비교 함수 사용. 서버에는 세션 토큰 SHA-256 해시, 쿠키는 HttpOnly·SameSite=Strict·8시간. 로그인은 주소별 5분/10회·주소 기록 최대 4,096개·동시 검증 4개, 만료 정리와 해시 전 거절. [auth.py](../aegis/auth.py), [app.py](../aegis/app.py), [login_limits.py](../aegis/login_limits.py) | Secure는 설정으로 활성화해야 한다. 로그인 제한은 프로세스 메모리이며 재시작·다수 주소·프록시 환경의 영향을 받는다. 주소 용량 고갈은 새 정상 사용자도 제한할 수 있다. 전체 인증 부하와 실제 자원 사용량은 별도 검증이 필요하다. |
 | 최초 설치 계정 선점 | 이미 계정이 있으면 재설정 거절, 원격 최초 설정에는 설치 토큰 요구. [app.py](../aegis/app.py) | 프록시 뒤에서는 실제 연결 주소와 프록시 신뢰 설정을 운영자가 확인해야 한다. 설치 토큰을 설정한 뒤 접근 경계를 개방한다. |
 | 다른 출처의 변경 요청·DNS rebinding·클릭재킹 | 허용 Host, 제공된 Origin의 scheme/host 비교, Strict 쿠키, CSP frame-ancestors none·X-Frame-Options DENY. [app.py](../aegis/app.py) | Origin이 없는 요청은 허용된다. 이 검사는 CSRF 토큰이나 전체 브라우저/프록시 조합의 검증을 대신하지 않는다. QA 프레임 서버의 예외 헤더를 운영에 사용하지 않는다. |
 | 자산 입력·DNS 응답·리다이렉트를 통한 SSRF와 범위 확대 | URL 사용자 정보·제어 문자·경로 이동 거절, 정확한 scheme/host/port·경로 경계, DNS 응답 전체 주소 검사, 연결 주소 pinning, 리다이렉트마다 재검사. [network.py](../aegis/network.py) | lab 모드는 사설/loopback 연결을 의도적으로 허용한다. 비표준 대상 서버의 경로 해석과 새로운 예약 주소 분류까지 포괄적으로 검증됐다고 주장하지 않는다. 배포 egress 정책도 별도 경계다. |
@@ -76,7 +76,7 @@ flowchart LR
 
 | 검증 항목 | 현재 근거 |
 |---|---|
-| 인증·Origin·세션 폐기·승인 전 무요청·범위·DNS pinning·비밀 값 제외 | [test_validation.py](../tests/test_validation.py), [test_identity.py](../tests/test_identity.py), [test_assets.py](../tests/test_assets.py) |
+| 인증·Origin·세션 폐기·로그인 입장/기록 상한·승인 전 무요청·범위·DNS pinning·비밀 값 제외 | [test_validation.py](../tests/test_validation.py), [test_identity.py](../tests/test_identity.py), [test_login_limits.py](../tests/test_login_limits.py), [test_assets.py](../tests/test_assets.py) |
 | 속도·동시성·느린 응답·DNS·중지·종료 | [test_runtime.py](../tests/test_runtime.py), [test_shutdown.py](../tests/test_shutdown.py), [test_http_limits.py](../tests/test_http_limits.py) |
 | LLM TLS·응답 계약·순서 제한 | [test_llm.py](../tests/test_llm.py), [test_validation.py](../tests/test_validation.py) |
 | 응답/소유권 정책·재현 CLI·재검증 상태 | [test_response_policy.py](../tests/test_response_policy.py), [test_triage.py](../tests/test_triage.py) |

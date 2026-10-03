@@ -22,6 +22,13 @@ encryption at rest and an independent security review remain incomplete.
 See the [threat model](docs/THREAT-MODEL.md) for trust boundaries, implemented controls,
 residual risks and test coverage, and [audit integrity](docs/AUDIT.md) for its limits.
 
+Login admission limits each connection address to ten attempts per five minutes,
+retains at most 4,096 active address buckets and admits at most four simultaneous
+login verifications. Live rate histories are not evicted to admit new addresses;
+overload returns 429 with Retry-After before password derivation. These in-process
+limits reset on restart and do not provide distributed rate limiting or a total
+authentication CPU/memory bound. See [runtime policy](docs/RUNTIME.md).
+
 The runtime blocks out-of-scope origins/paths and reserved addresses, pins
 target connections to validated DNS results, and checks redirects. Lab mode
 intentionally permits private/loopback addresses while still rejecting

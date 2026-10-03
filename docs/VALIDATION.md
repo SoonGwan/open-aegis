@@ -881,3 +881,35 @@ on 390×844 has no document overflow.
 - Checked **79 local links** across the new model and four linked/updated entry
   documents, with zero missing targets. Main preview health remains good. Runtime code
   is unchanged; the previous 239 backend/28 frontend results were not rerun for docs.
+
+## Bounded login admission and metrics (2026-10-04)
+
+- Replaced the growing address-attempt dictionary with monotonic-time admission:
+  ten attempts per address in 300 seconds, at most 4,096 active buckets, at most
+  ten attempt records each and four concurrent login verification/session paths.
+  Expired buckets are removed in last-admission order. Capacity overload rejects
+  new addresses instead of evicting live rate history. Busy rejection consumes no
+  attempt/bucket, and late success cannot erase newer admitted attempts.
+- Rejection returns 429/Retry-After before password derivation. Failure/exception
+  releases the concurrency slot. Unknown/disabled users still incur derivation cost
+  after admission. Runtime metrics expose counts/limits/denial reasons, never actual
+  addresses/usernames/credentials. The existing settings metric cards display them.
+- Login/identity subset: **17 passed**. Full backend: **245 passed** with the existing
+  Starlette/httpx warning. Fake-clock tests prove exact expiry, live-history retention
+  despite 1,000 rejected new addresses at a small configured capacity, success ordering
+  and exception release. HTTP tests prove ten failed hashes followed by a hash-free
+  429, Retry-After, success reset, a held hash denying a second request while health
+  remains responsive, and subsequent re-admission. These are invariant tests, not
+  maximum-capacity RSS/CPU or realistic distributed attack benchmarks.
+- Frontend **28 passed**, TypeScript/Vite build passes; final bundle
+  `index-DxJlVfcH.js` / `index-BrFX8zqJ.css`. Main preview shuts down and restarts cleanly.
+  Desktop browser shows 0/4 active login checks, 0/4096 tracked addresses and zero
+  denial counters; `artifacts/v1-login-admission-metrics.jpg` was visually inspected.
+  No browser login is submitted; HTTP rejection behavior is covered by isolated tests.
+  New mobile cards, assistive technology and browser login-overload recovery remain
+  unverified. Main health is good, assets two/target traffic three; audit remains 88
+  valid events through the same head and legacy sealing through seq 83.
+- Limits are per process and reset on restart. Address capacity exhaustion can also
+  deny new legitimate clients. Proxy address trust, all authentication endpoints,
+  long-running workload and total process resources remain separate requirements.
+  See [RUNTIME.md](RUNTIME.md) and [THREAT-MODEL.md](THREAT-MODEL.md).
