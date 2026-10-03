@@ -406,3 +406,27 @@ on 390×844 has no document overflow.
 - Nested proof/retest/task/chat search and position, scroll, unsaved triage inputs and
   other modals are not URL state yet. Full mobile/accessibility regression remains pending.
   Contract: [PAGINATION.md](PAGINATION.md).
+
+
+## Modal keyboard stability and complete focus boundaries (2026-10-04)
+
+- Frontend build and all **12** navigation tests passed; the nine selected semantic
+  contrast pairs pass. Backend source is unchanged in this increment.
+- Before the fix, the real asset archive dialog moved focus from Cancel to Close after
+  the four-second overview refresh. Its effect reran on a new inline onClose callback.
+  After the fix, focus remains on Cancel across polling. Escape returns to the original
+  Archive button, removes all inert attributes and restores body scroll locking.
+- The production Modal keeps the latest callback in a layout-updated ref while setting
+  focus/inert state once per mount. Name/description reference its visible title/subtitle.
+- The browser regression fixture imports the actual component. Tab skips a negative
+  tabindex button and a fieldset-disabled input, reaches a final summary, and wraps in
+  both directions. Enter expands the summary. Escape uses the latest tick (138/138)
+  and restores the opener instead of calling the initial stale callback.
+- With a final tabindex=0 scroll region, Shift+Tab reaches the region, ArrowDown changes
+  scrollTop to 40, and Tab wraps to Close. DOM label/description references resolve to
+  the expected visible text. This does not prove a real screen-reader announcement.
+- Capture: `artifacts/v1-modal-focus-desktop.jpg`. Repeatable manual fixture and instructions:
+  [web/tests/browser/README.md](../web/tests/browser/README.md). The fixture is not an
+  automated npm test or a production entry. No asset was archived and no scan ran.
+- All-page mobile/accessibility audit, opener-removal fallback and broader interaction
+  journeys remain outstanding; the global v1 accessibility checkbox stays incomplete.
