@@ -913,3 +913,32 @@ on 390×844 has no document overflow.
   deny new legitimate clients. Proxy address trust, all authentication endpoints,
   long-running workload and total process resources remain separate requirements.
   See [RUNTIME.md](RUNTIME.md) and [THREAT-MODEL.md](THREAT-MODEL.md).
+
+## CI package runtime rehearsal (2026-10-04)
+
+- Existing CI lacked frontend tests and installed package execution. Added npm test,
+  wheel construction and a fresh-environment runtime/maintenance rehearsal after the
+  build and backend tests. Official checkout/setup-python/setup-node v7 refs are pinned
+  to full commit SHAs resolved from their official release tags. Checkout credentials
+  are not persisted, token permissions remain contents:read, with job timeout and
+  same-ref cancellation. No remote workflow was triggered or publication performed.
+- `review_runtime_package.py` installs locked runtime dependencies and the actual wheel
+  in a disposable venv outside checkout, removes AEGIS settings and Python path overrides,
+  checks pip consistency/installed origin and all four executable help entry points.
+  It starts the actual installed server on a handed-off bound loopback socket, serves the
+  separately built UI, verifies auth denial/setup/logout, synthetic asset and unapproved
+  pending-plan persistence, login limit metrics and audit review. Target requests stay
+  zero. The frontend bundle is not claimed to be included in the wheel.
+- Rehearsal passes with wheel SHA-256
+  `a16329f4899014f5c678e901fec24ed0ec66a9cca7c5fa6e11d7fec986a8cf27`.
+  Shutdown proves the installed original lifespan completes, accepts Uvicorn's clean
+  SIGTERM re-raise and then verifies workspace lease re-acquisition. The existing separate
+  installed maintenance rehearsal also passes. Temporary files/processes are cleaned up.
+- Initial harness runs exposed its wrong assumption that legacy /api/assets returns a
+  page object, and its incorrect assumption that clean Uvicorn SIGTERM always exits zero.
+  Both are corrected to the actual contract, with successful lifespan completion required;
+  product runtime code is unchanged. Previous 245 backend/28 frontend results are not
+  rerun for the workflow/script change. YAML parses locally and selected Montage contrast
+  checks pass (primary action 4.83:1, support text 9.09:1). These checks do not prove hosted
+  GitHub execution, Ubuntu runtime behavior, full visual/accessibility coverage or a signed,
+  byte-reproducible release. Main preview health remains good.
