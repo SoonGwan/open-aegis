@@ -179,7 +179,12 @@ export function UserPanel({
                     </td>
                     <td>
                       <div className="identity-actions">
-                        <button onClick={() => open("edit", user)}>수정</button>
+                        <button
+                          aria-label={user.username + " 사용자 수정"}
+                          onClick={() => open("edit", user)}
+                        >
+                          수정
+                        </button>
                         <button
                           aria-label={user.username + " 비밀번호 재설정"}
                           onClick={() => open("reset", user)}
@@ -213,78 +218,87 @@ export function UserPanel({
           onClose={close}
         >
           <form onSubmit={submit}>
-            {mode === "add" && (
-              <label>
-                사용자 이름
-                <input
-                  name="username"
-                  pattern="[a-zA-Z0-9_.-]+"
-                  maxLength={64}
-                  required
-                  autoComplete="off"
-                  placeholder="예: security.operator"
-                />
-              </label>
-            )}
-            {mode !== "reset" && (
-              <>
+            <fieldset
+              disabled={busy}
+              className="identity-form-fields"
+              aria-label="사용자 설정 입력"
+            >
+              {mode === "add" && (
                 <label>
-                  표시 이름
+                  사용자 이름
                   <input
-                    name="name"
-                    defaultValue={selected?.name}
-                    maxLength={100}
+                    name="username"
+                    pattern="[a-zA-Z0-9_.-]+"
+                    maxLength={64}
                     required
+                    autoComplete="off"
+                    placeholder="예: security.operator"
                   />
                 </label>
-                <label>
-                  역할
-                  <select name="role" defaultValue={selected?.role || "viewer"}>
-                    {Object.entries(roleNames).map(([role, name]) => (
-                      <option key={role} value={role}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
+              )}
+              {mode !== "reset" && (
+                <>
+                  <label>
+                    표시 이름
+                    <input
+                      name="name"
+                      defaultValue={selected?.name}
+                      maxLength={100}
+                      required
+                    />
+                  </label>
+                  <label>
+                    역할
+                    <select
+                      name="role"
+                      defaultValue={selected?.role || "viewer"}
+                    >
+                      {Object.entries(roleNames).map(([role, name]) => (
+                        <option key={role} value={role}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
+              {mode === "edit" && (
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="disabled"
+                    defaultChecked={!!selected?.disabled}
+                  />
+                  계정 비활성화
                 </label>
-              </>
-            )}
-            {mode === "edit" && (
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  name="disabled"
-                  defaultChecked={!!selected?.disabled}
-                />
-                계정 비활성화
-              </label>
-            )}
-            {mode !== "edit" && (
-              <label>
-                {mode === "add" ? "초기 비밀번호" : "새 비밀번호"}
-                <input
-                  type="password"
-                  name="password"
-                  minLength={12}
-                  maxLength={256}
-                  required
-                  autoComplete="new-password"
-                />
-              </label>
-            )}
-            {formError && (
-              <p className="form-error" role="alert">
-                {formError}
-              </p>
-            )}
-            <div className="modal-actions">
-              <button type="button" disabled={busy} onClick={close}>
-                취소
-              </button>
-              <button className="primary" disabled={busy} type="submit">
-                {busy ? "적용 중…" : "적용하기"}
-              </button>
-            </div>
+              )}
+              {mode !== "edit" && (
+                <label>
+                  {mode === "add" ? "초기 비밀번호" : "새 비밀번호"}
+                  <input
+                    type="password"
+                    name="password"
+                    minLength={12}
+                    maxLength={256}
+                    required
+                    autoComplete="new-password"
+                  />
+                </label>
+              )}
+              {formError && (
+                <p className="form-error" role="alert">
+                  {formError}
+                </p>
+              )}
+              <div className="modal-actions">
+                <button type="button" disabled={busy} onClick={close}>
+                  취소
+                </button>
+                <button className="primary" disabled={busy} type="submit">
+                  {busy ? "적용 중…" : "적용하기"}
+                </button>
+              </div>
+            </fieldset>
           </form>
         </Modal>
       )}
@@ -344,51 +358,57 @@ export function PasswordPanel({ onChanged }: { onChanged: () => void }) {
       {open && (
         <Modal title="내 비밀번호 변경" onClose={close}>
           <form onSubmit={submit}>
-            <label>
-              현재 비밀번호
-              <input
-                name="current_password"
-                type="password"
-                required
-                maxLength={256}
-                autoComplete="current-password"
-              />
-            </label>
-            <label>
-              새 비밀번호
-              <input
-                name="new_password"
-                type="password"
-                required
-                minLength={12}
-                maxLength={256}
-                autoComplete="new-password"
-              />
-            </label>
-            <label>
-              새 비밀번호 확인
-              <input
-                name="confirm_password"
-                type="password"
-                required
-                minLength={12}
-                maxLength={256}
-                autoComplete="new-password"
-              />
-            </label>
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="modal-actions">
-              <button type="button" disabled={busy} onClick={close}>
-                취소
-              </button>
-              <button type="submit" className="primary" disabled={busy}>
-                {busy ? "변경 중…" : "변경하기"}
-              </button>
-            </div>
+            <fieldset
+              disabled={busy}
+              className="identity-form-fields"
+              aria-label="비밀번호 변경 입력"
+            >
+              <label>
+                현재 비밀번호
+                <input
+                  name="current_password"
+                  type="password"
+                  required
+                  maxLength={256}
+                  autoComplete="current-password"
+                />
+              </label>
+              <label>
+                새 비밀번호
+                <input
+                  name="new_password"
+                  type="password"
+                  required
+                  minLength={12}
+                  maxLength={256}
+                  autoComplete="new-password"
+                />
+              </label>
+              <label>
+                새 비밀번호 확인
+                <input
+                  name="confirm_password"
+                  type="password"
+                  required
+                  minLength={12}
+                  maxLength={256}
+                  autoComplete="new-password"
+                />
+              </label>
+              {error && (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <div className="modal-actions">
+                <button type="button" disabled={busy} onClick={close}>
+                  취소
+                </button>
+                <button type="submit" className="primary" disabled={busy}>
+                  {busy ? "변경 중…" : "변경하기"}
+                </button>
+              </div>
+            </fieldset>
           </form>
         </Modal>
       )}

@@ -1025,3 +1025,26 @@ on 390×844 has no document overflow.
   remains unverified. Contributor/security/threat-model documentation states the path
   change, access policy and limits; health/setup-status/login assets intentionally remain
   available for startup/authentication.
+
+## Identity form busy states and accessible actions (2026-10-04)
+
+- User-edit row buttons now include the target username in their accessible name;
+  password-reset row buttons already did so and are unchanged. User add/edit/reset
+  inputs and the own-password form are wrapped in named fieldsets disabled while
+  submitting. Existing cancel/submit locks and field values remain in place. The
+  zero-border fieldset uses existing layout/color tokens.
+- An isolated synthetic account is edited through the real built console. A 4-second
+  delayed PATCH shows the name and role controls disabled. Injected 503 re-enables
+  controls and retains the entered name; retry succeeds and the stored synthetic name
+  matches. `artifacts/v1-identity-error-recovery.jpg` is captured and visually inspected.
+- Own-password submission uses fixture inputs and a delayed injected 503, without
+  reaching the real password-change handler. All three controls are disabled while
+  pending, then enabled and natively valid after error. No password value is read back
+  or printed; no actual password change/session revocation is inferred from this fixture.
+  Add/reset variants, native role selection, real readers/mobile/zoom and request-stall
+  recovery require separate journeys.
+- TypeScript/Vite build and selected contrast/token checks pass. Bundle:
+  `index-B_HPuQHH.js` / `index-BqS4l0El.css`. This targeted UI change is verified through
+  browser behavior rather than new implementation-mirroring tests; unchanged 247 backend
+  and 31 frontend suites are not rerun. QA tab leaves the fixture and its server shuts
+  down cleanly. Fixture target traffic stays zero; main runtime data is untouched.
