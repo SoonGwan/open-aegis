@@ -2952,3 +2952,247 @@ pre,
   border: 1px solid var(--montage-label-strong);
   white-space: nowrap;
 }
+
+.relation-controls {
+  margin-bottom: 20px;
+}
+.relation-selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 20px;
+}
+.relation-selectors label,
+.relation-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.relation-selectors .checkbox-label {
+  flex-direction: row;
+  align-items: center;
+}
+.relation-selectors .pagination {
+  margin: 12px 0 0;
+}
+.relation-selectors select,
+.relation-selectors input:not([type="checkbox"]),
+.relation-filters select {
+  width: 100%;
+  min-width: 0;
+}
+.relation-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  padding: 0 20px 20px;
+}
+.relation-filters label {
+  flex: 1 1 170px;
+  margin: 0;
+}
+.relation-context {
+  display: flex;
+  gap: 10px 24px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.relation-diagram {
+  margin-bottom: 20px;
+}
+.relation-view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.relation-view-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.relation-scroll {
+  max-height: 620px;
+  overflow: auto;
+  background: var(--montage-background-normal-alternative);
+  border-top: 2px solid var(--montage-label-strong);
+  border-bottom: 2px solid var(--montage-label-strong);
+}
+.relation-canvas {
+  position: relative;
+  transform-origin: top left;
+}
+.relation-canvas svg {
+  position: absolute;
+  inset: 0;
+}
+.relation-canvas svg > path {
+  fill: none;
+  stroke: var(--montage-label-normal);
+  stroke-width: 2;
+}
+.relation-canvas svg > path.active {
+  stroke: var(--montage-primary-normal);
+  stroke-width: 4;
+}
+.relation-canvas marker path {
+  fill: var(--montage-label-normal);
+}
+.relation-column-title {
+  position: absolute;
+  top: 20px;
+  width: 210px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.relation-node {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 4px;
+  text-align: left;
+  height: 72px;
+  border: 2px solid var(--montage-label-strong);
+  background: var(--montage-background-normal-normal);
+  box-shadow: 3px 3px 0 var(--montage-label-strong);
+  padding: 8px 10px;
+  color: var(--montage-label-normal);
+}
+.relation-canvas .relation-node {
+  position: absolute;
+  width: 210px;
+}
+.relation-node small {
+  font-size: 11px;
+}
+.relation-node strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+.relation-node span {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.relation-node.asset {
+  background: var(--montage-background-normal-normal);
+  border-top-width: 5px;
+}
+.relation-node.check {
+  background: var(--montage-background-status-positive);
+}
+.relation-node.finding {
+  background: var(--montage-background-status-cautionary);
+}
+.relation-node.selected {
+  background: var(--montage-primary-normal);
+  color: var(--montage-static-white);
+}
+.relation-node:hover {
+  box-shadow: 1px 1px 0 var(--montage-label-strong);
+}
+.relation-node-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 20px;
+}
+.relation-diagram > .footnote {
+  padding: 0 20px;
+}
+.relation-detail {
+  margin-bottom: 20px;
+}
+.relation-detail .panel-head {
+  align-items: start;
+}
+.relation-detail .panel-head h3 {
+  overflow-wrap: anywhere;
+}
+.relation-detail-body {
+  padding: 20px;
+  overflow-wrap: anywhere;
+}
+.relation-detail-body pre {
+  max-height: 320px;
+  overflow: auto;
+  padding: 16px;
+  background: var(--montage-background-normal-alternative);
+  border: 2px solid var(--montage-label-strong);
+  white-space: pre-wrap;
+}
+.relation-neighbors {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  gap: 10px;
+  padding: 0;
+}
+.relation-neighbors button {
+  justify-content: start;
+  text-align: left;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .relation-selectors {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+  .relation-filters {
+    padding: 0 16px 16px;
+  }
+  .relation-diagram .panel-head {
+    align-items: start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .relation-scroll {
+    max-height: 470px;
+  }
+  .relation-context {
+    flex-direction: column;
+  }
+  .relation-detail .panel-head {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .relation-view-controls label {
+    margin: 0;
+  }
+}
+.relation-view-controls label {
+  white-space: nowrap;
+}
+.relation-controls .panel-head {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.relation-controls input:not([type="checkbox"]),
+.relation-controls select,
+.relation-view-controls select {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 2px solid var(--montage-label-strong);
+  background: var(--montage-background-normal-normal);
+  color: var(--montage-label-normal);
+  border-radius: var(--radius);
+}
+.relation-controls .checkbox-label {
+  min-height: 42px;
+}
+.relation-node {
+  line-height: 1.15;
+}
+.relation-node small,
+.relation-node span {
+  font-size: 12px;
+}

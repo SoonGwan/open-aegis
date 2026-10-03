@@ -31,6 +31,7 @@ from .maintenance import WorkspaceLease
 from .migrations import SCHEMA_VERSION
 from .http_limits import BodyLimitMiddleware
 from .coverage import planned_slots, task_rows, latest_summary
+from .graph import build_graph, GraphNotFound
 
 
 class Credentials(BaseModel):
@@ -414,6 +415,20 @@ def create_app(data_dir=None, allow_private=None):
     @app.get('/api/assets', dependencies=auth)
     def assets(response: Response, include_archived: bool = False):
         return legacy_page(response, 'assets', archived=None if include_archived else False)
+
+    @app.get('/api/graph', dependencies=auth)
+    def graph(asset_id: str = Query(min_length=1, max_length=80), task_id: str | None = Query(None, max_length=80),
+              check: str | None = Query(None, max_length=80), severity: Literal['critical', 'high', 'medium', 'low', 'info'] | None = None,
+              status: Literal['open', 'accepted', 'resolved'] | None = None,
+              limit: int = Query(10, ge=1, le=25), offset: int = Query(0, ge=0, le=10_000_000),
+              snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807)):
+        if check is not None and check not in CHECK_IDS:
+            raise HTTPException(422, '등록된 검증 도구를 선택하세요.')
+        try:
+            return build_graph(store, asset_id, task_id, check=check, severity=severity, status=status,
+                               limit=limit, offset=offset, snapshot=snapshot)
+        except GraphNotFound as exc:
+            raise HTTPException(404, str(exc)) from exc
 
     def legacy_page(response, kind, **options):
         result = store.page(kind, limit=1000, **options)

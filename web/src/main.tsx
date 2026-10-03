@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import "./style.css";
 import { api } from "./api";
+import { EvidenceGraph } from "./graph";
 import {
   CoverageOverview,
   CoverageTable,
@@ -376,7 +377,12 @@ function App() {
   const [overview, setOverview] = useState<Overview>(initial),
     [tools, setTools] = useState<Tool[]>([]),
     [settings, setSettings] = useState<Settings | null>(null);
-  const [page, setPage] = useState("overview"),
+  const [page, setPage] = useState(() => {
+      const requested = new URLSearchParams(location.search).get("page");
+      return pages.some((item) => item.id === requested)
+        ? requested!
+        : "overview";
+    }),
     [search, setSearch] = useState(""),
     [modal, setModal] = useState<"asset" | "task" | "import" | "note" | null>(
       null,
@@ -454,7 +460,10 @@ function App() {
   useEffect(() => {
     if (auth && !auth.authenticated) {
       setOverviewLoaded(false);
-      setPage("overview");
+      const requested = new URLSearchParams(location.search).get("page");
+      setPage(
+        pages.some((item) => item.id === requested) ? requested! : "overview",
+      );
       setSelectedTask(null);
       setSelectedFinding(null);
       setTrafficDetail(null);
@@ -598,7 +607,24 @@ function App() {
     page === "approvals"
       ? visibleTasks
       : overview.tasks.filter((t) => t.status === "pending");
+  useEffect(() => {
+    const back = () => {
+      const requested = new URLSearchParams(location.search).get("page");
+      setPage(
+        pages.some((item) => item.id === requested) ? requested! : "overview",
+      );
+    };
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
   const navigate = (value: string) => {
+    const query = new URLSearchParams(location.search);
+    query.set("page", value);
+    history.pushState(
+      null,
+      "",
+      location.pathname + "?" + query + location.hash,
+    );
     setPage(value);
     setError("");
   };
@@ -1556,134 +1582,10 @@ function App() {
           )}
 
           {page === "graph" && (
-            <section className="panel graph-panel">
-              <div className="panel-head">
-                <h3>자산 → 검증 → 발견</h3>
-                <div className="graph-legend">
-                  <span>
-                    <i className="cyan" />
-                    자산
-                  </span>
-                  <span>
-                    <i className="purple" />
-                    검증 도구
-                  </span>
-                  <span>
-                    <i className="orange" />
-                    발견 사항
-                  </span>
-                </div>
-              </div>
-              {overview.assets.length ? (
-                <div className="graph-board">
-                  <div className="graph-column">
-                    <span className="eyebrow">
-                      ASSETS / {overview.assets.length}
-                    </span>
-                    {overview.assets.map((a) => (
-                      <div className="graph-node asset-node" key={a.id}>
-                        <Globe2 size={18} />
-                        <div>
-                          <strong>{a.name}</strong>
-                          <small>{a.url}</small>
-                        </div>
-                        <span>
-                          {
-                            overview.findings.filter((f) => f.asset_id === a.id)
-                              .length
-                          }
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="graph-connect">
-                    <ArrowRight />
-                    <small>
-                      검증 완료
-                      <br />
-                      {
-                        overview.coverage.filter(
-                          (c) => c.status === "completed",
-                        ).length
-                      }
-                      회
-                    </small>
-                  </div>
-                  <div className="graph-column">
-                    <span className="eyebrow">VALIDATION TOOLS</span>
-                    {tools.map((t) => (
-                      <div
-                        className={
-                          "graph-node tool-node " +
-                          (overview.coverage
-                            .filter((c) => c.status === "completed")
-                            .some((c) => c.check === t.id)
-                            ? "tested"
-                            : "")
-                        }
-                        key={t.id}
-                      >
-                        <Layers3 size={16} />
-                        <div>
-                          <strong>{t.name}</strong>
-                          <small>
-                            {
-                              new Set(
-                                overview.coverage
-                                  .filter((c) => c.status === "completed")
-                                  .filter((c) => c.check === t.id)
-                                  .map((c) => c.asset_id),
-                              ).size
-                            }
-                            개 자산 검증
-                          </small>
-                        </div>
-                        {overview.coverage
-                          .filter((c) => c.status === "completed")
-                          .some((c) => c.check === t.id) && <Check size={15} />}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="graph-connect">
-                    <ArrowRight />
-                    <small>
-                      증거 연결
-                      <br />
-                      {overview.findings.length}개
-                    </small>
-                  </div>
-                  <div className="graph-column">
-                    <span className="eyebrow">FINDINGS</span>
-                    {overview.findings.length ? (
-                      overview.findings.slice(0, 12).map((f) => (
-                        <button
-                          className="graph-node finding-node"
-                          key={f.id}
-                          onClick={() => void openFinding(f.id)}
-                        >
-                          <span className={"severity-dot " + f.severity} />
-                          <div>
-                            <strong>{f.title}</strong>
-                            <small>
-                              {f.asset_name} · {statusNames[f.status]}
-                            </small>
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="graph-placeholder">
-                        검증 후 발견 사항이 연결됩니다.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <Empty
-                  title="자산을 연결하면 탐색 경로가 시작됩니다"
-                  description="실제 기록에 기반한 자산·검증·발견의 관계를 보여줍니다."
-                />
-              )}
-            </section>
+            <EvidenceGraph
+              tools={tools}
+              onFinding={(id) => void openFinding(id)}
+            />
           )}
 
           {page === "traffic" && (
@@ -2056,12 +1958,6 @@ function App() {
                 </div>
               </section>
             </>
-          )}
-          {page === "graph" && (
-            <p className="footnote">
-              이 요약은 종류별 최근 100개 기록을 표시합니다. 전체 목록은
-              자산·작업·발견 사항 화면에서 확인하세요.
-            </p>
           )}
           <footer className="page-footer">
             <span>

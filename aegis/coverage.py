@@ -24,6 +24,8 @@ def task_rows(store, task, *, get_record=None):
         for check in task.get('checks', []):
             template = slot(task, asset, check)
             row = get_record('coverage', template['id'])
+            if row is not None and any(row.get(key) != template[key] for key in ('id', 'task_id', 'asset_id', 'check')):
+                row = {**template, 'status': 'not_recorded', 'reason': '실행 범위와 일치하지 않는 결과 기록입니다.'}
             if row is None:
                 status = 'not_started' if task['status'] in ('pending', 'queued', 'running', 'stopping') else 'not_recorded'
                 row = {**template, 'status': status, 'reason': '이전 기록에 도구별 결과가 없습니다.' if status == 'not_recorded' else '아직 실행 결과가 없습니다.'}
@@ -70,6 +72,8 @@ def latest_summary(db, asset_ids=None):
         FROM records t CROSS JOIN json_each(t.data,'$.scope_snapshot') scope
         CROSS JOIN json_each(t.data,'$.checks') checks CROSS JOIN assets a
         LEFT JOIN records c ON c.kind='coverage' AND c.id=t.id||':'||a.id||':'||checks.value
+          AND json_extract(c.data,'$.task_id')=t.id AND json_extract(c.data,'$.asset_id')=a.id
+          AND json_extract(c.data,'$.check')=checks.value
         WHERE a.id=json_extract(scope.value,'$.id') AND t.kind='tasks' AND (json_extract(t.data,'$.approved_at') IS NOT NULL
           OR json_extract(t.data,'$.status') IN ('queued','running','stopping','completed','failed','stopped','interrupted'))
       ), cells AS (

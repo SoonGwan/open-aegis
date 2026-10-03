@@ -36,6 +36,8 @@ def test_viewer_cannot_mutate_and_operator_cannot_approve(client):
     asset = register(client, 'https://fixture.invalid/')
     with login(client.app, viewer['username']) as v, login(client.app, operator['username']) as op:
         assert v.get('/api/assets').status_code == 200
+        graph = v.get('/api/graph', params={'asset_id': asset['id']})
+        assert graph.status_code == 200 and graph.json()['nodes'][0]['kind'] == 'asset'
         for path, data in [('/api/assets', {'name':'asset','url':'https://other.invalid/','authorized':True}),
                            ('/api/tasks', {'name':'task','asset_ids':[asset['id']]}),
                            ('/api/notes', {'title':'note','content':'test'}),

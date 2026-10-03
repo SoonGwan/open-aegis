@@ -29,7 +29,8 @@
 전체 기록을 SQL로 집계한다. 자산 카드의 과거 완료 검증 종류도 해당 자산의 전체
 이력에서 집계한다. 활성 자산은 현재 revision의 최신 승인 결과를 별도로 집계한다.
 실패·건너뜀과 분모의 의미는 [COVERAGE.md](COVERAGE.md)에 정의한다.
-탐색 경로 화면은 현재 최근 기록의 요약이며 실제 관계 그래프 구현은 진행 중이다.
+탐색 경로 화면은 자산과 작업을 선택한 실제 관계 그래프이며 별도의 SQL 페이지와
+결과 상한을 사용한다. [GRAPH.md](GRAPH.md)에 조회 범위와 연결 조건을 정의한다.
 
 기존 배열 경로 `/api/assets`, `/api/tasks`, `/api/findings`, `/api/traffic`은
 최대 1,000개를 반환하며 `X-Total-Count`, `X-Results-Limited` 헤더로 전체 건수와
