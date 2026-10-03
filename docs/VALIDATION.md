@@ -430,3 +430,28 @@ on 390×844 has no document overflow.
   automated npm test or a production entry. No asset was archived and no scan ran.
 - All-page mobile/accessibility audit, opener-removal fallback and broader interaction
   journeys remain outstanding; the global v1 accessibility checkbox stays incomplete.
+
+
+## Report download recovery (2026-10-04)
+
+- Frontend TypeScript/Vite build and all **16 tests** passed (12 navigation and four
+  report transport tests). Backend source is unchanged; this increment does not rerun
+  or supersede the previously recorded 172-test backend suite.
+- Unit checks cover all formats and filenames, task ID query encoding, credentials,
+  429 status/delay, Retry-After dates/clamping, HTML/empty/interrupted body rejection,
+  aborted responses and 401 status preservation. They do not exercise a real 401 UI.
+- An isolated local app reserved its two export permits without opening snapshots.
+  The actual UI export received 429, showed its inline error and disabled five-second
+  countdown. After the fixture released the permits, manual retry started a Markdown
+  download and remained on the reports URL. This does not prove a saved file on disk.
+- An ASGI fixture delayed export body sends. The JSON control showed progress and
+  cancellation; cancelling displayed the inline stopped state. Restoring normal sends
+  and retrying started its download. The real runtime showed active=0, started=5,
+  completed=2, cancelled=3 and rejected=1; two cancellations belong to the fixture's
+  reserved permits, one to the real browser cancellation. Target traffic remained 33.
+- Desktop captures: `artifacts/v1-report-download-error-desktop.jpg` and
+  `artifacts/v1-report-download-recovery-desktop.jpg`. Main preview served the current
+  bundle without restarting the backend. No target scan ran during this verification.
+- Browser Blob buffering has no hard resource bound. Unexpected schema with a valid
+  media type/transport, actual saved-file contents, mobile/assistive technology and
+  long-running download load remain unverified. Contract: [REPORTS.md](REPORTS.md).

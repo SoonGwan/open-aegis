@@ -88,3 +88,26 @@ aborts the response instead of returning a valid truncated report or replacing i
 `tests/test_export_limits.py` covers invalid environment values, atomic admission under
 concurrent threads, rejection before stream creation, blocked-send timeouts, real SQL
 interruption, prompt disconnect during SQL, exactly-once release and outcome counters.
+
+## Browser download and recovery
+
+The report cards, task rows and task detail use an authenticated same-origin fetch
+instead of navigating to the export URL. Each control displays progress and allows
+cancellation with AbortController; unmounting the control also aborts its request.
+The browser receives the entire response as a Blob before starting its file download.
+HTTP errors, unexpected media types, empty bodies and failed body reads never reach
+the save action. This checks transport completion and media type, not report schema
+or proof integrity. A cleanly ended but semantically corrupt body is not detected.
+
+Errors appear beside the initiating control. Retry-After seconds or HTTP dates become
+a visible countdown (maximum ten minutes), after which the user can retry; there is
+no automatic retry. A 401 triggers the existing session-expired flow. One control
+prevents overlapping clicks, while the server's shared admission slots still apply
+to downloads initiated from different controls. Normal success says that the file
+download started, not that the user saved the file. Blob URLs release after one minute.
+
+This flow requires JavaScript and buffers a whole file in browser-managed Blob storage.
+It does not establish a hard browser memory/disk bound or suitability for arbitrarily
+large exports. Server streaming, quota and timeout limits remain independent.
+`web/tests/report-download.test.ts` covers formats, query encoding, error status,
+retry delay, HTML/empty/interrupted bodies, abort and authentication errors.

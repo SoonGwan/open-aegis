@@ -3395,3 +3395,23 @@ pre,
     gap: 10px;
   }
 }
+
+.report-download {
+  min-width: 0;
+}
+.report-download-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.report-download p {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.report-download [role="alert"] {
+  color: var(--montage-label-normal);
+}
+.report-row > .report-download {
+  flex: 0 1 280px;
+}

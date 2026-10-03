@@ -59,6 +59,8 @@ import {
   type HistoryMode,
 } from "./navigation-state";
 import Modal from "./components/Modal";
+import { ReportDownload } from "./ReportDownload";
+import type { ReportFormat } from "./report-download";
 import { UserPanel, PasswordPanel, roleNames, type User } from "./identity";
 
 type Asset = {
@@ -1958,14 +1960,10 @@ function App() {
                     </span>
                     <h3>{r.label}</h3>
                     <p>{r.desc}</p>
-                    <a
-                      className="button"
-                      href={"/api/reports/export?format=" + r.format}
-                      download
-                    >
-                      <ArrowDownToLine size={15} />
-                      전체 내보내기
-                    </a>
+                    <ReportDownload
+                      format={r.format as ReportFormat}
+                      label="전체 내보내기"
+                    />
                   </section>
                 ))}
               </div>
@@ -1987,16 +1985,11 @@ function App() {
                           {date(t.created_at)} · {statusNames[t.status]}
                         </small>
                       </div>
-                      <a
-                        className="button"
-                        href={
-                          "/api/reports/export?format=markdown&task_id=" + t.id
-                        }
-                        download
-                      >
-                        <ArrowDownToLine size={14} />
-                        보고서
-                      </a>
+                      <ReportDownload
+                        format="markdown"
+                        taskId={t.id}
+                        label="보고서"
+                      />
                     </div>
                   ))
                 ) : (
@@ -2679,17 +2672,11 @@ function App() {
               canOperate={canOperate}
             />
             <div className="modal-actions">
-              <a
-                className="button"
-                href={
-                  "/api/reports/export?format=markdown&task_id=" +
-                  selectedTask.id
-                }
-                download
-              >
-                <ArrowDownToLine size={15} />
-                보고서
-              </a>
+              <ReportDownload
+                format="markdown"
+                taskId={selectedTask.id}
+                label="보고서"
+              />
               {["failed", "interrupted", "stopped"].includes(
                 selectedTask.status,
               ) && (
