@@ -882,6 +882,18 @@ function App() {
   const title = pages.find((p) => p.id === page)?.name;
   return (
     <div className="app-shell">
+      <a
+        className="skip-link"
+        href="#workspace-title"
+        onClick={(event) => {
+          event.preventDefault();
+          const heading = document.getElementById("workspace-title");
+          heading?.focus({ preventScroll: true });
+          heading?.scrollIntoView({ block: "nearest" });
+        }}
+      >
+        본문으로 건너뛰기
+      </a>
       <aside className="sidebar">
         <a
           className="brand"
@@ -945,7 +957,7 @@ function App() {
           </button>
         </div>
       </aside>
-      <main className="main">
+      <main className="main" aria-labelledby="workspace-title">
         <header className="topbar">
           <div>
             <nav className="navigation-controls" aria-label="탐색 이력">
@@ -1004,7 +1016,9 @@ function App() {
                     ? "EXPLORATION GRAPH"
                     : "YOUR SECURITY WORKSPACE"}
               </div>
-              <h1>{page === "overview" ? "보안 현황을 한눈에." : title}</h1>
+              <h1 id="workspace-title" tabIndex={-1}>
+                {page === "overview" ? "보안 현황을 한눈에." : title}
+              </h1>
               <p>
                 {
                   (

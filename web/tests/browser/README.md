@@ -35,6 +35,16 @@ check the ordinary 1px hover/2px press behavior, allowing more specific componen
 Check modal/toast centering and graph zoom separately; layout transforms are preserved.
 This is a manual preference regression, not covered by npm test or the contrast checker.
 
+## Workspace skip navigation
+
+Open an authenticated workspace in a fresh document. The first Tab should expose
+‘본문으로 건너뛰기’. Enter focuses the current page's h1; URL/query/hash must remain
+unchanged. Next Tab continues at page controls instead of the sidebar. Repeat after
+scrolling down, with a filtered/bookmarked list, and at narrow widths/zoom. The main
+landmark's aria-labelledby points to that h1. Open a modal without submitting: the
+skip link must inherit background inert, and Escape restores its previous inert state.
+DOM associations and keyboard focus do not prove actual screen-reader announcements.
+
 ## Real document viewport review
 
 Build the frontend first (`npm --prefix web run build`), then launch a separate loopback

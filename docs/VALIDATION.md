@@ -955,3 +955,23 @@ on 390×844 has no document overflow.
   Actual OS/browser reduced-motion preference, pointer/keyboard states and full mobile
   accessibility are not claimed verified. Manual steps are recorded in the browser
   regression README and the full accessibility gate remains incomplete.
+
+## Workspace keyboard skip navigation (2026-10-04)
+
+- Added the first authenticated-workspace link, visible on focus and styled with
+  existing Montage primary/white and hard border/shadow tokens. Activation prevents
+  hash/history navigation, focuses the current page h1 and brings it into view. The
+  main landmark references that heading; it is programmatically focusable without
+  adding an extra stop to ordinary forward tab order.
+- Desktop browser first Tab reaches the visible skip link (128px wide, 45.5px high).
+  Enter focuses workspace-title with text 시스템 설정 and leaves the full URL unchanged.
+  Tab from that heading reaches 새로고침 inside main. A body-selector press attempt
+  timed out; pressing Tab on the focused heading verified the continuation explicitly.
+  Opening the password modal makes the skip link inert; Escape restores non-inert
+  state and focus to 비밀번호 변경 without submitting a change.
+- Captured and visually inspected `artifacts/v1-skip-navigation.jpg`. TypeScript/Vite
+  build and selected contrast/token checks pass. Bundle:
+  `index-B45QAirB.js` / `index-DOqw8joG.css`. Backend logic and existing test behaviors
+  are unchanged, so full backend/frontend suites are not rerun for this UI change.
+  Actual screen readers, mobile/zoom, all routes/bookmarks and keyboard sequences remain
+  separate verification requirements; the full accessibility checkbox stays open.
