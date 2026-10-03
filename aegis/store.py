@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .store_util import now, identifier
 from .migrations import migrate
+from .audit import append_event, verify_chain
 
 # Read clients page proofs and retests separately instead of serializing growing ID arrays.
 FINDING_READ_PROJECTION = "json_set(json_remove(data,'$.evidence_ids','$.task_ids'),'$.evidence_reference_count',coalesce(json_array_length(data,'$.evidence_ids'),0),'$.task_count',coalesce(json_array_length(data,'$.task_ids'),0),'$.related_ids_omitted',json('true'))"
@@ -245,8 +246,12 @@ class Store:
 
     def event(self, task_id, message, level='info', detail=None):
         with self.lock, self.connect() as db:
-            db.execute("INSERT INTO events(ts,task_id,level,message,detail) VALUES(?,?,?,?,?)",
-                       (now(), task_id, level, message, json.dumps(detail or {}, ensure_ascii=False)))
+            append_event(db, (now(), task_id, level, message, json.dumps(detail or {}, ensure_ascii=False)))
+
+    def audit_integrity(self, checkpoint=None):
+        with self.connect() as db:
+            db.execute('BEGIN')
+            return verify_chain(db, checkpoint)
 
     def events(self, after=0, task_id=None, limit=200):
         query = 'SELECT * FROM events WHERE seq>?'

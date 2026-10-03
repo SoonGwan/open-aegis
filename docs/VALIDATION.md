@@ -602,3 +602,30 @@ on 390×844 has no document overflow.
 - Touch gestures, real iOS/Android browser behavior, zoom, focus through every journey,
   keyboard table scrolling, full modal/error/recovery states and actual screen-reader
   output remain unverified. The global mobile/accessibility gates stay incomplete.
+
+## Audit chain, schema 2 and checkpoint verification (2026-10-04)
+
+- Full backend regression: **186 passed**, with the existing Starlette/httpx warning.
+  After adding the CLI subprocess case, the audit subset was run again: **9 passed**.
+  The full suite was not rerun after that test-only addition. Audit module and CLI
+  compilation and diff whitespace checks pass; frontend source is unchanged.
+- Independent Store instances concurrently append 80 events to one chain. A failed
+  hash insert rolls back its event and head. Tests reject changed content, missing
+  middle/tail records, missing hashes and unsealed inserts, including backup validation.
+  Recomputed local chains can pass alone but fail against the earlier checkpoint.
+- Schema 1 migration preserves existing records and seals them as a legacy baseline.
+  Its preflight SQLite backup remains schema 1. Schema 2 backup/restore preserves the
+  checkpoint, and opening schema 2 never silently reseals modified history.
+- CLI checks run as real subprocesses: read-only verification, checkpoint export with
+  mode 0600, comparison after append, refusal to overwrite, and failure on tampering.
+- Main preview was stopped cleanly and restarted on schema 2. All 83 prior events and
+  three target traffic records remain; the pre-schema2 backup contains the 83 events
+  at schema 1. A login adds event 84, which verifies against the saved seq-83 checkpoint.
+  Health and authenticated asset reads succeed. No target scan runs.
+- Artifacts: `artifacts/v1-audit-before-migration.json` and
+  `artifacts/v1-audit-preview-checkpoint-20261004.json`. This checkpoint is saved on the
+  same host; the review does not prove independently trusted external storage.
+- Local hashes are not signatures. Existing legacy history is only sealed at upgrade;
+  whole-history verification is explicit, and business changes and their audit events
+  are not universally one transaction. External storage automation, audit UI, retention
+  and large-scale soak remain open. Contract: [AUDIT.md](AUDIT.md).

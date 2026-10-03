@@ -120,11 +120,11 @@ def test_old_auth_migration_and_session_revocation(tmp_path):
     assert store.get('assets','fixture')['url'] == 'https://example.invalid/'
     with store.connect() as db:
         assert db.execute('SELECT COUNT(*) FROM sessions').fetchone()[0] == 0
-        assert db.execute('PRAGMA user_version').fetchone()[0] == 1
-    backups = list(tmp_path.glob('*.pre-schema1-*.db'))
+        assert db.execute('PRAGMA user_version').fetchone()[0] == 2
+    backups = list(tmp_path.glob('*.pre-schema2-*.db'))
     assert len(backups) == 1 and backups[0].stat().st_mode & 0o777 == 0o600
     Store(path)
-    assert len(list(tmp_path.glob('*.pre-schema1-*.db'))) == 1
+    assert len(list(tmp_path.glob('*.pre-schema2-*.db'))) == 1
     with TestClient(create_app(tmp_path)) as migrated:
         assert migrated.get('/api/auth/status').json()['setup_required'] is False
         assert migrated.post('/api/auth/login', json={'password':PASSWORD}).status_code == 200

@@ -6,7 +6,7 @@ from pathlib import Path
 from contextlib import closing
 from .store_util import now, identifier
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def migrate(path):
@@ -20,13 +20,16 @@ def migrate(path):
             return
         legacy = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='records'").fetchone()
         if existed and legacy:
-            backup = path.with_name(path.name + '.pre-schema1-' + identifier() + '.db')
+            backup = path.with_name(path.name + f'.pre-schema{SCHEMA_VERSION}-' + identifier() + '.db')
             fd = os.open(backup, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             os.close(fd)
             with closing(sqlite3.connect(backup)) as target:
                 db.backup(target)
         try:
             db.execute('BEGIN IMMEDIATE')
+            if db.execute('PRAGMA user_version').fetchone()[0] == SCHEMA_VERSION:
+                db.rollback()
+                return
             statements = [
                 'CREATE TABLE IF NOT EXISTS records (kind TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(kind,id))',
                 'CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, task_id TEXT, level TEXT, message TEXT, detail TEXT)',
@@ -49,6 +52,8 @@ def migrate(path):
                 db.execute("DELETE FROM records WHERE kind='settings' AND id='auth'")
                 db.execute('DELETE FROM sessions')
             db.execute('CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id)')
+            from .audit import initialize_chain
+            initialize_chain(db)
             db.execute(f'PRAGMA user_version={SCHEMA_VERSION}')
             db.commit()
         except BaseException:

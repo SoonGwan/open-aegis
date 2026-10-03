@@ -24,15 +24,16 @@ def validate_backup(path):
         raise InvalidBackup('백업 파일이 없습니다.')
     try:
         with closing(readonly(path)) as db:
+            db.execute('BEGIN')
             if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
                 raise InvalidBackup('SQLite 무결성 검증을 통과하지 못했습니다.')
             version = db.execute('PRAGMA user_version').fetchone()[0]
-            if version not in (0, SCHEMA_VERSION):
+            if version not in (0, 1, SCHEMA_VERSION):
                 raise InvalidBackup('이 서버에서 지원하지 않는 백업 스키마입니다.')
             required = {'records': {'kind', 'id', 'data'},
                         'events': {'seq', 'ts', 'task_id', 'level', 'message', 'detail'},
                         'sessions': {'digest', 'expires'}}
-            if version == SCHEMA_VERSION:
+            if version >= 1:
                 required['users'] = {'id', 'username', 'name', 'role', 'salt', 'password_hash', 'disabled', 'created_at', 'updated_at'}
                 required['sessions'].add('user_id')
             for table, columns in required.items():
@@ -40,6 +41,13 @@ def validate_backup(path):
                     raise InvalidBackup('필수 데이터 테이블이 없습니다: ' + table)
                 if not columns <= {r[1] for r in db.execute(f'PRAGMA table_info({table})')}:
                     raise InvalidBackup('데이터 테이블 형식이 올바르지 않습니다: ' + table)
+            if version >= 2:
+                from .audit import verify_chain, AuditIntegrityError
+                db.row_factory = sqlite3.Row
+                try:
+                    verify_chain(db)
+                except (AuditIntegrityError, sqlite3.Error) as exc:
+                    raise InvalidBackup('감사 로그 무결성을 통과하지 못했습니다.') from exc
             invalid = db.execute('SELECT COUNT(*) FROM records WHERE NOT json_valid(data)').fetchone()[0]
             if invalid:
                 raise InvalidBackup('손상된 JSON 기록이 있습니다.')
