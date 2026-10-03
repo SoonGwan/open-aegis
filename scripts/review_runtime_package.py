@@ -116,7 +116,11 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                             raise RuntimeError('Installed server startup timed out.')
                         time.sleep(.05)
                 request('/api/assets', expected=401, opener=anonymous)
+                request('/openapi.json', expected=404, opener=anonymous)
+                request('/docs', expected=404, opener=anonymous)
+                request('/api/openapi.json', expected=401, opener=anonymous)
                 request('/api/auth/setup', {'password': 'runtime-package-fixture-password-only'})
+                assert '/api/assets' in request('/api/openapi.json')['paths']
                 html = request('/')
                 bundles = re.findall(r'(?:src|href)="(/assets/[^"\s]+)"', html)
                 assert bundles and any(path.endswith('.js') for path in bundles)
@@ -155,7 +159,8 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
             'installed_origin': origin['module'], 'target_requests': 0,
             'checks': ['locked runtime dependencies', 'pip check', 'four CLI entry points',
                        'installed server outside checkout', 'separate frontend assets',
-                       'authentication and logout', 'asset and pending plan persistence',
+                       'authentication and logout', 'administrator schema and disabled public docs',
+                       'asset and pending plan persistence',
                        'login limit metrics', 'read-only audit review', 'clean shutdown and lease release',
                        'installed backup/restore/audit rehearsal']}, ensure_ascii=False))
 

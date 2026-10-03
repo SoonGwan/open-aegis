@@ -246,7 +246,8 @@ def create_app(data_dir=None, allow_private=None):
             finally:
                 lease.close()
 
-    app = FastAPI(title='Open Aegis', version=__version__, lifespan=lifespan)
+    app = FastAPI(title='Open Aegis', version=__version__, lifespan=lifespan,
+                  docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store, app.state.engine = store, engine
     app.state.exports = exports
     @app.exception_handler(RequestValidationError)
@@ -303,6 +304,10 @@ def create_app(data_dir=None, allow_private=None):
     auth = [Depends(authenticated)]
     operations = [Depends(operator)]
     admins = [Depends(administrator)]
+
+    @app.get('/api/openapi.json', dependencies=admins, include_in_schema=False)
+    def openapi_schema():
+        return JSONResponse(app.openapi(), headers={'Cache-Control': 'no-store'})
 
     @app.get('/api/health')
     def health(response: Response):

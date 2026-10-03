@@ -17,6 +17,13 @@ For hot reload, run `.venv/bin/python -m aegis` in the repository root and
 `npm run dev` in `web/`. The Vite proxy defaults to backend port 8787.
 The production UI is served by the Python backend after a frontend build.
 
+API schema is available at `/api/openapi.json` with an authenticated administrator
+session. Default `/docs`, `/redoc`, `/openapi.json` and the Swagger OAuth redirect
+route are disabled for all roles. The authenticated endpoint returns the static
+OpenAPI contract with no-store; it does not include workspace records or provide an
+interactive Swagger UI. Custom session/role dependencies still enforce each operation;
+the schema is not a grant of permission or a complete machine-readable role policy.
+
 ## CI and installed package review
 
 The Verify workflow uses Python 3.11 and Node.js 22, locked runtime/dev dependencies,

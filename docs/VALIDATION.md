@@ -1000,3 +1000,28 @@ on 390×844 has no document overflow.
   target traffic stays three and main health is good. Finding-list multi-page UI, native
   Forward, error recovery, mobile/assistive technology and individual record details or
   scroll restoration are not claimed verified. Chat/triage positions remain separate.
+
+## Administrator-only API schema (2026-10-04)
+
+- Disabled FastAPI's default docs, redoc, schema and Swagger OAuth redirect routes.
+  Added an administrator-session-only /api/openapi.json returning the generated static
+  contract with no-store; the endpoint itself is excluded from that contract. Schema
+  visibility does not grant operation permissions or provide interactive Swagger UI.
+- Schema/identity subset: **13 passed**. Full backend: **247 passed**, with the existing
+  Starlette/httpx warning. Tests prove anonymous 401, operator/viewer 403, administrator
+  200, disabled default routes for authenticated and unauthenticated clients, expected
+  asset/approval operation paths, no schema self-entry, and exclusion of synthetic
+  workspace asset/event sentinels. Frontend source is unchanged; prior 31 frontend tests
+  and build are not rerun.
+- The pre-change main runtime returned 200 to an anonymous /openapi.json request.
+  After clean shutdown/restart, the same path, docs, redoc and OAuth redirect return 404,
+  the protected endpoint returns 401 anonymously, and health returns 200. Main assets
+  remain two and target traffic three. No target verification or browser operation runs.
+- Rebuilt wheel SHA-256:
+  `9650d479a06d269fa00e4cccaede484ef58bc9a78bcdf1691b463c98a12d0c58`.
+  Fresh installed-runtime rehearsal now includes public docs/schema denial and successful
+  authenticated administrator schema retrieval. All prior installed HTTP/CLI, shutdown,
+  lease and maintenance checks still pass with zero target requests. Hosted CI execution
+  remains unverified. Contributor/security/threat-model documentation states the path
+  change, access policy and limits; health/setup-status/login assets intentionally remain
+  available for startup/authentication.

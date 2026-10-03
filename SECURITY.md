@@ -29,6 +29,12 @@ overload returns 429 with Retry-After before password derivation. These in-proce
 limits reset on restart and do not provide distributed rate limiting or a total
 authentication CPU/memory bound. See [runtime policy](docs/RUNTIME.md).
 
+Automatic public FastAPI docs/schema routes are disabled. Administrators can inspect
+the API contract through `/api/openapi.json` using their server session; operators,
+viewers and anonymous clients cannot. This reduces unauthenticated API enumeration,
+not a substitute for authorization. Health/setup-status and login assets remain
+available as required for startup and authentication.
+
 The runtime blocks out-of-scope origins/paths and reserved addresses, pins
 target connections to validated DNS results, and checks redirects. Lab mode
 intentionally permits private/loopback addresses while still rejecting
