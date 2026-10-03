@@ -85,6 +85,7 @@ export function detailQuery(
         kind,
         readTaskCollection(query.toString(), kind),
       );
+    writeTaskChat(query, readTaskChat(query.toString()));
   } else clearTaskCollections(query);
   return query.toString();
 }
@@ -95,6 +96,48 @@ function clearTaskCollections(query: URLSearchParams) {
   for (const kind of taskCollectionKinds)
     for (const field of ["q", "offset", "snapshot"])
       query.delete(`task_${kind}_${field}`);
+  for (const field of ["q", "open", "offset", "snapshot"])
+    query.delete(`task_chat_${field}`);
+}
+export type TaskChatState = TaskCollectionState & { expanded: boolean };
+export function readTaskChat(search: string): TaskChatState {
+  const query = new URLSearchParams(search);
+  if (readDetail(search)?.kind !== "task")
+    return { search: "", expanded: false, offset: 0, snapshot: null };
+  return {
+    search: searchText(query.get("task_chat_q")),
+    expanded: query.get("task_chat_open") === "true",
+    offset:
+      Math.floor(
+        (integer(query.get("task_chat_offset"), 10_000_000) || 0) / 25,
+      ) * 25,
+    snapshot: integer(query.get("task_chat_snapshot"), Number.MAX_SAFE_INTEGER),
+  };
+}
+function writeTaskChat(query: URLSearchParams, state: TaskChatState) {
+  for (const field of ["q", "open", "offset", "snapshot"])
+    query.delete(`task_chat_${field}`);
+  if (state.search) query.set("task_chat_q", searchText(state.search));
+  if (state.expanded) query.set("task_chat_open", "true");
+  if (state.offset) query.set("task_chat_offset", String(state.offset));
+  if (state.snapshot !== null)
+    query.set("task_chat_snapshot", String(state.snapshot));
+}
+export function updateTaskChatQuery(
+  search: string,
+  changes: Partial<TaskChatState>,
+): string {
+  const detail = readDetail(search);
+  if (detail?.kind !== "task") return detailQuery(search, detail);
+  const query = new URLSearchParams(search);
+  const previous = readTaskChat(search);
+  const next = { ...previous, ...changes };
+  if ("search" in changes && changes.search !== previous.search) {
+    next.offset = 0;
+    next.snapshot = null;
+  }
+  writeTaskChat(query, next);
+  return detailQuery(query.toString(), detail);
 }
 export function readTaskCollection(
   search: string,

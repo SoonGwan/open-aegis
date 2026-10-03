@@ -1,7 +1,20 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { ArrowRight } from "lucide-react";
 import { api } from "./api";
 import { useRecords, Pagination, RecordState } from "./records";
+import {
+  readDetail,
+  readTaskChat,
+  type TaskChatState,
+  type HistoryMode,
+  type ListPosition,
+} from "./navigation-state";
 
 import {
   pendingStorage,
@@ -23,18 +36,21 @@ export function ChatPanel({
   taskId,
   actorId,
   canOperate,
+  state,
+  onChange,
 }: {
   taskId: string;
   actorId: string;
   canOperate: boolean;
+  state: TaskChatState;
+  onChange: (changes: Partial<TaskChatState>, mode?: HistoryMode) => void;
 }) {
   const [restored] = useState(() =>
     readPending(pendingStorage(), actorId, taskId),
   );
   const [unconfirmed, setUnconfirmed] = useState(!!restored);
   const [storageWarning, setStorageWarning] = useState("");
-  const [open, setOpen] = useState(!!restored);
-  const [search, setSearch] = useState("");
+  const { expanded: open, search } = state;
   const [question, setQuestion] = useState(restored?.content ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -45,13 +61,31 @@ export function ChatPanel({
   const persistedAttempt = useRef(restored?.request_id ?? null);
   const messageBox = useRef<HTMLDivElement>(null);
   const pendingReply = useRef<string | null>(null);
+  const changePosition = useCallback(
+    (position: ListPosition, mode?: HistoryMode) => {
+      const detail = readDetail(location.search);
+      if (
+        detail?.kind !== "task" ||
+        detail.id !== taskId ||
+        JSON.stringify(readTaskChat(location.search)) !== JSON.stringify(state)
+      )
+        return;
+      onChange(position, mode);
+    },
+    [taskId, state, onChange],
+  );
   const records = useRecords<Message>(
     open ? "messages" : null,
     search,
     {},
-    undefined,
+    { ...state, onPositionChange: changePosition },
     `/tasks/${encodeURIComponent(taskId)}/messages/page`,
   );
+  useEffect(() => {
+    const detail = readDetail(location.search);
+    if (restored && detail?.kind === "task" && detail.id === taskId)
+      onChange({ expanded: true }, "replace");
+  }, [restored, taskId, onChange]);
   useEffect(() => {
     active.current = true;
     return () => {
@@ -119,9 +153,12 @@ export function ChatPanel({
       if (cleared) persistedAttempt.current = null;
       pendingReply.current = reply.id;
       setQuestion("");
-      setSearch("");
       setSaved(true);
       records.reload();
+      onChange(
+        { expanded: true, search: "", offset: 0, snapshot: null },
+        "replace",
+      );
     } catch (e) {
       if (active.current) setError((e as Error).message);
     } finally {
@@ -130,12 +167,13 @@ export function ChatPanel({
     }
   }
   return (
-    <details
-      className="chat-panel"
-      open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
-    >
-      <summary>
+    <details className="chat-panel" open={open}>
+      <summary
+        onClick={(event) => {
+          event.preventDefault();
+          onChange({ expanded: !open });
+        }}
+      >
         검증 기록에 질문하기 <span>규칙 기반 · 추가 요청 없음</span>
       </summary>
       {open && (
@@ -146,7 +184,7 @@ export function ChatPanel({
               aria-label="검증 대화 검색"
               value={search}
               maxLength={200}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => onChange({ search: e.target.value }, "replace")}
             />
           </label>
           <p className="subtle">

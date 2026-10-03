@@ -1048,3 +1048,33 @@ on 390×844 has no document overflow.
   browser behavior rather than new implementation-mirroring tests; unchanged 247 backend
   and 31 frontend suites are not rerun. QA tab leaves the fixture and its server shuts
   down cleanly. Fixture target traffic stays zero; main runtime data is untouched.
+
+## Task chat bookmarks with pending-question recovery (2026-10-04)
+
+- Task conversation open/search/offset/snapshot state now lives in reviewed URL fields,
+  independently of the task finding/event collections and source list. Search replaces
+  the current history entry and resets only chat pagination. Disclosure and page changes
+  push entries; collapse preserves the chat position and stops its poll. Closing/changing
+  the detail clears chat fields. Numeric/Unicode bounds and normalization match the other
+  reviewed lists. No question or request ID is stored in the URL.
+- Three new navigation contract tests cover independent state, detail changes/collapse,
+  search resets, malformed bookmarks, Unicode boundaries and maximum positions. All
+  **34 frontend tests pass**, TypeScript/Vite build passes (`index-DttydGBI.js` /
+  `index-BqS4l0El.css`). Existing message API **7 tests pass**; the full 247-test backend
+  suite is not rerun for this frontend change. No backend source or CSS token changes.
+- Real built UI on an isolated synthetic workspace with 61 messages restores an open
+  searched conversation at 26–50 in a fresh document. The task event search remains
+  independent. Enter collapses and Space reopens at that page. Page 51–61 restores after
+  closing the detail and using Back; Forward closes it again. Searching for exact record
+  000 resets to 1–1 and removes its previous position/watermark.
+- The QA app commits one keyed question/reply pair and replaces that response with 503.
+  At a filtered 26–50 page the screen retains its input and URL. A fresh document restores
+  that position together with the pending question and manual retry control. Capture
+  `artifacts/v1-chat-bookmark-recovery.jpg` is visually inspected. Retry confirms the
+  stored reply, clears question/search, shows 1–25 of all 63 messages and success status,
+  and preserves the independent event search. Database message count stays **63** before
+  and after retry, with **one** matching question. Target traffic stays **zero**.
+- This is an HTTP failure after commit, not a literal socket loss. No actual mobile,
+  screen-reader/zoom, late-response timing race, scroll restoration, unsubmitted-draft
+  persistence or AI execution intervention is claimed. Pending questions remain scoped
+  plaintext same-tab storage. Overall navigation/accessibility/v1 gates remain open.

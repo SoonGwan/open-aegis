@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  readTaskChat,
+  updateTaskChatQuery,
+  type TaskChatState,
   readTaskCollection,
   updateTaskCollectionQuery,
   type TaskCollectionKind,
@@ -52,6 +55,7 @@ export function useNavigation(allowedPages: readonly string[]) {
   const [state, setState] = useState(() => ({
     ...readNavigation(location.search, allowedPages),
     detail: readDetail(location.search),
+    taskChat: readTaskChat(location.search),
     taskCollections: {
       findings: readTaskCollection(location.search, "findings"),
       events: readTaskCollection(location.search, "events"),
@@ -87,6 +91,7 @@ export function useNavigation(allowedPages: readonly string[]) {
       setState({
         ...readNavigation(location.search, allowedPages),
         detail: readDetail(location.search),
+        taskChat: readTaskChat(location.search),
         taskCollections: {
           findings: readTaskCollection(location.search, "findings"),
           events: readTaskCollection(location.search, "events"),
@@ -156,8 +161,15 @@ export function useNavigation(allowedPages: readonly string[]) {
     },
     [],
   );
+  const updateTaskChat = useCallback(
+    (changes: Partial<TaskChatState>, mode: HistoryMode = "push") => {
+      commit(updateTaskChatQuery(location.search, changes), mode);
+    },
+    [],
+  );
   return {
     ...state,
+    updateTaskChat,
     updateTaskCollection,
     updateFindingCollection,
     updateList,

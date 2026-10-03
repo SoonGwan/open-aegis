@@ -2672,6 +2672,8 @@ function App() {
                 taskId={selectedTask.id}
                 actorId={auth.user.id}
                 canOperate={canOperate}
+                state={navigation.taskChat}
+                onChange={navigation.updateTaskChat}
               />
             )}
             <PolicyExport task={selectedTask} />
