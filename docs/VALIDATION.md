@@ -660,3 +660,31 @@ on 390×844 has no document overflow.
   shutdown and volume permissions remain unverified. The wheel excludes built web
   assets; it is not a complete standalone web release. Container operations and the
   repeatable isolated CLI rehearsal are documented in [OPERATIONS.md](OPERATIONS.md).
+
+## Audit malformed-data rejection and tail verification (2026-10-04)
+
+- New controlled corruption cases reproduced **8 failures and 2 passes** before the
+  fix. Empty log ID and invalid sealing boundaries could pass local verification;
+  zero/negative legacy sequences could be sealed; a BLOB payload raised TypeError;
+  changed tail content/link allowed another event to be appended.
+- The fixed verifier/sealer checks positive sequences, finite timestamps, text/NULL
+  event fields, hexadecimal IDs/hashes and a valid existing legacy boundary. Sequence
+  gaps remain valid. Append recomputes the last event hash and checks its link against
+  the preceding stored hash before inserting anything. It still does not verify every
+  historical row on every append, and local metadata checks are not signatures.
+- Initial targeted audit/backup/identity regression: **32 passed**. Three additional
+  cases then verify failed schema-1 sealing rolls back and preserves its preflight
+  backup; gaps work but a missing legacy boundary fails; malformed CLI input exits 2
+  without a traceback or checkpoint output. Full regression with all additions:
+  **200 passed**, one existing Starlette/httpx warning.
+- A new wheel builds and passes the isolated installed-command rehearsal. SHA-256:
+  `7a1bc19244890aa27e16a39e72e49201809d8de932a36b06ea15534d84fd9783`.
+  Artifact: `artifacts/audit-validation-review/installed-commands.json`.
+- Main preview stopped cleanly and restarted with the fixed code. Health, login and
+  authenticated asset read succeed. Login appends event 85; the entire chain still
+  verifies against the prior seq-83 checkpoint. Schema stays 2, legacy boundary stays
+  83 and traffic stays three. Artifact:
+  `artifacts/audit-validation-review/preview-after-restart.json`. No scan runs.
+- No schema migration or frontend change is needed for this repair. External trusted
+  checkpoint automation, signatures and audit UI remain open; [AUDIT.md](AUDIT.md)
+  documents the stronger tail checks and the limits of metadata validation.
