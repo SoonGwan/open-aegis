@@ -3442,3 +3442,11 @@ pre,
     grid-column: 1 / -1;
   }
 }
+
+.policy-export {
+  margin-top: 24px;
+  padding: 16px;
+  border: 2px solid var(--ink);
+}
+.policy-export .detail-heading { margin-top: 0; }
+.policy-command { display: block; overflow-wrap: anywhere; white-space: normal; }

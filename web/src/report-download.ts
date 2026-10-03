@@ -23,13 +23,45 @@ export async function fetchReport(
 ): Promise<{ blob: Blob; filename: string }> {
   const query = new URLSearchParams({ format });
   if (taskId) query.set("task_id", taskId);
+  return fetchFile(
+    `/api/reports/export?${query}`,
+    {
+      json: "application/json",
+      csv: "text/csv",
+      markdown: "text/markdown",
+    }[format],
+    `aegis-report.${format === "markdown" ? "md" : format}`,
+    signal,
+    request,
+  );
+}
+export async function fetchPolicy(
+  taskId: string,
+  signal: AbortSignal,
+  request: typeof fetch = fetch,
+) {
+  return fetchFile(
+    `/api/tasks/${encodeURIComponent(taskId)}/policy-reproduction`,
+    "application/json",
+    "aegis-api-policy.json",
+    signal,
+    request,
+  );
+}
+async function fetchFile(
+  url: string,
+  media: string,
+  filename: string,
+  signal: AbortSignal,
+  request: typeof fetch,
+): Promise<{ blob: Blob; filename: string }> {
   try {
-    const response = await request(`/api/reports/export?${query}`, {
+    const response = await request(url, {
       credentials: "same-origin",
       signal,
     });
     if (!response.ok) {
-      let message = "보고서를 다운로드하지 못했습니다.";
+      let message = "파일을 다운로드하지 못했습니다.";
       try {
         const data = await response.json();
         if (typeof data.detail === "string") message = data.detail;
@@ -42,11 +74,6 @@ export async function fetchReport(
         retrySeconds(response.headers.get("Retry-After")),
       );
     }
-    const media = {
-      json: "application/json",
-      csv: "text/csv",
-      markdown: "text/markdown",
-    }[format];
     if (
       response.headers
         .get("Content-Type")
@@ -55,18 +82,16 @@ export async function fetchReport(
         .toLowerCase() !== media
     )
       throw new ReportDownloadError(
-        "보고서 파일 형식을 확인할 수 없습니다. 다시 시도하세요.",
+        "파일 형식을 확인할 수 없습니다. 다시 시도하세요.",
         response.status,
       );
     const blob = await response.blob();
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
     if (!blob.size)
-      throw new ReportDownloadError(
-        "빈 보고서 파일을 받았습니다. 다시 시도하세요.",
-      );
+      throw new ReportDownloadError("빈 파일을 받았습니다. 다시 시도하세요.");
     return {
       blob,
-      filename: `aegis-report.${format === "markdown" ? "md" : format}`,
+      filename,
     };
   } catch (error) {
     if (signal.aborted || error instanceof ReportDownloadError) throw error;

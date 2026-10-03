@@ -60,6 +60,7 @@ import {
 } from "./navigation-state";
 import Modal from "./components/Modal";
 import { ReportDownload } from "./ReportDownload";
+import { PolicyExport } from "./PolicyExport";
 import type { ReportFormat } from "./report-download";
 import { UserPanel, PasswordPanel, roleNames, type User } from "./identity";
 
@@ -87,6 +88,7 @@ type Task = {
   planner: string;
   created_at: number;
   done: number;
+  approved_at?: number | null;
   errors: number;
   scope_snapshot: Asset[];
   plan?: string[];
@@ -2674,8 +2676,10 @@ function App() {
                 canOperate={canOperate}
               />
             )}
+            <PolicyExport task={selectedTask} />
             <div className="modal-actions">
               <ReportDownload
+                key={`task-report-${selectedTask.id}`}
                 format="markdown"
                 taskId={selectedTask.id}
                 label="보고서"

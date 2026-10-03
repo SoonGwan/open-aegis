@@ -756,3 +756,39 @@ on 390×844 has no document overflow.
   storage are not proven. A manifest is unsigned metadata and does not grant current
   execution permission; standalone replay does not update the source server's records.
   Usage and limitations: [API-POLICY.md](API-POLICY.md).
+
+## Task policy download UI (2026-10-04)
+
+- Task details now contain an API policy reproduction section, eligible JSON download,
+  visible reasons for disabled downloads, and expandable standalone-file instructions.
+  It uses existing Montage tokens, borders and button states. The report download
+  lifecycle is shared with the policy endpoint: same-origin credentials, media/empty
+  body checks, abort/error/manual retry and session-expiry handling. Task ID is encoded
+  as a path segment; each task's download component has its own identity key.
+- Frontend **25 tests passed**, TypeScript/Vite build passed. Existing report format,
+  quota, body-failure and abort tests still pass after extraction of the file fetcher.
+  Added policy tests verify endpoint encoding/filename/409 errors and eligibility
+  reasons, including missing/null legacy rule arrays. Final bundle:
+  `index-DSNkh0F-.js` / `index-keBDZODJ.css`. Backend source is unchanged; prior 235-test
+  backend regression is not rerun.
+- An isolated explicitly synthetic workspace contains completed/pending/non-API tasks.
+  These seeded completion/approval fields are UI fixtures, not real target execution
+  evidence. Browser QA confirms one injected 503 becomes a visible alert and manual
+  retry successfully initiates the download; it does not prove browser disk completion.
+  Pending and non-API tasks show distinct reasons and disabled buttons. The disabled
+  button's aria-describedby resolves to its reason; Tab from the instructions summary
+  reaches the report button. Actual screen-reader behavior is not verified.
+- Desktop error/success/pending screenshots were captured and visually inspected:
+  `artifacts/v1-policy-download-error.jpg`,
+  `artifacts/v1-policy-download-success.jpg`, `artifacts/v1-policy-download-pending.jpg`.
+  The returned synthetic artifact passes the CLI's no-request validation:
+  `artifacts/policy-download-fixture.json`.
+- Width-controlled real-app documents measure 320/390px innerWidth, equal rootClient/
+  rootScroll, modal widths 296/366px, and no selected uncontained horizontal overflow.
+  Artifact: `artifacts/policy-download-mobile-geometry.json`. Instructions remain
+  collapsed in these narrow-width measurements; touch, vertical reachability, expanded
+  mobile instructions, cancellation/error states and real phone browsers are not proven.
+- Fixture target traffic stays zero. QA tabs leave the fixture and its server shuts
+  down cleanly. Main preview loads the final bundle and shows the legacy-policy reason
+  on its existing task; health is good and target traffic remains three. No target
+  verification/approval occurs. The dedicated policy editor and full journeys remain open.

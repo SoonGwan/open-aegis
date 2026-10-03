@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   fetchReport,
+  fetchPolicy,
   ReportDownloadError,
   retrySeconds,
 } from "../src/report-download.ts";
@@ -37,6 +38,36 @@ test("download formats retain filenames and task IDs are query values", async ()
     assert.equal(await result.blob.text(), "report");
     assert.equal(result.filename, "aegis-report." + suffix);
   }
+});
+
+test("policy downloads encode task IDs and reject server eligibility failures", async () => {
+  let url = "";
+  const result = await fetchPolicy(
+    "task?x=1/other",
+    new AbortController().signal,
+    (async (input) => {
+      url = String(input);
+      return new Response('{"format":"aegis-api-policy-v1"}', {
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch,
+  );
+  assert.equal(url, "/api/tasks/task%3Fx%3D1%2Fother/policy-reproduction");
+  assert.equal(result.filename, "aegis-api-policy.json");
+  await assert.rejects(
+    fetchPolicy(
+      "task",
+      new AbortController().signal,
+      (async () =>
+        new Response('{"detail":"승인 필요"}', {
+          status: 409,
+        })) as typeof fetch,
+    ),
+    (error: unknown) =>
+      error instanceof ReportDownloadError &&
+      error.status === 409 &&
+      error.message === "승인 필요",
+  );
 });
 
 test("quota errors are never files and preserve status and retry delay", async () => {

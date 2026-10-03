@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
 import {
   fetchReport,
+  fetchPolicy,
   ReportDownloadError,
   type ReportFormat,
 } from "./report-download";
@@ -11,10 +12,11 @@ export function ReportDownload({
   taskId,
   label,
 }: {
-  format: ReportFormat;
-  taskId?: string;
   label: string;
-}) {
+} & (
+  | { format: ReportFormat; taskId?: string }
+  | { format: "policy"; taskId: string }
+)) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -51,7 +53,9 @@ export function ReportDownload({
     setError("");
     setSaved(false);
     try {
-      const result = await fetchReport(format, taskId, request.signal);
+      const result = await (format === "policy"
+        ? fetchPolicy(taskId, request.signal)
+        : fetchReport(format, taskId, request.signal));
       if (!active.current || request.signal.aborted) return;
       const url = URL.createObjectURL(result.blob);
       const link = document.createElement("a");
@@ -88,7 +92,9 @@ export function ReportDownload({
         >
           <Download size={15} />
           {busy
-            ? "보고서 받는 중…"
+            ? format === "policy"
+              ? "정책 파일 받는 중…"
+              : "보고서 받는 중…"
             : seconds > 0
               ? `${seconds}초 후 재시도`
               : error
