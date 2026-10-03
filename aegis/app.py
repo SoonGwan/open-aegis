@@ -435,10 +435,10 @@ def create_app(data_dir=None, allow_private=None):
                           'pending': store.count('tasks', statuses=['pending']),
                           'findings': store.count('findings', statuses=['open']),
                           'covered_assets': summary['covered_assets'],
-                          'requests': store.count('traffic')}}
+                          'requests': store.count('traffic'), 'observations': store.count('observations')}}
 
     @app.get('/api/records/{kind}', dependencies=auth)
-    def records(kind: Literal['assets', 'tasks', 'findings', 'traffic', 'notes', 'schedules'],
+    def records(kind: Literal['assets', 'tasks', 'findings', 'traffic', 'notes', 'schedules', 'observations'],
                 limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
                 snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
                 search: str = Query('', max_length=200), status: str | None = Query(None, max_length=80),

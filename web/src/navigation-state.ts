@@ -20,6 +20,7 @@ export const LIST_PAGES = [
   "reports",
   "notes",
   "schedules",
+  "observations",
 ];
 export type ListPosition = { offset: number; snapshot: number | null };
 export type ListState = ListPosition & {

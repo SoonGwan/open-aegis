@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
+  Link2,
   Clock3,
   Code2,
   FileText,
@@ -129,6 +130,15 @@ type Overview = {
   events: Event[];
   stats: Record<string, number>;
 };
+type Observation = {
+  id: string;
+  url: string;
+  asset_id: string;
+  task_id: string;
+  asset_name?: string | null;
+  task_name?: string | null;
+  created_at: number;
+};
 type Settings = {
   version: string;
   lab_mode: boolean;
@@ -206,6 +216,7 @@ const pages = [
   },
   { id: "tasks", name: "검증 작업", icon: Workflow },
   { id: "assets", name: "자산", icon: Globe2 },
+  { id: "observations", name: "관찰 링크", icon: Link2 },
   { id: "findings", name: "발견 사항", icon: ShieldCheck },
   { id: "graph", name: "탐색 경로", icon: GitBranch },
   {
@@ -596,6 +607,7 @@ function App() {
           traffic: "traffic",
           notes: "notes",
           schedules: "schedules",
+          observations: "observations",
         } as Record<string, string>
       )[page] || null
     : null;
@@ -623,7 +635,7 @@ function App() {
     [navigationKey, navigation.updateList],
   );
   const records = useRecords<
-    Asset | Task | Finding | Traffic | Note | Schedule
+    Asset | Task | Finding | Traffic | Note | Schedule | Observation
   >(recordKind, search, recordFilters, {
     ...list,
     onPositionChange: changeRecordPosition,
@@ -634,6 +646,8 @@ function App() {
   const visibleAssets = page === "assets" ? (records.items as Asset[]) : [];
   const traffic = page === "traffic" ? (records.items as Traffic[]) : [];
   const notes = page === "notes" ? (records.items as Note[]) : [];
+  const observations =
+    page === "observations" ? (records.items as Observation[]) : [];
   const schedules = page === "schedules" ? (records.items as Schedule[]) : [];
   const pending =
     page === "approvals"
@@ -926,6 +940,8 @@ function App() {
                         "자산의 상태를 확인하고, 근거 있는 검증을 시작하세요.",
                       tasks: "목표를 정하고 실행부터 수정 확인까지 추적하세요.",
                       assets: "검증할 자산과 접근 범위를 한곳에서 관리하세요.",
+                      observations:
+                        "승인된 검증에서 관찰한 링크와 기록의 출처를 확인하세요.",
                       findings:
                         "실제 관찰한 증거를 바탕으로 조치 우선순위를 정하세요.",
                       graph:
@@ -1350,22 +1366,97 @@ function App() {
                 <div className="panel-head">
                   <h3>
                     관찰된 엔드포인트{" "}
-                    <span>{overview.observations.length}</span>
+                    <span>{overview.stats.observations || 0}</span>
                   </h3>
-                  <span className="subtle">링크 관찰 · 자동 요청 없음</span>
+                  <button onClick={() => navigate("observations", true)}>
+                    전체 관찰 링크
+                  </button>
                 </div>
                 {overview.observations.length ? (
-                  overview.observations.slice(0, 30).map((o) => (
-                    <div className="observation" key={o.id}>
-                      <GitBranch size={14} />
-                      <code>{o.url}</code>
-                      <span className="subtle">추가 등록 필요</span>
-                    </div>
-                  ))
+                  <>
+                    <p className="subtle">
+                      워크스페이스 전체 · 최근{" "}
+                      {Math.min(30, overview.observations.length)}개 · 링크 관찰
+                      · 자동 요청 없음
+                    </p>
+                    {overview.observations.slice(0, 30).map((o) => (
+                      <div className="observation" key={o.id}>
+                        <GitBranch size={14} />
+                        <code>{o.url}</code>
+                        <span className="subtle">추가 등록 필요</span>
+                      </div>
+                    ))}
+                  </>
                 ) : (
                   <div className="quiet-state">
                     엔드포인트 관찰 도구를 실행하면 범위 내 링크가 표시됩니다.
                   </div>
+                )}
+              </section>
+            </>
+          )}
+
+          {page === "observations" && (
+            <>
+              <Toolbar
+                search={search}
+                setSearch={setSearch}
+                placeholder="링크·자산·작업으로 검색"
+                count={records.total}
+                error={records.error}
+                loading={!records.ready && records.loading}
+              />
+              <div className="info-strip">
+                <Link2 size={18} />
+                <span>
+                  HTML에서 관찰한 범위 내 링크입니다. 관찰은 접근 가능 여부나
+                  취약점 검증 결과가 아닙니다. 이 화면은 링크에 요청하지
+                  않습니다.
+                </span>
+              </div>
+              <section className="panel">
+                {!records.ready ? (
+                  <RecordState records={records} />
+                ) : observations.length ? (
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>관찰 링크</th>
+                          <th>자산</th>
+                          <th>최근 관찰 작업</th>
+                          <th>관찰 시각</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {observations.map((observation) => (
+                          <tr key={observation.id}>
+                            <td>
+                              <code className="observation-url">
+                                {observation.url}
+                              </code>
+                            </td>
+                            <td className="observation-source">
+                              {observation.asset_name || "자산 기록 없음"}
+                              <small>{observation.asset_id}</small>
+                            </td>
+                            <td className="observation-source">
+                              {observation.task_name || "작업 기록 없음"}
+                              <small>{observation.task_id}</small>
+                            </td>
+                            <td>{date(observation.created_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <Empty
+                    title={
+                      search ? "검색 결과가 없습니다" : "관찰된 링크가 없습니다"
+                    }
+                    description="엔드포인트 관찰 도구를 승인해 실행하면 범위 내 링크를 기록합니다."
+                  />
                 )}
               </section>
             </>

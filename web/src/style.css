@@ -3326,6 +3326,18 @@ pre,
   background: var(--panel);
   margin-block: 12px;
 }
+.observation-url {
+  display: block;
+  min-width: 240px;
+  max-width: 580px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.observation-source small {
+  display: block;
+  margin-top: 6px;
+  color: var(--montage-label-neutral);
+}
 .finding-collection-content {
   margin-block: 16px;
 }

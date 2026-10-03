@@ -17,6 +17,7 @@ const pages = [
   "settings",
   "notes",
   "schedules",
+  "observations",
 ];
 
 test("a bookmarked query restores search, filter and insertion watermark", () => {
@@ -193,4 +194,17 @@ test("notes and schedule bookmarks preserve nested-list filters independently", 
     readNavigation("page=schedules&schedules_enabled=maybe", pages).list.filter,
     "all",
   );
+});
+
+test("observation bookmarks restore independently from the asset preview", () => {
+  const original =
+    "page=observations&observations_q=포털&observations_offset=25&observations_snapshot=701&assets_q=운영&assets_offset=50";
+  assert.equal(readNavigation(original, pages).list.offset, 25);
+  const assets = navigateQuery(original, pages, "assets");
+  assert.equal(readNavigation(assets, pages).list.offset, 50);
+  const restored = navigateQuery(assets, pages, "observations");
+  assert.equal(readNavigation(restored, pages).list.search, "포털");
+  const fresh = navigateQuery(assets, pages, "observations", true);
+  assert.equal(readNavigation(fresh, pages).list.search, "");
+  assert.equal(readNavigation(fresh, pages).list.snapshot, null);
 });

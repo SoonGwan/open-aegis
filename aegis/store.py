@@ -66,7 +66,7 @@ class Store:
             'findings': ('title', 'asset_name', 'check', 'severity', 'status'),
             'traffic': ('url', 'method', 'status'),
             'coverage': ('check', 'status'),
-            'observations': ('url', 'title'),
+            'observations': ('url', 'title', 'asset_id', 'task_id'),
             'finding_history': ('action', 'reason'),
             'notes': ('title', 'content'),
             'schedules': ('task.name', 'task.goal'),
@@ -87,6 +87,9 @@ class Store:
             clauses, args = ['kind=?', 'rowid<=?'], [kind, snapshot]
             if search:
                 expression = " || ' ' || ".join(f"coalesce(json_extract(data,'$.{field}'),'')" for field in fields[kind])
+                if kind == 'observations':
+                    for source, reference in (('assets', 'asset_id'), ('tasks', 'task_id')):
+                        expression += f" || ' ' || coalesce((SELECT json_extract(source.data,'$.name') FROM records source WHERE source.kind='{source}' AND source.id=json_extract(records.data,'$.{reference}')),'')"
                 # instr treats %, _, quotes and SQL fragments as literal search text.
                 clauses.append(f'instr(lower({expression}),lower(?))>0')
                 args.append(search)
@@ -118,6 +121,12 @@ class Store:
             rows = db.execute('SELECT data FROM records WHERE ' + where + ' ORDER BY rowid DESC LIMIT ? OFFSET ?',
                               (*args, limit, offset)).fetchall()
             items = [json.loads(row['data']) for row in rows]
+            if kind == 'observations' and items:
+                for source, reference, name in (('assets', 'asset_id', 'asset_name'), ('tasks', 'task_id', 'task_name')):
+                    ids = list(dict.fromkeys(item[reference] for item in items if item.get(reference)))
+                    names = dict(db.execute("SELECT id,json_extract(data,'$.name') FROM records WHERE kind=? AND id IN (" + ','.join('?' for _ in ids) + ')', [source, *ids]).fetchall()) if ids else {}
+                    for item in items:
+                        item[name] = names.get(item.get(reference))
             if kind == 'assets' and items:
                 counts = dict(db.execute("SELECT json_extract(data,'$.asset_id'),count(DISTINCT json_extract(data,'$.check')) FROM records WHERE kind='coverage' AND json_extract(data,'$.asset_id') IN (" + ','.join('?' for _ in items) + ") AND json_extract(data,'$.status')='completed' GROUP BY json_extract(data,'$.asset_id')", [item['id'] for item in items]).fetchall())
                 for item in items:

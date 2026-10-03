@@ -227,3 +227,26 @@ on 390×844 has no document overflow.
 - API compatibility and remaining size limits: [PAGINATION.md](PAGINATION.md).
   Detail arrays now contain only the latest 25 records. Related-ID metadata, report/MCP
   history reads and detail URL persistence remain incomplete.
+
+## Full observation records and source search (2026-10-04)
+
+- Full backend suite: **131 passed**, one existing Starlette/httpx deprecation warning.
+  Observation/record tests separately: **10 passed**. Frontend navigation tests:
+  **10 passed**; TypeScript/Vite production build passed.
+- The new API tests populate 1,050 observations with an archived source asset and prohibit
+  unbounded `Store.all` reads. They verify complete overview count despite its 100-row
+  preview, 25-row pages, source name/ID and URL search, exact asset/task filters, missing
+  source labels, literal punctuation, insertion watermarks and live name/URL updates.
+  Viewer access and query/auth boundaries are covered.
+- An owned loopback server returned HTML with 35 in-scope links. One reviewed
+  `endpoint_inventory` task completed and persisted all 35 links. The actual server log
+  contained exactly one `GET /html/` and no requests to the observed links. It was then
+  stopped before browsing the saved records.
+- Browser: searched by the source asset's name, visited rows 26–35, verified source asset
+  and task names/IDs, and restored the same search/page in a new tab. The asset preview's
+  full-list action reset search and pagination. A nonmatching query returned an empty result.
+- Capture: `artifacts/v1-observations-desktop.jpg` (local artifact, excluded from Git).
+  No mobile or whole-app accessibility completion is claimed in this increment.
+- Observed URLs are rendered as text. Observation is link inventory rather than an
+  access test or vulnerability conclusion; source display names are current metadata.
+  Remaining related-ID/report/MCP bounds and detail URL work: [PAGINATION.md](PAGINATION.md).

@@ -1,7 +1,7 @@
 # 목록 조회 계약
 
 인증된 계정은 `GET /api/records/{kind}`로 `assets`, `tasks`, `findings`,
-`traffic`, `notes`, `schedules`를 조회한다. 사용자·인증 설정·세션은 이 경로에서 제공하지 않는다.
+`traffic`, `notes`, `schedules`, `observations`를 조회한다. 사용자·인증 설정·세션은 이 경로에서 제공하지 않는다.
 조회 역할도 목록을 읽을 수 있으며 변경 권한은 기존 API에서 별도로 검사한다.
 
 - `limit`: 기본 25, 최대 100. `offset`: 기본 0, 최대 10,000,000.
@@ -15,6 +15,10 @@
 - 노트는 제목·내용, 예약은 `task.name`·`task.goal`을 검색한다.
   예약의 `asset_id`는 `task.asset_ids` 배열에서 비교한다.
   `enabled=true/false`는 예약 전용 활성 필터이며 다른 종류에 사용하면 422다.
+- 관찰은 URL·제목·자산 ID·작업 ID와 현재 자산/작업 이름을 검색한다.
+  `asset_id`, `task_id`를 정확히 일치하는 출처 필터로 사용할 수 있다.
+  응답의 `asset_name`, `task_name`은 현재 메타데이터이며 과거 이름의 스냅샷이 아니다.
+  출처가 사라진 관찰은 보존하고 이름을 null로 반환한다. 보관된 자산의 관찰도 포함한다.
 
 응답은 `items`, `total`, `limit`, `offset`, `snapshot`, `has_more`를 포함한다.
 `total`은 해당 필터와 삽입 상한에 포함되는 전체 건수이며 현재 페이지 길이가 아니다.
@@ -30,8 +34,8 @@
 
 ## 콘솔 URL과 조회 상태
 
-자산·작업·발견·트래픽·승인·보고서·노트·예약 화면은 각각 `assets`, `tasks`, `findings`,
-`traffic`, `approvals`, `reports`, `notes`, `schedules` 접두사를 사용한다. `${page}_q`, `${page}_offset`,
+자산·작업·발견·트래픽·승인·보고서·노트·예약·관찰 화면은 각각 `assets`, `tasks`, `findings`,
+`traffic`, `approvals`, `reports`, `notes`, `schedules`, `observations` 접두사를 사용한다. `${page}_q`, `${page}_offset`,
 `${page}_snapshot`으로 검색과 위치를 보존한다. `tasks_status`, `findings_severity`,
 `assets_archived=true`, `schedules_enabled=true/false`는 화면별 필터다. 다른 화면과 `graph_*` 북마크 값은 유지한다.
 검색은 현재 이력을 교체하고 화면·필터·페이지 이동은 새 이력을 추가한다.
@@ -51,7 +55,7 @@ snapshot은 JavaScript 안전 정수로 제한한다. 잘못된 필터와 숫자
 새 검색의 조회 중·실패 상태와 정상적인 빈 결과를 구분한다. 기존 결과를 갱신하다
 실패하면 마지막 목록임을 표시하고, 오류 시 재조회 버튼과 한국어 연결 안내를 제공한다.
 조회는 4초마다 자동 갱신한다. 상세 모달은 URL에 기록하지 않으며 이력 이동 시 닫는다.
-증거·관찰의 목록 상태는 아직 이 계약에 포함하지 않는다.
+증거 상세 모달의 목록 상태는 URL 계약에 포함하지 않는다.
 
 `/api/overview`의 배열은 종류별 최근 100개로 제한하지만 통계와 심각도 분포는
 전체 기록을 SQL로 집계한다. 자산 카드의 과거 완료 검증 종류도 해당 자산의 전체
@@ -63,7 +67,12 @@ snapshot은 JavaScript 안전 정수로 제한한다. 잘못된 필터와 숫자
 기존 배열 경로 `/api/assets`, `/api/tasks`, `/api/findings`, `/api/traffic`, `/api/notes`, `/api/schedules`는
 최대 1,000개를 반환하며 `X-Total-Count`, `X-Results-Limited` 헤더로 전체 건수와
 잘림 여부를 알린다. 전체를 순회하는 클라이언트는 페이지 경로를 사용해야 한다.
-관찰 및 보고서·MCP 등 일부 내부 처리의 무제한 조회는 후속 작업으로 남아 있다.
+보고서·MCP 등 일부 내부 처리의 무제한 조회는 후속 작업으로 남아 있다.
+`overview.stats.observations`는 최근 100개 요약과 별도로 전체 관찰 수를 집계한다.
+자산 화면의 워크스페이스 관찰 미리보기는 최근 30개를 표시하며 ‘전체 관찰 링크’는
+검색·페이지를 초기화한 관찰 화면으로 이동한다. 일반 메뉴 이동은 이전 상태를 유지한다.
+관찰 화면은 URL을 텍스트로 표시하며 대상에 HTTP 요청하지 않는다. 관찰은 HTML의
+범위 내 링크 수집 결과이며 접근 가능성이나 취약점 판정을 뜻하지 않는다.
 예약 처리기는 전체 목록 대신 실행 시각이 지난 활성 예약을 최대 100개씩 읽는다.
 `next_at`과 rowid 오름차순으로 오래 기다린 예약을 먼저 처리하며, 다음 루프는 5초 후다.
 예약으로 생성한 작업도 승인 대기 상태이며 HTTP 검증을 자동 실행하지 않는다.
