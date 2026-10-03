@@ -12,6 +12,12 @@ from .migrations import migrate
 # Read clients page proofs and retests separately instead of serializing growing ID arrays.
 FINDING_READ_PROJECTION = "json_set(json_remove(data,'$.evidence_ids','$.task_ids'),'$.evidence_reference_count',coalesce(json_array_length(data,'$.evidence_ids'),0),'$.task_count',coalesce(json_array_length(data,'$.task_ids'),0),'$.related_ids_omitted',json('true'))"
 
+def compact_finding(record):
+    """Project an already committed decision without re-reading a later concurrent edit."""
+    return {**{key:value for key,value in record.items() if key not in ('task_ids','evidence_ids')},
+            'task_count':len(record.get('task_ids') or []),
+            'evidence_reference_count':len(record.get('evidence_ids') or []), 'related_ids_omitted':True}
+
 
 class ClosingConnection(sqlite3.Connection):
     def __exit__(self, *args):
@@ -48,9 +54,10 @@ class Store:
             db.executemany("INSERT INTO records VALUES (?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data",
                            [(kind, record['id'], json.dumps(record, ensure_ascii=False)) for kind, record in records])
 
-    def get(self, kind, id):
+    def get(self, kind, id, *, compact_findings=False):
         with self.connect() as db:
-            row = db.execute("SELECT data FROM records WHERE kind=? AND id=?", (kind, id)).fetchone()
+            projection = FINDING_READ_PROJECTION if kind == 'findings' and compact_findings else 'data'
+            row = db.execute("SELECT " + projection + " AS data FROM records WHERE kind=? AND id=?", (kind, id)).fetchone()
         return json.loads(row['data']) if row else None
 
     def all(self, kind):

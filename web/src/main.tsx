@@ -102,7 +102,10 @@ type Finding = TriageFinding & {
   confidence: string;
   remediation: string;
   evidence: unknown;
-  task_ids: string[];
+  task_ids?: string[];
+  task_count?: number;
+  evidence_reference_count?: number;
+  related_ids_omitted?: boolean;
   created_at: number;
 };
 type Event = {

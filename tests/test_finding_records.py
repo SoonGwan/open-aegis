@@ -22,9 +22,9 @@ def test_large_detail_and_pages_are_bounded_without_per_proof_reads(client, monk
     store.put_many([('retests', {'id': f'other-{i}', 'finding_id': 'other'}) for i in range(2000)])
     monkeypatch.setattr(store, 'all', lambda *_: pytest.fail('Unbounded history read'))
     original_get = store.get
-    def guarded_get(kind, id):
+    def guarded_get(kind, id, **options):
         assert kind != 'evidence', 'Per-proof detail read'
-        return original_get(kind, id)
+        return original_get(kind, id, **options)
     monkeypatch.setattr(store, 'get', guarded_get)
     detail = client.get('/api/findings/finding-a').json()
     for kind in ('evidence', 'retests'):

@@ -94,8 +94,16 @@ limit(기본 25, 최대 100)·offset·snapshot·search 경계를 사용한다. �
 기존 `GET /api/findings/{finding_id}`의 evidence·retests 배열은 각각 최신 25개까지
 반환한다. `evidence_page`, `retests_page`에 전체 건수·삽입 상한·추가 페이지 여부를
 제공한다. 예전의 전체 배열을 기대하는 클라이언트는 새 페이지 경로로 이동해야 한다.
-HTTP 발견 메타데이터의 관련 ID 배열과 보고서는 아직 별도의 크기 제한이 없으므로
-서비스 전체의 응답/메모리 상한이 확보됐다는 의미는 아니다. MCP는 관련 ID를 SQL에서
+HTTP `/api/overview`, `/api/records/findings`, `/api/findings`, `/api/findings/{id}`의
+발견 메타데이터는 SQL에서 `task_ids`, `evidence_ids`를 제외하고 `task_count`,
+`evidence_reference_count`, `related_ids_omitted=true`를 반환한다. 조치 PATCH 응답도
+같은 요약을 반환한다. PATCH는 다시 조회하지 않고 방금 저장한 결정의 버전과 상태를
+요약하므로, 뒤이어 들어온 다른 사람의 결정을 저장 응답으로 바꾸지 않는다.
+내부 저장·검증·보고서에 필요한 전체 연관 배열은 변경하지 않는다. 기존 클라이언트는
+증거/재검증 페이지의 작업 ID와 개수를 사용해야 한다. 참조 수에는 중복·누락 참조도
+포함될 수 있으며, 출처를 검증한 실제 증거 수는 evidence 페이지의 total이다.
+작업 상세·보고서 등 일부 경로의 전체 조회는 아직 별도의 정리가 필요하므로 서비스
+전체의 응답/메모리 상한이 확보됐다는 의미는 아니다. MCP도 관련 ID를 SQL에서
 개수로 요약하고 이력을 페이지로 반환한다([MCP.md](MCP.md)).
 
 콘솔은 각 이력을 펼쳤을 때 검색·페이지 조회를 시작한다. 접으면 갱신을 멈추며,

@@ -267,3 +267,19 @@ on 390×844 has no document overflow.
   A result exceeding 512 KiB is returned as a short tool error.
 - Compatibility changes and practical limits: [MCP.md](MCP.md). This does not verify an
   external MCP client integration, remote transport, hard process memory bounds or full v1.
+
+## Compact HTTP finding associations (2026-10-04)
+
+- Full backend suite: **146 passed**, one existing Starlette/httpx deprecation warning.
+  Projection/history/triage tests separately: **16 passed**. Frontend TypeScript/Vite build passed.
+- Tests store 10,000 task references and 10,000 evidence references on one finding.
+  Overview, paged findings, legacy findings and finding detail omit those ID arrays and
+  return reference counts. The detail body is below 2,000 bytes for that synthetic record.
+- Stored associations remain identical after reads and after an accepted triage decision.
+  PATCH returns the new decision revision and counts without returning the association arrays.
+  The pure projection preserves the supplied committed decision and does not re-read a later edit.
+- Normal evidence/retest pages, human triage conflict handling and the full existing suite
+  remain passing. Frontend types allow compact counts; current UI does not depend on ID arrays.
+- These checks prove the selected response contracts, not every HTTP response or a hard
+  memory bound. Task detail/report reads and other remaining work stay on the v1 checklist.
+  Contract changes: [PAGINATION.md](PAGINATION.md).

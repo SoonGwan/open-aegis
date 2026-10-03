@@ -25,7 +25,7 @@ from . import __version__
 from .checks import CATALOG, CHECK_IDS
 from .engine import Engine
 from .network import in_scope, normalize_url
-from .store import Store, identifier, now
+from .store import Store, identifier, now, compact_finding
 from .auth import password_hash, public_user, new_user
 from .maintenance import WorkspaceLease
 from .migrations import SCHEMA_VERSION
@@ -420,7 +420,7 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/overview', dependencies=auth)
     def overview():
-        tasks, findings = store.page('tasks', limit=100)['items'], store.page('findings', limit=100)['items']
+        tasks, findings = store.page('tasks', limit=100)['items'], store.page('findings', limit=100, compact_findings=True)['items']
         assets = store.page('assets', archived=False, limit=100)['items']
         coverage = store.page('coverage', limit=100)['items']
         with store.connect() as db:
@@ -450,7 +450,7 @@ def create_app(data_dir=None, allow_private=None):
         if enabled is not None and kind != 'schedules':
             raise HTTPException(422, '활성 필터는 예약에만 사용할 수 있습니다.')
         return store.page(kind, limit=limit, offset=offset, snapshot=snapshot, search=search, archived=archived,
-                          filters={k: v for k, v in {'status': status, 'severity': severity, 'asset_id': asset_id, 'task_id': task_id, 'enabled': enabled}.items() if v is not None})
+                          filters={k: v for k, v in {'status': status, 'severity': severity, 'asset_id': asset_id, 'task_id': task_id, 'enabled': enabled}.items() if v is not None}, compact_findings=True)
 
     @app.get('/api/assets', dependencies=auth)
     def assets(response: Response, include_archived: bool = False):
@@ -471,7 +471,7 @@ def create_app(data_dir=None, allow_private=None):
             raise HTTPException(404, str(exc)) from exc
 
     def legacy_page(response, kind, **options):
-        result = store.page(kind, limit=1000, **options)
+        result = store.page(kind, limit=1000, compact_findings=True, **options)
         response.headers['X-Total-Count'] = str(result['total'])
         response.headers['X-Results-Limited'] = str(result['has_more']).lower()
         return result['items']
@@ -644,7 +644,7 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/findings/{finding_id}', dependencies=auth)
     def finding_detail(finding_id: str):
-        finding = store.get('findings', finding_id)
+        finding = store.get('findings', finding_id, compact_findings=True)
         if not finding:
             raise HTTPException(404, '발견 사항이 없습니다.')
         evidence = store.page('evidence', filters={'finding_id': finding_id})
@@ -674,7 +674,7 @@ def create_app(data_dir=None, allow_private=None):
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         store.event(None, '발견 사항 조치 기록 저장 요청을 처리했습니다.', detail={'finding_id': finding_id, 'status': result['status'], 'actor_id': actor['id']})
-        return result
+        return compact_finding(result)
 
     @app.post('/api/findings/{finding_id}/retest', dependencies=operations)
     def retest(finding_id: str):
