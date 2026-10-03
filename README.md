@@ -155,7 +155,10 @@ MCP 2025-03-26 stdio 방식입니다. 클라이언트가 다음 프로세스를 
 }
 ```
 
-도구는 `list_assets`, `list_findings`, `get_task`, `get_finding`입니다.
+목록·상세 도구는 `list_assets`, `list_findings`, `get_task`, `get_finding`이며,
+증거·재검증·이벤트는 별도 페이지 도구로 순회합니다. 목록 응답은 `items`와
+전체 건수·페이지 메타데이터를 갖는 객체입니다. [MCP 조회 계약](docs/MCP.md)에
+인수, 기존 배열 응답의 변경 사항과 제한을 정리했습니다.
 기존 DB를 SQLite 읽기 전용 모드로 열며 인증 설정, 명령 실행, 승인 기능은
 노출하지 않습니다. 조회 결과가 MCP 클라이언트와 연결된 모델에 전달될 수 있습니다.
 원격 HTTP/SSE MCP 클라이언트 연동은 아직 구현하지 않았습니다.

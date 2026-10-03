@@ -9,6 +9,9 @@ from pathlib import Path
 from .store_util import now, identifier
 from .migrations import migrate
 
+# Read clients page proofs and retests separately instead of serializing growing ID arrays.
+FINDING_READ_PROJECTION = "json_set(json_remove(data,'$.evidence_ids','$.task_ids'),'$.evidence_reference_count',coalesce(json_array_length(data,'$.evidence_ids'),0),'$.task_count',coalesce(json_array_length(data,'$.task_ids'),0),'$.related_ids_omitted',json('true'))"
+
 
 class ClosingConnection(sqlite3.Connection):
     def __exit__(self, *args):
@@ -55,7 +58,7 @@ class Store:
             rows = db.execute("SELECT data FROM records WHERE kind=? ORDER BY rowid DESC", (kind,)).fetchall()
         return [json.loads(row['data']) for row in rows]
 
-    def page(self, kind, *, limit=25, offset=0, snapshot=None, search='', filters=None, archived=None):
+    def page(self, kind, *, limit=25, offset=0, snapshot=None, search='', filters=None, archived=None, compact_findings=False):
         """Bounded SQL reads; an insertion watermark keeps later inserts out of a page walk.
 
         Updates remain live. The watermark is not a historical database snapshot.
@@ -118,7 +121,8 @@ class Store:
                 clauses.append("coalesce(json_extract(data,'$.archived_at'),0)" + ('!=0' if archived else '=0'))
             where = ' AND '.join(clauses)
             total = db.execute('SELECT count(*) FROM records WHERE ' + where, args).fetchone()[0]
-            rows = db.execute('SELECT data FROM records WHERE ' + where + ' ORDER BY rowid DESC LIMIT ? OFFSET ?',
+            projection = FINDING_READ_PROJECTION if kind == 'findings' and compact_findings else 'data'
+            rows = db.execute('SELECT ' + projection + ' AS data FROM records WHERE ' + where + ' ORDER BY rowid DESC LIMIT ? OFFSET ?',
                               (*args, limit, offset)).fetchall()
             items = [json.loads(row['data']) for row in rows]
             if kind == 'observations' and items:

@@ -250,3 +250,20 @@ on 390×844 has no document overflow.
 - Observed URLs are rendered as text. Observation is link inventory rather than an
   access test or vulnerability conclusion; source display names are current metadata.
   Remaining related-ID/report/MCP bounds and detail URL work: [PAGINATION.md](PAGINATION.md).
+
+## Paged read-only MCP tools (2026-10-04)
+
+- Full backend suite: **143 passed**, one existing Starlette/httpx deprecation warning.
+  Existing/new MCP tests separately: **15 passed**. Frontend code is unchanged.
+- Tests populate 1,050 assets and 1,200 proofs/retests and prohibit an unbounded reader
+  call. They verify compact finding-ID counts, provenance rejection, latest-25 detail
+  arrays, complete page totals, literal search and event sequence watermarks.
+- SQLite `mode=ro` rejects a real DELETE, and database bytes are unchanged by MCP reads.
+  A database filename containing Unicode, spaces and URI punctuation remains supported.
+- A separate `python -m aegis.mcp` process completed initialize, tools/list and paged
+  tools/call over stdin/stdout. It advertised seven tools and rejected a 17-request batch.
+- Argument tests reject boolean integers, null snapshots, unsafe integers, invalid limits,
+  offsets and archive types, long search and unknown SQL arguments without echoing input.
+  A result exceeding 512 KiB is returned as a short tool error.
+- Compatibility changes and practical limits: [MCP.md](MCP.md). This does not verify an
+  external MCP client integration, remote transport, hard process memory bounds or full v1.
