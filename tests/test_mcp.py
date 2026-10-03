@@ -1,0 +1,28 @@
+import json
+from aegis.mcp import Reader, dispatch
+from aegis.store import Store
+
+
+def test_mcp_only_exposes_readonly_records(tmp_path):
+    store=Store(tmp_path/'aegis.db')
+    store.put('assets',{'id':'asset','name':'Fixture','url':'https://example.invalid/'})
+    store.put('settings',{'id':'auth','password_hash':'DO-NOT-EXPOSE'})
+    reader=Reader(store.path)
+    catalog=dispatch({'jsonrpc':'2.0','id':1,'method':'tools/list'},reader)
+    assert all(t['annotations']['readOnlyHint'] for t in catalog['result']['tools'])
+    result=dispatch({'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':'list_assets','arguments':{}}},reader)
+    assert json.loads(result['result']['content'][0]['text'])[0]['id'] == 'asset'
+    assert 'DO-NOT-EXPOSE' not in json.dumps(result)
+    denied=dispatch({'jsonrpc':'2.0','id':3,'method':'tools/call','params':{'name':'run_command','arguments':{'command':'anything'}}},reader)
+    assert denied['result']['isError']
+    assert dispatch({'jsonrpc':'2.0','method':'notifications/initialized'},reader) is None
+    assert dispatch({'jsonrpc':'2.0','id':4,'method':'unknown'},reader)['error']['code'] == -32601
+
+
+def test_mcp_handles_encoded_database_filename_without_mutation(tmp_path):
+    path = tmp_path/'자료 ?reader.db'
+    store = Store(path)
+    store.put('assets', {'id':'fixture','name':'Encoded path'})
+    before = path.read_bytes()
+    assert Reader(path).call('list_assets', {})[0]['name'] == 'Encoded path'
+    assert path.read_bytes() == before

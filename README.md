@@ -1,0 +1,226 @@
+# Open Aegis
+
+**자산부터 증거, 수정 확인까지 연결하는 오픈소스 보안 검증 워크스페이스.**
+
+React + TypeScript 콘솔, Python/FastAPI 실행 엔진, SQLite 저장소로 구성됩니다.
+상용 기능 구분 없이 저장소의 전체 구현을 MIT 라이선스로 제공합니다.
+
+![로컬 합성 서버 검증 결과 대시보드](docs/images/dashboard.jpg)
+
+이 저장소는 ARTEX의 공개 기능 구성을 참고하여 독립적으로 작성했습니다.
+ARTEX 코드를 복사하거나 포크하지 않았습니다. 현재 버전은 **0.1.0 초기 구현**이며
+ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주장하지 않습니다.
+구현된 기능과 차이는 [기능 비교표](docs/FEATURES.md)를 확인하세요.
+
+## 지금 사용할 수 있는 기능
+
+- 한국어 반응형 콘솔: 대시보드, 작업, 자산, 발견 사항, 탐색 경로, 승인,
+  트래픽, 보고서, 예약, 노트, 에이전트, 시스템 설정.
+- 자산·담당자·태그·API 권한 규칙 등록 및 JSON 일괄 가져오기.
+- 범위 스냅샷을 갖는 작업, 실행 승인, 거절, 중지, 재시작 중단 처리.
+- 규칙 기반 Planner, 선택적 OpenAI 호환 LLM 순서 계획, 최대 4개 Worker.
+- HTTP 보안 헤더, HTTPS/HSTS/인증서 만료, 쿠키 속성, CORS 설정 관찰.
+- 페이지 내 범위에 속한 링크 수집. 발견한 링크로 자동 요청하지 않습니다.
+- 명시적으로 정의한 GET API 접근 규칙 검증. 인증 값은 서버 환경변수에 둡니다.
+- 요청 메타데이터, 제한된 본문 해시, 증거, 커버리지, 실시간 활동 기록.
+- 발견 사항 중복 통합, 상태 관리, 독립 재검증 및 증거 이력 보존.
+- Markdown/CSV 보고서 및 JSON 증거 묶음 내보내기.
+- 승인 대기 작업을 생성하는 주기적 예약, 운영 노트, 기록 기반 대화.
+- 기존 자산·작업·발견 사항을 조회하는 읽기 전용 MCP stdio 서버.
+- 관리자·운영자·조회자 계정, 암호 해시, 서버 세션, 출처/Host 검사, 로그인 시도 제한.
+
+## 빠른 시작
+
+Python 3.11+와 Node.js 22, npm이 필요합니다.
+
+```sh
+./start.sh
+```
+
+기본 주소는 **http://127.0.0.1:8787**입니다. 처음 열면 12자 이상의 관리자
+비밀번호를 설정합니다. 기본 비밀번호는 없습니다.
+`start.sh`는 가상환경에 잠긴 의존성을 설치하고 콘솔을 빌드한 뒤 실행합니다.
+이미 사용 중인 포트라면 다음처럼 바꾸세요.
+
+```sh
+AEGIS_PORT=8790 ./start.sh
+```
+
+설정 파일을 사용하려면 `.env.example`을 `.env`로 복사해 수정합니다.
+실행 환경변수는 `.env`보다 우선합니다. `.env`는 셸 코드로 실행하지 않습니다.
+
+### Docker
+
+```sh
+cp .env.example .env
+```
+
+`.env`의 `AEGIS_SETUP_TOKEN`을 충분히 긴 무작위 값으로 설정한 다음 실행합니다.
+토큰은 최초 관리자 설정에만 사용됩니다. 예를 들어 Python의
+`secrets.token_urlsafe(32)`로 생성할 수 있습니다.
+
+```sh
+docker compose up --build -d
+```
+
+http://127.0.0.1:8787 에 접속하고 관리자 비밀번호 및 설치 토큰을 입력합니다.
+컨테이너는 비관리자 사용자로 실행되며 데이터는 `aegis-data` 볼륨에 보존됩니다.
+기본 포트 공개 범위는 호스트의 loopback입니다. Docker 실행은 현재 로컬 환경에
+Docker가 없어 검증하지 못했습니다. 로컬 Python 실행 및 프런트엔드 빌드는 검증했습니다.
+
+## 첫 검증
+
+1. **자산**에서 검증 권한이 있는 URL을 등록합니다. scheme·hostname·port·경로가
+   정확한 범위가 됩니다. `/app/` 등록은 `/app/*`만 허용합니다.
+2. **검증 작업**에서 자산, 도구, Worker, Planner를 선택합니다.
+3. **실행 승인**에서 실제 주소와 도구를 확인하고 승인합니다.
+4. **발견 사항**에서 관찰 증거, 판정 유형, 수정 가이드를 확인합니다.
+5. 수정 후 **재검증 계획**을 생성하고 승인합니다.
+6. **보고서**에서 Markdown·CSV·JSON을 내보냅니다.
+
+HTTP에서 HTTPS로의 리다이렉트도 origin 변경입니다. 실제 서비스가 HTTPS라면
+최종 HTTPS 주소를 등록하세요. 범위 밖 리다이렉트는 수행하지 않습니다.
+
+### 로컬 실습
+
+별도 터미널에서 합성 데이터만 제공하는 실습 서버를 실행합니다.
+
+```sh
+.venv/bin/python examples/lab_server.py
+```
+
+콘솔을 실습 모드로 실행하고 `http://127.0.0.1:9090/`를 자산으로 등록합니다.
+
+```sh
+AEGIS_LAB_MODE=1 AEGIS_PORT=8790 .venv/bin/python -m aegis
+```
+
+실습 모드는 사설·loopback 대상 연결을 허용합니다. 인터넷 서비스 운영 시에는
+끄세요. 실습 서버를 중지한 뒤 다음 명령으로 방어 설정을 적용해 다시 실행하면
+보안 헤더·쿠키·CORS 및 권한 규칙의 수정 전후를 비교할 수 있습니다.
+
+```sh
+AEGIS_LAB_HARDENED=1 .venv/bin/python examples/lab_server.py
+```
+
+이 실습 서버는 HTTP이므로 ‘암호화되지 않은 HTTP 연결’ 관찰은 계속 남습니다.
+
+### API 권한 규칙
+
+자산 등록의 ‘API 권한 규칙’에 다음 형식의 JSON 배열을 입력합니다.
+
+```json
+[
+  {"path":"/api/account","role":"anonymous","expected_allowed":false,"credential_env":""},
+  {"path":"/api/account","role":"test-user","expected_allowed":true,"credential_env":"AEGIS_TEST_USER"}
+]
+```
+
+서버에 `AEGIS_TEST_USER`를 전체 Authorization 헤더 값으로 설정하세요.
+실습 서버용 값은 `Bearer lab-test-token`입니다. 실제 인증정보는 Git·URL·노트에
+입력하지 않습니다. Compose 기본 구성은 `AEGIS_TEST_USER`를 전달하며 추가 계정은
+Compose의 환경변수 전달 항목을 추가해야 합니다.
+
+현재 판정은 2xx 허용, 401/403 거절과 운영자가 정의한 기대값을 비교합니다.
+응답 내용 기반 고객사 소유권 추론·로그인 자동화는 구현하지 않았습니다.
+정상적인 공개 API, 로그인 HTML, 봇 차단 응답은 별도 검토해야 합니다.
+
+### 선택적 AI Planner
+
+```text
+AEGIS_LLM_API_KEY=<provider key>
+AEGIS_LLM_MODEL=<model name>
+AEGIS_LLM_BASE_URL=https://your-provider.example/v1
+```
+
+서버를 재시작하고 작업에서 AI Planner를 선택합니다. 승인된 도구의 실행 순서만
+제안하며 도구 추가·범위 확대·임의 명령 실행을 할 수 없습니다. 연결 실패나
+유효하지 않은 응답은 활동 기록에 남기고 규칙 기반 계획으로 전환합니다.
+상용 LLM 실호출은 키가 없어 검증하지 않았습니다. 실패 전환과 결과 검증은
+자동 테스트에 포함됩니다.
+
+### MCP 연결
+
+MCP 2025-03-26 stdio 방식입니다. 클라이언트가 다음 프로세스를 실행하도록 설정합니다.
+
+```json
+{
+  "mcpServers": {
+    "open-aegis": {
+      "command": "/absolute/path/to/repo/.venv/bin/python",
+      "args": ["-m", "aegis.mcp"],
+      "env": {"AEGIS_DATA_DIR": "/absolute/path/to/repo/data"}
+    }
+  }
+}
+```
+
+도구는 `list_assets`, `list_findings`, `get_task`, `get_finding`입니다.
+기존 DB를 SQLite 읽기 전용 모드로 열며 인증 설정, 명령 실행, 승인 기능은
+노출하지 않습니다. 조회 결과가 MCP 클라이언트와 연결된 모델에 전달될 수 있습니다.
+원격 HTTP/SSE MCP 클라이언트 연동은 아직 구현하지 않았습니다.
+
+## 검증 및 운영
+
+```sh
+.venv/bin/pip install -r requirements-dev.lock
+.venv/bin/python -m pytest -q
+cd web
+npm ci
+npm run build
+```
+
+테스트는 합성 loopback 서버만 사용합니다. 승인 전 무요청, 범위/주소 차단,
+DNS pinning, 비밀정보 비저장, 수정 전후 재검증, 오류 시 판정 불가, MCP 읽기
+전용 조회를 검증합니다. 자동 테스트와 프런트엔드 빌드 결과는
+[검증 기록](docs/VALIDATION.md)에 남겼습니다.
+
+데이터 백업은 서버 실행 중에도 일관된 SQLite 백업 API로 수행합니다.
+
+```sh
+.venv/bin/python scripts/backup.py --output backups/aegis-backup.db
+```
+
+백업에는 사용자 암호 해시와 세션 해시가 포함됩니다. 접근을 제한하세요.
+복구는 서버를 종료한 뒤 검증·복구 명령으로 진행합니다. 기존 DB는 자동으로
+별도 보존하고, 복구한 세션은 모두 무효화합니다.
+
+```sh
+.venv/bin/python scripts/restore.py --source backups/aegis-backup.db --check-only
+.venv/bin/python scripts/restore.py --source backups/aegis-backup.db --destination data/aegis.db
+```
+
+서버와 복구 도구는 같은 디렉터리의 파일 잠금을 사용합니다. 서버가 실행 중이면
+복구와 두 번째 서버 시작을 거절합니다. `.server.lock` 파일의 존재 자체는 실행 상태가
+아닙니다. 서버가 종료되거나 프로세스가 죽으면 OS가 잠금을 해제합니다.
+Linux/macOS에서 실행하며 Windows는 WSL 또는 컨테이너를 사용하세요.
+[운영·복구 안내](docs/OPERATIONS.md)를 참고하세요.
+
+현재 단일 워크스페이스·단일 프로세스·SQLite 구성입니다. 역할별 권한은 지원하지만
+고객사별 데이터 격리, PostgreSQL, 여러 서버 인스턴스는 아직 지원하지 않습니다.
+외부 보안 감사도 수행되지 않았습니다.
+[보안 정책](SECURITY.md), [아키텍처](docs/ARCHITECTURE.md),
+[기여 가이드](CONTRIBUTING.md)를 참고하세요.
+
+## 계정과 권한
+
+최초 설정에서는 사용자 이름(기본 `admin`)과 비밀번호를 지정합니다.
+관리자는 사용자 관리 화면에서 계정을 추가·수정·비활성화하고 비밀번호를 재설정합니다.
+운영자는 자산·계획·조치와 작업 중지를 관리하고, 실행 승인은 관리자가 진행합니다.
+조회자는 기록·증거 조회와 보고서 내보내기를 할 수 있습니다.
+모든 사용자는 같은 워크스페이스의 기록을 공유합니다.
+
+기존 0.1 DB는 자동 백업 후 이전됩니다. 기존 관리자는 `admin` 사용자 이름으로
+기존 비밀번호를 사용하며, 이전 세션은 만료됩니다. 권한·계정 상태·비밀번호를
+변경하면 해당 사용자의 모든 기존 세션이 만료됩니다.
+
+## v1 개발 현황과 디자인
+
+[v1 출시 기준](docs/V1-READINESS.md)으로 미완료 항목을 추적합니다.
+컬러 출처와 의미별 값, Neo-brutalism 적용 규칙은 [디자인 문서](docs/DESIGN.md)에 정리했습니다.
+자산은 수정·보관·복원이 가능하며, 수정 전 계획의 승인은 무효화됩니다.
+보관 시 예약을 중지하고 기존 증거를 유지합니다.
+
+## 라이선스
+
+[MIT](LICENSE). 유료 기능이나 라이선스 키는 없습니다.

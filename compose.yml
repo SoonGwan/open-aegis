@@ -1,0 +1,27 @@
+services:
+  aegis:
+    build: .
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      AEGIS_HOST: 0.0.0.0
+      AEGIS_SETUP_TOKEN: ${AEGIS_SETUP_TOKEN:?Set a random AEGIS_SETUP_TOKEN in .env before starting Docker}
+      AEGIS_ALLOWED_HOSTS: ${AEGIS_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      AEGIS_SECURE_COOKIE: ${AEGIS_SECURE_COOKIE:-0}
+      AEGIS_LAB_MODE: ${AEGIS_LAB_MODE:-0}
+      AEGIS_LLM_BASE_URL: ${AEGIS_LLM_BASE_URL:-https://api.openai.com/v1}
+      AEGIS_LLM_MODEL: ${AEGIS_LLM_MODEL:-}
+      AEGIS_LLM_API_KEY: ${AEGIS_LLM_API_KEY:-}
+      AEGIS_TEST_USER: ${AEGIS_TEST_USER:-}
+    volumes:
+      - aegis-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+volumes:
+  aegis-data:

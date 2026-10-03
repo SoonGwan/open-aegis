@@ -1,0 +1,41 @@
+# Security policy
+
+This project is pre-release software. It has not received an independent
+security audit. Run the console on loopback or behind a private authenticated
+network boundary. Use HTTPS and `AEGIS_SECURE_COOKIE=1` for remote access.
+
+Report vulnerabilities privately to the repository owner's GitHub security
+advisory channel after the public repository has been created and private
+reporting has been enabled. Until that channel exists, arrange a private
+contact with the maintainer; do not post credentials or exploitable deployment
+details in a public issue.
+
+The console has admin, operator and viewer roles in one shared workspace.
+Only admins approve execution and manage accounts; operators manage plans,
+assets and results; viewers can read and export. Role/status/password changes
+revoke existing sessions. Role decisions apply when each request is authorized;
+a previously authorized in-flight action is not retroactively canceled.
+Tenant isolation, tamper-evident audit storage, encryption at rest and an
+independent security review remain incomplete.
+
+The runtime blocks out-of-scope origins/paths and reserved addresses, pins
+target connections to validated DNS results, and checks redirects. Lab mode
+intentionally permits private/loopback addresses while still rejecting
+link-local and common metadata addresses. Keep lab mode off outside isolated
+tests. These controls are defense in depth; deployment-level egress restrictions
+remain useful.
+
+Evidence contains metadata, hashes, and explicit policy expectations. HTTP
+response bodies, credential values, cookie values, and query values are not
+persisted by the target transport. User-entered names, goals, notes, rules,
+and custom path segments may themselves contain sensitive information: avoid
+entering secrets in them.
+
+An LLM provider receives operator goals, asset names/types, and check IDs when
+AI planning is selected. It never receives target response bodies or test
+credentials. Configure only trusted provider endpoints on the server.
+
+Schema migration creates a restricted pre-migration backup. Backup files include
+password and session hashes. Offline restore refuses an active workspace,
+preserves a rollback copy, validates the backup and clears restored sessions.
+Keep a separately protected backup and test restoration in another directory.
