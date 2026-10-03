@@ -8,11 +8,13 @@ import io
 import json
 import sqlite3
 import time
-from contextlib import closing
+from contextlib import closing, nullcontext
 from urllib.parse import quote
 
 import anyio
 from starlette.responses import StreamingResponse
+from starlette.requests import ClientDisconnect
+from .export_limits import ExportDeadline
 from . import __version__
 from .coverage import iter_task_rows
 from .store_util import now
@@ -112,25 +114,33 @@ def markdown_report(snapshot, generated_at):
                          json.dumps(finding['evidence'],ensure_ascii=False,indent=2),'```','',finding['remediation'],''])+'\n'
 
 
-def report_chunks(path, format, task_id=None):
+def report_chunks(path, format, task_id=None, permit=None):
     # Threadpool iteration is serialized but may use a different worker each time.
     uri = 'file:'+quote(str(path.resolve()),safe='/')+'?mode=ro'
-    with closing(sqlite3.connect(uri,uri=True,check_same_thread=False)) as db:
-        db.execute('BEGIN')
-        db.execute('SELECT rowid FROM records LIMIT 1').fetchone()  # establish one snapshot before yielding
-        snapshot = Snapshot(db,task_id)
-        generator = {'json':json_report,'csv':csv_report,'markdown':markdown_report}[format]
-        rows = generator(snapshot) if format == 'csv' else generator(snapshot,now())
-        for chunk in rows:
-            yield chunk.encode('utf-8')
+    if permit: permit.check()
+    timeout = min(1,permit.remaining()) if permit else 5
+    try:
+        with closing(sqlite3.connect(uri,uri=True,check_same_thread=False,timeout=timeout)) as db:
+            if permit: db.set_progress_handler(permit.interrupt_sql,1000)
+            db.execute('BEGIN')
+            db.execute('SELECT rowid FROM records LIMIT 1').fetchone()
+            snapshot = Snapshot(db,task_id)
+            generator = {'json':json_report,'csv':csv_report,'markdown':markdown_report}[format]
+            rows = generator(snapshot) if format == 'csv' else generator(snapshot,now())
+            for chunk in rows:
+                if permit: permit.check()
+                yield chunk.encode('utf-8')
+    except sqlite3.OperationalError:
+        if permit: permit.check()
+        raise
 
 
 def next_chunk(iterator):
     return next(iterator,None)
 
 
-async def report_stream(path, format, task_id=None):
-    iterator = report_chunks(path,format,task_id)
+async def report_stream(path, format, task_id=None, permit=None):
+    iterator = report_chunks(path,format,task_id,permit)
     try:
         while (chunk := await anyio.to_thread.run_sync(next_chunk,iterator)) is not None:
             yield chunk
@@ -141,10 +151,39 @@ async def report_stream(path, format, task_id=None):
 
 
 class ReportResponse(StreamingResponse):
-    """Also close a paused iterator when ASGI 2.4 send raises on disconnect."""
+    """Bound the entire send and release the read snapshot and admission slot."""
+    def __init__(self, *args, permit=None, **kwargs):
+        self.permit=permit
+        super().__init__(*args,**kwargs)
+
+    async def listen_for_disconnect(self, receive):
+        await super().listen_for_disconnect(receive)
+        if self.permit:self.permit.cancelled.set()
+
     async def __call__(self, scope, receive, send):
+        completed=False
+        outcome='failed'
+        async def tracked_send(message):
+            nonlocal completed
+            await send(message)
+            if message['type']=='http.response.body' and not message.get('more_body',False):
+                completed=True
         try:
-            await super().__call__(scope, receive, send)
+            with anyio.fail_after(self.permit.remaining()) if self.permit else nullcontext():
+                await super().__call__(scope,receive,tracked_send)
+            outcome='completed' if completed else 'cancelled'
+        except (TimeoutError,ExportDeadline):
+            outcome='timed_out'
+            raise ExportDeadline('보고서 내보내기 시간 제한을 초과했습니다.') from None
+        except BaseException as exc:
+            if isinstance(exc,(ClientDisconnect,anyio.get_cancelled_exc_class(),InterruptedError)):
+                outcome='cancelled'
+            if not (isinstance(exc,InterruptedError) and self.permit and self.permit.cancelled.is_set()):
+                raise
         finally:
-            with anyio.CancelScope(shield=True):
-                await self.body_iterator.aclose()
+            if self.permit:self.permit.cancelled.set()
+            try:
+                with anyio.CancelScope(shield=True):
+                    await self.body_iterator.aclose()
+            finally:
+                if self.permit:self.permit.finish(outcome)

@@ -32,6 +32,7 @@ from .graph import build_graph, GraphNotFound
 from .findings import update_triage, TriageConflict
 from .runtime import ExecutionPolicy
 from .reporting import report_stream, ReportResponse
+from .export_limits import ExportPolicy, ExportPool
 
 
 class Credentials(BaseModel):
@@ -178,6 +179,7 @@ class PasswordReset(BaseModel):
 
 def create_app(data_dir=None, allow_private=None):
     policy = ExecutionPolicy.from_env()
+    exports = ExportPool(ExportPolicy.from_env())
     folder = Path(data_dir or os.environ.get('AEGIS_DATA_DIR', 'data'))
     lease = WorkspaceLease(folder)
     try:
@@ -254,6 +256,7 @@ def create_app(data_dir=None, allow_private=None):
 
     app = FastAPI(title='Open Aegis', version=__version__, lifespan=lifespan)
     app.state.store, app.state.engine = store, engine
+    app.state.exports = exports
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
         # Pydantic's default error payload includes the invalid input. Never echo
@@ -600,7 +603,7 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/runtime', dependencies=auth)
     def runtime():
-        return engine.metrics()
+        return {**engine.metrics(), 'exports':exports.metrics()}
 
     @app.post('/api/tasks/{task_id}/stop', dependencies=operations)
     def stop(task_id: str):
@@ -807,9 +810,17 @@ def create_app(data_dir=None, allow_private=None):
             raise HTTPException(404, '작업이 없습니다.')
         media, suffix = {'json':('application/json','json'), 'csv':('text/csv','csv'),
                          'markdown':('text/markdown','md')}[format]
-        return ReportResponse(report_stream(store.path, format, task_id), media_type=media,
-                                 headers={'Content-Disposition':f'attachment; filename="aegis-report.{suffix}"',
-                                          'Cache-Control':'no-store'})
+        permit = exports.acquire()
+        if permit is None:
+            raise HTTPException(429, '보고서 다운로드가 모두 사용 중입니다. 잠시 후 다시 시도하세요.',
+                                headers={'Retry-After':'5'})
+        try:
+            return ReportResponse(report_stream(store.path,format,task_id,permit), permit=permit, media_type=media,
+                                  headers={'Content-Disposition':f'attachment; filename="aegis-report.{suffix}"',
+                                           'Cache-Control':'no-store'})
+        except BaseException:
+            permit.finish('failed')
+            raise
 
     dist = Path(os.environ.get('AEGIS_WEB_DIR', str(Path(__file__).resolve().parent.parent / 'web' / 'dist')))
     if dist.exists():

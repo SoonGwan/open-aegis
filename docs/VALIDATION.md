@@ -356,3 +356,29 @@ on 390×844 has no document overflow.
   Runtime dependency check passed; anyio was already pinned in the lockfile and is now
   declared as a direct dependency.
   Contracts, snapshot lifetime and outstanding quotas/timeouts: [REPORTS.md](REPORTS.md).
+
+
+## Export admission, deadline and settings metrics (2026-10-04)
+
+- Final backend suite: **172 passed**, one existing Starlette/httpx deprecation warning.
+  Export/report subset: **18 passed**. Frontend build, **10** navigation tests and the
+  nine selected semantic contrast pairs passed.
+- An initial full-suite run collided with a parallel frontend build removing dist/assets
+  and had one fixture setup error (170 passed). Build and subsequent suites were sequential;
+  171 passed before the final SQL-disconnect test, and the final 172-test suite passed.
+- Eight concurrent admission attempts accept exactly two, reject six, and release each
+  slot once. HTTP capacity rejection returns 429/Retry-After before stream creation;
+  missing-task validation still returns 404 and capacity recovers after release.
+- Slow ASGI sends and a real expensive recursive SQLite query hit monotonic deadlines,
+  release the read connection/slot and increment timed_out. A disconnect event interrupts
+  active SQL before a ten-second deadline, completes cleanup in under one second, and
+  increments cancelled. ASGI 2.0 blocked-send deadline was also checked separately.
+- The initial SQL timeout inherited OSError through TimeoutError and was translated by
+  ASGI 2.4 into ClientDisconnect. A dedicated non-OSError deadline type fixes classification;
+  SQL timeout, send error, disconnect and failure outcome tests now pass.
+- Browser settings QA shows 0/2 downloads, 120-second limit and all outcome counters.
+  A real 355,845-byte HTTP report increments completed to one, stays at zero active and
+  updates the browser panel on polling. Capture: `artifacts/v1-export-limits-desktop.jpg`.
+- Limits are process-local; individual Python/native operations remain cooperative and
+  multi-process quotas, retention and load/soak verification remain outstanding.
+  Configuration and contracts: [REPORTS.md](REPORTS.md).

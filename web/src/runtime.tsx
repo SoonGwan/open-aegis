@@ -14,6 +14,15 @@ export type ExecutionPolicy = {
   pending_limit: number;
 };
 type Runtime = {
+  exports?: {
+    policy: { parallel: number; timeout: number };
+    active: number;
+    completed: number;
+    cancelled: number;
+    timed_out: number;
+    failed: number;
+    rejected: number;
+  };
   policy: ExecutionPolicy;
   tasks: Record<string, number>;
   oldest_queue_seconds: number;
@@ -152,6 +161,20 @@ export function RuntimePanel() {
                 ],
                 ["요청 재시도", data.requests.retries],
                 ["DNS 처리 / 대기", `${data.dns.active} / ${data.dns.queued}`],
+                ...(data.exports
+                  ? [
+                      [
+                        "보고서 다운로드 / 한도",
+                        `${data.exports.active} / ${data.exports.policy.parallel}`,
+                      ],
+                      ["보고서 시간 제한", `${data.exports.policy.timeout}초`],
+                      ["이번 서버 보고서 완료", data.exports.completed],
+                      ["보고서 동시 실행 한도 거절", data.exports.rejected],
+                      ["보고서 시간 초과", data.exports.timed_out],
+                      ["보고서 다운로드 중단", data.exports.cancelled],
+                      ["보고서 처리 오류", data.exports.failed],
+                    ]
+                  : []),
               ].map(([label, value]) => (
                 <div className="runtime-metric" key={label}>
                   <span>{label}</span>
@@ -161,7 +184,8 @@ export function RuntimePanel() {
             </div>
             <p className="subtle">
               작업 수와 시간 초과는 저장된 전체 기록 기준입니다.
-              요청·재시도·속도 제한 지표는 서버를 재시작하면 초기화됩니다.
+              요청·재시도·속도 제한·보고서 지표는 서버를 재시작하면
+              초기화됩니다.
             </p>
             <p className="subtle">
               마지막 갱신:{" "}

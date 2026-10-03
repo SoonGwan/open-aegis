@@ -38,8 +38,29 @@ path (disconnect event or send failure). No whole-workspace Python list or joine
 string is built. Memory still depends on the largest individual stored record, its JSON
 encoding and SQLite's cache; this is not a universal process-memory limit.
 
-A slow download keeps its read snapshot open and can delay WAL checkpointing. There is
-currently no export-specific concurrency quota, wall-clock timeout or retention policy.
+A slow download keeps its read snapshot open and can delay WAL checkpointing. All
+formats and authenticated roles share admission slots per server process. The default
+is **2 concurrent exports** and **120 seconds** from admission, including SQL, encoding
+and sends. Excess requests are rejected before opening a stream with **429** and
+`Retry-After: 5`; there is no waiting queue. Configure and restart with:
+
+| Environment | Default | Accepted range |
+| --- | --- | --- |
+| `AEGIS_EXPORT_PARALLEL` | 2 | integer 1–4 |
+| `AEGIS_EXPORT_TIMEOUT` | 120 | finite seconds 1–600 |
+
+Invalid configuration fails before the workspace lock opens and does not echo the value.
+These limits are independent of scan approvals and do not change target request budgets.
+The entire response has a monotonic deadline, SQLite progress callbacks interrupt long
+queries, and SQLite lock waits are capped at the smaller of one second or remaining time.
+Disconnect events also interrupt an active SQL worker. Admission slots release exactly
+once on completion, cancellation, timeout or failure.
+
+SQLite cancellation is cooperative. An individual Python decode/encode operation or
+blocking OS call is not forcibly preempted; cleanup waits for an active worker to finish.
+The ASGI send-error path detects disconnect at the next send, whereas the disconnect-event
+path can signal an active SQL worker. This is not a hard process CPU/RSS limit. There is
+still no retention policy or multi-process shared quota.
 A corrupt record or connection failure after response headers can leave an incomplete
 file; clients must retry a failed download rather than treat partial bytes as complete.
 The HTTP response streams without Content-Length. No schema migration is needed.
@@ -53,3 +74,17 @@ and absence of a sorting temporary tree. A 6,000-record-per-collection JSON expo
 12 MB while measured Python allocations stay below 2 MB. The allocation test excludes
 SQLite native allocations and does not establish an RSS or long-running load bound.
 Existing coverage, secret-redaction and triage export tests also pass.
+
+
+## Runtime counters
+
+`GET /api/runtime` adds `exports` with `policy`, `active`, `started`, `completed`,
+`cancelled`, `timed_out`, `failed` and `rejected`. It requires authentication and counts
+reset at process restart. Completed means ASGI accepted the final body send, not proof
+that the client saved its file. The settings screen refreshes export policy/counters
+alongside the existing execution metrics every four seconds. Timeout after headers
+aborts the response instead of returning a valid truncated report or replacing its status.
+
+`tests/test_export_limits.py` covers invalid environment values, atomic admission under
+concurrent threads, rejection before stream creation, blocked-send timeouts, real SQL
+interruption, prompt disconnect during SQL, exactly-once release and outcome counters.
