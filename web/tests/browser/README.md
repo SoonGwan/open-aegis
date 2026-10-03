@@ -54,3 +54,20 @@ metrics script in that app HTML. These overrides exist only in this manually lau
 QA entry, bound to 127.0.0.1; they are not in create_app, the normal launchers, Vite's
 production entry or the production bundle. Authentication and operation checks remain.
 Use isolated QA data and stop this server after review. This fixture is not an npm test.
+
+## API policy editor component widths
+
+Run `npm --prefix web run dev -- --port 8812 --strictPort`, then open
+`http://127.0.0.1:8812/tests/browser/policy-editor-review.html`.
+The 320/390/768 buttons resize the actual document containing the production policy
+editor and stylesheet, with one explicitly synthetic rule including schema/ownership.
+It makes no API/target requests and is outside the production entry. The frame's form
+prevents submission; this fixture cannot prove persistence or server error recovery.
+
+Check column stacking, labels, textarea/fieldset overflow, and reachability by scrolling
+the frame. The displayed metrics include selected textarea, fieldset and legend bounds.
+They do not prove clipping, touch/zoom behavior or real phone compatibility. For input
+and keyboard checks, open `policy-editor-frame.html` directly: add/delete rules, toggle
+optional fields, switch form/JSON, and try invalid schema or unsupported rule fields.
+Full registration, error/retry, native select interaction, 20-rule workload and assistive
+technology require separate real-app review.

@@ -110,7 +110,9 @@ AEGIS_LAB_HARDENED=1 .venv/bin/python examples/lab_server.py
 
 ### API 권한 규칙
 
-자산 등록의 ‘API 권한 규칙’에 다음 형식의 JSON 배열을 입력합니다.
+자산 등록의 ‘API 권한 규칙 설정’에서 규칙을 추가하고 경로·역할·예상 접근 결과를
+입력합니다. 응답 스키마·소유권 검사는 선택 사항입니다. ‘JSON 편집’에서는 다음
+형식의 배열을 직접 입력할 수도 있습니다.
 
 ```json
 [

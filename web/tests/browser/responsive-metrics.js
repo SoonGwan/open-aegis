@@ -4,7 +4,7 @@ setInterval(() => {
     scope = dialog || document.querySelector("main");
   const outside = [],
     contained = [];
-  for (const e of scope?.querySelectorAll("button,input,select,h1,section") ||
+  for (const e of scope?.querySelectorAll("button,input,select,textarea,fieldset,legend,h1,section") ||
     []) {
     const r = e.getBoundingClientRect();
     if (

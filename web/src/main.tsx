@@ -61,6 +61,7 @@ import {
 import Modal from "./components/Modal";
 import { ReportDownload } from "./ReportDownload";
 import { PolicyExport } from "./PolicyExport";
+import { PolicyRulesEditor } from "./PolicyRulesEditor";
 import type { ReportFormat } from "./report-download";
 import { UserPanel, PasswordPanel, roleNames, type User } from "./identity";
 
@@ -2362,29 +2363,8 @@ function App() {
                     />
                   </label>
                 </div>
-                <details className="form-details">
-                  <summary>API 권한 규칙 설정 (선택)</summary>
-                  <p>
-                    GET 전용 규칙입니다. 인증 값은 서버의 AEGIS_TEST_*
-                    환경변수로 연결하세요.
-                  </p>
-                  <textarea
-                    name="rules"
-                    defaultValue={
-                      editingAsset
-                        ? JSON.stringify(
-                            editingAsset.authorization_rules,
-                            null,
-                            2,
-                          )
-                        : ""
-                    }
-                    rows={6}
-                    placeholder={
-                      '[{"path":"/api/account","role":"anonymous","expected_allowed":false,"credential_env":""}]'
-                    }
-                  />
-                </details>
+                <PolicyRulesEditor key={editingAsset?.id || "new-asset"}
+                  initial={editingAsset?.authorization_rules || []} disabled={busy} />
                 <label className="checkbox-label">
                   <input name="authorized" type="checkbox" required />이 자산에
                   대한 검증 권한이 있으며 등록 범위를 확인했습니다.

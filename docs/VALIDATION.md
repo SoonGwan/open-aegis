@@ -792,3 +792,33 @@ on 390×844 has no document overflow.
   down cleanly. Main preview loads the final bundle and shows the legacy-policy reason
   on its existing task; health is good and target traffic remains three. No target
   verification/approval occurs. The dedicated policy editor and full journeys remain open.
+
+## Structured API policy editor (2026-10-04)
+
+- Asset create/edit now offers up to 20 GET rule forms, schema JSON and ownership
+  options, plus advanced whole-array JSON editing. Unknown fields or unrepresentable
+  types prevent form conversion without discarding the original JSON. Inactive options
+  serialize to null; their draft text survives only while remaining in form mode.
+- Frontend **28 tests passed**, TypeScript/Vite build passed. New tests cover nested
+  schema/ownership round trips, false permission preservation, unknown-field refusal,
+  invalid JSON/count/schema shapes and UTF-8 byte limits. Bundle:
+  `index-9ZWrOIk-.js` / `index-7BINzslS.css`. Backend source is unchanged; the prior
+  **235-test** backend regression was not rerun for this UI change.
+- In an isolated synthetic workspace, desktop browser QA verified rule add/delete
+  focus, form/JSON conversion, unknown-field preservation, invalid schema blocking,
+  and a server 422 for unsupported $ref with inputs retained. Saving and reopening
+  restores schema/ownership and the false permission. Changing to true via JSON then
+  restoring the form selects the correct allow value and persists revision 3.
+  Native select selection via automation was inconclusive; its full interaction is
+  not claimed as verified. The fixture generated **zero target requests**. Evidence:
+  `artifacts/policy-editor-saved.json`, `artifacts/policy-editor-updated.json`.
+- Desktop saved-form and 320px component screenshots were visually inspected:
+  `artifacts/v1-policy-editor-saved.jpg`, `artifacts/v1-policy-editor-320.jpg`.
+  Standalone actual-component iframe documents at 320/390px have root client/scroll
+  widths 305/375 respectively (normal scrollbar space), with no selected uncontained
+  horizontal overflow. Metrics include textarea/fieldset/legend bounds:
+  `artifacts/policy-editor-mobile-geometry.json`. This is component geometry, not a
+  full mobile asset registration journey. Below-fold ownership controls, touch/zoom,
+  real phone browsers, screen readers and the maximum 20-rule workload remain open.
+- QA tabs leave the fixture and both isolated servers stop. Main preview remains
+  healthy at version 0.1.0 with two assets and three target traffic records, unchanged.

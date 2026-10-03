@@ -3450,3 +3450,13 @@ pre,
 }
 .policy-export .detail-heading { margin-top: 0; }
 .policy-command { display: block; overflow-wrap: anywhere; white-space: normal; }
+
+.policy-rule-editor { overflow-wrap: anywhere; }
+.policy-editor-controls { min-width: 0; border: 0; padding: 0; }
+.rule-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.rule-toolbar [aria-pressed="true"] { background: var(--montage-background-normal-normal); box-shadow: 3px 3px 0 var(--ink); }
+.policy-rule-card { min-width: 0; padding: 16px; border: 2px solid var(--ink); background: var(--montage-background-normal-normal); }
+.policy-rule-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.policy-rule-grid label { min-width: 0; }
+.policy-rule-grid .rule-wide { grid-column: 1 / -1; }
+@media (max-width: 600px) { .policy-rule-grid { grid-template-columns: minmax(0, 1fr); } }
