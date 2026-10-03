@@ -26,6 +26,7 @@ export function ChatPanel({
   const [saved, setSaved] = useState(false);
   const active = useRef(true);
   const submitting = useRef(false);
+  const attempt = useRef<{ content: string; request_id: string } | null>(null);
   const messageBox = useRef<HTMLDivElement>(null);
   const pendingReply = useRef<string | null>(null);
   const records = useRecords<Message>(
@@ -58,6 +59,13 @@ export function ChatPanel({
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (submitting.current || !canOperate || !question.trim()) return;
+    if (!attempt.current || attempt.current.content !== question)
+      attempt.current = {
+        content: question,
+        request_id: Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+          byte.toString(16).padStart(2, "0"),
+        ).join(""),
+      };
     submitting.current = true;
     setBusy(true);
     setError("");
@@ -66,9 +74,10 @@ export function ChatPanel({
       const reply = await api<Message>(
         `/tasks/${encodeURIComponent(taskId)}/messages`,
         "POST",
-        { content: question },
+        attempt.current,
       );
       if (!active.current) return;
+      attempt.current = null;
       pendingReply.current = reply.id;
       setQuestion("");
       setSearch("");
@@ -155,7 +164,7 @@ export function ChatPanel({
               className="primary"
               disabled={busy || !canOperate || !question.trim()}
             >
-              {busy ? "요약 중…" : "질문하기"}
+              {busy ? "요약 중…" : error ? "질문 다시 보내기" : "질문하기"}
               <ArrowRight size={14} />
             </button>
           </form>

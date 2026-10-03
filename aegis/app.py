@@ -22,7 +22,7 @@ from . import __version__
 from .checks import CATALOG, CHECK_IDS
 from .engine import Engine
 from .network import in_scope, normalize_url
-from .store import Store, identifier, now, compact_finding
+from .store import Store, identifier, now, compact_finding, MessageRequestConflict
 from .auth import password_hash, public_user, new_user
 from .maintenance import WorkspaceLease
 from .migrations import SCHEMA_VERSION
@@ -120,6 +120,7 @@ class NoteInput(BaseModel):
 
 class MessageInput(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
+    request_id: str | None = Field(default=None, min_length=16, max_length=80, pattern=r'^[a-zA-Z0-9_-]+$')
 
 
 class FindingUpdate(BaseModel):
@@ -628,7 +629,7 @@ def create_app(data_dir=None, allow_private=None):
                           filters={'task_id':task_id})
 
     @app.post('/api/tasks/{task_id}/messages', dependencies=operations)
-    def ask(task_id: str, data: MessageInput):
+    def ask(task_id: str, data: MessageInput, actor=Depends(operator)):
         task = store.get('tasks', task_id)
         if not task:
             raise HTTPException(404, '작업이 없습니다.')
@@ -649,6 +650,16 @@ def create_app(data_dir=None, allow_private=None):
         question = {'id':identifier(), 'task_id':task_id, 'role':'user', 'content':data.content, 'created_at':timestamp}
         reply = {'id':identifier(), 'task_id':task_id, 'role':'assistant', 'content':'\n\n'.join(answer),
                  'finding_ids':[f['id'] for f in findings], 'created_at':timestamp}
+        if data.request_id:
+            # Separate namespaces from legacy random IDs; the token is scoped to actor/task.
+            digest = hashlib.sha256(json.dumps([actor['id'], task_id, data.request_id],
+                                              separators=(',', ':')).encode()).hexdigest()
+            question['id'] = 'question-' + digest
+            reply['id'] = 'reply-' + digest
+            try:
+                return store.put_message_exchange(question, reply)
+            except MessageRequestConflict:
+                raise HTTPException(409, '같은 전송 ID에 다른 질문을 사용할 수 없습니다.')
         store.put_many([('messages',question),('messages',reply)])
         return reply
 

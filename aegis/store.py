@@ -19,6 +19,10 @@ def compact_finding(record):
             'evidence_reference_count':len(record.get('evidence_ids') or []), 'related_ids_omitted':True}
 
 
+class MessageRequestConflict(ValueError):
+    """A committed message request key was reused with different content."""
+
+
 class ClosingConnection(sqlite3.Connection):
     def __exit__(self, *args):
         try:
@@ -53,6 +57,26 @@ class Store:
         with self.lock, self.connect() as db:
             db.executemany("INSERT INTO records VALUES (?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data",
                            [(kind, record['id'], json.dumps(record, ensure_ascii=False)) for kind, record in records])
+
+    def put_message_exchange(self, question, reply):
+        """Commit one exchange, or replay its original reply under a SQLite write lock."""
+        with self.lock, self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            existing = db.execute("SELECT data FROM records WHERE kind='messages' AND id=?",
+                                  (question['id'],)).fetchone()
+            if existing:
+                original = json.loads(existing['data'])
+                if original['content'] != question['content']:
+                    raise MessageRequestConflict('message request content conflict')
+                stored = db.execute("SELECT data FROM records WHERE kind='messages' AND id=?",
+                                    (reply['id'],)).fetchone()
+                if not stored:
+                    raise RuntimeError('message exchange is incomplete')
+                return json.loads(stored['data'])
+            db.executemany("INSERT INTO records VALUES ('messages',?,?)",
+                           [(record['id'], json.dumps(record, ensure_ascii=False))
+                            for record in (question, reply)])
+        return reply
 
     def get(self, kind, id, *, compact_findings=False):
         with self.connect() as db:

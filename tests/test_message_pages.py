@@ -74,3 +74,72 @@ def test_assistant_pair_rolls_back_on_storage_failure(client):
     with pytest.raises(sqlite3.IntegrityError,match='test failure'):
         client.post('/api/tasks/chat-task/messages',json={'content':'검증 요약'})
     assert client.get('/api/tasks/chat-task/messages/page').json()['total']==0
+
+
+def test_message_retry_replays_committed_reply_after_lost_response(client, monkeypatch):
+    store = client.app.state.store
+    seed(store, 0)
+    path = '/api/tasks/chat-task/messages'
+    payload = {'content':'검증 요약', 'request_id':'retry-request-0001'}
+    commit = store.put_message_exchange
+    captured = []
+    def lost_response(question, reply):
+        captured.append(commit(question, reply))
+        raise ConnectionError('response lost after commit')
+    monkeypatch.setattr(store, 'put_message_exchange', lost_response)
+    with pytest.raises(ConnectionError, match='response lost'):
+        client.post(path, json=payload)
+    monkeypatch.setattr(store, 'put_message_exchange', commit)
+    store.patch('tasks', 'chat-task', status='failed', errors=9)
+    response = client.post(path, json=payload)
+    assert response.status_code == 200 and response.json() == captured[0]
+    assert client.get(path+'/page').json()['total'] == 2
+    assert client.post(path, json={**payload,'content':'다른 질문'}).status_code == 409
+    assert client.get(path+'/page').json()['total'] == 2
+    assert client.post(path, json={**payload,'request_id':'retry-request-0002'}).json()['id'] != response.json()['id']
+    assert client.get(path+'/page').json()['total'] == 4
+
+
+def test_message_request_scope_permissions_and_validation(client):
+    seed(client.app.state.store, 0)
+    path = '/api/tasks/chat-task/messages'
+    payload = {'content':'요약', 'request_id':'same-token-000001'}
+    original = client.post(path, json=payload).json()
+    user = add(client, 'operator')
+    with login(client.app, user['username']) as other:
+        response = other.post(path, json=payload)
+        assert response.status_code == 200 and response.json()['id'] != original['id']
+    store = client.app.state.store
+    store.put('tasks', {**store.get('tasks','chat-task'),'id':'second-task'})
+    assert client.post('/api/tasks/second-task/messages',json=payload).json()['id'] != original['id']
+    for invalid in ('short', 'x'*81, 'spaces are invalid', 'invalid/token-0001'):
+        assert client.post(path,json={**payload,'request_id':invalid}).status_code == 422
+    viewer = add(client,'viewer')
+    with login(client.app,viewer['username']) as read:
+        assert read.post(path,json=payload).status_code == 403
+    assert client.get(path+'/page').json()['total'] == 4
+
+
+def test_message_exchange_concurrent_connections_and_rollback(client):
+    from concurrent.futures import ThreadPoolExecutor
+    from aegis.store import Store
+    store = client.app.state.store
+    seed(store,0)
+    stores = [Store(store.path) for _ in range(8)]
+    question = {'id':'question-race','task_id':'chat-task','role':'user','content':'same','created_at':0}
+    def save(i):
+        return stores[i].put_message_exchange(question,
+            {'id':'reply-race','task_id':'chat-task','role':'assistant','content':f'answer {i}','created_at':i})
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        replies = list(pool.map(save, range(8)))
+    assert all(reply == replies[0] for reply in replies)
+    assert store.page('messages',filters={'task_id':'chat-task'})['total'] == 2
+    # Restart/reopen semantics: the original response lives in the database, not memory.
+    assert Store(store.path).put_message_exchange(question, {'id':'reply-race'}) == replies[0]
+    with store.connect() as db:
+        db.execute("CREATE TRIGGER fail_keyed_reply BEFORE INSERT ON records WHEN NEW.kind='messages' AND json_extract(NEW.data,'$.role')='assistant' BEGIN SELECT RAISE(ABORT,'keyed failure'); END")
+    with pytest.raises(sqlite3.IntegrityError,match='keyed failure'):
+        store.put_message_exchange({**question,'id':'question-failure'},
+            {'id':'reply-failure','task_id':'chat-task','role':'assistant','content':'fail'})
+    assert store.get('messages','question-failure') is None
+    assert store.get('messages','reply-failure') is None

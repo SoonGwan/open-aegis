@@ -455,3 +455,30 @@ on 390×844 has no document overflow.
 - Browser Blob buffering has no hard resource bound. Unexpected schema with a valid
   media type/transport, actual saved-file contents, mobile/assistive technology and
   long-running download load remain unverified. Contract: [REPORTS.md](REPORTS.md).
+
+
+## Idempotent task question retries (2026-10-04)
+
+- Backend full suite: **175 passed**, one existing Starlette/httpx deprecation warning.
+  After narrowing conflict handling to MessageRequestConflict, the seven message tests
+  passed again. Frontend tests: **16 passed**; TypeScript/Vite build passed.
+- A test commits a keyed question/reply then loses the response. Retrying after changing
+  task state returns the original reply exactly and leaves two messages. Different
+  content with the same key is 409; a fresh key creates a new exchange.
+- API tests verify actor/task isolation, invalid token bounds and viewer restrictions.
+  Eight independent Store instances concurrently commit the same exchange and all
+  receive one identical reply. Reopening the database also replays it. An insert trigger
+  rejecting the reply rolls back its question. Legacy unkeyed pair tests still pass.
+- Browser QA on an isolated app replaces the first successful POST response with 503
+  after committing it. The screen preserves the question and shows '질문 다시 보내기'.
+  Database message count is 69 after that request and remains 69 after UI retry, with
+  one matching question. The screen clears the input, shows the stored reply and success
+  status. Target traffic remains 33; no scan runs. This fixture models loss after commit
+  with an HTTP failure, not a literal socket disconnect.
+- Capture: `artifacts/v1-chat-retry-desktop.jpg`. Server deduplication persists in the
+  message records; it is not a per-process cache. Existing auth and operation checks
+  run on replay. No migration is required. Request IDs are optional for legacy clients.
+- The UI keeps an unresolved key only in its mounted panel. Closing the detail, document
+  reload, and question edits can create a new intent; automatic unresolved-intent recovery
+  remains outstanding. The client uses crypto.getRandomValues for its 128-bit key so
+  generation does not depend on secure-context-only randomUUID.
