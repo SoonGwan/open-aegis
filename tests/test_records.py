@@ -83,7 +83,7 @@ def test_overview_and_legacy_arrays_are_bounded_with_complete_counts(client, mon
 def test_asset_history_count_and_severity_stats_do_not_use_preview_slice(client):
     store = client.app.state.store
     store.put('assets', {'id': 'old', 'name': 'Old asset', 'archived_at': None})
-    store.put('coverage', {'id': 'old-proof', 'asset_id': 'old', 'check': 'security_headers'})
+    store.put('coverage', {'id': 'old-proof', 'asset_id': 'old', 'check': 'security_headers', 'status': 'completed'})
     for index in range(110):
         store.put('coverage', {'id': str(index), 'asset_id': 'other', 'check': 'security_headers'})
         store.put('findings', {'id': str(index), 'severity': 'high', 'status': 'open'})

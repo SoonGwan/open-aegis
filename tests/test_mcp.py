@@ -26,3 +26,16 @@ def test_mcp_handles_encoded_database_filename_without_mutation(tmp_path):
     before = path.read_bytes()
     assert Reader(path).call('list_assets', {})[0]['name'] == 'Encoded path'
     assert path.read_bytes() == before
+
+
+def test_mcp_task_reports_missing_legacy_check_without_writing(tmp_path, monkeypatch):
+    store = Store(tmp_path/'coverage.db')
+    store.put('tasks', {'id':'t', 'status':'completed', 'created_at':1,
+                        'scope_snapshot':[{'id':'asset'}], 'checks':['security_headers']})
+    reader = Reader(store.path)
+    before = store.path.read_bytes()
+    monkeypatch.setattr(reader, 'all', lambda *_: (_ for _ in ()).throw(AssertionError('Unbounded read')))
+    result = reader.call('get_task', {'id':'t'})
+    assert result['coverage'][0]['status'] == 'not_recorded'
+    assert store.get('coverage', result['coverage'][0]['id']) is None
+    assert store.path.read_bytes() == before

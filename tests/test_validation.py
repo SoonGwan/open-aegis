@@ -222,7 +222,9 @@ def test_missing_test_credential_never_marks_authorization_completed(client,lab)
     client.post('/api/tasks/'+pending['id']+'/approve')
     result=finish(client,pending['id'])
     assert result['task']['status'] == 'failed'
-    assert result['coverage'] == []
+    assert len(result['coverage']) == 1
+    assert result['coverage'][0]['status'] == 'failed'
+    assert result['coverage'][0]['error_type'] == 'ValueError'
     assert len(client.get('/api/traffic').json()) == 1
 
 

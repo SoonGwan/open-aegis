@@ -35,10 +35,13 @@ class Store:
         return db
 
     def put(self, kind, record):
-        with self.lock, self.connect() as db:
-            db.execute("INSERT INTO records VALUES (?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data",
-                       (kind, record['id'], json.dumps(record, ensure_ascii=False)))
+        self.put_many([(kind, record)])
         return record
+
+    def put_many(self, records):
+        with self.lock, self.connect() as db:
+            db.executemany("INSERT INTO records VALUES (?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data",
+                           [(kind, record['id'], json.dumps(record, ensure_ascii=False)) for kind, record in records])
 
     def get(self, kind, id):
         with self.connect() as db:
@@ -96,9 +99,13 @@ class Store:
                               (*args, limit, offset)).fetchall()
             items = [json.loads(row['data']) for row in rows]
             if kind == 'assets' and items:
-                counts = dict(db.execute("SELECT json_extract(data,'$.asset_id'),count(DISTINCT json_extract(data,'$.check')) FROM records WHERE kind='coverage' AND json_extract(data,'$.asset_id') IN (" + ','.join('?' for _ in items) + ") AND coalesce(json_extract(data,'$.status'),'completed')='completed' GROUP BY json_extract(data,'$.asset_id')", [item['id'] for item in items]).fetchall())
+                counts = dict(db.execute("SELECT json_extract(data,'$.asset_id'),count(DISTINCT json_extract(data,'$.check')) FROM records WHERE kind='coverage' AND json_extract(data,'$.asset_id') IN (" + ','.join('?' for _ in items) + ") AND json_extract(data,'$.status')='completed' GROUP BY json_extract(data,'$.asset_id')", [item['id'] for item in items]).fetchall())
                 for item in items:
                     item['completed_check_count'] = counts.get(item['id'], 0)
+                from .coverage import latest_summary
+                latest = latest_summary(db, [item['id'] for item in items])['assets']
+                for item in items:
+                    item['coverage_summary'] = latest.get(item['id'])
         return {'items': items, 'total': total,
                 'limit': limit, 'offset': offset, 'snapshot': snapshot, 'has_more': offset + len(rows) < total}
 

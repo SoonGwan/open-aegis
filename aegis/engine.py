@@ -8,6 +8,7 @@ from .checks import CATALOG, CHECK_IDS, run_check
 from .network import Transport
 from .llm import completion
 from .store import identifier, now
+from .coverage import slot, finish_remaining
 
 
 class Engine:
@@ -19,6 +20,7 @@ class Engine:
         self.lock = threading.RLock()
         for task in store.all('tasks'):
             if task['status'] in ('running', 'queued', 'stopping'):
+                finish_remaining(store, task, 'interrupted', '서버 재시작으로 실행 결과를 확인할 수 없습니다.')
                 store.patch('tasks', task['id'], status='interrupted', finished_at=now())
                 store.event(task['id'], '서버 재시작으로 작업이 중단되었습니다. 새 승인 작업으로 다시 실행하세요.', 'warning')
 
@@ -46,6 +48,8 @@ class Engine:
             if task_id in self.stops:
                 self.stops[task_id].set()
             status = 'rejected' if task['status'] == 'pending' else 'stopping'
+            if status == 'rejected':
+                finish_remaining(self.store, task, 'cancelled', '실행 승인이 거절되었습니다.')
             self.store.patch('tasks', task_id, status=status)
             self.store.event(task_id, '작업 중지 요청을 기록했습니다.', 'warning')
             return self.store.get('tasks', task_id)
@@ -82,7 +86,10 @@ class Engine:
         task = self.store.get('tasks', task_id)
         stop = self.stops[task_id]
         if stop.is_set():
+            finish_remaining(self.store, task, 'cancelled', '실행 전에 중지되었습니다.')
             self.store.patch('tasks', task_id, status='stopped', finished_at=now())
+            with self.lock:
+                self.stops.pop(task_id, None)
             return
         self.store.patch('tasks', task_id, status='running', started_at=now())
         self.store.event(task_id, 'Planner가 검증 계획을 준비합니다.')
@@ -116,10 +123,14 @@ class Engine:
                 elif conclusion == 'reproduced':
                     self.store.patch('findings', finding['id'], status='open', updated_at=now())
                 self.store.event(task_id, '재검증 결과를 기록했습니다.', detail={'conclusion': conclusion})
+            finish_remaining(self.store, task, 'cancelled' if status == 'stopped' else 'failed',
+                             '중지되어 실행하지 못했습니다.' if status == 'stopped' else '작업 종료 전 결과를 기록하지 못했습니다.')
             self.store.patch('tasks', task_id, status=status, finished_at=now(), errors=errors)
             self.store.event(task_id, '작업 종료: ' + status, 'warning' if errors else 'info', {'errors': errors})
         except Exception:
-            self.store.patch('tasks', task_id, status='failed', finished_at=now())
+            finish_remaining(self.store, task, 'failed', '내부 오류로 검증 결과를 기록하지 못했습니다.')
+            current = self.store.get('tasks', task_id)
+            self.store.patch('tasks', task_id, status='failed', finished_at=now(), errors=max(1, current['errors']))
             self.store.event(task_id, '작업 실행 중 내부 오류가 발생했습니다. 서버 로그를 확인하세요.', 'error')
         finally:
             with self.lock:
@@ -128,6 +139,9 @@ class Engine:
     def validate_asset(self, task, asset, checks, stop):
         task_id = task['id']
         outcome = {'asset_id': asset['id'], 'completed_checks': [], 'fingerprints': [], 'errors': []}
+        def coverage(check, status, **details):
+            record = self.store.get('coverage', f"{task_id}:{asset['id']}:{check}") or slot(task, asset, check)
+            return self.store.put('coverage', {**record, 'status': status, 'updated_at': now(), **details})
         def record(entry):
             self.store.put('traffic', dict(entry, id=identifier(), task_id=task_id, asset_id=asset['id'], created_at=now()))
         transport = Transport(asset['url'], self.allow_private, record, stop.is_set)
@@ -139,17 +153,23 @@ class Engine:
         except Exception as exc:
             outcome['errors'].append(type(exc).__name__)
             self.store.event(task_id, '대상 연결 또는 범위 검증 실패: ' + asset['name'], 'error', {'error_type': type(exc).__name__, 'asset_id': asset['id']})
+            for check in checks:
+                coverage(check, 'cancelled' if stop.is_set() else 'failed',
+                         reason='요청이 중지되었습니다.' if stop.is_set() else '기본 응답 또는 연결을 확인하지 못했습니다.', error_type=type(exc).__name__)
             return outcome
         for check in checks:
             if stop.is_set():
+                for remaining in checks[checks.index(check):]:
+                    coverage(remaining, 'cancelled', reason='작업 중지로 실행하지 못했습니다.')
                 break
+            coverage(check, 'running', reason='검증 실행 중입니다.', started_at=now())
             self.store.event(task_id, '검증 실행: ' + check, detail={'asset_id': asset['id'], 'check': check})
             try:
                 findings, observed, skipped = run_check(check, asset, transport, response)
                 if skipped:
+                    coverage(check, 'skipped', reason=skipped, finished_at=now())
                     self.store.event(task_id, skipped, 'warning', {'check': check, 'asset_id': asset['id']})
                     continue
-                outcome['completed_checks'].append(check)
                 for item in findings:
                     fingerprint = hashlib.sha256(f"{asset['id']}:{item['check']}:{item['code']}".encode()).hexdigest()
                     outcome['fingerprints'].append(fingerprint)
@@ -167,10 +187,13 @@ class Engine:
                 for url in observed:
                     self.store.put('observations', {'id': hashlib.sha256((asset['id'] + url).encode()).hexdigest()[:16],
                         'asset_id': asset['id'], 'task_id': task_id, 'url': url, 'created_at': now(), 'verified': False})
-                self.store.put('coverage', {'id': f"{task_id}:{asset['id']}:{check}", 'task_id': task_id,
-                                          'asset_id': asset['id'], 'check': check, 'status': 'completed', 'created_at': now()})
+                coverage(check, 'completed', reason='승인된 검증을 완료했습니다.', finished_at=now())
+                outcome['completed_checks'].append(check)
             except Exception as exc:
                 outcome['errors'].append(check)
+                coverage(check, 'cancelled' if stop.is_set() else 'failed',
+                         reason='요청이 중지되었습니다.' if stop.is_set() else '검증 결과를 확인하지 못했습니다.',
+                         error_type=type(exc).__name__, finished_at=now())
                 self.store.event(task_id, '검증 결과를 확인할 수 없습니다.', 'warning', {'check': check, 'asset_id': asset['id'], 'error_type': type(exc).__name__})
         self.store.event(task_id, 'Worker 종료: ' + asset['name'], detail={'completed_checks': outcome['completed_checks'], 'asset_id': asset['id']})
         return outcome

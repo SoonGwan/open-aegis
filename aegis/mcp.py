@@ -31,10 +31,12 @@ class Reader:
         with self.connect() as db:
             return [json.loads(r[0]) for r in db.execute('SELECT data FROM records WHERE kind=? ORDER BY rowid DESC', (kind,))]
 
-    def get(self, kind, id):
+    def get(self, kind, id, *, required=True):
         with self.connect() as db:
             row = db.execute('SELECT data FROM records WHERE kind=? AND id=?', (kind, id)).fetchone()
         if not row:
+            if not required:
+                return None
             raise ValueError('Record not found')
         return json.loads(row[0])
 
@@ -56,7 +58,8 @@ class Reader:
                     db.row_factory = sqlite3.Row
                     events = [{**dict(row), 'detail': json.loads(row['detail'])} for row in
                               db.execute('SELECT * FROM events WHERE task_id=? ORDER BY seq LIMIT 1000', (record['id'],))]
-                return {'task': record, 'coverage': [c for c in self.all('coverage') if c['task_id'] == record['id']], 'events': events}
+                from .coverage import task_rows
+                return {'task': record, 'coverage': task_rows(self, record, get_record=lambda kind, id: self.get(kind, id, required=False)), 'events': events}
             return {'finding': record, 'evidence': [self.get('evidence', id) for id in record['evidence_ids']],
                     'retests': [r for r in self.all('retests') if r['finding_id'] == record['id']]}
         raise ValueError('Unknown tool or invalid arguments')

@@ -34,12 +34,20 @@ import {
 } from "lucide-react";
 import "./style.css";
 import { api } from "./api";
+import {
+  CoverageOverview,
+  CoverageTable,
+  coverageNames,
+  type Coverage,
+  type CoverageSummary,
+} from "./coverage";
 import { useRecords, Pagination, AssetPicker } from "./records";
 import Modal from "./components/Modal";
 import { UserPanel, PasswordPanel, roleNames, type User } from "./identity";
 
 type Asset = {
   completed_check_count?: number;
+  coverage_summary?: CoverageSummary | null;
   id: string;
   name: string;
   url: string;
@@ -88,7 +96,6 @@ type Event = {
   message: string;
   detail: Record<string, unknown>;
 };
-type Coverage = { asset_id: string; task_id: string; check: string };
 type Tool = {
   id: string;
   name: string;
@@ -97,6 +104,7 @@ type Tool = {
   risk: string;
 };
 type Overview = {
+  coverage_summary?: CoverageSummary;
   assets: Asset[];
   tasks: Task[];
   findings: Finding[];
@@ -973,16 +981,12 @@ function App() {
                     color: "purple",
                   },
                   {
-                    label: "자산 검증 커버리지",
-                    value: overview.assets.length
-                      ? Math.round(
-                          ((overview.stats.covered_assets || 0) /
-                            overview.stats.assets) *
-                            100,
-                        ) + "%"
+                    label: "도구별 검증 커버리지",
+                    value: overview.coverage_summary?.expected
+                      ? `${overview.coverage_summary.percent}%`
                       : "—",
                     icon: Network,
-                    note: `${overview.stats.covered_assets || 0} / ${overview.stats.assets || 0}개 자산에 완료 검증 있음`,
+                    note: `${overview.coverage_summary?.completed || 0} / ${overview.coverage_summary?.expected || 0}개 검증 완료 · 최신 승인·현재 범위`,
                     color: "green",
                   },
                 ].map((s) => (
@@ -1085,6 +1089,7 @@ function App() {
                   </div>
                 </section>
               </div>
+              <CoverageOverview summary={overview.coverage_summary} />
               <section className="panel activity-panel">
                 <div className="panel-head">
                   <h3>워크스페이스 활동</h3>
@@ -1149,11 +1154,32 @@ function App() {
                         <strong>{a.owner || "미지정"}</strong>
                       </div>
                       <div className="asset-meta">
-                        <span>완료된 검증 종류</span>
+                        <span>
+                          {a.archived_at
+                            ? "과거 완료 검증 종류"
+                            : "현재 범위 완료 검증"}
+                        </span>
                         <strong>
-                          {a.completed_check_count || 0} / {tools.length}
+                          {a.archived_at
+                            ? a.completed_check_count || 0
+                            : a.coverage_summary?.completed || 0}{" "}
+                          / {tools.length}
                         </strong>
                       </div>
+                      {a.coverage_summary && (
+                        <div className="tags" aria-label="검증 상태">
+                          {Object.entries(a.coverage_summary.counts)
+                            .filter(
+                              ([status, count]) =>
+                                status !== "completed" && count > 0,
+                            )
+                            .map(([status, count]) => (
+                              <span key={status}>
+                                {coverageNames[status]} {count}
+                              </span>
+                            ))}
+                        </div>
+                      )}
                       <div className="tags">
                         {a.tags.map((t) => (
                           <span key={t}>{t}</span>
@@ -1575,7 +1601,12 @@ function App() {
                     <small>
                       검증 완료
                       <br />
-                      {overview.coverage.length}회
+                      {
+                        overview.coverage.filter(
+                          (c) => c.status === "completed",
+                        ).length
+                      }
+                      회
                     </small>
                   </div>
                   <div className="graph-column">
@@ -1584,7 +1615,9 @@ function App() {
                       <div
                         className={
                           "graph-node tool-node " +
-                          (overview.coverage.some((c) => c.check === t.id)
+                          (overview.coverage
+                            .filter((c) => c.status === "completed")
+                            .some((c) => c.check === t.id)
                             ? "tested"
                             : "")
                         }
@@ -1597,6 +1630,7 @@ function App() {
                             {
                               new Set(
                                 overview.coverage
+                                  .filter((c) => c.status === "completed")
                                   .filter((c) => c.check === t.id)
                                   .map((c) => c.asset_id),
                               ).size
@@ -1604,9 +1638,9 @@ function App() {
                             개 자산 검증
                           </small>
                         </div>
-                        {overview.coverage.some((c) => c.check === t.id) && (
-                          <Check size={15} />
-                        )}
+                        {overview.coverage
+                          .filter((c) => c.status === "completed")
+                          .some((c) => c.check === t.id) && <Check size={15} />}
                       </div>
                     ))}
                   </div>
@@ -2348,6 +2382,14 @@ function App() {
               <span key={c}>{tools.find((t) => t.id === c)?.name || c}</span>
             ))}
           </div>
+          <h4 className="detail-heading">도구별 실행 결과</h4>
+          {taskDetail && (
+            <CoverageTable
+              rows={taskDetail.coverage}
+              assets={selectedTask.scope_snapshot}
+              tools={tools}
+            />
+          )}
           <h4 className="detail-heading">
             실행 기록 <span>{taskDetail?.events.length || 0}</span>
           </h4>

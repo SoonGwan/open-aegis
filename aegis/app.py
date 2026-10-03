@@ -30,6 +30,7 @@ from .auth import password_hash, public_user, new_user
 from .maintenance import WorkspaceLease
 from .migrations import SCHEMA_VERSION
 from .http_limits import BodyLimitMiddleware
+from .coverage import planned_slots, task_rows, latest_summary
 
 
 class Credentials(BaseModel):
@@ -185,7 +186,7 @@ def create_app(data_dir=None, allow_private=None):
         task = dict(data.model_dump(), id=identifier(), status='pending', created_at=now(),
                     started_at=None, finished_at=None, approved_at=None, done=0, errors=0,
                     scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id)
-        store.put('tasks', task)
+        store.put_many([('tasks', task)] + [('coverage', row) for row in planned_slots(task)])
         store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
         return task
 
@@ -385,16 +386,17 @@ def create_app(data_dir=None, allow_private=None):
         assets = store.page('assets', archived=False, limit=100)['items']
         coverage = store.page('coverage', limit=100)['items']
         with store.connect() as db:
-            covered_assets = db.execute("SELECT count(DISTINCT json_extract(c.data,'$.asset_id')) FROM records c JOIN records a ON a.kind='assets' AND a.id=json_extract(c.data,'$.asset_id') WHERE c.kind='coverage' AND coalesce(json_extract(a.data,'$.archived_at'),0)=0").fetchone()[0]
+            summary = latest_summary(db)
             severity_counts = {f'findings_{row[0]}': row[1] for row in db.execute("SELECT json_extract(data,'$.severity'),count(*) FROM records WHERE kind='findings' AND json_extract(data,'$.status')='open' GROUP BY json_extract(data,'$.severity')")}
         return {'assets': assets, 'tasks': tasks, 'findings': findings, 'coverage': coverage,
+                'coverage_summary': {k: v for k, v in summary.items() if k != 'assets'},
                 'observations': store.page('observations', limit=100)['items'], 'events': store.recent_events(),
                 'list_limit': 100,
                 'stats': {**severity_counts, 'assets': store.count('assets', active_assets=True), 'tasks': store.count('tasks'),
                           'running': store.count('tasks', statuses=['running', 'queued', 'stopping']),
                           'pending': store.count('tasks', statuses=['pending']),
                           'findings': store.count('findings', statuses=['open']),
-                          'covered_assets': covered_assets,
+                          'covered_assets': summary['covered_assets'],
                           'requests': store.count('traffic')}}
 
     @app.get('/api/records/{kind}', dependencies=auth)
@@ -503,7 +505,7 @@ def create_app(data_dir=None, allow_private=None):
         if not task:
             raise HTTPException(404, '작업이 없습니다.')
         return {'task': task, 'events': store.events(task_id=task_id, limit=1000),
-                'coverage': [c for c in store.all('coverage') if c['task_id'] == task_id],
+                'coverage': task_rows(store, task),
                 'findings': [f for f in store.all('findings') if task_id in f['task_ids']]}
 
     @app.post('/api/tasks/{task_id}/approve', dependencies=admins)
@@ -535,7 +537,7 @@ def create_app(data_dir=None, allow_private=None):
             raise HTTPException(404, '작업이 없습니다.')
         store.put('messages', {'id': identifier(), 'task_id': task_id, 'role': 'user', 'content': data.content, 'created_at': now()})
         findings = [f for f in store.all('findings') if task_id in f['task_ids']]
-        coverage = [c for c in store.all('coverage') if c['task_id'] == task_id]
+        coverage = [c for c in task_rows(store, task) if c['status'] == 'completed']
         findings.sort(key=lambda f: ['critical', 'high', 'medium', 'low', 'info'].index(f['severity']))
         answer = [f"작업 상태: {task['status']}. {len(task['asset_ids'])}개 자산 중 {task['done']}개 처리, {len(coverage)}개 검증 완료, {task['errors']}개 오류입니다."]
         if task['status'] == 'pending':
@@ -678,7 +680,7 @@ def create_app(data_dir=None, allow_private=None):
             ids = {t['id'] for t in selected_tasks}
             payload = {'version': __version__, 'generated_at': now(), 'tasks': selected_tasks, 'findings': selected_findings,
                        'evidence': [e for e in store.all('evidence') if e['task_id'] in ids],
-                       'coverage': [c for c in store.all('coverage') if c['task_id'] in ids],
+                       'coverage': [row for task in selected_tasks for row in task_rows(store, task)],
                        'traffic': [t for t in store.all('traffic') if t['task_id'] in ids]}
             content, media, suffix = json.dumps(payload, ensure_ascii=False, indent=2), 'application/json', 'json'
         elif format == 'csv':
@@ -696,7 +698,12 @@ def create_app(data_dir=None, allow_private=None):
                      '설정 관찰·권한 규칙 불일치는 확인된 침입 또는 데이터 유출과 구분됩니다.', '']
             for task in selected_tasks:
                 lines += ['## 작업: ' + task['name'], '', '상태: ' + task['status'], '검증 도구: ' + ', '.join(task['checks']),
-                          f"완료 자산: {task['done']}/{len(task['asset_ids'])} · 오류: {task['errors']}", '']
+                          f"처리 자산: {task['done']}/{len(task['asset_ids'])} · 오류: {task['errors']}", '']
+                rows = task_rows(store, task)
+                lines += [f"검증 완료: {sum(row['status'] == 'completed' for row in rows)}/{len(rows)} (선택한 자산 × 도구)", '']
+                for row in rows:
+                    lines += [f"- {row['asset_id']} / {row['check']}: {row['status']} · {row.get('reason', '')}"]
+                lines += ['']
             for finding in selected_findings:
                 lines += ['## [' + finding['severity'].upper() + '] ' + finding['title'], '',
                           '자산: ' + finding['asset_name'], '상태: ' + finding['status'],
