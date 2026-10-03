@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import "./style.css";
 import { api } from "./api";
+import { FindingTriage, type TriageFinding } from "./triage";
 import { EvidenceGraph } from "./graph";
 import {
   CoverageOverview,
@@ -75,7 +76,7 @@ type Task = {
   plan?: string[];
   retest_of?: string;
 };
-type Finding = {
+type Finding = TriageFinding & {
   id: string;
   title: string;
   severity: string;
@@ -400,7 +401,12 @@ function App() {
   const [selectedFinding, setSelectedFinding] = useState<{
     finding: Finding;
     evidence: unknown[];
-    retests: { id: string; conclusion: string; created_at: number }[];
+    retests: {
+      id: string;
+      conclusion: string;
+      created_at: number;
+      state_note?: string;
+    }[];
   } | null>(null);
   const [trafficDetail, setTrafficDetail] = useState<Traffic | null>(null),
     [notes, setNotes] = useState<Note[]>([]),
@@ -572,7 +578,12 @@ function App() {
     setSelectedTask(null);
     setTaskDetail(null);
   }, []);
-  const closeFinding = useCallback(() => setSelectedFinding(null), []);
+  const findingRequest = useRef(0);
+  const [findingReload, setFindingReload] = useState(0);
+  const closeFinding = useCallback(() => {
+    findingRequest.current++;
+    setSelectedFinding(null);
+  }, []);
   const closeTraffic = useCallback(() => setTrafficDetail(null), []);
   const matches = (...values: string[]) =>
     values.join(" ").toLowerCase().includes(search.toLowerCase());
@@ -628,11 +639,18 @@ function App() {
     setPage(value);
     setError("");
   };
-  async function openFinding(id: string) {
+  async function openFinding(id: string, reload = false) {
+    const request = ++findingRequest.current;
     try {
-      setSelectedFinding(await api("/findings/" + id));
+      const result = await api<NonNullable<typeof selectedFinding>>(
+        "/findings/" + id,
+      );
+      if (request === findingRequest.current) {
+        setSelectedFinding(result);
+        if (reload) setFindingReload((v) => v + 1);
+      }
     } catch (e) {
-      setError((e as Error).message);
+      if (request === findingRequest.current) setError((e as Error).message);
     }
   }
   async function submitForm(e: React.FormEvent<HTMLFormElement>) {
@@ -2361,6 +2379,21 @@ function App() {
             <Badge value={selectedFinding.finding.status} />
             <span>{date(selectedFinding.finding.created_at)}</span>
           </div>
+          <FindingTriage
+            key={`${selectedFinding.finding.id}:${selectedFinding.finding.triage_revision || 1}:${findingReload}`}
+            finding={selectedFinding.finding}
+            canOperate={canOperate}
+            onReload={() => void openFinding(selectedFinding.finding.id, true)}
+            onUpdated={(value) => {
+              setSelectedFinding((current) =>
+                current?.finding.id === value.id
+                  ? { ...current, finding: { ...current.finding, ...value } }
+                  : current,
+              );
+              window.dispatchEvent(new Event("aegis-records-changed"));
+              void refresh();
+            }}
+          />
           <h4 className="detail-heading">관찰 증거</h4>
           <pre>{JSON.stringify(selectedFinding.finding.evidence, null, 2)}</pre>
           <h4 className="detail-heading">수정 가이드</h4>
@@ -2378,29 +2411,13 @@ function App() {
               <div className="retest-row" key={r.id}>
                 <Badge value={r.conclusion} />
                 <small>{date(r.created_at)}</small>
+                {r.state_note && <p>{r.state_note}</p>}
               </div>
             ))
           ) : (
             <p className="subtle">아직 재검증하지 않았습니다.</p>
           )}
           <div className="modal-actions">
-            <select
-              aria-label="발견 사항 상태 변경"
-              disabled={busy || !canOperate}
-              value={selectedFinding.finding.status}
-              onChange={async (e) => {
-                await act("/findings/" + selectedFinding.finding.id, "PATCH", {
-                  status: e.target.value,
-                });
-                await openFinding(selectedFinding.finding.id);
-              }}
-            >
-              {["open", "accepted", "resolved"].map((s) => (
-                <option value={s} key={s}>
-                  {statusNames[s]}
-                </option>
-              ))}
-            </select>
             <button
               className="primary"
               disabled={busy || !canOperate}

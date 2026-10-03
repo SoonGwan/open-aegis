@@ -3196,3 +3196,59 @@ pre,
 .relation-node span {
   font-size: 12px;
 }
+
+.triage-panel {
+  margin-block: 20px;
+}
+.triage-form {
+  display: grid;
+  gap: 12px;
+}
+.triage-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+.triage-form input,
+.triage-form select,
+.triage-form textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 2px solid var(--border);
+  border-radius: 0;
+  font: inherit;
+  background: var(--panel);
+  color: var(--ink);
+}
+.triage-form textarea {
+  resize: vertical;
+}
+.triage-paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.triage-paging button {
+  min-height: 44px;
+}
+.triage-history {
+  padding-left: 22px;
+}
+.triage-history li {
+  border-bottom: 2px solid var(--border);
+  padding: 12px 0;
+  overflow-wrap: anywhere;
+}
+.triage-history time {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.triage-history p,
+.triage-readonly p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

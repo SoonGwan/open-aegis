@@ -32,6 +32,7 @@ from .migrations import SCHEMA_VERSION
 from .http_limits import BodyLimitMiddleware
 from .coverage import planned_slots, task_rows, latest_summary
 from .graph import build_graph, GraphNotFound
+from .findings import update_triage, TriageConflict
 
 
 class Credentials(BaseModel):
@@ -122,7 +123,27 @@ class MessageInput(BaseModel):
 
 
 class FindingUpdate(BaseModel):
-    status: Literal['open', 'accepted', 'resolved']
+    expected_revision: int = Field(ge=1)
+    status: Literal['open', 'accepted', 'resolved'] | None = None
+    assignee_id: str | None = Field(default=None, max_length=80)
+    acceptance_reason: str = Field(default='', max_length=4000)
+    resolution_reason: str = Field(default='', max_length=4000)
+
+    @field_validator('acceptance_reason', 'resolution_reason')
+    @classmethod
+    def trim_reason(cls, value):
+        return value.strip()
+
+    @field_validator('assignee_id')
+    @classmethod
+    def trim_assignee(cls, value):
+        return value.strip() or None if value is not None else None
+
+    @model_validator(mode='after')
+    def require_change(self):
+        if not self.model_fields_set - {'expected_revision'} or ('status' in self.model_fields_set and self.status is None):
+            raise ValueError('변경할 상태·담당자·사유를 입력하세요.')
+        return self
 
 
 class AssetArchive(BaseModel):
@@ -181,12 +202,22 @@ def create_app(data_dir=None, allow_private=None):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
         if any(a.get('archived_at') for a in assets):
             raise HTTPException(409, '보관된 자산은 검증할 수 없습니다. 먼저 복원하세요.')
-        pending = sum(t['status'] in ('pending', 'queued', 'running', 'stopping') for t in store.all('tasks'))
-        if pending >= 30:
+        triage_revision = None
+        if retest_of:
+            finding = store.get('findings', retest_of)
+            if not finding:
+                raise HTTPException(404, '발견 사항이 없습니다.')
+            with store.connect() as db:
+                row = db.execute("SELECT data FROM records WHERE kind='tasks' AND json_extract(data,'$.retest_of')=? AND json_extract(data,'$.status') IN ('pending','queued','running','stopping') LIMIT 1", (retest_of,)).fetchone()
+                if row:
+                    return json.loads(row['data'])
+            triage_revision = finding.get('triage_revision', 1)
+        if store.count('tasks', statuses=['pending','queued','running','stopping']) >= 30:
             raise HTTPException(409, '대기·실행 작업 한도(30개)를 초과했습니다.')
         task = dict(data.model_dump(), id=identifier(), status='pending', created_at=now(),
                     started_at=None, finished_at=None, approved_at=None, done=0, errors=0,
-                    scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id)
+                    scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id,
+                    retest_triage_revision=triage_revision)
         store.put_many([('tasks', task)] + [('coverage', row) for row in planned_slots(task)])
         store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
         return task
@@ -571,6 +602,23 @@ def create_app(data_dir=None, allow_private=None):
     def findings(response: Response):
         return legacy_page(response, 'findings')
 
+    @app.get('/api/assignees', dependencies=auth)
+    def assignees(search: str = Query('', max_length=100), limit: int = Query(25, ge=1, le=100),
+                  offset: int = Query(0, ge=0, le=10_000_000)):
+        with store.connect() as db:
+            db.execute('BEGIN')
+            where = "disabled=0 AND role IN ('admin','operator') AND instr(lower(name||' '||username),lower(?))>0"
+            total = db.execute('SELECT count(*) FROM users WHERE ' + where, (search,)).fetchone()[0]
+            items = [dict(row) for row in db.execute('SELECT id,name,username,role FROM users WHERE ' + where + ' ORDER BY name,id LIMIT ? OFFSET ?', (search, limit, offset))]
+        return {'items': items, 'total': total, 'limit': limit, 'offset': offset, 'has_more': offset + len(items) < total}
+
+    @app.get('/api/findings/{finding_id}/history', dependencies=auth)
+    def finding_history(finding_id: str, limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
+                        snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807)):
+        if not store.get('findings', finding_id):
+            raise HTTPException(404, '발견 사항이 없습니다.')
+        return store.page('finding_history', limit=limit, offset=offset, snapshot=snapshot, filters={'finding_id': finding_id})
+
     @app.get('/api/findings/{finding_id}', dependencies=auth)
     def finding_detail(finding_id: str):
         finding = store.get('findings', finding_id)
@@ -580,20 +628,23 @@ def create_app(data_dir=None, allow_private=None):
                 'retests': [r for r in store.all('retests') if r['finding_id'] == finding_id]}
 
     @app.patch('/api/findings/{finding_id}', dependencies=operations)
-    def update_finding(finding_id: str, data: FindingUpdate):
-        if not store.get('findings', finding_id):
+    def update_finding(finding_id: str, data: FindingUpdate, actor=Depends(operator)):
+        try:
+            result = update_triage(store, finding_id, data.model_dump(exclude_unset=True), actor)
+        except KeyError:
             raise HTTPException(404, '발견 사항이 없습니다.')
-        store.event(None, '발견 사항 상태를 수동 변경했습니다.', detail={'finding_id': finding_id, 'status': data.status})
-        return store.patch('findings', finding_id, status=data.status, updated_at=now())
+        except TriageConflict as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        store.event(None, '발견 사항 조치 기록 저장 요청을 처리했습니다.', detail={'finding_id': finding_id, 'status': result['status'], 'actor_id': actor['id']})
+        return result
 
     @app.post('/api/findings/{finding_id}/retest', dependencies=operations)
     def retest(finding_id: str):
         finding = store.get('findings', finding_id)
         if not finding:
             raise HTTPException(404, '발견 사항이 없습니다.')
-        existing = next((t for t in store.all('tasks') if t.get('retest_of') == finding_id and t['status'] in ('pending', 'queued', 'running', 'stopping')), None)
-        if existing:
-            return existing
         return create_task(TaskInput(name='재검증 · ' + finding['title'], asset_ids=[finding['asset_id']],
                                      checks=[finding['check']], workers=1), retest_of=finding_id)
 
@@ -693,8 +744,10 @@ def create_app(data_dir=None, allow_private=None):
         selected_findings = [f for f in store.all('findings') if not task_id or task_id in f['task_ids']]
         if format == 'json':
             ids = {t['id'] for t in selected_tasks}
+            finding_ids = {f['id'] for f in selected_findings}
             payload = {'version': __version__, 'generated_at': now(), 'tasks': selected_tasks, 'findings': selected_findings,
                        'evidence': [e for e in store.all('evidence') if e['task_id'] in ids],
+                       'finding_history': [entry for entry in store.all('finding_history') if entry['finding_id'] in finding_ids],
                        'coverage': [row for task in selected_tasks for row in task_rows(store, task)],
                        'traffic': [t for t in store.all('traffic') if t['task_id'] in ids]}
             content, media, suffix = json.dumps(payload, ensure_ascii=False, indent=2), 'application/json', 'json'
@@ -722,6 +775,9 @@ def create_app(data_dir=None, allow_private=None):
             for finding in selected_findings:
                 lines += ['## [' + finding['severity'].upper() + '] ' + finding['title'], '',
                           '자산: ' + finding['asset_name'], '상태: ' + finding['status'],
+                          '담당자: ' + (finding.get('assignee_name') or '미지정'),
+                          '위험 수용 사유: ' + finding.get('acceptance_reason', ''),
+                          '해결 사유: ' + finding.get('resolution_reason', ''),
                           '판정 유형: ' + finding['confidence'], '', '```json',
                           json.dumps(finding['evidence'], ensure_ascii=False, indent=2), '```', '', finding['remediation'], '']
             content, media, suffix = '\n'.join(lines), 'text/markdown', 'md'

@@ -65,11 +65,12 @@ class Store:
             'traffic': ('url', 'method', 'status'),
             'coverage': ('check', 'status'),
             'observations': ('url', 'title'),
+            'finding_history': ('action', 'reason'),
         }
         if kind not in fields or not 1 <= limit <= 1000 or offset < 0 or (snapshot is not None and snapshot < 0):
             raise ValueError('Invalid record query')
         filters = filters or {}
-        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check'}:
+        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id'}:
             raise ValueError('Unknown record filter')
         with self.connect() as db:
             db.execute('BEGIN')

@@ -9,6 +9,7 @@ from .network import Transport
 from .llm import completion
 from .store import identifier, now
 from .coverage import slot, finish_remaining
+from .findings import record_observation, apply_retest
 
 
 class Engine:
@@ -116,12 +117,7 @@ class Engine:
                     conclusion = 'reproduced'
                 else:
                     conclusion = 'resolved'
-                retest = {'id': identifier(), 'finding_id': finding['id'], 'task_id': task_id, 'conclusion': conclusion, 'created_at': now()}
-                self.store.put('retests', retest)
-                if conclusion == 'resolved':
-                    self.store.patch('findings', finding['id'], status='resolved', updated_at=now())
-                elif conclusion == 'reproduced':
-                    self.store.patch('findings', finding['id'], status='open', updated_at=now())
+                apply_retest(self.store, task, conclusion)
                 self.store.event(task_id, '재검증 결과를 기록했습니다.', detail={'conclusion': conclusion})
             finish_remaining(self.store, task, 'cancelled' if status == 'stopped' else 'failed',
                              '중지되어 실행하지 못했습니다.' if status == 'stopped' else '작업 종료 전 결과를 기록하지 못했습니다.')
@@ -171,18 +167,8 @@ class Engine:
                     self.store.event(task_id, skipped, 'warning', {'check': check, 'asset_id': asset['id']})
                     continue
                 for item in findings:
-                    fingerprint = hashlib.sha256(f"{asset['id']}:{item['check']}:{item['code']}".encode()).hexdigest()
-                    outcome['fingerprints'].append(fingerprint)
-                    evidence = self.store.put('evidence', {'id': identifier(), 'task_id': task_id, 'asset_id': asset['id'],
-                        'check': check, 'observation': item['evidence'], 'created_at': now(), 'fingerprint': fingerprint})
-                    with self.lock:
-                        previous = next((f for f in self.store.all('findings') if f['fingerprint'] == fingerprint), None)
-                        finding = dict(item, id=previous['id'] if previous else identifier(), asset_id=asset['id'],
-                                       asset_name=asset['name'], fingerprint=fingerprint, status='open',
-                                       task_ids=list(dict.fromkeys((previous['task_ids'] if previous else []) + [task_id])),
-                                       evidence_ids=(previous['evidence_ids'] if previous else []) + [evidence['id']],
-                                       created_at=previous['created_at'] if previous else now(), updated_at=now())
-                        self.store.put('findings', finding)
+                    finding, evidence, _ = record_observation(self.store, task, asset, item)
+                    outcome['fingerprints'].append(finding['fingerprint'])
                     self.store.event(task_id, item['title'], 'finding', {'finding_id': finding['id'], 'severity': item['severity'], 'asset_id': asset['id']})
                 for url in observed:
                     self.store.put('observations', {'id': hashlib.sha256((asset['id'] + url).encode()).hexdigest()[:16],

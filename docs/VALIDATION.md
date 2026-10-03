@@ -106,3 +106,17 @@ Additional MCP filename/connection regression: **2 passed**; the new test verifi
 read-only access with an encoded filename and unchanged DB bytes.
 Browser: changed viewer password logs out, new password logs in; user management
 on 390×844 has no document overflow.
+
+## Finding triage lifecycle (2026-10-04)
+
+- Full backend suite: 92 passed; one existing Starlette/httpx deprecation warning.
+- After normalizing empty optional fields to avoid artificial revision/history changes,
+  the eight triage tests passed again, including the UI-shaped no-op save regression.
+- Frontend TypeScript and production build passed.
+- Browser: assigned admin and saved an acceptance reason; a second stale form received
+  a conflict and retained its draft; loading the current record restored the saved decision.
+- Mobile 390×844: document width 390, dialog width 366, no horizontal overflow.
+- Captures: `artifacts/v1-triage-desktop.jpg`, `artifacts/v1-triage-mobile.jpg`,
+  `artifacts/v1-triage-mobile-top.jpg` (local artifacts, excluded from Git).
+- Scope and remaining limitations: [TRIAGE.md](TRIAGE.md). This is not ARTEX feature parity
+  or completion of the full v1 release checklist.
