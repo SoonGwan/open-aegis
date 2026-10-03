@@ -301,3 +301,31 @@ on 390×844 has no document overflow.
 - Desktop capture: `artifacts/v1-task-records-desktop.jpg`. This increment does not claim
   mobile/accessibility completion, bounded chat/report exports, retention or full v1.
   API compatibility changes: [PAGINATION.md](PAGINATION.md).
+
+
+## Paged task conversation and atomic answers (2026-10-04)
+
+- Full backend suite: **154 passed**, one existing Starlette/httpx deprecation warning.
+  Message/task/validation tests separately: **39 passed**. Frontend TypeScript/Vite build
+  and all **10** navigation tests passed.
+- Message tests seed 1,050 task messages plus a foreign task, prohibit Store.all, verify
+  the legacy 1,000-row cap and count headers, first/last pages, literal punctuation search,
+  insertion watermarks, live edits, role/authentication and query validation.
+- Assistant tests seed 1,200 findings and a foreign critical finding. The oldest matching
+  critical finding still appears first in the bounded eight-result SQL context.
+  A real SQLite trigger aborts assistant insertion; the question is rolled back too.
+- Browser QA used **61 explicitly labelled synthetic messages** on an existing completed
+  loopback task. It checked pages 1–25, 26–50, 51–61 and a one-result content search.
+  Posting while filtered clears search and returns to the newest page. Two separately
+  submitted questions added exactly four messages; a third question from page 26–50
+  after the key fix added one more pair (final total **67**) with grounded replies.
+  Target traffic stayed **33**; no scan or command ran.
+- Newest-page open and a newly saved answer both scroll to the bottom of the message
+  region (final measured scrollTop 3249.5, scrollHeight 3569, clientHeight 320).
+  The initial UI review caught duplicate sibling React keys causing repeated task panels
+  during polling. Distinct task-record/chat keys fix the issue; final DOM counts are
+  checked across metadata polling and question submission.
+  Capture: `artifacts/v1-chat-history-desktop.jpg`.
+- This is still a rules-based summary, not LLM conversation or execution intervention.
+  POST network-retry idempotency, report bounds, detail URL and full accessibility/mobile
+  regression remain outstanding. Contract changes: [PAGINATION.md](PAGINATION.md).

@@ -50,6 +50,7 @@ import { useRecords, Pagination, AssetPicker, RecordState } from "./records";
 import { useNavigation } from "./navigation";
 import { FindingRecords } from "./finding-records";
 import { TaskRecords } from "./task-records";
+import { ChatPanel } from "./chat-panel";
 import {
   readNavigation,
   TASK_STATUSES,
@@ -2564,14 +2565,18 @@ function App() {
             />
           )}
           <TaskRecords
-            key={selectedTask.id}
+            key={`task-records-${selectedTask.id}`}
             taskId={selectedTask.id}
             onFinding={(id) => {
               closeTask();
               void openFinding(id);
             }}
           />
-          <ChatPanel taskId={selectedTask.id} canOperate={canOperate} />
+          <ChatPanel
+            key={`chat-${selectedTask.id}`}
+            taskId={selectedTask.id}
+            canOperate={canOperate}
+          />
           <div className="modal-actions">
             <a
               className="button"
@@ -2778,88 +2783,6 @@ function Toolbar({
       </span>
       {children}
     </div>
-  );
-}
-
-function ChatPanel({
-  taskId,
-  canOperate,
-}: {
-  taskId: string;
-  canOperate: boolean;
-}) {
-  type Message = {
-    id: string;
-    role: string;
-    content: string;
-    finding_ids?: string[];
-  };
-  const [messages, setMessages] = useState<Message[]>([]),
-    [question, setQuestion] = useState(""),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  useEffect(() => {
-    api<Message[]>("/tasks/" + taskId + "/messages")
-      .then(setMessages)
-      .catch((e) => setError(e.message));
-  }, [taskId]);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (busy || !question.trim()) return;
-    setBusy(true);
-    setError("");
-    try {
-      await api("/tasks/" + taskId + "/messages", "POST", {
-        content: question,
-      });
-      setMessages(await api("/tasks/" + taskId + "/messages"));
-      setQuestion("");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <details className="chat-panel">
-      <summary>
-        검증 기록에 질문하기 <span>규칙 기반 · 추가 요청 없음</span>
-      </summary>
-      <div className="chat-messages">
-        {messages.length ? (
-          messages.map((m) => (
-            <div className={"chat-message " + m.role} key={m.id}>
-              <small>{m.role === "user" ? "나" : "Evidence Assistant"}</small>
-              <p>{m.content}</p>
-              {m.finding_ids && m.finding_ids.length > 0 && (
-                <small>연결된 발견 사항 {m.finding_ids.length}개</small>
-              )}
-            </div>
-          ))
-        ) : (
-          <p className="subtle">
-            예: “무엇부터 수정하면 되나요?” · “현재 검증 결과를 요약해줘”
-          </p>
-        )}
-      </div>
-      <form onSubmit={submit}>
-        <label>
-          검증 질문
-          <input
-            maxLength={2000}
-            required
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="저장된 검증 기록에 대해 질문하세요"
-          />
-        </label>
-        <button className="primary" disabled={busy || !canOperate}>
-          {busy ? "요약 중…" : "질문하기"}
-          <ArrowRight size={14} />
-        </button>
-      </form>
-      {error && <p className="form-error">{error}</p>}
-    </details>
   );
 }
 

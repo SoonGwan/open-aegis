@@ -611,20 +611,29 @@ def create_app(data_dir=None, allow_private=None):
         return engine.stop(task_id)
 
     @app.get('/api/tasks/{task_id}/messages', dependencies=auth)
-    def messages(task_id: str):
+    def messages(task_id: str, response: Response):
         if not store.get('tasks', task_id):
             raise HTTPException(404, '작업이 없습니다.')
-        return sorted([m for m in store.all('messages') if m['task_id'] == task_id], key=lambda m: m['created_at'])
+        return list(reversed(legacy_page(response, 'messages', filters={'task_id':task_id})))
+
+    @app.get('/api/tasks/{task_id}/messages/page', dependencies=auth)
+    def message_page(task_id: str, limit: int = Query(25, ge=1, le=100),
+                     offset: int = Query(0, ge=0, le=10_000_000),
+                     snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                     search: str = Query('', max_length=200)):
+        if not store.get('tasks', task_id):
+            raise HTTPException(404, '작업이 없습니다.')
+        return store.page('messages', limit=limit, offset=offset, snapshot=snapshot, search=search,
+                          filters={'task_id':task_id})
 
     @app.post('/api/tasks/{task_id}/messages', dependencies=operations)
     def ask(task_id: str, data: MessageInput):
         task = store.get('tasks', task_id)
         if not task:
             raise HTTPException(404, '작업이 없습니다.')
-        store.put('messages', {'id': identifier(), 'task_id': task_id, 'role': 'user', 'content': data.content, 'created_at': now()})
-        findings = [f for f in store.all('findings') if task_id in f['task_ids']]
+        findings = store.page('findings', limit=8, filters={'task_id':task_id},
+                              compact_findings=True, priority=True)['items']
         coverage = [c for c in task_rows(store, task) if c['status'] == 'completed']
-        findings.sort(key=lambda f: ['critical', 'high', 'medium', 'low', 'info'].index(f['severity']))
         answer = [f"작업 상태: {task['status']}. {len(task['asset_ids'])}개 자산 중 {task['done']}개 처리, {len(coverage)}개 검증 완료, {task['errors']}개 오류입니다."]
         if task['status'] == 'pending':
             answer.append('아직 대상 요청을 보내지 않았습니다. 실행 범위를 확인한 후 승인하세요.')
@@ -635,8 +644,12 @@ def create_app(data_dir=None, allow_private=None):
         if not findings:
             answer.append('이 작업에 연결된 발견 사항이 없습니다. 미실행·검증 실패·미지원 취약점은 별도로 확인해야 합니다.')
         answer.append('이 답변은 저장된 작업·증거의 규칙 기반 요약입니다. 추가 요청이나 명령을 실행하지 않습니다.')
-        return store.put('messages', {'id': identifier(), 'task_id': task_id, 'role': 'assistant', 'content': '\n\n'.join(answer),
-                                     'finding_ids': [f['id'] for f in findings[:8]], 'created_at': now()})
+        timestamp = now()
+        question = {'id':identifier(), 'task_id':task_id, 'role':'user', 'content':data.content, 'created_at':timestamp}
+        reply = {'id':identifier(), 'task_id':task_id, 'role':'assistant', 'content':'\n\n'.join(answer),
+                 'finding_ids':[f['id'] for f in findings], 'created_at':timestamp}
+        store.put_many([('messages',question),('messages',reply)])
+        return reply
 
     @app.get('/api/findings', dependencies=auth)
     def findings(response: Response):

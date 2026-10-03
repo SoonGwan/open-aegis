@@ -65,7 +65,7 @@ class Store:
             rows = db.execute("SELECT data FROM records WHERE kind=? ORDER BY rowid DESC", (kind,)).fetchall()
         return [json.loads(row['data']) for row in rows]
 
-    def page(self, kind, *, limit=25, offset=0, snapshot=None, search='', filters=None, archived=None, compact_findings=False):
+    def page(self, kind, *, limit=25, offset=0, snapshot=None, search='', filters=None, archived=None, compact_findings=False, priority=False):
         """Bounded SQL reads; an insertion watermark keeps later inserts out of a page walk.
 
         Updates remain live. The watermark is not a historical database snapshot.
@@ -82,9 +82,12 @@ class Store:
             'schedules': ('task.name', 'task.goal'),
             'evidence': ('check', 'task_id'),
             'retests': ('conclusion', 'state_note', 'task_id'),
+            'messages': ('content', 'role'),
         }
         if kind not in fields or not 1 <= limit <= 1000 or offset < 0 or (snapshot is not None and snapshot < 0):
             raise ValueError('Invalid record query')
+        if priority and kind != 'findings':
+            raise ValueError('Priority order is only valid for findings')
         filters = filters or {}
         if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id', 'enabled'}:
             raise ValueError('Unknown record filter')
@@ -129,7 +132,8 @@ class Store:
             where = ' AND '.join(clauses)
             total = db.execute('SELECT count(*) FROM records WHERE ' + where, args).fetchone()[0]
             projection = FINDING_READ_PROJECTION if kind == 'findings' and compact_findings else 'data'
-            rows = db.execute('SELECT ' + projection + ' AS data FROM records WHERE ' + where + ' ORDER BY rowid DESC LIMIT ? OFFSET ?',
+            order = "CASE json_extract(data,'$.severity') WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 WHEN 'info' THEN 4 ELSE 5 END, rowid DESC" if priority else 'rowid DESC'
+            rows = db.execute('SELECT ' + projection + ' AS data FROM records WHERE ' + where + ' ORDER BY ' + order + ' LIMIT ? OFFSET ?',
                               (*args, limit, offset)).fetchall()
             items = [json.loads(row['data']) for row in rows]
             if kind == 'observations' and items:
