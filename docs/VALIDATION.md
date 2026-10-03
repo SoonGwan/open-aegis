@@ -942,3 +942,16 @@ on 390×844 has no document overflow.
   checks pass (primary action 4.83:1, support text 9.09:1). These checks do not prove hosted
   GitHub execution, Ubuntu runtime behavior, full visual/accessibility coverage or a signed,
   byte-reproducible release. Main preview health remains good.
+
+## Reduced-motion interaction correction (2026-10-04)
+
+- The existing media rule removed transitions but left instantaneous 1px hover/2px
+  active button translation. Added reduced-motion hover/active transform overrides for
+  button and .button, retaining color/shadow/focus feedback. Static centering transforms
+  belong to orbit/toast selectors; the graph uses an inline scale on its graph canvas,
+  so these are outside the new button selectors. Design guidance now states that limit.
+- TypeScript/Vite build and selected Montage contrast/token checks pass. This is a CSS
+  interaction correction; unchanged backend/frontend behavioral tests are not rerun.
+  Actual OS/browser reduced-motion preference, pointer/keyboard states and full mobile
+  accessibility are not claimed verified. Manual steps are recorded in the browser
+  regression README and the full accessibility gate remains incomplete.

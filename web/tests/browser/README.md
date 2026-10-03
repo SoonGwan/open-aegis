@@ -24,6 +24,17 @@ focus back to Close on every background refresh.
 This fixture is a manual browser regression, not part of `npm test`. Full mobile, assistive
 technology and all workspace journeys require separate verification.
 
+## Reduced-motion button review
+
+Enable the operating system/browser's reduce-motion preference, then open the app or
+modal fixture. Confirm `matchMedia('(prefers-reduced-motion: reduce)').matches` in a
+read-only inspection. Hover and press a regular button and a `.button` link: their
+computed transform should remain none and their bounds should not shift. Background,
+shadow and focus feedback should remain visible. Repeat with the preference off to
+check the ordinary 1px hover/2px press behavior, allowing more specific component rules.
+Check modal/toast centering and graph zoom separately; layout transforms are preserved.
+This is a manual preference regression, not covered by npm test or the contrast checker.
+
 ## Real document viewport review
 
 Build the frontend first (`npm --prefix web run build`), then launch a separate loopback
