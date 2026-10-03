@@ -13,6 +13,7 @@ dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "anyio>=4,<5", "jsonsch
 aegis-backup = "aegis.cli.backup:main"
 aegis-restore = "aegis.cli.restore:main"
 aegis-verify-audit = "aegis.cli.audit:main"
+aegis-replay-policy = "aegis.cli.replay_policy:main"
 
 [project.optional-dependencies]
 dev = ["httpx>=0.27,<1", "pytest>=8,<10"]

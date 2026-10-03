@@ -33,46 +33,14 @@ from .findings import update_triage, TriageConflict
 from .runtime import ExecutionPolicy
 from .reporting import report_stream, ReportResponse
 from .export_limits import ExportPolicy, ExportPool
-from .response_policy import validate_schema, validate_pointer
+from .policy_models import AuthorizationRule
+from .reproduction import build_manifest, MAX_MANIFEST_BYTES
 
 
 class Credentials(BaseModel):
     username: str = Field(default='admin', min_length=1, max_length=64, pattern=r'^[a-zA-Z0-9_.-]+$')
     password: str = Field(min_length=12, max_length=256)
     setup_token: str = Field(default='', max_length=256)
-
-
-class OwnershipPolicy(BaseModel):
-    model_config = {'extra': 'forbid'}
-    pointer: str = Field(min_length=1, max_length=256)
-    expected: str = Field(min_length=1, max_length=200)
-
-    @field_validator('pointer')
-    @classmethod
-    def validate_pointer(cls, value):
-        return validate_pointer(value)
-
-
-class AuthorizationRule(BaseModel):
-    model_config = {'extra': 'forbid'}
-    path: str = Field(max_length=1000)
-    role: str = Field(min_length=1, max_length=80)
-    expected_allowed: bool
-    credential_env: str = Field(default='', max_length=100, pattern=r'^(|AEGIS_TEST_[A-Z0-9_]+)$')
-    response_schema: dict | None = None
-    ownership: OwnershipPolicy | None = None
-
-    @field_validator('response_schema')
-    @classmethod
-    def validate_response_schema(cls, value):
-        return validate_schema(value) if value is not None else None
-
-    @field_validator('path')
-    @classmethod
-    def validate_path(cls, value):
-        if not value.startswith('/') or value.startswith('//') or '?' in value or '#' in value:
-            raise ValueError('루트 기준 경로만 허용합니다. 쿼리와 fragment는 사용할 수 없습니다.')
-        return value
 
 
 class AssetInput(BaseModel):
@@ -585,6 +553,20 @@ def create_app(data_dir=None, allow_private=None):
                 'findings': findings['items'],
                 'findings_page': {key:value for key,value in findings.items() if key != 'items'},
                 'events_page': {key:value for key,value in events.items() if key != 'items'}}
+
+    @app.get('/api/tasks/{task_id}/policy-reproduction', dependencies=auth)
+    def policy_reproduction(task_id: str):
+        task = store.get('tasks', task_id)
+        if not task:
+            raise HTTPException(404, '작업이 없습니다.')
+        try:
+            payload = build_manifest(task).model_dump_json().encode()
+        except (ValueError, KeyError, TypeError):
+            raise HTTPException(409, '승인·API 규칙·실행 제한이 있는 작업만 내보낼 수 있습니다.') from None
+        if len(payload) > MAX_MANIFEST_BYTES:
+            raise HTTPException(413, '정책 파일의 크기 제한을 초과했습니다.')
+        return Response(payload, media_type='application/json', headers={
+            'Content-Disposition': 'attachment; filename="aegis-api-policy.json"', 'Cache-Control': 'no-store'})
 
     @app.get('/api/tasks/{task_id}/findings', dependencies=auth)
     @app.get('/api/tasks/{task_id}/events', dependencies=auth)

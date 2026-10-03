@@ -195,3 +195,98 @@ def test_owner_retest_inconclusive_then_resolved(api_fixture):
     detail = client.get('/api/findings/'+finding_id).json()
     assert detail['retests'][0]['conclusion'] == 'resolved'
     assert detail['finding']['status'] == 'resolved'
+
+
+def exported_policy(client, asset):
+    result = run(client, asset)
+    download = client.get('/api/tasks/'+result['task']['id']+'/policy-reproduction')
+    assert download.status_code == 200
+    assert download.headers['content-disposition'] == 'attachment; filename="aegis-api-policy.json"'
+    assert download.headers['cache-control'] == 'no-store'
+    return download.json()
+
+
+def invoke_replay(path, *arguments):
+    import subprocess
+    import sys
+    return subprocess.run([sys.executable, '-m', 'aegis.cli.replay_policy', '--source', str(path), *arguments],
+                          capture_output=True, text=True, timeout=20)
+
+
+@pytest.mark.parametrize('matches', [True, False])
+def test_export_and_real_cli_replay_are_explicit_and_redacted(api_fixture, tmp_path, monkeypatch, matches):
+    client, url, handler = api_fixture
+    monkeypatch.setenv('AEGIS_TEST_REPLAY', 'Bearer REPLAY-CREDENTIAL-SENTINEL')
+    asset = register(client, url, {**RULE, 'credential_env': 'AEGIS_TEST_REPLAY'})
+    manifest = exported_policy(client, asset)
+    assert set(manifest['assets'][0]) == {'id', 'revision', 'url', 'authorization_rules'}
+    serialized = json.dumps(manifest)
+    assert 'REPLAY-CREDENTIAL-SENTINEL' not in serialized
+    assert 'OTHER-CUSTOMER-SENTINEL' not in serialized and 'MUST_NOT_PERSIST_RESPONSE' not in serialized
+    path = tmp_path/'reproduction 한글 ?.json'
+    path.write_text(serialized)
+    before = list(handler.requests)
+    checked = invoke_replay(path)
+    assert checked.returncode == 0 and json.loads(checked.stdout)['executed'] is False
+    assert handler.requests == before
+    blocked = invoke_replay(path, '--run')
+    assert blocked.returncode == 1
+    assert json.loads(blocked.stdout)['assets'][0]['status'] == 'inconclusive'
+    assert handler.requests == before
+    if matches:
+        handler.payload['tenant_id'] = 'fixture-owner'
+    replayed = invoke_replay(path, '--run', '--lab')
+    assert replayed.returncode == (0 if matches else 1), replayed.stderr
+    outcome = json.loads(replayed.stdout)
+    assert outcome['passed'] is matches
+    assert outcome['assets'][0]['findings'] == ([] if matches else [{'code': 'auth-owner-0', 'severity': 'high'}])
+    assert handler.requests[len(before):] == ['/', '/api/account']
+    for sentinel in ('REPLAY-CREDENTIAL-SENTINEL', 'OTHER-CUSTOMER-SENTINEL', 'MUST_NOT_PERSIST_RESPONSE'):
+        assert sentinel not in replayed.stdout + replayed.stderr
+
+
+def test_unapproved_export_and_authentication(api_fixture):
+    client, url, handler = api_fixture
+    asset = register(client, url)
+    pending = client.post('/api/tasks', json={'name': 'Pending', 'asset_ids': [asset['id']], 'checks': ['api_authorization']}).json()
+    path = '/api/tasks/'+pending['id']+'/policy-reproduction'
+    assert client.get(path).status_code == 409
+    assert client.get('/api/tasks/missing/policy-reproduction').status_code == 404
+    assert handler.requests == []
+    client.post('/api/auth/logout')
+    assert client.get(path).status_code == 401
+
+
+@pytest.mark.parametrize('change', ['scope', 'credential', 'duplicate'])
+def test_invalid_artifact_cli_never_sends_requests(api_fixture, tmp_path, change):
+    client, url, handler = api_fixture
+    manifest = exported_policy(client, register(client, url))
+    if change == 'scope':
+        manifest['assets'][0]['url'] += 'app/'
+    elif change == 'credential':
+        manifest['assets'][0]['authorization_rules'][0]['credential_env'] = 'AWS_SECRET_ACCESS_KEY'
+    path = tmp_path/'invalid.json'
+    serialized = json.dumps(manifest)
+    if change == 'duplicate':
+        serialized = '{"format":"SECRET-SENTINEL",' + serialized[1:]
+    path.write_text(serialized)
+    before = list(handler.requests)
+    invalid = invoke_replay(path, '--run', '--lab')
+    assert invalid.returncode == 2 and 'Traceback' not in invalid.stderr
+    assert 'SECRET-SENTINEL' not in invalid.stderr and handler.requests == before
+
+
+def test_cli_local_limits_can_only_tighten_approved_budget(api_fixture, tmp_path, monkeypatch):
+    client, url, handler = api_fixture
+    manifest = exported_policy(client, register(client, url))
+    assert manifest['limits']['request_budget'] > 1
+    path = tmp_path/'budget.json'
+    path.write_text(json.dumps(manifest))
+    monkeypatch.setenv('AEGIS_REQUEST_BUDGET', '1')
+    before = len(handler.requests)
+    replayed = invoke_replay(path, '--run', '--lab')
+    assert replayed.returncode == 1
+    result = json.loads(replayed.stdout)
+    assert result['limits']['request_budget'] == 1
+    assert result['assets'][0]['status'] == 'inconclusive'
+    assert handler.requests[before:] == ['/']

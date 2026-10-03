@@ -131,6 +131,11 @@ Compose의 환경변수 전달 항목을 추가해야 합니다.
 로그인 HTML·잘린 응답·잘못된 JSON은 판정 불가로 처리합니다. 독립적인 고객사
 소유권 추론이나 로그인 자동화는 제공하지 않습니다.
 
+승인된 작업은 `/api/tasks/<task_id>/policy-reproduction`에서 규칙을 내려받아
+`aegis-replay-policy --source aegis-api-policy.json`으로 검사할 수 있습니다.
+실제 GET 재현은 현재 권한을 확인하고 `--run`을 명시해야 합니다. 인증 값은 파일에
+포함되지 않습니다. 세부 실행·종료 코드와 한계는 위 API 정책 문서에 정리했습니다.
+
 ### 선택적 AI Planner
 
 ```text

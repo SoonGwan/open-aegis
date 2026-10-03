@@ -720,3 +720,39 @@ on 390×844 has no document overflow.
   Dedicated schema/ownership controls and reproducible-test export remain open. JSON
   parsing/validation has byte/structure limits but no independent CPU preemption or
   large-scale soak proof. Contracts and primary references: [API-POLICY.md](API-POLICY.md).
+
+## Approved policy export and standalone replay (2026-10-04)
+
+- Authenticated task export creates a versioned manifest from the approved scope,
+  retaining only asset ID/revision/URL/rules, approval metadata and execution limits.
+  Pending/no-policy tasks are rejected; download has a fixed attachment filename and
+  no-store cache policy. The manifest is bounded to 8 MiB and contains no credential
+  values, response bodies or task goals. Rule models are shared with registration.
+- Installed `aegis-replay-policy` and checkout wrapper validate without DNS/HTTP by
+  default. Explicit --run uses the engine's scoped, DNS-pinned GET transport and API
+  check. Private targets require explicit --lab; metadata addresses remain blocked.
+  Current environment limits only tighten exported limits, and requests are sequential.
+- Policy subset: **35 passed**. Full backend regression: **235 passed**, one existing
+  Starlette/httpx warning. Tests prove approval/auth gates, no traffic on validation,
+  default loopback refusal, explicit lab replay pass/mismatch exit codes, secret-value
+  exclusion, rejection of out-of-scope/credential-name/duplicate-key artifacts before
+  requests, and local budget reduction to one request producing inconclusive.
+- Wheel builds with SHA-256
+  `264453f0448836ca1c4483d9e153d7447883e0d17a1978d572a6307a89e21a62`.
+  A clean venv installs that wheel and all pinned runtime requirements; pip check passes.
+  Its actual installed executable runs outside the checkout with PYTHONPATH/PYTHONHOME
+  removed, on a manifest downloaded from an approved synthetic loopback task.
+  Validation sends no requests; replay sends exactly / and /api/account and passes.
+  Credential/body sentinels appear in neither the artifact nor CLI output. Imported
+  package origin belongs to the isolated installation. Evidence:
+  `artifacts/policy-replay-package/installed-replay-review.json`.
+- Local editable installation exposes the new console entry point. Main preview stops
+  and restarts cleanly; health, authenticated assets and export 401/404 behavior pass.
+  Assets remain two, target traffic remains three and audit events 88 verify against
+  the earlier seq-83 checkpoint. Evidence:
+  `artifacts/policy-replay-package/main-runtime-review.json`. No main target replay runs.
+- Frontend source is unchanged. Screen download controls/editor, mobile journey,
+  signatures, runtime-version pinning, long-running soak and independent result-log
+  storage are not proven. A manifest is unsigned metadata and does not grant current
+  execution permission; standalone replay does not update the source server's records.
+  Usage and limitations: [API-POLICY.md](API-POLICY.md).
