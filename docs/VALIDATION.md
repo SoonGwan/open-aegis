@@ -120,3 +120,26 @@ on 390×844 has no document overflow.
   `artifacts/v1-triage-mobile-top.jpg` (local artifacts, excluded from Git).
 - Scope and remaining limitations: [TRIAGE.md](TRIAGE.md). This is not ARTEX feature parity
   or completion of the full v1 release checklist.
+
+## Shared execution limits and operations (2026-10-04)
+
+- Full backend suite: **117 passed**, one existing Starlette/httpx deprecation warning.
+- After clearing stopped Future bookkeeping, the two shutdown regressions and
+  documented launcher/SSE SIGTERM test passed again (3 passed).
+- TypeScript/Vite build passed; selected semantic text/background pairs pass AA.
+- Real loopback peers verify shared origin spacing and slots, in-flight cancellation,
+  slow-drip headers/body deadlines, bounded stalled DNS, retries and total request budget,
+  long Retry-After, queue expiry, updated policy review, current-scope retry plans,
+  and preservation of an accepted decision when a retest times out.
+- A generated test CA verifies HTTPS and hostname mismatch rejection; a real HTTPS
+  compatible LLM fixture verifies tool order and token usage without persisting its key.
+- The documented launcher was spawned as a process with an open SSE connection;
+  SIGTERM drained the stream and exited within the three-second test bound.
+- Browser: registered an owned loopback redirect fixture, approved one GET validation,
+  observed scope failure, then created a retry plan that remained pending for review.
+  Approved policy is visible on approval cards and task detail. Runtime screen shows
+  pending=1, requests=1 during that preview process.
+- Desktop and 390×844 captures: `artifacts/v1-runtime-desktop.jpg`,
+  `artifacts/v1-runtime-mobile.jpg`. Mobile document width did not exceed the viewport.
+- Execution/clock/OS limitations: [RUNTIME.md](RUNTIME.md). Container execution,
+  live external LLM keys, production load/soak and full v1 release are not verified.

@@ -200,7 +200,7 @@ def test_queued_stop_cancels_all_cells_without_target_request(client, lab, monke
     asset = register(client, url)
     plan = task(client, asset, ['security_headers', 'cookie_policy'])
     assert client.post('/api/tasks/' + plan['id'] + '/approve').status_code == 200
-    assert client.post('/api/tasks/' + plan['id'] + '/stop').json()['status'] == 'stopping'
+    assert client.post('/api/tasks/' + plan['id'] + '/stop').json()['status'] == 'stopped'
     engine.run(plan['id'])
     result = client.get('/api/tasks/' + plan['id']).json()
     assert result['task']['status'] == 'stopped'
@@ -211,7 +211,7 @@ def test_queued_stop_cancels_all_cells_without_target_request(client, lab, monke
 def test_internal_planning_failure_records_all_cells_and_sanitizes_error(client, lab, monkeypatch):
     url, handler = lab
     engine = client.app.state.engine
-    def fail_plan(_):
+    def fail_plan(_,control=None):
         raise RuntimeError('DO-NOT-LOG-PRIVATE-PLANNER-DATA')
     monkeypatch.setattr(engine, 'plan', fail_plan)
     asset = register(client, url)

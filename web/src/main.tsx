@@ -35,6 +35,7 @@ import {
 import "./style.css";
 import { api } from "./api";
 import { FindingTriage, type TriageFinding } from "./triage";
+import { RuntimePanel, PolicySummary, type ExecutionPolicy } from "./runtime";
 import { EvidenceGraph } from "./graph";
 import {
   CoverageOverview,
@@ -75,6 +76,10 @@ type Task = {
   scope_snapshot: Asset[];
   plan?: string[];
   retest_of?: string;
+  retry_of?: string;
+  execution_policy?: ExecutionPolicy;
+  termination_reason?: string | null;
+  queue_wait_ms?: number;
 };
 type Finding = TriageFinding & {
   id: string;
@@ -122,6 +127,7 @@ type Settings = {
   llm_model: string;
   request_budget: number;
   max_workers: number;
+  execution_policy: ExecutionPolicy;
   agents: { id: string; name: string; role: string; tools: string[] }[];
 };
 type Schedule = {
@@ -417,6 +423,7 @@ function App() {
     [connection, setConnection] = useState(true);
   const [filter, setFilter] = useState("all"),
     [formError, setFormError] = useState("");
+  const actionInFlight = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshSequence = useRef(0);
   const message = (text: string) => {
@@ -553,7 +560,8 @@ function App() {
     body?: unknown,
     success = "적용했습니다.",
   ) {
-    if (busy) return;
+    if (busy || actionInFlight.current) return;
+    actionInFlight.current = true;
     setBusy(true);
     try {
       const result = await api(path, method, body);
@@ -564,6 +572,7 @@ function App() {
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
@@ -1552,8 +1561,13 @@ function App() {
                       </div>
                       <div className="approval-budget">
                         {t.workers} workers · 자산별 최대{" "}
-                        {settings?.request_budget} 요청 · GET only
+                        {t.execution_policy?.request_budget ||
+                          settings?.request_budget}{" "}
+                        요청 · GET only
                       </div>
+                      {t.execution_policy && (
+                        <PolicySummary policy={t.execution_policy} />
+                      )}
                       <div className="approval-buttons">
                         <button
                           disabled={busy || !canOperate}
@@ -1922,6 +1936,7 @@ function App() {
                   setAuth({ setup_required: false, authenticated: false });
                 }}
               />
+              <RuntimePanel />
               <section className="panel settings-panel">
                 <div className="panel-head">
                   <h3>실행 정책</h3>
@@ -2285,6 +2300,35 @@ function App() {
             </span>
             <span>{selectedTask.errors}개 오류</span>
           </div>
+          {selectedTask.termination_reason && (
+            <p className="remediation">
+              종료 사유:{" "}
+              {{
+                timeout: "작업 실행 시간 초과",
+                queue_timeout: "대기열 시간 초과",
+                operator_stop: "운영자 중지",
+                shutdown: "서버 종료",
+                internal_error: "내부 오류",
+              }[selectedTask.termination_reason] ||
+                selectedTask.termination_reason}
+            </p>
+          )}
+          {selectedTask.queue_wait_ms !== undefined && (
+            <p className="subtle">
+              실행 전 대기: {(selectedTask.queue_wait_ms / 1000).toFixed(1)}초
+            </p>
+          )}
+          {selectedTask.execution_policy && (
+            <details>
+              <summary>승인한 실행 정책</summary>
+              <PolicySummary policy={selectedTask.execution_policy} />
+            </details>
+          )}
+          {selectedTask.retry_of && (
+            <p className="subtle">
+              원본 작업: {selectedTask.retry_of} · 현재 범위로 만든 재실행 계획
+            </p>
+          )}
           <h4 className="detail-heading">승인 범위</h4>
           <div className="scope-list">
             {selectedTask.scope_snapshot.map((a) => (
@@ -2332,6 +2376,29 @@ function App() {
               <ArrowDownToLine size={15} />
               보고서
             </a>
+            {["failed", "interrupted", "stopped"].includes(
+              selectedTask.status,
+            ) && (
+              <button
+                className="primary"
+                disabled={busy || !canOperate}
+                onClick={async () => {
+                  const result = await act(
+                    "/tasks/" + selectedTask.id + "/retry",
+                    "POST",
+                    undefined,
+                    "재실행 계획을 만들었습니다. 현재 범위와 정책을 승인하세요.",
+                  );
+                  if (result) {
+                    closeTask();
+                    navigate("approvals");
+                  }
+                }}
+              >
+                <RefreshCw size={15} />
+                재실행 계획
+              </button>
+            )}
             {selectedTask.status === "pending" ? (
               <button
                 className="primary"
@@ -2448,7 +2515,13 @@ function App() {
         >
           <div className="detail-summary">
             <Badge value={trafficDetail.method} />
-            <Badge value={String(trafficDetail.status)} />
+            <Badge
+              value={
+                trafficDetail.status
+                  ? String(trafficDetail.status)
+                  : "연결 실패"
+              }
+            />
             <span>
               {trafficDetail.elapsed_ms} ms · {trafficDetail.bytes} B
             </span>

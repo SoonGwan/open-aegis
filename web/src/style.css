@@ -3252,3 +3252,70 @@ pre,
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.runtime-policy {
+  margin: 12px 0;
+}
+.runtime-policy dd {
+  margin: 0;
+  font-weight: 800;
+  text-align: right;
+}
+.runtime-policy dt {
+  color: var(--text-support);
+}
+.runtime-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.runtime-metric {
+  border: var(--stroke) solid var(--ink);
+  padding: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-small);
+  overflow-wrap: anywhere;
+}
+.runtime-metric span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-support);
+}
+.runtime-metric strong {
+  display: block;
+  font-size: 24px;
+  margin-top: 8px;
+}
+@media (max-width: 600px) {
+  .runtime-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .runtime-policy .setting-row {
+    align-items: start;
+    gap: 12px;
+  }
+  .runtime-policy dd {
+    max-width: 60%;
+    overflow-wrap: anywhere;
+  }
+}
+.runtime-panel .runtime-metrics {
+  padding: 20px;
+}
+.runtime-panel > p {
+  margin: 0;
+  padding: 0 20px 12px;
+  line-height: 1.6;
+}
+.runtime-panel .runtime-policy {
+  margin: 0 0 8px;
+}
+@media (max-width: 600px) {
+  .runtime-panel .runtime-metrics {
+    padding: 12px;
+    gap: 10px;
+  }
+  .runtime-panel > p {
+    padding-inline: 12px;
+  }
+}

@@ -16,8 +16,13 @@ if env_file.exists():
         if key.startswith('AEGIS_'):
             os.environ.setdefault(key, value.strip().strip('"\''))
 
-import uvicorn
+from aegis.__main__ import AegisServer
 from aegis.app import create_app
+from aegis.maintenance import WorkspaceBusy
 
-uvicorn.run(create_app(), host=os.environ.get('AEGIS_HOST', '127.0.0.1'), port=int(os.environ.get('AEGIS_PORT', '8787')),
-            access_log=False, timeout_graceful_shutdown=5)
+try:
+    AegisServer(create_app(), host=os.environ.get('AEGIS_HOST', '127.0.0.1'),
+                port=int(os.environ.get('AEGIS_PORT', '8787')), access_log=False,
+                timeout_graceful_shutdown=5).run()
+except WorkspaceBusy as exc:
+    raise SystemExit(str(exc))

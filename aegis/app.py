@@ -33,6 +33,7 @@ from .http_limits import BodyLimitMiddleware
 from .coverage import planned_slots, task_rows, latest_summary
 from .graph import build_graph, GraphNotFound
 from .findings import update_triage, TriageConflict
+from .runtime import ExecutionPolicy
 
 
 class Credentials(BaseModel):
@@ -178,6 +179,7 @@ class PasswordReset(BaseModel):
 
 
 def create_app(data_dir=None, allow_private=None):
+    policy = ExecutionPolicy.from_env()
     folder = Path(data_dir or os.environ.get('AEGIS_DATA_DIR', 'data'))
     lease = WorkspaceLease(folder)
     try:
@@ -186,22 +188,26 @@ def create_app(data_dir=None, allow_private=None):
         lease.close()
         raise
     private = allow_private if allow_private is not None else os.environ.get('AEGIS_LAB_MODE') == '1'
-    engine = Engine(store, private)
+    engine = Engine(store, private, policy=policy)
     scheduler_stop = threading.Event()
     shutdown_requested = threading.Event()
     auth_lock = threading.Lock()
     login_attempts = {}
 
-    def create_task(data, retest_of=None, schedule_id=None):
+    def create_task(data, retest_of=None, schedule_id=None, retry_of=None):
         with store.lock:
-            return create_task_locked(data, retest_of, schedule_id)
+            return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
         if any(a.get('archived_at') for a in assets):
             raise HTTPException(409, '보관된 자산은 검증할 수 없습니다. 먼저 복원하세요.')
+        if retry_of:
+            with store.connect() as db:
+                row = db.execute("SELECT data FROM records WHERE kind='tasks' AND json_extract(data,'$.retry_of')=? AND json_extract(data,'$.status') IN ('pending','queued','running','stopping') LIMIT 1", (retry_of,)).fetchone()
+                if row:return json.loads(row['data'])
         triage_revision = None
         if retest_of:
             finding = store.get('findings', retest_of)
@@ -212,12 +218,12 @@ def create_app(data_dir=None, allow_private=None):
                 if row:
                     return json.loads(row['data'])
             triage_revision = finding.get('triage_revision', 1)
-        if store.count('tasks', statuses=['pending','queued','running','stopping']) >= 30:
-            raise HTTPException(409, '대기·실행 작업 한도(30개)를 초과했습니다.')
+        if store.count('tasks', statuses=['pending','queued','running','stopping']) >= engine.policy.pending_limit:
+            raise HTTPException(409, f'대기·실행 작업 한도({engine.policy.pending_limit}개)를 초과했습니다.')
         task = dict(data.model_dump(), id=identifier(), status='pending', created_at=now(),
                     started_at=None, finished_at=None, approved_at=None, done=0, errors=0,
                     scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id,
-                    retest_triage_revision=triage_revision)
+                    retest_triage_revision=triage_revision, retry_of=retry_of, execution_policy=engine.policy.public())
         store.put_many([('tasks', task)] + [('coverage', row) for row in planned_slots(task)])
         store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
         return task
@@ -306,8 +312,10 @@ def create_app(data_dir=None, allow_private=None):
     admins = [Depends(administrator)]
 
     @app.get('/api/health')
-    def health():
-        return {'status': 'ok', 'version': __version__}
+    def health(response: Response):
+        healthy = engine.queue_thread.is_alive() and not engine.closed
+        if not healthy:response.status_code = 503
+        return {'status': 'ok' if healthy else 'degraded', 'version': __version__}
 
     @app.get('/api/auth/status')
     def auth_status(request: Request):
@@ -564,6 +572,20 @@ def create_app(data_dir=None, allow_private=None):
             raise HTTPException(409, str(exc)) from exc
         return store.get('tasks', task_id)
 
+    @app.post('/api/tasks/{task_id}/retry', dependencies=operations)
+    def retry_task(task_id: str):
+        with store.lock:
+            original=store.get('tasks',task_id)
+            if not original:raise HTTPException(404,'작업이 없습니다.')
+            if original['status'] not in ('failed','interrupted','stopped'):
+                raise HTTPException(409,'실패·중단·중지된 작업만 새 계획으로 다시 실행할 수 있습니다.')
+            data=TaskInput(**{**original,'name':('재실행 · '+original['name'])[:120]})
+            return create_task_locked(data,retest_of=original.get('retest_of'),retry_of=task_id)
+
+    @app.get('/api/runtime', dependencies=auth)
+    def runtime():
+        return engine.metrics()
+
     @app.post('/api/tasks/{task_id}/stop', dependencies=operations)
     def stop(task_id: str):
         if not store.get('tasks', task_id):
@@ -682,7 +704,8 @@ def create_app(data_dir=None, allow_private=None):
     def settings():
         return {'version': __version__, 'schema_version': SCHEMA_VERSION, 'storage': 'sqlite', 'lab_mode': private,
                 'llm_configured': bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL')),
-                'llm_model': os.environ.get('AEGIS_LLM_MODEL', ''), 'request_budget': 24, 'max_workers': 4,
+                'llm_model': os.environ.get('AEGIS_LLM_MODEL', ''), 'request_budget': engine.policy.request_budget, 'max_workers': 4,
+                'execution_policy': engine.policy.public(),
                 'agents': [{'id': 'planner', 'name': 'Planner', 'role': '승인된 도구의 실행 순서를 계획', 'tools': ['catalog']},
                            {'id': 'worker', 'name': 'Worker', 'role': '범위 내 검증과 증거 수집', 'tools': list(CHECK_IDS)},
                            {'id': 'retester', 'name': 'Retester', 'role': '기존 발견 사항을 독립 작업으로 재검증', 'tools': list(CHECK_IDS)}]}
@@ -767,6 +790,12 @@ def create_app(data_dir=None, allow_private=None):
             for task in selected_tasks:
                 lines += ['## 작업: ' + task['name'], '', '상태: ' + task['status'], '검증 도구: ' + ', '.join(task['checks']),
                           f"처리 자산: {task['done']}/{len(task['asset_ids'])} · 오류: {task['errors']}", '']
+                if task.get('execution_policy'):
+                    lines += ['실행 정책: ' + json.dumps(task['execution_policy'], ensure_ascii=False), '']
+                if task.get('termination_reason'):
+                    lines += ['종료 사유: ' + task['termination_reason'], '']
+                if task.get('retry_of'):
+                    lines += ['재실행 원본 작업: ' + task['retry_of'], '']
                 rows = task_rows(store, task)
                 lines += [f"검증 완료: {sum(row['status'] == 'completed' for row in rows)}/{len(rows)} (선택한 자산 × 도구)", '']
                 for row in rows:

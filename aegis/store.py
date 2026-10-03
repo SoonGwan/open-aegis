@@ -27,6 +27,7 @@ class Store:
         self.path.chmod(0o600)
         with self.connect() as db:
             db.execute('PRAGMA journal_mode=WAL')
+            db.execute("CREATE INDEX IF NOT EXISTS records_task_status_approval ON records(json_extract(data,'$.status'),json_extract(data,'$.approved_at')) WHERE kind='tasks'")
 
     def connect(self):
         db = sqlite3.connect(self.path, timeout=15, factory=ClosingConnection)
