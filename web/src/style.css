@@ -3415,3 +3415,16 @@ pre,
 .report-row > .report-download {
   flex: 0 1 280px;
 }
+
+.chat-recovery {
+  margin: 16px 0;
+  padding: 12px;
+  border: 2px solid var(--montage-line-normal-normal);
+  background: var(--montage-background-normal-alternative);
+}
+.chat-recovery p {
+  margin: 0 0 10px;
+}
+.chat-recovery p:last-child {
+  margin: 10px 0 0;
+}

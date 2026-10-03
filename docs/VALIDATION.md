@@ -482,3 +482,31 @@ on 390×844 has no document overflow.
   reload, and question edits can create a new intent; automatic unresolved-intent recovery
   remains outstanding. The client uses crypto.getRandomValues for its 128-bit key so
   generation does not depend on secure-context-only randomUUID.
+
+
+## Same-tab recovery of unacknowledged questions (2026-10-04)
+
+- Frontend **19 tests passed** and TypeScript/Vite build passed. Three additional tests
+  cover persistence/scoping, late acknowledgement versus a newer intent, unavailable
+  and full storage, failed removal, malformed/versioned/oversized entries. Backend
+  source is unchanged; the preceding 175-test result is not rerun in this increment.
+- An isolated app committed the first keyed exchange, then replaced its response with
+  a 503. The actual UI displayed the error and retained the question. Navigating the
+  same tab to a new document at its task bookmark restored the open chat panel, original
+  question and retry control. Closing the task and reopening its bookmark also restored
+  it. No browser state was injected to create this recovery.
+- Manual retry confirmed the original reply and cleared the pending information. The
+  task's messages remained **71** before and after retry, with one matching question.
+  A subsequent new document had the chat panel closed and no recovery prompt.
+- A second fixture response failure created another exchange. '미확인 전송 지우기'
+  cleared its input/prompt; a fresh document did not restore it. The database still
+  contained that question and a total of **73** messages, proving the action did not
+  delete server history. Traffic remained **33** throughout; no target scan ran.
+- Capture: `artifacts/v1-chat-pending-restored-desktop.jpg`. Main preview serves the
+  current frontend and reports healthy. Actor-scoping and storage-denial behavior are
+  unit-tested, not a browser account-switch/storage-quota simulation.
+- Storage is plaintext sessionStorage scoped by actor/task with one pending intent per
+  pair. It supports same-tab document/detail transitions, not cross-device recovery,
+  guaranteed restoration after closing a tab, or preservation of unsubmitted drafts.
+  Automatic retries are absent. Full mobile/assistive-technology QA remains open.
+  Contract: [PAGINATION.md](PAGINATION.md).

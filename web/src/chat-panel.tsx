@@ -3,6 +3,14 @@ import { ArrowRight } from "lucide-react";
 import { api } from "./api";
 import { useRecords, Pagination, RecordState } from "./records";
 
+import {
+  pendingStorage,
+  readPending,
+  writePending,
+  clearPending,
+  type PendingQuestion,
+} from "./chat-pending";
+
 type Message = {
   id: string;
   role: string;
@@ -13,20 +21,28 @@ type Message = {
 
 export function ChatPanel({
   taskId,
+  actorId,
   canOperate,
 }: {
   taskId: string;
+  actorId: string;
   canOperate: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [restored] = useState(() =>
+    readPending(pendingStorage(), actorId, taskId),
+  );
+  const [unconfirmed, setUnconfirmed] = useState(!!restored);
+  const [storageWarning, setStorageWarning] = useState("");
+  const [open, setOpen] = useState(!!restored);
   const [search, setSearch] = useState("");
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] = useState(restored?.content ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const active = useRef(true);
   const submitting = useRef(false);
-  const attempt = useRef<{ content: string; request_id: string } | null>(null);
+  const attempt = useRef<PendingQuestion | null>(restored);
+  const persistedAttempt = useRef(restored?.request_id ?? null);
   const messageBox = useRef<HTMLDivElement>(null);
   const pendingReply = useRef<string | null>(null);
   const records = useRecords<Message>(
@@ -62,10 +78,20 @@ export function ChatPanel({
     if (!attempt.current || attempt.current.content !== question)
       attempt.current = {
         content: question,
-        request_id: Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
-          byte.toString(16).padStart(2, "0"),
+        request_id: Array.from(
+          crypto.getRandomValues(new Uint8Array(16)),
+          (byte) => byte.toString(16).padStart(2, "0"),
         ).join(""),
       };
+    const pending = attempt.current;
+    const persisted = writePending(pendingStorage(), actorId, taskId, pending);
+    if (persisted) persistedAttempt.current = pending.request_id;
+    setStorageWarning(
+      persisted
+        ? ""
+        : "이 탭에 질문을 보관할 수 없습니다. 화면을 닫거나 새로고침하면 재시도 정보가 사라집니다.",
+    );
+    setUnconfirmed(true);
     submitting.current = true;
     setBusy(true);
     setError("");
@@ -74,10 +100,23 @@ export function ChatPanel({
       const reply = await api<Message>(
         `/tasks/${encodeURIComponent(taskId)}/messages`,
         "POST",
-        attempt.current,
+        pending,
       );
       if (!active.current) return;
+      const cleared = clearPending(
+        pendingStorage(),
+        actorId,
+        taskId,
+        pending.request_id,
+      );
       attempt.current = null;
+      setUnconfirmed(false);
+      setStorageWarning(
+        !cleared && persistedAttempt.current === pending.request_id
+          ? "답변은 저장됐지만 이 탭의 재시도 정보를 지우지 못했습니다. 다시 열면 기존 답변을 다시 확인할 수 있습니다."
+          : "",
+      );
+      if (cleared) persistedAttempt.current = null;
       pendingReply.current = reply.id;
       setQuestion("");
       setSearch("");
@@ -93,6 +132,7 @@ export function ChatPanel({
   return (
     <details
       className="chat-panel"
+      open={open}
       onToggle={(e) => setOpen(e.currentTarget.open)}
     >
       <summary>
@@ -148,6 +188,54 @@ export function ChatPanel({
               </p>
             )}
           </div>
+          {unconfirmed && !busy && (
+            <div className="chat-recovery">
+              <p role="status">
+                응답을 확인하지 못한 질문이 있습니다. 같은 내용으로 다시 보내면
+                기존 답변을 확인합니다. 내용을 바꾸면 새 질문으로 보냅니다.
+              </p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (attempt.current) {
+                    const cleared = clearPending(
+                      pendingStorage(),
+                      actorId,
+                      taskId,
+                      attempt.current.request_id,
+                    );
+                    if (
+                      !cleared &&
+                      persistedAttempt.current === attempt.current.request_id
+                    ) {
+                      setStorageWarning(
+                        "이 탭의 재시도 정보를 지우지 못했습니다. 브라우저 저장소 설정을 확인하고 다시 시도하세요.",
+                      );
+                      return;
+                    }
+                    if (cleared) persistedAttempt.current = null;
+                    if (question === attempt.current.content) setQuestion("");
+                  }
+                  attempt.current = null;
+                  setUnconfirmed(false);
+                  setError("");
+                  setStorageWarning("");
+                }}
+              >
+                미확인 전송 지우기
+              </button>
+              <p className="subtle">
+                이 탭의 재시도 정보만 지웁니다. 서버에 저장된 대화는 이력에
+                남습니다.
+              </p>
+            </div>
+          )}
+          {storageWarning && (
+            <p role="alert" className="form-error">
+              {storageWarning}
+            </p>
+          )}
           <form onSubmit={submit}>
             <label>
               검증 질문
@@ -164,7 +252,11 @@ export function ChatPanel({
               className="primary"
               disabled={busy || !canOperate || !question.trim()}
             >
-              {busy ? "요약 중…" : error ? "질문 다시 보내기" : "질문하기"}
+              {busy
+                ? "요약 중…"
+                : unconfirmed || error
+                  ? "질문 다시 보내기"
+                  : "질문하기"}
               <ArrowRight size={14} />
             </button>
           </form>

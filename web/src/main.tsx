@@ -2666,11 +2666,14 @@ function App() {
                 void openFinding(id);
               }}
             />
-            <ChatPanel
-              key={`chat-${selectedTask.id}`}
-              taskId={selectedTask.id}
-              canOperate={canOperate}
-            />
+            {auth.user && (
+              <ChatPanel
+                key={`chat-${auth.user.id}-${selectedTask.id}`}
+                taskId={selectedTask.id}
+                actorId={auth.user.id}
+                canOperate={canOperate}
+              />
+            )}
             <div className="modal-actions">
               <ReportDownload
                 format="markdown"
