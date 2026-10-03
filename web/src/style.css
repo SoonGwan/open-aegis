@@ -2877,3 +2877,27 @@ pre,
     display: none;
   }
 }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--montage-background-normal-normal);
+  border: 2px solid var(--montage-label-strong);
+  box-shadow: 2px 2px 0 var(--montage-label-strong);
+}
+.pagination > span:first-child {
+  margin-right: auto;
+}
+
+.picker-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}

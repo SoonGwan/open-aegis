@@ -36,7 +36,7 @@ class Store:
 
     def put(self, kind, record):
         with self.lock, self.connect() as db:
-            db.execute("INSERT OR REPLACE INTO records VALUES (?,?,?)",
+            db.execute("INSERT INTO records VALUES (?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data",
                        (kind, record['id'], json.dumps(record, ensure_ascii=False)))
         return record
 
@@ -49,6 +49,68 @@ class Store:
         with self.connect() as db:
             rows = db.execute("SELECT data FROM records WHERE kind=? ORDER BY rowid DESC", (kind,)).fetchall()
         return [json.loads(row['data']) for row in rows]
+
+    def page(self, kind, *, limit=25, offset=0, snapshot=None, search='', filters=None, archived=None):
+        """Bounded SQL reads; an insertion watermark keeps later inserts out of a page walk.
+
+        Updates remain live. The watermark is not a historical database snapshot.
+        """
+        fields = {
+            'assets': ('name', 'url', 'owner', 'tags'),
+            'tasks': ('name', 'status', 'goal'),
+            'findings': ('title', 'asset_name', 'check', 'severity', 'status'),
+            'traffic': ('url', 'method', 'status'),
+            'coverage': ('check', 'status'),
+            'observations': ('url', 'title'),
+        }
+        if kind not in fields or not 1 <= limit <= 1000 or offset < 0 or (snapshot is not None and snapshot < 0):
+            raise ValueError('Invalid record query')
+        filters = filters or {}
+        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check'}:
+            raise ValueError('Unknown record filter')
+        with self.connect() as db:
+            db.execute('BEGIN')
+            if snapshot is None:
+                snapshot = db.execute('SELECT coalesce(max(rowid),0) FROM records WHERE kind=?', (kind,)).fetchone()[0]
+            clauses, args = ['kind=?', 'rowid<=?'], [kind, snapshot]
+            if search:
+                expression = " || ' ' || ".join(f"coalesce(json_extract(data,'$.{field}'),'')" for field in fields[kind])
+                # instr treats %, _, quotes and SQL fragments as literal search text.
+                clauses.append(f'instr(lower({expression}),lower(?))>0')
+                args.append(search)
+            for key, value in filters.items():
+                if key == 'task_id' and kind == 'findings':
+                    clauses.append("EXISTS (SELECT 1 FROM json_each(records.data,'$.task_ids') WHERE value=?)")
+                elif key == 'asset_id' and kind == 'tasks':
+                    clauses.append("EXISTS (SELECT 1 FROM json_each(records.data,'$.asset_ids') WHERE value=?)")
+                else:
+                    clauses.append(f"json_extract(data,'$.{key}')=?")
+                args.append(value)
+            if archived is not None:
+                if kind != 'assets':
+                    raise ValueError('Archive filter is only valid for assets')
+                clauses.append("coalesce(json_extract(data,'$.archived_at'),0)" + ('!=0' if archived else '=0'))
+            where = ' AND '.join(clauses)
+            total = db.execute('SELECT count(*) FROM records WHERE ' + where, args).fetchone()[0]
+            rows = db.execute('SELECT data FROM records WHERE ' + where + ' ORDER BY rowid DESC LIMIT ? OFFSET ?',
+                              (*args, limit, offset)).fetchall()
+            items = [json.loads(row['data']) for row in rows]
+            if kind == 'assets' and items:
+                counts = dict(db.execute("SELECT json_extract(data,'$.asset_id'),count(DISTINCT json_extract(data,'$.check')) FROM records WHERE kind='coverage' AND json_extract(data,'$.asset_id') IN (" + ','.join('?' for _ in items) + ") AND coalesce(json_extract(data,'$.status'),'completed')='completed' GROUP BY json_extract(data,'$.asset_id')", [item['id'] for item in items]).fetchall())
+                for item in items:
+                    item['completed_check_count'] = counts.get(item['id'], 0)
+        return {'items': items, 'total': total,
+                'limit': limit, 'offset': offset, 'snapshot': snapshot, 'has_more': offset + len(rows) < total}
+
+    def count(self, kind, *, statuses=None, active_assets=False):
+        clauses, args = ['kind=?'], [kind]
+        if statuses:
+            clauses.append("json_extract(data,'$.status') IN (" + ','.join('?' for _ in statuses) + ')')
+            args.extend(statuses)
+        if active_assets:
+            clauses.append("coalesce(json_extract(data,'$.archived_at'),0)=0")
+        with self.connect() as db:
+            return db.execute('SELECT count(*) FROM records WHERE ' + ' AND '.join(clauses), args).fetchone()[0]
 
     def patch(self, kind, id, **changes):
         with self.lock:

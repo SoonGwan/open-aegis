@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urljoin, urlsplit
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
@@ -381,21 +381,43 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/overview', dependencies=auth)
     def overview():
-        tasks, findings = store.all('tasks'), store.all('findings')
-        assets = [a for a in store.all('assets') if not a.get('archived_at')]
-        coverage = store.all('coverage')
+        tasks, findings = store.page('tasks', limit=100)['items'], store.page('findings', limit=100)['items']
+        assets = store.page('assets', archived=False, limit=100)['items']
+        coverage = store.page('coverage', limit=100)['items']
+        with store.connect() as db:
+            covered_assets = db.execute("SELECT count(DISTINCT json_extract(c.data,'$.asset_id')) FROM records c JOIN records a ON a.kind='assets' AND a.id=json_extract(c.data,'$.asset_id') WHERE c.kind='coverage' AND coalesce(json_extract(a.data,'$.archived_at'),0)=0").fetchone()[0]
+            severity_counts = {f'findings_{row[0]}': row[1] for row in db.execute("SELECT json_extract(data,'$.severity'),count(*) FROM records WHERE kind='findings' AND json_extract(data,'$.status')='open' GROUP BY json_extract(data,'$.severity')")}
         return {'assets': assets, 'tasks': tasks, 'findings': findings, 'coverage': coverage,
-                'observations': store.all('observations'), 'events': store.recent_events(),
-                'stats': {'assets': len(assets), 'tasks': len(tasks),
-                          'running': sum(t['status'] in ('running', 'queued', 'stopping') for t in tasks),
-                          'pending': sum(t['status'] == 'pending' for t in tasks),
-                          'findings': sum(f['status'] == 'open' for f in findings),
-                          'covered_assets': len({c['asset_id'] for c in coverage} & {a['id'] for a in assets}),
-                          'requests': len(store.all('traffic'))}}
+                'observations': store.page('observations', limit=100)['items'], 'events': store.recent_events(),
+                'list_limit': 100,
+                'stats': {**severity_counts, 'assets': store.count('assets', active_assets=True), 'tasks': store.count('tasks'),
+                          'running': store.count('tasks', statuses=['running', 'queued', 'stopping']),
+                          'pending': store.count('tasks', statuses=['pending']),
+                          'findings': store.count('findings', statuses=['open']),
+                          'covered_assets': covered_assets,
+                          'requests': store.count('traffic')}}
+
+    @app.get('/api/records/{kind}', dependencies=auth)
+    def records(kind: Literal['assets', 'tasks', 'findings', 'traffic'],
+                limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
+                snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                search: str = Query('', max_length=200), status: str | None = Query(None, max_length=80),
+                severity: str | None = Query(None, max_length=80), asset_id: str | None = Query(None, max_length=80),
+                task_id: str | None = Query(None, max_length=80), archived: bool | None = None):
+        if archived is not None and kind != 'assets':
+            raise HTTPException(422, '보관 필터는 자산에만 사용할 수 있습니다.')
+        return store.page(kind, limit=limit, offset=offset, snapshot=snapshot, search=search, archived=archived,
+                          filters={k: v for k, v in {'status': status, 'severity': severity, 'asset_id': asset_id, 'task_id': task_id}.items() if v is not None})
 
     @app.get('/api/assets', dependencies=auth)
-    def assets(include_archived: bool = False):
-        return [a for a in store.all('assets') if include_archived or not a.get('archived_at')]
+    def assets(response: Response, include_archived: bool = False):
+        return legacy_page(response, 'assets', archived=None if include_archived else False)
+
+    def legacy_page(response, kind, **options):
+        result = store.page(kind, limit=1000, **options)
+        response.headers['X-Total-Count'] = str(result['total'])
+        response.headers['X-Results-Limited'] = str(result['has_more']).lower()
+        return result['items']
 
     def save_asset(data):
         if any(a['url'] == data.url for a in store.all('assets')):
@@ -468,8 +490,8 @@ def create_app(data_dir=None, allow_private=None):
             return asset
 
     @app.get('/api/tasks', dependencies=auth)
-    def tasks():
-        return store.all('tasks')
+    def tasks(response: Response):
+        return legacy_page(response, 'tasks')
 
     @app.post('/api/tasks', dependencies=operations)
     def add_task(data: TaskInput):
@@ -529,8 +551,8 @@ def create_app(data_dir=None, allow_private=None):
                                      'finding_ids': [f['id'] for f in findings[:8]], 'created_at': now()})
 
     @app.get('/api/findings', dependencies=auth)
-    def findings():
-        return store.all('findings')
+    def findings(response: Response):
+        return legacy_page(response, 'findings')
 
     @app.get('/api/findings/{finding_id}', dependencies=auth)
     def finding_detail(finding_id: str):
@@ -559,9 +581,8 @@ def create_app(data_dir=None, allow_private=None):
                                      checks=[finding['check']], workers=1), retest_of=finding_id)
 
     @app.get('/api/traffic', dependencies=auth)
-    def traffic(task_id: str | None = None):
-        items = store.all('traffic')
-        return [t for t in items if not task_id or t['task_id'] == task_id][:1000]
+    def traffic(response: Response, task_id: str | None = None):
+        return legacy_page(response, 'traffic', filters={'task_id': task_id} if task_id else {})
 
     @app.get('/api/events', dependencies=auth)
     def events(after: int = 0, task_id: str | None = None):

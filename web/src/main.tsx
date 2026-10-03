@@ -34,10 +34,12 @@ import {
 } from "lucide-react";
 import "./style.css";
 import { api } from "./api";
+import { useRecords, Pagination, AssetPicker } from "./records";
 import Modal from "./components/Modal";
 import { UserPanel, PasswordPanel, roleNames, type User } from "./identity";
 
 type Asset = {
+  completed_check_count?: number;
   id: string;
   name: string;
   url: string;
@@ -371,7 +373,6 @@ function App() {
     [modal, setModal] = useState<"asset" | "task" | "import" | "note" | null>(
       null,
     );
-  const [allAssets, setAllAssets] = useState<Asset[]>([]);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [archivingAsset, setArchivingAsset] = useState<Asset | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -387,8 +388,7 @@ function App() {
     evidence: unknown[];
     retests: { id: string; conclusion: string; created_at: number }[];
   } | null>(null);
-  const [traffic, setTraffic] = useState<Traffic[]>([]),
-    [trafficDetail, setTrafficDetail] = useState<Traffic | null>(null),
+  const [trafficDetail, setTrafficDetail] = useState<Traffic | null>(null),
     [notes, setNotes] = useState<Note[]>([]),
     [schedules, setSchedules] = useState<Schedule[]>([]);
   const [toast, setToast] = useState(""),
@@ -407,21 +407,18 @@ function App() {
   const refresh = useCallback(async () => {
     const sequence = ++refreshSequence.current;
     try {
-      const [data, catalog, config, registeredAssets, identity] =
-        await Promise.all([
-          api<Overview>("/overview"),
-          api<Tool[]>("/tools"),
-          api<Settings>("/settings"),
-          api<Asset[]>("/assets?include_archived=true"),
-          api<{ setup_required: boolean; authenticated: boolean; user?: User }>(
-            "/auth/status",
-          ),
-        ]);
+      const [data, catalog, config, identity] = await Promise.all([
+        api<Overview>("/overview"),
+        api<Tool[]>("/tools"),
+        api<Settings>("/settings"),
+        api<{ setup_required: boolean; authenticated: boolean; user?: User }>(
+          "/auth/status",
+        ),
+      ]);
       if (sequence !== refreshSequence.current) return;
       setAuth(identity);
       setOverview(data);
       setOverviewLoaded(true);
-      setAllAssets(registeredAssets);
       setTools(catalog);
       setSettings(config);
       setConnection(true);
@@ -465,12 +462,17 @@ function App() {
       source: EventSource | null = null,
       reconnect: ReturnType<typeof setTimeout> | null = null,
       closed = false;
+    let eventRefresh: ReturnType<typeof setTimeout> | null = null;
     function connect() {
       if (closed) return;
       source = new EventSource("/api/events/stream?after=" + cursor);
       source.onmessage = (e) => {
         cursor = Math.max(cursor, Number(e.lastEventId));
-        void refresh();
+        if (!eventRefresh)
+          eventRefresh = setTimeout(() => {
+            eventRefresh = null;
+            void refresh();
+          }, 250);
       };
       source.onerror = () => {
         source?.close();
@@ -483,16 +485,13 @@ function App() {
       clearInterval(timer);
       source?.close();
       if (reconnect) clearTimeout(reconnect);
+      if (eventRefresh) clearTimeout(eventRefresh);
     };
   }, [auth?.authenticated, refresh]);
   useEffect(() => {
     setSearch("");
     setFilter("all");
     if (!auth?.authenticated) return;
-    if (page === "traffic")
-      api<Traffic[]>("/traffic")
-        .then(setTraffic)
-        .catch((e) => setError(e.message));
     if (page === "notes")
       api<Note[]>("/notes")
         .then(setNotes)
@@ -536,6 +535,7 @@ function App() {
     try {
       const result = await api(path, method, body);
       await refresh();
+      window.dispatchEvent(new Event("aegis-records-changed"));
       message(success);
       return result;
     } catch (e) {
@@ -559,16 +559,37 @@ function App() {
   const closeTraffic = useCallback(() => setTrafficDetail(null), []);
   const matches = (...values: string[]) =>
     values.join(" ").toLowerCase().includes(search.toLowerCase());
-  const visibleTasks = overview.tasks.filter(
-    (t) =>
-      matches(t.name, t.status) && (filter === "all" || t.status === filter),
+  const recordKind = auth?.authenticated
+    ? (
+        {
+          assets: "assets",
+          tasks: "tasks",
+          approvals: "tasks",
+          reports: "tasks",
+          findings: "findings",
+          traffic: "traffic",
+        } as Record<string, string>
+      )[page] || null
+    : null;
+  const recordFilters: Record<string, string> = {};
+  if (page === "assets") recordFilters.archived = String(showArchived);
+  if (page === "approvals") recordFilters.status = "pending";
+  else if (page === "tasks" && filter !== "all") recordFilters.status = filter;
+  if (page === "findings" && filter !== "all") recordFilters.severity = filter;
+  const records = useRecords<Asset | Task | Finding | Traffic>(
+    recordKind,
+    search,
+    recordFilters,
   );
-  const visibleFindings = overview.findings.filter(
-    (f) =>
-      matches(f.title, f.asset_name, f.check) &&
-      (filter === "all" || f.severity === filter),
-  );
-  const pending = overview.tasks.filter((t) => t.status === "pending");
+  const visibleTasks = recordKind === "tasks" ? (records.items as Task[]) : [];
+  const visibleFindings =
+    page === "findings" ? (records.items as Finding[]) : [];
+  const visibleAssets = page === "assets" ? (records.items as Asset[]) : [];
+  const traffic = page === "traffic" ? (records.items as Traffic[]) : [];
+  const pending =
+    page === "approvals"
+      ? visibleTasks
+      : overview.tasks.filter((t) => t.status === "pending");
   const navigate = (value: string) => {
     setPage(value);
     setError("");
@@ -648,6 +669,7 @@ function App() {
         message("노트를 저장했습니다.");
       }
       await refresh();
+      window.dispatchEvent(new Event("aegis-records-changed"));
       setModal(null);
     } catch (e) {
       setFormError(
@@ -694,9 +716,6 @@ function App() {
     auth.user?.role === "admin" || auth.user?.role === "operator";
   const canApprove = auth.user?.role === "admin";
   const title = pages.find((p) => p.id === page)?.name;
-  const visibleAssets = allAssets.filter(
-    (a) => !!a.archived_at === showArchived && matches(a.name, a.url, a.owner),
-  );
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -958,12 +977,12 @@ function App() {
                     value: overview.assets.length
                       ? Math.round(
                           ((overview.stats.covered_assets || 0) /
-                            overview.assets.length) *
+                            overview.stats.assets) *
                             100,
                         ) + "%"
                       : "—",
                     icon: Network,
-                    note: `${overview.stats.covered_assets || 0} / ${overview.assets.length}개 자산에 완료 검증 있음`,
+                    note: `${overview.stats.covered_assets || 0} / ${overview.stats.assets || 0}개 자산에 완료 검증 있음`,
                     color: "green",
                   },
                 ].map((s) => (
@@ -983,7 +1002,10 @@ function App() {
                 <section className="panel">
                   <div className="panel-head">
                     <h3>
-                      최근 검증 작업 <span>{overview.tasks.length}</span>
+                      최근 검증 작업{" "}
+                      <span>
+                        {overview.tasks.length} / 전체 {overview.stats.tasks}
+                      </span>
                     </h3>
                     <button
                       className="text-button"
@@ -1041,7 +1063,7 @@ function App() {
                     <div
                       className="donut"
                       style={{
-                        background: `conic-gradient(var(--montage-status-negative) 0deg ${(overview.findings.filter((f) => f.status === "open" && ["high", "critical"].includes(f.severity)).length / Math.max(1, overview.stats.findings || 0)) * 360}deg, var(--montage-status-cautionary) 0deg ${(overview.findings.filter((f) => f.status === "open" && ["high", "critical", "medium"].includes(f.severity)).length / Math.max(1, overview.stats.findings || 0)) * 360}deg, var(--montage-status-positive) 0deg ${(overview.findings.filter((f) => f.status === "open" && ["high", "critical", "medium", "low"].includes(f.severity)).length / Math.max(1, overview.stats.findings || 0)) * 360}deg, var(--montage-primary-normal) 0deg 360deg)`,
+                        background: `conic-gradient(var(--montage-status-negative) 0deg ${(((overview.stats.findings_high || 0) + (overview.stats.findings_critical || 0)) / Math.max(1, overview.stats.findings || 0)) * 360}deg, var(--montage-status-cautionary) 0deg ${(((overview.stats.findings_high || 0) + (overview.stats.findings_critical || 0) + (overview.stats.findings_medium || 0)) / Math.max(1, overview.stats.findings || 0)) * 360}deg, var(--montage-status-positive) 0deg ${(((overview.stats.findings_high || 0) + (overview.stats.findings_critical || 0) + (overview.stats.findings_medium || 0) + (overview.stats.findings_low || 0)) / Math.max(1, overview.stats.findings || 0)) * 360}deg, var(--montage-primary-normal) 0deg 360deg)`,
                       }}
                     >
                       <div>
@@ -1050,19 +1072,15 @@ function App() {
                       </div>
                     </div>
                     <div className="legend">
-                      {["high", "medium", "low", "info"].map((s) => (
-                        <div key={s}>
-                          <span className={"severity-dot " + s} />
-                          <span>{severityNames[s]}</span>
-                          <b>
-                            {
-                              overview.findings.filter(
-                                (f) => f.status === "open" && f.severity === s,
-                              ).length
-                            }
-                          </b>
-                        </div>
-                      ))}
+                      {["critical", "high", "medium", "low", "info"].map(
+                        (s) => (
+                          <div key={s}>
+                            <span className={"severity-dot " + s} />
+                            <span>{severityNames[s]}</span>
+                            <b>{overview.stats[`findings_${s}`] || 0}</b>
+                          </div>
+                        ),
+                      )}
                     </div>
                   </div>
                 </section>
@@ -1097,16 +1115,15 @@ function App() {
             </>
           )}
 
+          {recordKind && <Pagination records={records} />}
+
           {page === "assets" && (
             <>
               <Toolbar
                 search={search}
                 setSearch={setSearch}
                 placeholder="이름, 주소, 소유자로 검색"
-                count={
-                  allAssets.filter((a) => !!a.archived_at === showArchived)
-                    .length
-                }
+                count={records.total}
               >
                 <button
                   onClick={() => setShowArchived(!showArchived)}
@@ -1134,14 +1151,7 @@ function App() {
                       <div className="asset-meta">
                         <span>완료된 검증 종류</span>
                         <strong>
-                          {
-                            new Set(
-                              overview.coverage
-                                .filter((c) => c.asset_id === a.id)
-                                .map((c) => c.check),
-                            ).size
-                          }{" "}
-                          / {tools.length}
+                          {a.completed_check_count || 0} / {tools.length}
                         </strong>
                       </div>
                       <div className="tags">
@@ -1245,7 +1255,7 @@ function App() {
                 search={search}
                 setSearch={setSearch}
                 placeholder="작업 이름으로 검색"
-                count={visibleTasks.length}
+                count={records.total}
               >
                 <select
                   aria-label="작업 상태"
@@ -1352,7 +1362,7 @@ function App() {
                 search={search}
                 setSearch={setSearch}
                 placeholder="발견 사항 또는 자산으로 검색"
-                count={visibleFindings.length}
+                count={records.total}
               >
                 <select
                   aria-label="심각도"
@@ -1648,7 +1658,7 @@ function App() {
                 search={search}
                 setSearch={setSearch}
                 placeholder="요청 URL로 검색"
-                count={traffic.length}
+                count={records.total}
               />
               <section className="panel">
                 {traffic.length ? (
@@ -1665,36 +1675,34 @@ function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {traffic
-                          .filter((t) => matches(t.url))
-                          .map((t) => (
-                            <tr key={t.id}>
-                              <td>
-                                <button
-                                  className="table-link mono"
-                                  onClick={() => setTrafficDetail(t)}
-                                >
-                                  <span className="method">{t.method}</span>
-                                  {t.url}
-                                </button>
-                              </td>
-                              <td>
-                                <Badge value={String(t.status)} />
-                              </td>
-                              <td>{t.elapsed_ms} ms</td>
-                              <td>{t.bytes.toLocaleString()} B</td>
-                              <td className="subtle">{date(t.created_at)}</td>
-                              <td>
-                                <button
-                                  className="icon-button"
-                                  onClick={() => setTrafficDetail(t)}
-                                  aria-label="트래픽 상세"
-                                >
-                                  <ChevronRight size={17} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                        {traffic.map((t) => (
+                          <tr key={t.id}>
+                            <td>
+                              <button
+                                className="table-link mono"
+                                onClick={() => setTrafficDetail(t)}
+                              >
+                                <span className="method">{t.method}</span>
+                                {t.url}
+                              </button>
+                            </td>
+                            <td>
+                              <Badge value={String(t.status)} />
+                            </td>
+                            <td>{t.elapsed_ms} ms</td>
+                            <td>{t.bytes.toLocaleString()} B</td>
+                            <td className="subtle">{date(t.created_at)}</td>
+                            <td>
+                              <button
+                                className="icon-button"
+                                onClick={() => setTrafficDetail(t)}
+                                aria-label="트래픽 상세"
+                              >
+                                <ChevronRight size={17} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -1756,8 +1764,8 @@ function App() {
                 <div className="panel-head">
                   <h3>작업별 보고서</h3>
                 </div>
-                {overview.tasks.length ? (
-                  overview.tasks.map((t) => (
+                {visibleTasks.length ? (
+                  visibleTasks.map((t) => (
                     <div className="report-row" key={t.id}>
                       <span className="row-icon">
                         <FileText size={18} />
@@ -2015,6 +2023,12 @@ function App() {
               </section>
             </>
           )}
+          {page === "graph" && (
+            <p className="footnote">
+              이 요약은 종류별 최근 100개 기록을 표시합니다. 전체 목록은
+              자산·작업·발견 사항 화면에서 확인하세요.
+            </p>
+          )}
           <footer className="page-footer">
             <span>
               <Shield size={13} /> Open Aegis · Evidence-first security
@@ -2160,27 +2174,7 @@ function App() {
                     defaultValue="등록된 자산의 보안 설정과 접근 권한을 검증합니다."
                   />
                 </label>
-                <fieldset>
-                  <legend>
-                    검증 자산 <span>하나 이상 선택</span>
-                  </legend>
-                  <div className="selection-list">
-                    {overview.assets.map((a) => (
-                      <label className="selection" key={a.id}>
-                        <input
-                          type="checkbox"
-                          name="asset"
-                          value={a.id}
-                          defaultChecked={taskAssetId === a.id}
-                        />
-                        <div>
-                          <strong>{a.name}</strong>
-                          <small>{a.url}</small>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
+                <AssetPicker initialId={taskAssetId} />
                 <fieldset>
                   <legend>검증 도구</legend>
                   <div className="check-grid">
