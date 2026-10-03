@@ -695,10 +695,11 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/findings/{finding_id}/history', dependencies=auth)
     def finding_history(finding_id: str, limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
-                        snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807)):
+                        snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                        search: str = Query('', max_length=200)):
         if not store.get('findings', finding_id):
             raise HTTPException(404, '발견 사항이 없습니다.')
-        return store.page('finding_history', limit=limit, offset=offset, snapshot=snapshot, filters={'finding_id': finding_id})
+        return store.page('finding_history', limit=limit, offset=offset, snapshot=snapshot, search=search, filters={'finding_id': finding_id})
 
     @app.get('/api/findings/{finding_id}', dependencies=auth)
     def finding_detail(finding_id: str):

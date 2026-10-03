@@ -1078,3 +1078,38 @@ on 390×844 has no document overflow.
   screen-reader/zoom, late-response timing race, scroll restoration, unsubmitted-draft
   persistence or AI execution intervention is claimed. Pending questions remain scoped
   plaintext same-tab storage. Overall navigation/accessibility/v1 gates remain open.
+
+## Decision-history search, bookmarks and query recovery (2026-10-04)
+
+- Finding history API accepts bounded `search` (200 characters) and performs SQL literal
+  matching on action code, reason and actor name/username within the selected finding.
+  Existing pagination/watermark response and authorization remain. New API coverage uses
+  60 own entries plus a matching foreign entry, denies unbounded Store.all access, checks
+  actor/case/literal SQL-like queries, disjoint pages and new inserts with/without the
+  original watermark, invalid inputs, missing finding, viewer access and anonymous denial.
+  Triage suite **9 passes**, full backend **248 passes** (77.70 seconds; existing
+  Starlette/httpx deprecation warning).
+- History is a separate initially collapsed collection with the shared records/loading/
+  error/pagination UI. URL state adds `finding_history_open/q/offset/snapshot` independently
+  of proof/retest collections and source lists. The same reviewed numeric/Unicode limits,
+  detail cleanup, stale-position guards and history modes apply. Three additional
+  navigation tests bring frontend to **37 passing tests**. TypeScript/Vite build passes:
+  `index-D8kzT4in.js` / unchanged `index-BqS4l0El.css`. No new CSS or color values.
+- Built UI on isolated synthetic records searches 61 entries by actor username, moves to
+  26–50, preserves a typed decision reason during history paging and keyboard Enter/Space
+  collapse/reopen. Saving that synthetic reason increments the decision revision to 2
+  and total history to 62 while preserving the filtered page. A fresh document restores
+  that searched page. Independent evidence search remains after navigating to 51–61,
+  closing the detail and using Back. Capture `artifacts/v1-triage-history-bookmark.jpg`
+  is visually inspected. These synthetic records represent no actual target finding.
+- A one-off 503 auto-refreshed before observation, so it does not prove manual error
+  recovery. A controlled persistent 503 then shows '목록 조회 실패', the actual error,
+  reload control, retained search and zero displayed history rows. After removing that
+  synthetic fault, the latest-list control and successful query show a genuine empty
+  search result. Automatic poll may also recover after fault removal; this does not
+  establish that recovery required the manual click. No prior page is presented as a
+  successful new query. QA app is stopped cleanly and the tab leaves it; target traffic
+  remains zero.
+- Main app shuts down normally and restarts with the new API. Health and data are checked
+  after restart. Full mobile/screen-reader/zoom, late-response timing races, unsaved draft
+  restoration and retention/load remain unverified; broader v1 gates stay open.

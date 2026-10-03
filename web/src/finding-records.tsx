@@ -74,7 +74,7 @@ function FindingCollection({
   checkNames,
 }: {
   findingId: string;
-  kind: FindingCollectionKind;
+  kind: "evidence" | "retests";
   state: FindingCollectionState;
   onChange: (
     kind: FindingCollectionKind,

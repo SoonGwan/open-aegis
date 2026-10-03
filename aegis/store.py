@@ -142,7 +142,7 @@ class Store:
             'traffic': ('url', 'method', 'status'),
             'coverage': ('check', 'status'),
             'observations': ('url', 'title', 'asset_id', 'task_id'),
-            'finding_history': ('action', 'reason'),
+            'finding_history': ('action', 'reason', 'actor.name', 'actor.username'),
             'notes': ('title', 'content'),
             'schedules': ('task.name', 'task.goal'),
             'evidence': ('check', 'task_id'),

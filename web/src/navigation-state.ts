@@ -185,7 +185,11 @@ export function updateTaskCollectionQuery(
   writeTaskCollection(query, kind, next);
   return detailQuery(query.toString(), detail);
 }
-export const findingCollectionKinds = ["evidence", "retests"] as const;
+export const findingCollectionKinds = [
+  "evidence",
+  "retests",
+  "history",
+] as const;
 export type FindingCollectionKind = (typeof findingCollectionKinds)[number];
 export type FindingCollectionState = ListPosition & {
   search: string;

@@ -2771,6 +2771,8 @@ function App() {
               key={`${selectedFinding.finding.id}:${selectedFinding.finding.triage_revision || 1}:${findingReload}`}
               finding={selectedFinding.finding}
               canOperate={canOperate}
+              historyState={navigation.findingCollections.history}
+              onHistoryChange={navigation.updateFindingCollection}
               onReload={() =>
                 void openFinding(selectedFinding.finding.id, true)
               }

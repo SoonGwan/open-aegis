@@ -63,6 +63,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     findingCollections: {
       evidence: readFindingCollection(location.search, "evidence"),
       retests: readFindingCollection(location.search, "retests"),
+      history: readFindingCollection(location.search, "history"),
     },
   }));
   const [position, setPosition] = useState(() => {
@@ -99,6 +100,7 @@ export function useNavigation(allowedPages: readonly string[]) {
         findingCollections: {
           evidence: readFindingCollection(location.search, "evidence"),
           retests: readFindingCollection(location.search, "retests"),
+          history: readFindingCollection(location.search, "history"),
         },
       });
     };

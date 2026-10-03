@@ -15,6 +15,37 @@ def patch(client, finding, **changes):
     return client.patch('/api/findings/'+finding['id'],json={'expected_revision':finding.get('triage_revision',1),**changes})
 
 
+def test_history_search_is_scoped_literal_paged_and_authorized(client, monkeypatch):
+    store = client.app.state.store
+    store.put('findings', {'id': 'history-search'})
+    literal = "%_ ' OR 1=1 --"
+    def entry(index, finding_id='history-search'):
+        return {'id': f'entry-{index}', 'finding_id': finding_id, 'action': 'triage',
+                'actor': {'name': '합성 작성자', 'username': 'history_reviewer'},
+                'reason': f'{literal} 검토 {index}', 'changes': {}, 'created_at': index}
+    store.put_many([('finding_history', entry(i)) for i in range(60)] +
+                   [('finding_history', entry(999, 'foreign'))])
+    monkeypatch.setattr(store, 'all', lambda *_: (_ for _ in ()).throw(AssertionError('Unbounded history read')))
+    path = '/api/findings/history-search/history'
+    first = client.get(path, params={'search': literal}).json()
+    assert first['total'] == 60 and len(first['items']) == 25 and first['has_more']
+    assert {x['finding_id'] for x in first['items']} == {'history-search'}
+    store.put('finding_history', entry(60))
+    second = client.get(path, params={'search': literal, 'offset': 25, 'snapshot': first['snapshot']}).json()
+    assert second['total'] == 60 and len(second['items']) == 25
+    assert not {x['id'] for x in first['items']} & {x['id'] for x in second['items']}
+    for text in ('합성 작성자', 'HISTORY_REVIEWER', 'triage', literal):
+        assert client.get(path, params={'search': text}).json()['total'] == 61
+    assert client.get(path, params={'search': 'no match'}).json()['total'] == 0
+    assert client.get(path, params={'search': 'x'*201}).status_code == 422
+    assert client.get('/api/findings/missing/history').status_code == 404
+    viewer = add(client, 'viewer')
+    with login(client.app, viewer['username']) as read:
+        assert read.get(path, params={'search': literal}).json()['total'] == 61
+    client.post('/api/auth/logout')
+    assert client.get(path).status_code == 401
+
+
 def test_reason_assignment_revision_and_actor_history(client,lab):
     asset=register(client,lab[0])
     finding=observe(client,asset)

@@ -1,5 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
+import { useRecords, Pagination, RecordState } from "./records";
+import {
+  readDetail,
+  readFindingCollection,
+  type FindingCollectionKind,
+  type FindingCollectionState,
+  type HistoryMode,
+  type ListPosition,
+} from "./navigation-state";
 
 export type TriageFinding = {
   id: string;
@@ -52,11 +61,19 @@ export function FindingTriage({
   canOperate,
   onUpdated,
   onReload,
+  historyState,
+  onHistoryChange,
 }: {
   finding: TriageFinding;
   canOperate: boolean;
   onUpdated: (value: TriageFinding) => void;
   onReload: () => void;
+  historyState: FindingCollectionState;
+  onHistoryChange: (
+    kind: FindingCollectionKind,
+    changes: Partial<FindingCollectionState>,
+    mode?: HistoryMode,
+  ) => void;
 }) {
   const [status, setStatus] = useState(finding.status);
   const [owner, setOwner] = useState(finding.assignee_id || "");
@@ -69,17 +86,8 @@ export function FindingTriage({
     total: 0,
     has_more: false,
   });
-  const [offset, setOffset] = useState(0),
-    [snapshot, setSnapshot] = useState<number>();
-  const [entries, setEntries] = useState<Page<History>>({
-    items: [],
-    total: 0,
-    has_more: false,
-  });
-  const [error, setError] = useState(""),
-    [historyError, setHistoryError] = useState("");
-  const [directoryError, setDirectoryError] = useState(""),
-    [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [directoryError, setDirectoryError] = useState("");
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(
@@ -114,29 +122,6 @@ export function FindingTriage({
       controller.abort();
     };
   }, [search, ownerOffset, canOperate]);
-  useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    setHistoryError("");
-    const query = new URLSearchParams({ limit: "25", offset: String(offset) });
-    if (snapshot !== undefined) query.set("snapshot", String(snapshot));
-    api<Page<History>>(
-      `/findings/${finding.id}/history?${query}`,
-      "GET",
-      undefined,
-      controller.signal,
-    )
-      .then((data) => {
-        if (!controller.signal.aborted) setEntries(data);
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted) setHistoryError(e.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [finding.id, offset, snapshot]);
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (submitting.current) return;
@@ -286,68 +271,114 @@ export function FindingTriage({
           <p>해결 사유: {finding.resolution_reason || "없음"}</p>
         </div>
       )}
-      <h4 className="detail-heading">변경 이력 · {entries.total}개</h4>
-      {historyError && <p role="alert">{historyError}</p>}
-      {loading ? (
-        <p role="status">이력을 불러오는 중…</p>
-      ) : entries.items.length ? (
-        <ol className="triage-history">
-          {entries.items.map((entry) => (
-            <li key={entry.id}>
-              <strong>
-                {actions[entry.action] || entry.action} · {entry.actor.name}
-                {entry.actor.username && ` (${entry.actor.username})`}
-              </strong>
-              <time>
-                {new Date(entry.created_at * 1000).toLocaleString("ko-KR")}
-              </time>
-              <p>{entry.reason}</p>
-              {Object.entries(entry.changes)
-                .filter(([key]) => key !== "assignee_id")
-                .map(([key, value]) => (
-                  <p key={key}>
-                    {fields[key] || key}:{" "}
-                    {statuses[String(value.before)] ||
-                      String(value.before ?? "없음")}{" "}
-                    →{" "}
-                    {statuses[String(value.after)] ||
-                      String(value.after ?? "없음")}
-                  </p>
-                ))}
-            </li>
-          ))}
-        </ol>
-      ) : (
-        !historyError && (
-          <p className="subtle">
-            기록된 변경 이력이 없습니다. 이전 버전의 이력은 소급 생성하지
-            않습니다.
-          </p>
-        )
+      <FindingHistory
+        findingId={finding.id}
+        state={historyState}
+        onChange={onHistoryChange}
+      />
+    </section>
+  );
+}
+
+function FindingHistory({
+  findingId,
+  state,
+  onChange,
+}: {
+  findingId: string;
+  state: FindingCollectionState;
+  onChange: (
+    kind: FindingCollectionKind,
+    changes: Partial<FindingCollectionState>,
+    mode?: HistoryMode,
+  ) => void;
+}) {
+  const { search, expanded } = state;
+  const changePosition = useCallback(
+    (position: ListPosition, mode?: HistoryMode) => {
+      const detail = readDetail(location.search);
+      if (
+        detail?.kind !== "finding" ||
+        detail.id !== findingId ||
+        JSON.stringify(readFindingCollection(location.search, "history")) !==
+          JSON.stringify(state)
+      )
+        return;
+      onChange("history", position, mode);
+    },
+    [findingId, state, onChange],
+  );
+  const records = useRecords<History>(
+    expanded ? "finding_history" : null,
+    search,
+    {},
+    { ...state, onPositionChange: changePosition },
+    `/findings/${encodeURIComponent(findingId)}/history`,
+  );
+  return (
+    <section className="finding-collection" aria-label="발견 사항 변경 이력">
+      <h4 className="detail-heading">변경 이력</h4>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => onChange("history", { expanded: !expanded })}
+      >
+        {expanded ? "변경 이력 접기" : "변경 이력 보기"}
+      </button>
+      {expanded && (
+        <div className="finding-collection-content">
+          <label>
+            사유·작성자로 검색
+            <input
+              aria-label="변경 이력 검색"
+              maxLength={200}
+              value={search}
+              onChange={(event) =>
+                onChange("history", { search: event.target.value }, "replace")
+              }
+            />
+          </label>
+          <Pagination records={records} />
+          {!records.ready ? (
+            <RecordState records={records} />
+          ) : records.items.length ? (
+            <ol className="triage-history">
+              {records.items.map((entry) => (
+                <li key={entry.id}>
+                  <strong>
+                    {actions[entry.action] || entry.action} · {entry.actor.name}
+                    {entry.actor.username && ` (${entry.actor.username})`}
+                  </strong>
+                  <time
+                    dateTime={new Date(entry.created_at * 1000).toISOString()}
+                  >
+                    {new Date(entry.created_at * 1000).toLocaleString("ko-KR")}
+                  </time>
+                  <p>{entry.reason}</p>
+                  {Object.entries(entry.changes)
+                    .filter(([key]) => key !== "assignee_id")
+                    .map(([key, value]) => (
+                      <p key={key}>
+                        {fields[key] || key}:{" "}
+                        {statuses[String(value.before)] ||
+                          String(value.before ?? "없음")}{" "}
+                        →{" "}
+                        {statuses[String(value.after)] ||
+                          String(value.after ?? "없음")}
+                      </p>
+                    ))}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="subtle">
+              {search
+                ? "검색 결과가 없습니다."
+                : "기록된 변경 이력이 없습니다. 이전 버전의 이력은 소급 생성하지 않습니다."}
+            </p>
+          )}
+        </div>
       )}
-      <div className="triage-paging">
-        <button
-          type="button"
-          disabled={loading || offset === 0}
-          onClick={() => setOffset((v) => Math.max(0, v - 25))}
-        >
-          이력 이전
-        </button>
-        <span>
-          {Math.floor(offset / 25) + 1} /{" "}
-          {Math.max(1, Math.ceil(entries.total / 25))}
-        </span>
-        <button
-          type="button"
-          disabled={loading || !entries.has_more}
-          onClick={() => {
-            setSnapshot(entries.snapshot);
-            setOffset((v) => v + 25);
-          }}
-        >
-          이력 다음
-        </button>
-      </div>
     </section>
   );
 }
