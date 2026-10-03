@@ -688,3 +688,35 @@ on 390×844 has no document overflow.
 - No schema migration or frontend change is needed for this repair. External trusted
   checkpoint automation, signatures and audit UI remain open; [AUDIT.md](AUDIT.md)
   documents the stronger tail checks and the limits of metadata validation.
+
+## JSON API response and ownership policy (2026-10-04)
+
+- Authorization rules accept an optional bounded JSON Schema 2020-12 subset and a
+  JSON Pointer with an expected string owner/customer/resource ID. Unknown fields,
+  unsupported schema keywords, external references and invalid pointers are rejected
+  before registration. Existing rules without these options keep status-only behavior.
+- Runtime checks only complete JSON media types; duplicate keys, invalid UTF-8,
+  non-finite numbers, truncation, excessive depth/nodes and absent owner paths are
+  inconclusive. Schema evidence contains only keyword categories, and ownership
+  evidence contains only a boolean. No response value is persisted by this evaluator.
+- Targeted policy/validation regression: **57 passed**. Full backend regression:
+  **226 passed**, one existing Starlette/httpx warning. After two test-only additions,
+  policy tests run again: **28 passed**. The full suite is not rerun after those additions.
+  `pip check`, module compilation and diff whitespace checks pass.
+- Real owned loopback HTTP fixtures prove correct response, nested type mismatch,
+  different owner, denied access, unexpected allowed access, HTML login content,
+  oversized/truncated response and missing owner behavior. Plans send no request before
+  approval; approved snapshots preserve the exact policy. Full JSON reports exclude
+  both actual different-owner and secret-body sentinels.
+- Changing ownership expectations increments asset revision and rejects approval of
+  the old plan without sending a request. An owner finding remains open after an HTML
+  inconclusive retest, then resolves after a complete correct-owner response.
+- Main preview restarts cleanly with the new dependency and policy code. Health,
+  authenticated asset reads and unsupported-$ref rejection (422) succeed. Existing
+  assets remain two and target traffic remains three; audit events 87 still verify
+  against the prior seq-83 checkpoint. Runtime evidence:
+  `artifacts/api-policy-runtime-review.json`. No main target scan or asset creation occurs.
+- Frontend source is unchanged; the existing rule JSON editor can submit these fields.
+  Dedicated schema/ownership controls and reproducible-test export remain open. JSON
+  parsing/validation has byte/structure limits but no independent CPU preemption or
+  large-scale soak proof. Contracts and primary references: [API-POLICY.md](API-POLICY.md).

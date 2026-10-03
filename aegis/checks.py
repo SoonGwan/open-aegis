@@ -6,6 +6,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from .network import in_scope, normalize_url
+from .response_policy import evaluate_response
 
 CATALOG = [
     {'id': 'security_headers', 'name': 'HTTP 보안 헤더', 'description': 'CSP, MIME sniffing, 클릭재킹 방어 설정을 확인합니다.', 'category': 'Web', 'risk': 'read-only'},
@@ -113,10 +114,25 @@ def run_check(check, asset, transport, response):
             denied = result['status'] in (401, 403)
             if not allowed and not denied:
                 raise ValueError('2xx 또는 401/403 응답이 아니어서 권한 결과를 판정할 수 없습니다.')
+            assessment = evaluate_response(rule, result) if allowed else {'schema_errors': [], 'ownership_matches': None}
+            if assessment['schema_errors']:
+                if not rule['expected_allowed']:
+                    raise ValueError('응답 스키마가 일치하지 않아 보호 데이터 접근 여부를 판정할 수 없습니다.')
+                findings.append(issue(check, f'auth-schema-{index}', 'API 응답이 정의된 스키마와 불일치', 'medium',
+                                      {'path': rule['path'], 'role': rule['role'], 'schema_keywords': assessment['schema_errors'],
+                                       'actual_status': result['status'], 'body_persisted': False},
+                                      '응답 계약과 실제 API 형식을 확인하세요. 응답 값은 저장하지 않습니다.', 'policy-mismatch'))
+            if assessment['ownership_matches'] is False:
+                findings.append(issue(check, f'auth-owner-{index}', 'API 응답 소유권 필드가 기대 값과 불일치', 'high',
+                                      {'path': rule['path'], 'role': rule['role'], 'ownership_matches': False,
+                                       'actual_status': result['status'], 'body_persisted': False},
+                                      '서버의 고객사·리소스 소유권 검사를 확인하세요. 운영자가 지정한 필드 비교이며 실제 소유권이나 유출을 독립적으로 증명하지 않습니다.', 'policy-mismatch'))
             if allowed != rule['expected_allowed']:
                 findings.append(issue(check, f'auth-rule-{index}', '정의된 API 접근 권한과 응답이 불일치',
                                       'high' if not rule['expected_allowed'] else 'medium',
                                       {'path': rule['path'], 'role': rule['role'], 'expected_allowed': rule['expected_allowed'],
-                                       'actual_status': result['status'], 'body_persisted': False},
-                                      '서버에서 사용자·고객사·리소스 소유권을 검증하세요. 응답이 실제 보호 데이터인지 확인하세요. HTTP 상태 기반 판정이며 데이터 내용은 저장하지 않습니다.', 'policy-mismatch'))
+                                       'actual_status': result['status'], 'body_persisted': False,
+                                       'response_schema_checked': rule.get('response_schema') is not None,
+                                       'ownership_checked': rule.get('ownership') is not None},
+                                      '서버에서 사용자·고객사·리소스 소유권을 검증하세요. 응답이 실제 보호 데이터인지 확인하세요. 운영자가 정의한 정책의 불일치이며 응답 원문과 실제 소유권 값은 증거에 저장하지 않습니다.', 'policy-mismatch'))
     return findings, observed, None

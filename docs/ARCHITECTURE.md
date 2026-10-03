@@ -24,6 +24,11 @@ owns task state transitions and parallel execution. `aegis/network.py` is the
 only transport for target HTTP requests. `aegis/checks.py` defines observations
 and expected policy comparisons. `aegis/mcp.py` opens an existing DB read-only.
 
+`aegis/response_policy.py` validates a bounded JSON Schema subset and JSON Pointer
+ownership expectations on complete JSON responses. It rejects remote references,
+ambiguous/truncated bodies and excessive structure. Findings retain schema keyword
+names or match booleans, never response values. See [API-POLICY.md](API-POLICY.md).
+
 ## Task states
 
 `pending → queued → running → completed/failed/stopped`.
