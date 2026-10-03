@@ -1,14 +1,11 @@
 import asyncio
-import csv
 import hashlib
 import hmac
-import io
 import json
 import os
 import secrets
 import sqlite3
 import threading
-import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
@@ -34,6 +31,7 @@ from .coverage import planned_slots, task_rows, latest_summary
 from .graph import build_graph, GraphNotFound
 from .findings import update_triage, TriageConflict
 from .runtime import ExecutionPolicy
+from .reporting import report_stream, ReportResponse
 
 
 class Credentials(BaseModel):
@@ -805,56 +803,13 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/reports/export', dependencies=auth)
     def export(format: Literal['json', 'csv', 'markdown'] = 'markdown', task_id: str | None = None):
-        selected_tasks = [t for t in store.all('tasks') if not task_id or t['id'] == task_id]
-        if task_id and not selected_tasks:
+        if task_id and not store.get('tasks', task_id):
             raise HTTPException(404, '작업이 없습니다.')
-        selected_findings = [f for f in store.all('findings') if not task_id or task_id in f['task_ids']]
-        if format == 'json':
-            ids = {t['id'] for t in selected_tasks}
-            finding_ids = {f['id'] for f in selected_findings}
-            payload = {'version': __version__, 'generated_at': now(), 'tasks': selected_tasks, 'findings': selected_findings,
-                       'evidence': [e for e in store.all('evidence') if e['task_id'] in ids],
-                       'finding_history': [entry for entry in store.all('finding_history') if entry['finding_id'] in finding_ids],
-                       'coverage': [row for task in selected_tasks for row in task_rows(store, task)],
-                       'traffic': [t for t in store.all('traffic') if t['task_id'] in ids]}
-            content, media, suffix = json.dumps(payload, ensure_ascii=False, indent=2), 'application/json', 'json'
-        elif format == 'csv':
-            buf = io.StringIO()
-            writer = csv.writer(buf)
-            writer.writerow(['severity', 'status', 'title', 'asset', 'check', 'confidence', 'remediation'])
-            def cell(value):
-                value = str(value)
-                return "'" + value if value.lstrip().startswith(('=', '+', '-', '@')) else value
-            for finding in selected_findings:
-                writer.writerow([cell(finding[k]) for k in ('severity', 'status', 'title', 'asset_name', 'check', 'confidence', 'remediation')])
-            content, media, suffix = '\ufeff' + buf.getvalue(), 'text/csv', 'csv'
-        else:
-            lines = ['# Open Aegis 검증 보고서', '', f'생성 시각: {time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())}', '',
-                     '설정 관찰·권한 규칙 불일치는 확인된 침입 또는 데이터 유출과 구분됩니다.', '']
-            for task in selected_tasks:
-                lines += ['## 작업: ' + task['name'], '', '상태: ' + task['status'], '검증 도구: ' + ', '.join(task['checks']),
-                          f"처리 자산: {task['done']}/{len(task['asset_ids'])} · 오류: {task['errors']}", '']
-                if task.get('execution_policy'):
-                    lines += ['실행 정책: ' + json.dumps(task['execution_policy'], ensure_ascii=False), '']
-                if task.get('termination_reason'):
-                    lines += ['종료 사유: ' + task['termination_reason'], '']
-                if task.get('retry_of'):
-                    lines += ['재실행 원본 작업: ' + task['retry_of'], '']
-                rows = task_rows(store, task)
-                lines += [f"검증 완료: {sum(row['status'] == 'completed' for row in rows)}/{len(rows)} (선택한 자산 × 도구)", '']
-                for row in rows:
-                    lines += [f"- {row['asset_id']} / {row['check']}: {row['status']} · {row.get('reason', '')}"]
-                lines += ['']
-            for finding in selected_findings:
-                lines += ['## [' + finding['severity'].upper() + '] ' + finding['title'], '',
-                          '자산: ' + finding['asset_name'], '상태: ' + finding['status'],
-                          '담당자: ' + (finding.get('assignee_name') or '미지정'),
-                          '위험 수용 사유: ' + finding.get('acceptance_reason', ''),
-                          '해결 사유: ' + finding.get('resolution_reason', ''),
-                          '판정 유형: ' + finding['confidence'], '', '```json',
-                          json.dumps(finding['evidence'], ensure_ascii=False, indent=2), '```', '', finding['remediation'], '']
-            content, media, suffix = '\n'.join(lines), 'text/markdown', 'md'
-        return Response(content, media_type=media, headers={'Content-Disposition': f'attachment; filename="aegis-report.{suffix}"'})
+        media, suffix = {'json':('application/json','json'), 'csv':('text/csv','csv'),
+                         'markdown':('text/markdown','md')}[format]
+        return ReportResponse(report_stream(store.path, format, task_id), media_type=media,
+                                 headers={'Content-Disposition':f'attachment; filename="aegis-report.{suffix}"',
+                                          'Cache-Control':'no-store'})
 
     dist = Path(os.environ.get('AEGIS_WEB_DIR', str(Path(__file__).resolve().parent.parent / 'web' / 'dist')))
     if dist.exists():

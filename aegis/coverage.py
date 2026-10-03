@@ -18,8 +18,12 @@ def planned_slots(task):
 
 
 def task_rows(store, task, *, get_record=None):
+    return list(iter_task_rows(store, task, get_record=get_record))
+
+
+def iter_task_rows(store, task, *, get_record=None):
+    """Yield expected cells without materializing a whole task's coverage matrix."""
     get_record = get_record or store.get
-    rows = []
     for asset in task.get('scope_snapshot', []):
         for check in task.get('checks', []):
             template = slot(task, asset, check)
@@ -31,8 +35,7 @@ def task_rows(store, task, *, get_record=None):
                 row = {**template, 'status': status, 'reason': '이전 기록에 도구별 결과가 없습니다.' if status == 'not_recorded' else '아직 실행 결과가 없습니다.'}
             if row.get('status') not in STATUSES:
                 row = {**row, 'status': 'not_recorded', 'reason': '도구별 실행 결과의 상태를 확인할 수 없습니다.'}
-            rows.append(row)
-    return rows
+            yield row
 
 
 def finish_remaining(store, task, status, reason):

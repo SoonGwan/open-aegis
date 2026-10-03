@@ -329,3 +329,30 @@ on 390×844 has no document overflow.
 - This is still a rules-based summary, not LLM conversation or execution intervention.
   POST network-retry idempotency, report bounds, detail URL and full accessibility/mobile
   regression remain outstanding. Contract changes: [PAGINATION.md](PAGINATION.md).
+
+
+## Consistent streaming report exports (2026-10-04)
+
+- Full backend suite: **163 passed**, one existing Starlette/httpx deprecation warning.
+  Existing coverage/triage/validation subset: **50 passed** before the final stream SQL
+  refinement. Frontend code is unchanged.
+- Nine report-stream tests cover 1,005 records in each scoped collection, complete JSON/
+  Markdown/CSV, count-independent Python reads, CSV formula protection, authentication,
+  viewer access and preservation of full finding associations.
+- Updates to task, finding, history and coverage after the first chunk, and a newly added
+  evidence row, do not change the existing export snapshot. The coverage reader uses
+  the same connection rather than opening newer Store connections.
+- A real write on the read-only connection fails. Unicode/space/URI punctuation filenames
+  work. Early close, malformed JSON/SQL and both ASGI 2.0 disconnect events and ASGI 2.4
+  send errors release the connection. The paused-iterator send-error case uses an explicit
+  response cleanup wrapper.
+- A 6,000-row-per-collection export is larger than **12 MB** with tracemalloc peak below
+  **2 MB**. SQLite query plans have no temporary sorting tree for the report queries.
+  Python allocation measurement is not native-memory/RSS or a concurrency/soak guarantee.
+- Empty-workspace JSON, CSV and Markdown exports were checked separately.
+- The restarted main preview served all six real HTTP downloads (workspace/task ×
+  JSON/CSV/Markdown) with chunked transfer, no Content-Length, no-store headers and
+  matching JSON/CSV finding counts. Saved fixtures: `artifacts/v1-report-smoke/`.
+  Runtime dependency check passed; anyio was already pinned in the lockfile and is now
+  declared as a direct dependency.
+  Contracts, snapshot lifetime and outstanding quotas/timeouts: [REPORTS.md](REPORTS.md).
