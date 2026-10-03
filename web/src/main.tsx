@@ -49,6 +49,7 @@ import {
 import { useRecords, Pagination, AssetPicker, RecordState } from "./records";
 import { useNavigation } from "./navigation";
 import { FindingRecords } from "./finding-records";
+import { TaskRecords } from "./task-records";
 import {
   readNavigation,
   TASK_STATUSES,
@@ -539,23 +540,34 @@ function App() {
   useEffect(() => {
     if (!selectedTask) return;
     let active = true;
-    const load = () =>
-      api<{
+    let sequence = 0;
+    let controller: AbortController | null = null;
+    const load = () => {
+      controller?.abort();
+      controller = new AbortController();
+      const signal = controller.signal;
+      const request = ++sequence;
+      return api<{
         task: Task;
         events: Event[];
         coverage: Coverage[];
         findings: Finding[];
-      }>("/tasks/" + selectedTask.id)
+      }>("/tasks/" + selectedTask.id, "GET", undefined, signal)
         .then((d) => {
-          if (!active) return;
+          if (!active || signal.aborted || request !== sequence) return;
           setSelectedTask(d.task);
           setTaskDetail(d);
         })
-        .catch((e) => setError(e.message));
+        .catch((e) => {
+          if (active && !signal.aborted && request === sequence)
+            setError(e.message);
+        });
+    };
     void load();
     const timer = setInterval(load, 2500);
     return () => {
       active = false;
+      controller?.abort();
       clearInterval(timer);
     };
   }, [selectedTask?.id]);
@@ -2551,22 +2563,14 @@ function App() {
               tools={tools}
             />
           )}
-          <h4 className="detail-heading">
-            실행 기록 <span>{taskDetail?.events.length || 0}</span>
-          </h4>
-          <div className="execution-log">
-            {taskDetail?.events.map((e) => (
-              <div className={"execution-entry " + e.level} key={e.seq}>
-                <span>{date(e.ts)}</span>
-                <div>
-                  <strong>{e.message}</strong>
-                  {Object.keys(e.detail).length > 0 && (
-                    <small>{JSON.stringify(e.detail)}</small>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          <TaskRecords
+            key={selectedTask.id}
+            taskId={selectedTask.id}
+            onFinding={(id) => {
+              closeTask();
+              void openFinding(id);
+            }}
+          />
           <ChatPanel taskId={selectedTask.id} canOperate={canOperate} />
           <div className="modal-actions">
             <a

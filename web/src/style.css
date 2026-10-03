@@ -3338,6 +3338,14 @@ pre,
   margin-top: 6px;
   color: var(--montage-label-neutral);
 }
+.task-record-search {
+  display: grid;
+  gap: 8px;
+  margin-block: 16px;
+}
+.task-event-record.execution-entry {
+  display: block;
+}
 .finding-collection-content {
   margin-block: 16px;
 }

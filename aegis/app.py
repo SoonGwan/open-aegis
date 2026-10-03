@@ -559,9 +559,26 @@ def create_app(data_dir=None, allow_private=None):
         task = store.get('tasks', task_id)
         if not task:
             raise HTTPException(404, '작업이 없습니다.')
-        return {'task': task, 'events': store.events(task_id=task_id, limit=1000),
+        findings = store.page('findings', filters={'task_id':task_id}, compact_findings=True)
+        events = store.event_page(task_id)
+        return {'task': task, 'events': events['items'],
                 'coverage': task_rows(store, task),
-                'findings': [f for f in store.all('findings') if task_id in f['task_ids']]}
+                'findings': findings['items'],
+                'findings_page': {key:value for key,value in findings.items() if key != 'items'},
+                'events_page': {key:value for key,value in events.items() if key != 'items'}}
+
+    @app.get('/api/tasks/{task_id}/findings', dependencies=auth)
+    @app.get('/api/tasks/{task_id}/events', dependencies=auth)
+    def task_collection(task_id: str, request: Request,
+                        limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
+                        snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                        search: str = Query('', max_length=200)):
+        if not store.get('tasks', task_id):
+            raise HTTPException(404, '작업이 없습니다.')
+        if request.url.path.endswith('/events'):
+            return store.event_page(task_id, limit=limit, offset=offset, snapshot=snapshot, search=search)
+        return store.page('findings', limit=limit, offset=offset, snapshot=snapshot, search=search,
+                          filters={'task_id':task_id}, compact_findings=True)
 
     @app.post('/api/tasks/{task_id}/approve', dependencies=admins)
     def approve(task_id: str):

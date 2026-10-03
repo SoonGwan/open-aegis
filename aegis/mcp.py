@@ -58,13 +58,7 @@ class Reader:
         return json.loads(row[0])
 
     def event_page(self, id, *, limit=25, offset=0, snapshot=None):
-        with self.connect() as db:
-            db.execute('BEGIN')
-            if snapshot is None:
-                snapshot = db.execute('SELECT coalesce(max(seq),0) FROM events WHERE task_id=?', (id,)).fetchone()[0]
-            total = db.execute('SELECT count(*) FROM events WHERE task_id=? AND seq<=?', (id,snapshot)).fetchone()[0]
-            items = [{**dict(row), 'detail': json.loads(row['detail'])} for row in db.execute('SELECT * FROM events WHERE task_id=? AND seq<=? ORDER BY seq DESC LIMIT ? OFFSET ?', (id,snapshot,limit,offset))]
-        return {'items':items,'total':total,'limit':limit,'offset':offset,'snapshot':snapshot,'has_more':offset+len(items)<total}
+        return Store.event_page(self, id, limit=limit, offset=offset, snapshot=snapshot)
 
     def call(self, name, args):
         tool = next((tool for tool in TOOLS if tool['name'] == name), None)

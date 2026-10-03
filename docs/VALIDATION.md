@@ -283,3 +283,21 @@ on 390×844 has no document overflow.
 - These checks prove the selected response contracts, not every HTTP response or a hard
   memory bound. Task detail/report reads and other remaining work stay on the v1 checklist.
   Contract changes: [PAGINATION.md](PAGINATION.md).
+
+
+## Paged task findings and execution events (2026-10-04)
+
+- Full backend suite: **150 passed**, one existing Starlette/httpx deprecation warning.
+  New task-record tests: **4 passed**. Frontend TypeScript/Vite build and **10** navigation
+  tests passed. All nine selected semantic colour pairs pass the design contrast check.
+- Tests seed 1,050 matching findings/events and foreign records, prohibit unbounded
+  Store.all reads, verify latest-25 detail summaries and complete last pages, literal event
+  search, role/authentication boundaries, insertion watermarks and current finding edits.
+- An initial generic collection route intercepted the existing messages route. The handler
+  now registers two explicit paths; the regression test and full suite verify messages GET.
+- Browser QA used an existing completed loopback task with **100 findings / 205 events**.
+  Finding page 26–50, event page 26–50, independent CSP/Worker searches (20 each), preservation
+  across metadata polling and finding-detail navigation were checked. No new target scan ran.
+- Desktop capture: `artifacts/v1-task-records-desktop.jpg`. This increment does not claim
+  mobile/accessibility completion, bounded chat/report exports, retention or full v1.
+  API compatibility changes: [PAGINATION.md](PAGINATION.md).
