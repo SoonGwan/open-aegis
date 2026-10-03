@@ -647,8 +647,21 @@ def create_app(data_dir=None, allow_private=None):
         finding = store.get('findings', finding_id)
         if not finding:
             raise HTTPException(404, '발견 사항이 없습니다.')
-        return {'finding': finding, 'evidence': [store.get('evidence', id) for id in finding['evidence_ids']],
-                'retests': [r for r in store.all('retests') if r['finding_id'] == finding_id]}
+        evidence = store.page('evidence', filters={'finding_id': finding_id})
+        retests = store.page('retests', filters={'finding_id': finding_id})
+        return {'finding': finding, 'evidence': evidence['items'], 'retests': retests['items'],
+                'evidence_page': {key: value for key, value in evidence.items() if key != 'items'},
+                'retests_page': {key: value for key, value in retests.items() if key != 'items'}}
+
+    @app.get('/api/findings/{finding_id}/{collection}', dependencies=auth)
+    def finding_collection(finding_id: str, collection: Literal['evidence', 'retests'],
+                           limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
+                           snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                           search: str = Query('', max_length=200)):
+        if not store.get('findings', finding_id):
+            raise HTTPException(404, '발견 사항이 없습니다.')
+        return store.page(collection, limit=limit, offset=offset, snapshot=snapshot, search=search,
+                          filters={'finding_id': finding_id})
 
     @app.patch('/api/findings/{finding_id}', dependencies=operations)
     def update_finding(finding_id: str, data: FindingUpdate, actor=Depends(operator)):

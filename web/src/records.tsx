@@ -26,8 +26,9 @@ export function useRecords<T>(
   external?: ListPosition & {
     onPositionChange: (position: ListPosition, mode?: HistoryMode) => void;
   },
+  endpoint?: string,
 ) {
-  const key = JSON.stringify([kind, search, filters]);
+  const key = JSON.stringify([kind, search, filters, endpoint]);
   const [position, setPosition] = useState({
     key,
     offset: 0,
@@ -85,7 +86,7 @@ export function useRecords<T>(
       if (current.snapshot !== null)
         query.set("snapshot", String(current.snapshot));
       api<Result<T>>(
-        `/records/${kind}?${query}`,
+        `${endpoint || `/records/${kind}`}?${query}`,
         "GET",
         undefined,
         controller.signal,

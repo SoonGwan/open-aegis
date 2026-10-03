@@ -3326,6 +3326,26 @@ pre,
   background: var(--panel);
   margin-block: 12px;
 }
+.finding-collection-content {
+  margin-block: 16px;
+}
+.finding-collection-content label {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.finding-record {
+  padding: 16px;
+  border: var(--stroke) solid var(--ink);
+  background: var(--panel);
+  margin-block: 12px;
+  overflow-wrap: anywhere;
+}
+.finding-record > small {
+  display: block;
+  margin-top: 8px;
+  color: var(--montage-label-neutral);
+}
 .record-state p {
   margin: 0 0 12px;
   line-height: 1.6;

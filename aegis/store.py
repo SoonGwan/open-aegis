@@ -70,6 +70,8 @@ class Store:
             'finding_history': ('action', 'reason'),
             'notes': ('title', 'content'),
             'schedules': ('task.name', 'task.goal'),
+            'evidence': ('check', 'task_id'),
+            'retests': ('conclusion', 'state_note', 'task_id'),
         }
         if kind not in fields or not 1 <= limit <= 1000 or offset < 0 or (snapshot is not None and snapshot < 0):
             raise ValueError('Invalid record query')
@@ -89,7 +91,16 @@ class Store:
                 clauses.append(f'instr(lower({expression}),lower(?))>0')
                 args.append(search)
             for key, value in filters.items():
-                if key == 'task_id' and kind == 'findings':
+                if key == 'finding_id' and kind == 'evidence':
+                    clauses.append("""id IN (SELECT ref.value FROM records f CROSS JOIN json_each(f.data,'$.evidence_ids') ref
+                      WHERE f.kind='findings' AND f.id=?)""")
+                    args.append(value)
+                    clauses.append("""EXISTS (SELECT 1 FROM records f WHERE f.kind='findings' AND f.id=?
+                        AND json_extract(records.data,'$.asset_id')=json_extract(f.data,'$.asset_id')
+                        AND json_extract(records.data,'$.check')=json_extract(f.data,'$.check')
+                        AND json_extract(records.data,'$.fingerprint')=json_extract(f.data,'$.fingerprint')
+                        AND json_extract(records.data,'$.task_id') IN (SELECT value FROM json_each(f.data,'$.task_ids')))""")
+                elif key == 'task_id' and kind == 'findings':
                     clauses.append("EXISTS (SELECT 1 FROM json_each(records.data,'$.task_ids') WHERE value=?)")
                 elif key == 'asset_id' and kind == 'tasks':
                     clauses.append("EXISTS (SELECT 1 FROM json_each(records.data,'$.asset_ids') WHERE value=?)")

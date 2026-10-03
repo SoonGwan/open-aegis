@@ -201,3 +201,29 @@ on 390×844 has no document overflow.
 - The main local server was restarted with the latest backend; the isolated review
   server was shut down after verification. Evidence/observation pagination, unbounded
   report/MCP collections and other remaining v1 work are still tracked separately.
+
+## Finding evidence and retest pages (2026-10-04)
+
+- Full backend suite: **127 passed**, one existing Starlette/httpx deprecation warning.
+  The five new finding-record tests and 39 existing triage/validation tests also passed
+  separately. Frontend navigation suite: **9 passed**; TypeScript/Vite build passed.
+- New tests populate 1,200 proofs and 1,200 matching retests plus 2,000 unrelated retests.
+  They prohibit `Store.all` and per-proof `Store.get` reads while requesting detail/pages.
+  The initial detail arrays contain 25 records each with correct total/has_more metadata.
+- Tests cover literal search, insertion watermarks with new references, live updates,
+  duplicate/missing proof references and rejection of mismatched asset, task, check or
+  fingerprint. Viewer access, missing parents, invalid collection and query bounds are covered.
+- Browser fixture: 31 explicitly labelled synthetic observations and 33 synthetic retest
+  records in the isolated review workspace. These are UI samples, not claims of fresh
+  HTTP observations or actual retest executions; no target requests were added.
+- Browser: expanded evidence only when requested, saw loading before results, moved to
+  rows 26–31 and opened the original observation. An unmatched tool query showed a real
+  empty result. Retests moved to rows 26–33; searching the reason for sample 01 reset to
+  the first page and returned exactly that record. The two searches are independent.
+- Desktop capture: `artifacts/v1-finding-evidence-page.jpg` (local artifact, excluded
+  from Git). The tool display name is resolved from the loaded catalog and its searchable
+  ID remains visible. Nine selected semantic color pairs pass AA; no new mobile or full
+  screen-reader verification is claimed.
+- API compatibility and remaining size limits: [PAGINATION.md](PAGINATION.md).
+  Detail arrays now contain only the latest 25 records. Related-ID metadata, report/MCP
+  history reads and detail URL persistence remain incomplete.

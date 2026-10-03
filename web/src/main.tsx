@@ -47,6 +47,7 @@ import {
 } from "./coverage";
 import { useRecords, Pagination, AssetPicker, RecordState } from "./records";
 import { useNavigation } from "./navigation";
+import { FindingRecords } from "./finding-records";
 import {
   readNavigation,
   TASK_STATUSES,
@@ -2573,25 +2574,13 @@ function App() {
           <pre>{JSON.stringify(selectedFinding.finding.evidence, null, 2)}</pre>
           <h4 className="detail-heading">수정 가이드</h4>
           <p className="remediation">{selectedFinding.finding.remediation}</p>
-          <h4 className="detail-heading">
-            증거 이력 · {selectedFinding.evidence.length}개
-          </h4>
-          <details>
-            <summary>저장된 증거 보기</summary>
-            <pre>{JSON.stringify(selectedFinding.evidence, null, 2)}</pre>
-          </details>
-          <h4 className="detail-heading">재검증 이력</h4>
-          {selectedFinding.retests.length ? (
-            selectedFinding.retests.map((r) => (
-              <div className="retest-row" key={r.id}>
-                <Badge value={r.conclusion} />
-                <small>{date(r.created_at)}</small>
-                {r.state_note && <p>{r.state_note}</p>}
-              </div>
-            ))
-          ) : (
-            <p className="subtle">아직 재검증하지 않았습니다.</p>
-          )}
+          <FindingRecords
+            key={selectedFinding.finding.id}
+            findingId={selectedFinding.finding.id}
+            checkNames={Object.fromEntries(
+              tools.map((tool) => [tool.id, tool.name]),
+            )}
+          />
           <div className="modal-actions">
             <button
               className="primary"
