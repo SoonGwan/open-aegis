@@ -510,3 +510,33 @@ on 390×844 has no document overflow.
   guaranteed restoration after closing a tab, or preservation of unsubmitted drafts.
   Automatic retries are absent. Full mobile/assistive-technology QA remains open.
   Contract: [PAGINATION.md](PAGINATION.md).
+
+
+## Scoped operational reads and restart recovery (2026-10-04)
+
+- Full backend suite: **178 passed**, one existing Starlette/httpx deprecation warning.
+  Three new scoped-operation tests passed separately; existing coverage/chat/asset
+  regression tests also pass. Frontend source is unchanged in this increment.
+- Recovery processes 205 running/queued/stopping tasks across more than two batches
+  while 1,100 completed historical tasks carry 10 KB payloads each. Tests reject Store.all
+  and completed-history JSON decoding; completed check cells survive, missing cells
+  become interrupted, all 205 tasks recover and the queue watchdog remains alive.
+- A keyset test inserts a queued task after iteration begins and changes the first task
+  status. All original 205 IDs are visited once; the later insert remains queued. Reads
+  use a startup rowid upper bound and close each connection before recovery writes.
+- API guards run with Store.all forbidden amid 1,100 extra assets/tasks. Duplicate
+  registration, archived URL reservation, duplicate batch rejection without partial
+  import, URL collision, active-task archive rejection and history URL-change rejection
+  preserve their existing status codes. Archiving pauses all 105 connected enabled
+  schedules, preserves unrelated/paused schedules, and restoration does not resume them.
+- Coverage finalization and assistant completion counting iterate expected cells instead
+  of collecting whole coverage lists. Detail/report contracts retain their current data.
+  Asset URL lookup has a partial expression index created idempotently at Store open.
+- Main preview restarted cleanly, reports healthy, serves the authenticated asset page
+  with 200 and has a live watchdog with zero errors. Its target traffic stays at three
+  records before/after restart. EXPLAIN QUERY PLAN confirms URL existence lookup uses
+  records_asset_url, and the index exists in the reopened preview database.
+- These are limits on selected/decoded record counts, not a measured RSS/CPU/latency
+  bound. Individual task payloads, JSON relationship arrays and the archived asset's
+  paused-schedule audit ID list remain size dependent. No long-running soak is proven.
+  Contracts: [RUNTIME.md](RUNTIME.md), [PAGINATION.md](PAGINATION.md).

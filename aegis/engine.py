@@ -29,7 +29,7 @@ class Engine:
         self.closed = False
         self.queue_errors = 0
         self.queue_last_error_at = None
-        for task in store.all('tasks'):
+        for task in store.recovery_tasks():
             if task['status'] in ('running', 'queued', 'stopping'):
                 finish_remaining(store, task, 'interrupted', '서버 재시작으로 실행 결과를 확인할 수 없습니다.')
                 store.patch('tasks', task['id'], status='interrupted', finished_at=now())

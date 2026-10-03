@@ -39,7 +39,7 @@ def iter_task_rows(store, task, *, get_record=None):
 
 
 def finish_remaining(store, task, status, reason):
-    for row in task_rows(store, task):
+    for row in iter_task_rows(store, task):
         if row['status'] not in TERMINAL:
             store.put('coverage', {**row, 'status': status, 'reason': reason, 'updated_at': now()})
 

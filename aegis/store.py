@@ -40,6 +40,7 @@ class Store:
         self.path.chmod(0o600)
         with self.connect() as db:
             db.execute('PRAGMA journal_mode=WAL')
+            db.execute("CREATE INDEX IF NOT EXISTS records_asset_url ON records(json_extract(data,'$.url')) WHERE kind='assets'")
             db.execute("CREATE INDEX IF NOT EXISTS records_task_status_approval ON records(json_extract(data,'$.status'),json_extract(data,'$.approved_at')) WHERE kind='tasks'")
             db.execute("CREATE INDEX IF NOT EXISTS records_schedule_due ON records(kind,json_extract(data,'$.next_at')) WHERE kind='schedules' AND json_extract(data,'$.enabled')=1")
 
@@ -83,6 +84,45 @@ class Store:
             projection = FINDING_READ_PROJECTION if kind == 'findings' and compact_findings else 'data'
             row = db.execute("SELECT " + projection + " AS data FROM records WHERE kind=? AND id=?", (kind, id)).fetchone()
         return json.loads(row['data']) if row else None
+
+    def recovery_tasks(self):
+        """Read only unfinished tasks in bounded keyset batches, closing before writes."""
+        with self.connect() as db:
+            upper = db.execute('SELECT coalesce(max(rowid),0) FROM records').fetchone()[0]
+        before = None
+        while True:
+            with self.connect() as db:
+                rows = db.execute("SELECT rowid,data FROM records WHERE kind='tasks' AND rowid<=? AND (? IS NULL OR rowid<?) "
+                                  "AND json_extract(data,'$.status') IN ('running','queued','stopping') "
+                                  "ORDER BY rowid DESC LIMIT 100", (upper, before, before)).fetchall()
+            if not rows:
+                return
+            before = rows[-1]['rowid']
+            for row in rows:
+                yield json.loads(row['data'])
+
+    def asset_url_exists(self, url, exclude_id=None):
+        with self.connect() as db:
+            return db.execute("SELECT 1 FROM records WHERE kind='assets' "
+                              "AND json_extract(data,'$.url')=? AND (? IS NULL OR id!=?) LIMIT 1",
+                              (url, exclude_id, exclude_id)).fetchone() is not None
+
+    def asset_has_tasks(self, asset_id, *, active_only=False):
+        active = " AND json_extract(data,'$.status') IN ('queued','running','stopping')" if active_only else ''
+        with self.connect() as db:
+            return db.execute("SELECT 1 FROM records WHERE kind='tasks'" + active +
+                              " AND EXISTS (SELECT 1 FROM json_each(records.data,'$.asset_ids') WHERE value=?) LIMIT 1",
+                              (asset_id,)).fetchone() is not None
+
+    def enabled_schedule_ids(self, asset_id):
+        # Only IDs are needed to pause schedules. Keep a stable read snapshot while writes
+        # use other short-lived connections; no schedule payloads are decoded here.
+        with self.connect() as db:
+            for row in db.execute("SELECT id FROM records WHERE kind='schedules' "
+                                  "AND json_extract(data,'$.enabled')=1 AND EXISTS "
+                                  "(SELECT 1 FROM json_each(records.data,'$.task.asset_ids') WHERE value=?)",
+                                  (asset_id,)):
+                yield row['id']
 
     def all(self, kind):
         with self.connect() as db:

@@ -27,7 +27,7 @@ from .auth import password_hash, public_user, new_user
 from .maintenance import WorkspaceLease
 from .migrations import SCHEMA_VERSION
 from .http_limits import BodyLimitMiddleware
-from .coverage import planned_slots, task_rows, latest_summary
+from .coverage import planned_slots, task_rows, iter_task_rows, latest_summary
 from .graph import build_graph, GraphNotFound
 from .findings import update_triage, TriageConflict
 from .runtime import ExecutionPolicy
@@ -479,7 +479,7 @@ def create_app(data_dir=None, allow_private=None):
         return result['items']
 
     def save_asset(data):
-        if any(a['url'] == data.url for a in store.all('assets')):
+        if store.asset_url_exists(data.url):
             raise HTTPException(409, '이미 등록된 자산 주소입니다.')
         asset = dict(data.model_dump(), id=identifier(), created_at=now(), revision=1, archived_at=None)
         store.put('assets', asset)
@@ -501,8 +501,7 @@ def create_app(data_dir=None, allow_private=None):
             raise HTTPException(400, '한 번에 최대 100개 자산을 가져올 수 있습니다.')
         # Validate the entire batch before writing any records.
         urls = [a.url for a in data]
-        existing = {a['url'] for a in store.all('assets')}
-        if len(set(urls)) != len(urls) or set(urls) & existing:
+        if len(set(urls)) != len(urls) or any(store.asset_url_exists(url) for url in urls):
             raise HTTPException(409, '중복 자산이 있습니다. 가져오기를 적용하지 않았습니다.')
         return [save_asset(a) for a in data]
 
@@ -510,8 +509,7 @@ def create_app(data_dir=None, allow_private=None):
         asset = store.get('assets', asset_id)
         if not asset:
             raise HTTPException(404, '자산이 없습니다.')
-        if any(asset_id in t['asset_ids'] and t['status'] in ('queued', 'running', 'stopping')
-               for t in store.all('tasks')):
+        if store.asset_has_tasks(asset_id, active_only=True):
             raise HTTPException(409, '실행 중인 자산은 변경할 수 없습니다. 작업 종료 후 다시 시도하세요.')
         return asset
 
@@ -522,9 +520,9 @@ def create_app(data_dir=None, allow_private=None):
             if previous.get('archived_at'):
                 raise HTTPException(409, '보관된 자산은 복원한 후 수정하세요.')
             if data.url != previous['url']:
-                if any(asset_id in t['asset_ids'] for t in store.all('tasks')):
+                if store.asset_has_tasks(asset_id):
                     raise HTTPException(409, '검증 이력이 있는 주소는 변경할 수 없습니다. 새 자산으로 등록하세요.')
-                if any(a['id'] != asset_id and a['url'] == data.url for a in store.all('assets')):
+                if store.asset_url_exists(data.url, exclude_id=asset_id):
                     raise HTTPException(409, '이미 등록된 자산 주소입니다.')
             asset = store.patch('assets', asset_id, **data.model_dump(), revision=previous.get('revision', 1) + 1, updated_at=now())
             store.event(None, '자산 수정: ' + data.name, detail={'asset_id': asset_id, 'revision': asset['revision']})
@@ -540,10 +538,9 @@ def create_app(data_dir=None, allow_private=None):
                                 revision=previous.get('revision', 1) + 1, updated_at=now())
             paused = []
             if data.archived:
-                for schedule in store.all('schedules'):
-                    if schedule['enabled'] and asset_id in schedule['task']['asset_ids']:
-                        store.patch('schedules', schedule['id'], enabled=False)
-                        paused.append(schedule['id'])
+                for schedule_id in store.enabled_schedule_ids(asset_id):
+                    store.patch('schedules', schedule_id, enabled=False)
+                    paused.append(schedule_id)
             store.event(None, ('자산 보관: ' if data.archived else '자산 복원: ') + asset['name'],
                         detail={'asset_id': asset_id, 'paused_schedules': paused})
             return asset
@@ -635,8 +632,8 @@ def create_app(data_dir=None, allow_private=None):
             raise HTTPException(404, '작업이 없습니다.')
         findings = store.page('findings', limit=8, filters={'task_id':task_id},
                               compact_findings=True, priority=True)['items']
-        coverage = [c for c in task_rows(store, task) if c['status'] == 'completed']
-        answer = [f"작업 상태: {task['status']}. {len(task['asset_ids'])}개 자산 중 {task['done']}개 처리, {len(coverage)}개 검증 완료, {task['errors']}개 오류입니다."]
+        completed_checks = sum(c['status'] == 'completed' for c in iter_task_rows(store, task))
+        answer = [f"작업 상태: {task['status']}. {len(task['asset_ids'])}개 자산 중 {task['done']}개 처리, {completed_checks}개 검증 완료, {task['errors']}개 오류입니다."]
         if task['status'] == 'pending':
             answer.append('아직 대상 요청을 보내지 않았습니다. 실행 범위를 확인한 후 승인하세요.')
         if any(word in data.content for word in ('수정', '조치', '우선', '해결')):
