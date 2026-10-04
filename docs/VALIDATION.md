@@ -4912,3 +4912,47 @@ on 390×844 has no document overflow.
   coverage display retains its existing compatibility contract. Sparse retry
   execution, full mobile/screen-reader journeys, actual container/hosted CI runs,
   semantic goal evaluation and other full v1 gates remain open.
+
+### Installed database loss during approved goal GETs (2026-10-05)
+
+- Added optional `--database-crash-in-flight` to the installed recovery rehearsal,
+  requiring `--database-crash` (which already requires `--crash` and PostgreSQL).
+  Each restored goal retest/follow-up first recovers from its existing service
+  SIGKILL, receives a fresh explicit approval and reaches an owned held GET. The
+  temporary database is then stopped immediately and restarted while the service
+  remains alive. WAL recovery and the pre-crash audit prefix must verify.
+- Runtime ownership deliberately does not reconnect after database loss. The old
+  service must refuse task reads, approvals and health with503. The harness kills
+  only that owned stale service and starts a fresh one; the persisted task must
+  recover as interrupted with its original goal reference/round and no new target
+  request. Repeated retry requests create one pending plan, a fresh approval
+  completes it, and the final restart preserves resolution/results/continuation.
+- Initial exploratory run expected a running-task read after database restart and
+  correctly received503 (`artifacts/goal-active-database-crash.txt`); this is the
+  existing ownership-fencing contract, not a service defect. The next harness
+  attempt assumed a health `status` body, but ownership middleware returns a503
+  detail before that handler (`...-verified.txt`). Both failed attempts are not
+  passing evidence. The final harness checks the actual fenced HTTP contract.
+- Final `--backend both --crash --database-crash --database-crash-in-flight` passed
+  (`...-final.txt`). Native PostgreSQL16.15: seven owned GETs, five owned service
+  SIGKILLs, three immediate database shutdowns (one pending, two active GETs),
+  audit43→119. Active audit checkpoints retained event66 and event96 respectively;
+  each records WAL recovery, stale-service read/approval/health refusal and fresh
+  approval completion after service restart. SQLite: five GETs, three SIGKILLs,
+  no database crash, audit43→99. Both have zero preapproval restore requests and
+  zero external target requests; semantic goal verification remains false.
+- Normal `--backend both` control passed, three GETs/no crashes per backend,
+  audit40→76 (`...-normal-control.txt`). Existing pending database-crash control
+  also passed, five GETs/three service SIGKILLs per backend, audit43→99 and no
+  in-flight database shutdowns (`...-pending-control.txt`). Invalid optional-flag
+  combinations reject with exit2 before setup (`...-proof.json`). Three successful
+  temporary installations removed (`...-cleanup.json`); retained preview health ok.
+- Service/frontend unchanged. Reused verified wheel SHA256
+  `26aef0a38a9a39ad4e75cef9eafe1ed7ab26bcb7cc3ee0d3b3f8d6baa173ba40`, all72 service
+  Python files freshly byte-match the checkout (`...-proof.json`). Prior1035 tests
+  remain the last full-suite evidence; no broad unit/frontend rerun for this
+  harness-only increment. Native CI now requests the extra mode; hosted CI unrun.
+- This proves database-server loss during a held, already-authorized HTTP request
+  and recovery through new service ownership and new approval. It does not prove
+  a crash during database writes/commit, hardware power loss, storage failure,
+  PITR or remote-backup recovery. Those and other full v1 gates remain open.

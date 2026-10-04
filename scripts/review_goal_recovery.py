@@ -122,9 +122,26 @@ def finished(http, task_id):
         time.sleep(.05)
 
 
-def execute_restored(python, folder, environment, http_target, pending, origin_key, crash):
+def execute_restored(python, folder, environment, http_target, pending, origin_key, crash, database_crash=None):
     """Approve one pending plan; optionally crash its owned service during its GET."""
     label = "restored-" + origin_key.replace("_", "-")
+    def retry_interrupted(http, interrupted_plan, expected_requests):
+        interrupted = http('/api/tasks/' + interrupted_plan['id'])
+        assert interrupted['task']['status'] == 'interrupted'
+        assert interrupted['task'][origin_key] == pending[origin_key]
+        assert all(row['status'] == 'interrupted' for row in interrupted['coverage'])
+        assert len(http_target.requests) == expected_requests
+        task_count = http('/api/records/tasks')['total']
+        retry_path = '/api/tasks/' + interrupted_plan['id'] + '/retry'
+        retry = http(retry_path, method='POST')
+        assert retry['status'] == 'pending' and retry['approved_at'] is None
+        assert retry[origin_key] == pending[origin_key]
+        assert retry.get('planning_round', 0) == pending.get('planning_round', 0)
+        assert http(retry_path, method='POST')['id'] == retry['id']
+        assert http('/api/records/tasks')['total'] == task_count + 1
+        assert all(row['status'] == 'not_started' for row in http('/api/tasks/' + retry['id'])['coverage'])
+        assert len(http_target.requests) == expected_requests
+        return retry
     with service(python, folder, environment, label) as (http, _, crash_owned):
         http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
         before = len(http_target.requests)
@@ -145,31 +162,49 @@ def execute_restored(python, folder, environment, http_target, pending, origin_k
         assert len(http_target.requests) == before + 1
     if not crash:
         return pending
-    with service(python, folder, environment, label + '-crash-recovered') as (http, _, _):
+    with service(python, folder, environment, label + '-crash-recovered') as (http, _, crash_owned):
         http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
-        interrupted = http('/api/tasks/' + pending['id'])
-        assert interrupted['task']['status'] == 'interrupted'
-        assert interrupted['task'][origin_key] == pending[origin_key]
-        assert all(row['status'] == 'interrupted' for row in interrupted['coverage'])
-        assert len(http_target.requests) == before + 1
-        task_count = http('/api/records/tasks')['total']
-        retry_path = '/api/tasks/' + pending['id'] + '/retry'
-        retry = http(retry_path, method='POST')
-        assert retry['status'] == 'pending' and retry['approved_at'] is None
-        assert retry[origin_key] == pending[origin_key]
-        assert retry.get('planning_round', 0) == pending.get('planning_round', 0)
-        assert http(retry_path, method='POST')['id'] == retry['id']
-        assert http('/api/records/tasks')['total'] == task_count + 1
-        assert all(row['status'] == 'not_started' for row in http('/api/tasks/' + retry['id'])['coverage'])
-        assert len(http_target.requests) == before + 1
+        retry = retry_interrupted(http, pending, before + 1)
+        if database_crash is not None:
+            http_target.entered.clear()
+            http_target.release.clear()
+            http_target.hold = True
+        http('/api/tasks/' + retry['id'] + '/approve', method='POST')
+        if database_crash is not None:
+            try:
+                assert http_target.entered.wait(timeout=5), 'Owned retry did not reach its held GET'
+                assert http('/api/tasks/' + retry['id'])['task']['status'] == 'running'
+                recovery = database_crash(retry['id'], origin_key)
+                http('/api/tasks/' + retry['id'], expected=503)
+                http('/api/tasks/' + retry['id'] + '/approve', method='POST', expected=503)
+                health = http('/api/health', expected=503)
+                assert isinstance(health.get('detail'), str)
+                assert len(http_target.requests) == before + 2
+                recovery['stale_service_refused_reads_and_approval'] = True
+                recovery['health_refused_after_owner_loss'] = True
+                crash_owned()
+            finally:
+                http_target.hold = False
+                http_target.release.set()
+        else:
+            result = finished(http, retry['id'])
+            assert result['task'][origin_key] == pending[origin_key]
+            assert len(http_target.requests) == before + 2
+            return retry
+    with service(python, folder, environment, label + '-database-crash-recovered') as (http, _, _):
+        http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
+        retry = retry_interrupted(http, retry, before + 2)
         http('/api/tasks/' + retry['id'] + '/approve', method='POST')
         result = finished(http, retry['id'])
         assert result['task'][origin_key] == pending[origin_key]
-        assert len(http_target.requests) == before + 2
+        assert len(http_target.requests) == before + 3
+        recovery['fresh_approval_completed_after_service_restart'] = True
+        recovery['completed_retry_id'] = retry['id']
         return retry
 
 
-def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=False, database_crash=None):
+def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=False, database_crash=None,
+             database_crash_in_flight=False):
     folder = root / backend
     folder.mkdir()
     source = folder / 'source'
@@ -301,8 +336,21 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=
             assert Handler.requests == ['/']
         # Recovery must not approve execution. Each new approval is explicit here.
         Handler.hardened = True
-        retest = execute_restored(python, folder, restored_environment, Handler, retest, 'goal_retest', crash)
-        following = execute_restored(python, folder, restored_environment, Handler, following, 'goal_plan', crash)
+        active_database_recoveries = []
+        def crash_active_database(task_id, origin_key):
+            active_checkpoint = folder / (origin_key + '-active-checkpoint.json')
+            before = run([binaries / 'aegis-verify-audit', '--output', active_checkpoint], restored_environment)
+            assert before['valid']
+            recovery = database_crash()
+            after = run([binaries / 'aegis-verify-audit', '--checkpoint', active_checkpoint], restored_environment)
+            assert after['valid']
+            recovery.update(task_id=task_id, origin_key=origin_key, audit_prefix_preserved=True,
+                            audit_events_before=before['events'], audit_events_after=after['events'])
+            active_database_recoveries.append(recovery)
+            return recovery
+        active_crash = crash_active_database if database_crash_in_flight else None
+        retest = execute_restored(python, folder, restored_environment, Handler, retest, 'goal_retest', crash, active_crash)
+        following = execute_restored(python, folder, restored_environment, Handler, following, 'goal_plan', crash, active_crash)
         # Reopen the restored service again: completed results and request identities persist.
         with service(python, folder, restored_environment, 'reopened') as (http, _, _):
             http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
@@ -316,7 +364,7 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=
             assert latest['latest_retest']['task_id'] == retest['id'] and latest['latest_retest']['conclusion'] == 'resolved'
             assert http('/api/tasks/' + following['id'] + '/goal-progress')['goal_verified'] is False
             assert http('/api/tasks/' + goal['id'] + '/goal-progress')['goal_verified'] is False
-            assert Handler.requests == ['/'] * (5 if crash else 3)
+            assert Handler.requests == ['/'] * (7 if database_crash_in_flight else 5 if crash else 3)
         unchanged_source_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], source_environment)
         final_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], restored_environment)
         assert unchanged_source_audit['checkpoint'] == audit['checkpoint']
@@ -324,8 +372,9 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=
         if backend == 'postgres':
             assert not (source / 'aegis.db').exists() and not (restored / 'aegis.db').exists()
         return {'backend': backend, 'valid': True, 'owned_target_requests': len(Handler.requests),
-                'process_crash_rehearsed': crash, 'owned_service_sigkills': 3 if crash else 0,
+                'process_crash_rehearsed': crash, 'owned_service_sigkills': 5 if database_crash_in_flight else 3 if crash else 0,
                 'database_crash_recovery': database_recovery,
+                'in_flight_database_recoveries': active_database_recoveries,
                 'preapproval_restore_requests': 0, 'external_target_requests': 0,
                 'goal_round': following['id'], 'goal_retest': retest['id'], 'audit_events_before_backup': audit['events'],
                 'source_coverage': source_coverage,
@@ -351,9 +400,12 @@ def main():
     parser.add_argument('--backend', choices=('sqlite', 'postgres', 'both'), default='both')
     parser.add_argument('--crash', action='store_true', help='SIGKILL owned pending and in-flight servers; verify interrupted recovery and newly approved retry')
     parser.add_argument('--database-crash', action='store_true', help='Immediately stop the owned PostgreSQL cluster and verify WAL recovery of committed pending plans; requires --crash and a PostgreSQL backend')
+    parser.add_argument('--database-crash-in-flight', action='store_true', help='Also immediately stop the owned database during approved retry GETs; verify stale service refusal, restart and fresh approval; requires --database-crash')
     args = parser.parse_args()
     if args.database_crash and (not args.crash or args.backend == 'sqlite'):
         parser.error('--database-crash requires --crash and --backend postgres or both')
+    if args.database_crash_in_flight and not args.database_crash:
+        parser.error('--database-crash-in-flight requires --database-crash')
     wheel = args.wheel.resolve(strict=True)
     repository = Path(__file__).resolve().parents[1]
     environment = {key: value for key, value in os.environ.items()
@@ -411,7 +463,8 @@ def main():
             try:
                 dsn = 'host=' + str(socket_folder) + ' port=' + str(port) + ' dbname=postgres'
                 results.append(rehearse('postgres', root, python, binaries, environment, run, dsn,
-                                        crash=args.crash, database_crash=crash_database if args.database_crash else None))
+                                        crash=args.crash, database_crash=crash_database if args.database_crash else None,
+                                        database_crash_in_flight=args.database_crash_in_flight))
             finally:
                 run([postgres_binaries['pg_ctl'], '-D', cluster, '-w', '-m', 'fast', 'stop'], environment)
         print(json.dumps({'valid': True, 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),

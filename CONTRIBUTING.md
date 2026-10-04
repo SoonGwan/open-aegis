@@ -77,6 +77,18 @@ evidence of WAL recovery, an unchanged audit checkpoint, retained plans and requ
 identities, and no automatic target requests. The host and storage remain alive;
 this does not simulate hardware power loss, storage failure or PITR.
 
+Add `--database-crash-in-flight` with `--database-crash` to also stop the owned
+database during held, explicitly approved retest and follow-up retry GETs. The
+service loses its runtime ownership and must refuse reads, approvals and health
+with 503 rather than reacquire automatically. After an owned service restart each
+task must recover as interrupted, create exactly one pending retry and complete
+only after a fresh approval. This mode makes seven owned GETs and five service
+SIGKILLs on PostgreSQL (three database immediate shutdowns including the pending
+phase); SQLite still makes five GETs and three service SIGKILLs. Audit checkpoints
+are verified throughout. Native CI requests this mode. This exercises a held HTTP
+request across database loss; a crash during a database write transaction is
+separate validation.
+
 The wheel contains the Python backend/CLI, not the frontend bundle. Its UI is supplied
 explicitly via AEGIS_WEB_DIR for this review; Docker packages the separately built UI.
 Build dependencies, runner images and Python/Node patch versions are not fully pinned,
