@@ -1065,7 +1065,7 @@ function App() {
         <div className="sidebar-bottom">
           <span className="open-source">
             <Code2 size={14} /> OPEN SOURCE{" "}
-            <span>v{settings?.version || "0.1.0"}</span>
+            <span>{settings?.version ? `v${settings.version}` : "버전 미확인"}</span>
           </span>
           <button
             className="nav-item"
@@ -2419,7 +2419,7 @@ function App() {
             <span>
               <Shield size={13} /> Open Aegis · Evidence-first security
             </span>
-            <span>SELF-HOSTED / v{settings?.version || "0.1.0"}</span>
+            <span>SELF-HOSTED / {settings?.version ? `v${settings.version}` : "버전 미확인"}</span>
           </footer>
         </div>
       </main>

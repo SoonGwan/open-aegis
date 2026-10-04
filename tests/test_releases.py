@@ -6,6 +6,7 @@ from aegis.releases import (create_release,verify_release,prepare_update,Release
                             openssl,canonical)
 from aegis.maintenance import WorkspaceLease,WorkspaceBusy
 from aegis.store import Store
+from aegis import __version__
 from aegis.backups import restore_database
 
 
@@ -15,11 +16,11 @@ def release(tmp_path):
     key=tmp_path/'signing.pem';public=tmp_path/'trusted.pem'
     openssl('genpkey','-algorithm','ED25519','-out',key);key.chmod(0o600)
     openssl('pkey','-in',key,'-pubout','-out',public)
-    wheel=tmp_path/'open_aegis-0.1.0-py3-none-any.whl'
+    wheel=tmp_path/f'open_aegis-{__version__}-py3-none-any.whl'
     # Metadata-only fixture, not an installable runtime wheel.
     with ZipFile(wheel,'w') as z:
-        z.writestr('open_aegis-0.1.0.dist-info/METADATA',
-                   'Name: open-aegis\nVersion: 0.1.0\nRequires-Python: >=3.11\n')
+        z.writestr(f'open_aegis-{__version__}.dist-info/METADATA',
+                   f'Name: open-aegis\nVersion: {__version__}\nRequires-Python: >=3.11\n')
     web=tmp_path/'web';web.mkdir();(web/'index.html').write_text('<h1>owned fixture</h1>')
     lock=tmp_path/'requirements.lock';lock.write_text('owned==1\n')
     bundle=tmp_path/'bundle'
@@ -36,7 +37,7 @@ def resign(bundle,key,manifest):
 def test_signed_bundle_and_wrong_key(release,tmp_path):
     bundle,_,public=release
     manifest=verify_release(bundle,public)
-    assert manifest['version']=='0.1.0' and len(manifest['files'])==3
+    assert manifest['version']==__version__ and len(manifest['files'])==3
     assert 'private' not in json.dumps(manifest)
     wrong=tmp_path/'wrong.pem';wrong_public=tmp_path/'wrong-public.pem'
     openssl('genpkey','-algorithm','ED25519','-out',wrong)
