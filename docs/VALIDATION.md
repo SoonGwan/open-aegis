@@ -1534,3 +1534,50 @@ on 390×844 has no document overflow.
 - QA stops normally. Main health 200 and final bundle names match; main assets two/tasks
   four/traffic three remain unchanged. QA assets seven/tasks eighteen/target traffic zero
   remain unchanged; only explicitly exercised synthetic triage records/user metadata change.
+
+
+## 2026-10-04 — late chat replies preserve changed navigation
+
+- Owned synthetic response-after-commit fixture holds only task-message POST replies;
+  it writes the real question/answer pair before delaying HTTP 200 or replacing the
+  reply with 503. No target checks execute. Before the fix, sending
+  `chat-before-late-search`, then changing the live search to `북마크 기록 050`,
+  loses that search and URL on acknowledgment. Both the live value and URL were
+  observed before release. After the fix, that search remains and the global
+  prior-question saved notice is observed. Closing the chat preserves its folded
+  state and search URL on late success.
+- A committed 503 after changing search to `북마크 기록 049` keeps that search,
+  editable pending question and no local error from the earlier view. Explicit
+  same-question retry returns the stored reply: task-message count remains 71 and
+  the matching question occurs once. These are native browser/manual observations,
+  separate from the existing 47 helper tests.
+- Intermediate review exposed a second issue: generic record reload/global mutation
+  notification discarded the old-page snapshot despite retaining offset 25. Chat
+  acknowledgment now refreshes workspace summary without resetting unrelated
+  record snapshots, and only reloads chat when the originating view is current.
+  Final build `index-DPpjUbjJ.js` / `index-B5ysGB7c.css` preserves exact
+  `task_chat_offset=25&task_chat_snapshot=190` through a held successful reply.
+  The visible range remains 26–50 of the original 73-message snapshot. A normal
+  current-view submission then returns to latest 1–25 of 77, with no offset/snapshot
+  query. Final search-plus-collapse review retains its exact folded q050 URL.
+- Closing task detail before successful acknowledgment leaves the task list open.
+  Reopening after completion does not restore unconfirmed intent; explicitly
+  unfolding chat shows an empty question and no recovery prompt. The ephemeral
+  close-case toast was not independently captured; the earlier stale-search toast
+  was. Request-ID guarded storage clearing runs even after unmount, without
+  clearing a newer intent. An already remounted panel's local restored intent is
+  not automatically synchronized; same-ID retry remains available.
+- Synthetic task messages progress 63→81 across nine distinct submissions, including
+  before-fix and intermediate diagnostic submissions; retries add no pair. Final
+  QA assets seven/tasks eighteen/target traffic zero remain unchanged. Screenshot
+  `artifacts/v1-chat-late-navigation.jpg` is saved and visually reviewed: retained
+  search, one matching message, empty question, saved status and visible focus ring.
+  This is desktop evidence, not full mobile/accessibility/soak coverage.
+- Final frontend build and 47 existing Node tests pass. Selected Montage contrast
+  pairs pass the design script; whole rendered accessibility audit remains open.
+  No Python service edit or full backend rerun is claimed. Unchanged wheel SHA-256
+  `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba` with final
+  UI passes outside-checkout installed runtime/dependency/auth/schema/import/remote
+  refusal/audit/backup/restore/clean shutdown and lease checks; target requests zero.
+  Main health is 200, served bundle matches, assets two/tasks four/traffic three
+  remain unchanged. Owned QA is stopped normally; main preview stays live.

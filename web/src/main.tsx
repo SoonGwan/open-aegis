@@ -2758,6 +2758,11 @@ function App() {
                 canOperate={canOperate}
                 state={navigation.taskChat}
                 onChange={navigation.updateTaskChat}
+                captureView={captureActionView}
+                onSaved={(currentView) => {
+                  if (!currentView) message("앞서 보낸 질문과 답변을 저장했습니다. 현재 대화 탐색은 유지했습니다.");
+                  void refresh();
+                }}
               />
             )}
             <PolicyExport task={selectedTask} />

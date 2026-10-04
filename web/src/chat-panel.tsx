@@ -38,12 +38,16 @@ export function ChatPanel({
   canOperate,
   state,
   onChange,
+  captureView,
+  onSaved,
 }: {
   taskId: string;
   actorId: string;
   canOperate: boolean;
   state: TaskChatState;
   onChange: (changes: Partial<TaskChatState>, mode?: HistoryMode) => void;
+  captureView: () => () => boolean;
+  onSaved: (current: boolean) => void;
 }) {
   const [restored] = useState(() =>
     readPending(pendingStorage(), actorId, taskId),
@@ -118,6 +122,7 @@ export function ChatPanel({
         ).join(""),
       };
     const pending = attempt.current;
+    const isCurrent = captureView();
     const persisted = writePending(pendingStorage(), actorId, taskId, pending);
     if (persisted) persistedAttempt.current = pending.request_id;
     setStorageWarning(
@@ -136,13 +141,15 @@ export function ChatPanel({
         "POST",
         pending,
       );
-      if (!active.current) return;
       const cleared = clearPending(
         pendingStorage(),
         actorId,
         taskId,
         pending.request_id,
       );
+      const current = active.current && isCurrent();
+      onSaved(current);
+      if (!active.current) return;
       attempt.current = null;
       setUnconfirmed(false);
       setStorageWarning(
@@ -151,16 +158,18 @@ export function ChatPanel({
           : "",
       );
       if (cleared) persistedAttempt.current = null;
-      pendingReply.current = reply.id;
+      if (current) pendingReply.current = reply.id;
       setQuestion("");
       setSaved(true);
-      records.reload();
-      onChange(
-        { expanded: true, search: "", offset: 0, snapshot: null },
-        "replace",
-      );
+      if (current) {
+        records.reload();
+        onChange(
+          { expanded: true, search: "", offset: 0, snapshot: null },
+          "replace",
+        );
+      }
     } catch (e) {
-      if (active.current) setError((e as Error).message);
+      if (active.current && isCurrent()) setError((e as Error).message);
     } finally {
       submitting.current = false;
       if (active.current) setBusy(false);
