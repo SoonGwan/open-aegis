@@ -43,6 +43,9 @@ Montage의 assistive/disable은 작은 본문에 그대로 사용하면 대비�
   페이지 제목에 포커스를 옮긴다. URL과 탐색 이력은 바꾸지 않는다. 본문 landmark도
   같은 제목으로 이름을 연결한다. 모달을 열면 배경의 건너뛰기 링크도 inert다.
 - focus-visible 3px blue outline, modal focus trap에서 숨겨진 입력은 제외한다.
+  API 정책 스키마/JSON 입력의 오류·도움말은 고유 ID로 연결하고 잘못된 입력에
+  aria-invalid를 제공한다. 오류 배경은 Montage negative 토큰, 경계는 공용 테두리를
+  사용한다. 오류 수정 후 상태/오류 설명을 해제하며 네이티브 제출 검증을 유지한다.
   네이티브 라디오 그룹은 선택된 항목 또는 현재 포커스 항목을 하나의 Tab 경계로
   취급한다. 미선택 그룹의 방향별 진입과 서로 다른 폼 소유자를 구분하고 포커스
   순환으로 선택값을 변경하지 않는다. [W3C 모달](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)과

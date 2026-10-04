@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
   blankRule,
@@ -27,6 +27,7 @@ function SchemaField({
   change: (values: Partial<RuleDraft>) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const id = useId();
   let error = "";
   try {
     parseSchema(row.schema);
@@ -48,17 +49,23 @@ function SchemaField({
           maxLength={16384}
           onChange={(event) => change({ schema: event.target.value })}
           placeholder={'{"type":"object","required":["tenant_id"]}'}
+          aria-invalid={!!error}
+          aria-describedby={`${id}-help${error && row.schema ? ` ${id}-error` : ""}`}
         />
       </label>
       <button type="button" onClick={() => change({ schema: example })}>
         스키마 예시 적용
       </button>
-      <p className="subtle">
+      <p id={`${id}-help`} className="subtle">
         예시는 현재 스키마 입력을 대체합니다. type·properties·required·items 등
         제한된 JSON Schema를 지원합니다. 상세 형식은 저장할 때 서버에서
         검사합니다.
       </p>
-      {error && row.schema && <p role="alert">{error}</p>}
+      {error && row.schema && (
+        <p id={`${id}-error`} className="form-error" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -70,6 +77,7 @@ export function PolicyRulesEditor({
   initial?: unknown[];
   disabled?: boolean;
 }) {
+  const id = useId();
   const [state] = useState(() => {
     try {
       return {
@@ -150,7 +158,7 @@ export function PolicyRulesEditor({
       <summary>API 권한 규칙 설정 (선택)</summary>
       <fieldset disabled={disabled} className="policy-editor-controls">
         <legend>GET 접근·응답 정책</legend>
-        <p>
+        <p id={`${id}-intro`}>
           자산 범위 안의 GET 경로를 정의하세요. 테스트 계정은 서버의
           AEGIS_TEST_* 환경변수 이름으로 연결합니다. 인증 값을 입력하지 마세요.
         </p>
@@ -158,6 +166,7 @@ export function PolicyRulesEditor({
           <button
             type="button"
             aria-pressed={mode === "form"}
+            aria-describedby={switchError ? `${id}-switch-error` : undefined}
             onClick={() => switchMode("form")}
           >
             입력 폼
@@ -165,12 +174,17 @@ export function PolicyRulesEditor({
           <button
             type="button"
             aria-pressed={mode === "json"}
+            aria-describedby={switchError ? `${id}-switch-error` : undefined}
             onClick={() => switchMode("json")}
           >
             JSON 편집
           </button>
         </div>
-        {switchError && <p role="alert">{switchError}</p>}
+        {switchError && (
+          <p id={`${id}-switch-error`} className="form-error" role="alert">
+            {switchError}
+          </p>
+        )}
         {mode === "json" ? (
           <label>
             권한 규칙 JSON
@@ -180,6 +194,8 @@ export function PolicyRulesEditor({
               value={json}
               rows={10}
               maxLength={524288}
+              aria-invalid={!!jsonError}
+              aria-describedby={`${id}-intro ${id}-help${jsonError ? ` ${id}-json-error` : ""}${switchError ? ` ${id}-switch-error` : ""}`}
               onChange={(event) => {
                 setJson(event.target.value);
                 setSwitchError("");
@@ -247,6 +263,7 @@ export function PolicyRulesEditor({
                         change(row.key, { credential: event.target.value })
                       }
                       placeholder="비우면 인증 없이 요청"
+                      aria-describedby={`${id}-intro`}
                     />
                   </label>
                   <label className="checkbox-label rule-wide">
@@ -343,8 +360,12 @@ export function PolicyRulesEditor({
             </button>
           </>
         )}
-        {jsonError && <p role="alert">{jsonError}</p>}
-        <p className="subtle">
+        {jsonError && (
+          <p id={`${id}-json-error`} className="form-error" role="alert">
+            {jsonError}
+          </p>
+        )}
+        <p id={`${id}-help`} className="subtle">
           경로 범위·스키마·소유권 형식의 최종 검사는 서버에서 수행합니다. 정책을
           수정하면 기존 승인 대기 계획을 다시 만들어야 합니다.
         </p>

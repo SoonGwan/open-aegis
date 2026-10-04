@@ -1706,3 +1706,43 @@ on 390×844 has no document overflow.
   `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`
   with final UI passes outside-checkout installed runtime/dependency/CLI/auth/schema/
   import/remote-refusal/audit/backup/restore/shutdown/lease rehearsal, target requests zero.
+
+
+## 2026-10-04 — policy editor error descriptions and narrow documents
+
+- Before change, invalid schema has visible alert/custom validity but its textarea
+  has no aria-invalid or aria-describedby. Production PolicyRulesEditor now gives
+  schema and rule-array JSON textareas error state plus unique useId help/error
+  references. Failed mode-switch buttons describe the warning; the JSON textarea
+  also describes it when applicable. Credential-environment input describes the
+  existing no-secret/environment-name instruction. Alerts use the existing shared
+  Montage negative background/ink border style, preserving text and native validation.
+- Native standalone owned form fixture imports the real editor, never calls any API.
+  Invalid schema submit leaves synthetic submit count zero and focuses its textarea;
+  DOM reads show aria-invalid true and both existing help and rendered error text.
+  JSON mode switch with that invalid schema keeps form mode and links both mode
+  buttons to the switch alert. Apply example, switch to JSON, enter malformed JSON
+  and press Enter on save: count stays zero, focus moves to invalid textarea with
+  intro/final-validation help/error references. Repair to [] and press Enter: count
+  becomes one, aria-invalid false, alert count zero. These are native manual checks,
+  separate from the unchanged **61 passing** Node helper tests.
+- Extended iframe fixture's schema_error query supplies an owned JSON object above
+  the 16 KiB canonical UTF-8 bound; the alert is present in the frame DOM. Actual
+  iframe viewport 320/390/768 measures document client/scroll widths respectively
+  305/305, 375/375 and 753/753 (15px vertical scrollbar), no outside/contained
+  horizontal overflow. This is real narrow-document layout, not actual mobile
+  touch/zoom/browser or whole asset registration rehearsal. The iframe's scrolling
+  error below the initial screenshot fold is not claimed visually reached at 320.
+- `artifacts/v1-policy-error-320.jpg` records/reviews the narrow top-form layout;
+  `artifacts/v1-policy-json-error.jpg` separately records/reviews the desktop JSON
+  alert/focus outline/save-blocked state. Fixture reload after source edits reset
+  its prior mode, so a fresh DOM snapshot and explicit mode selection precede the
+  final screenshot. No cache or production-state defect is inferred from that reset.
+- Final build `index-CL9bPnqI.js` / `index-B5ysGB7c.css` passes. Selected contrast
+  pairs pass the design script; real screen-reader output/full rendered audit remain
+  open. No Python source edit or full backend rerun. Unchanged wheel SHA-256
+  `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba` with final
+  UI passes outside-checkout installed runtime/dependency/CLI/auth/schema/import/
+  remote-refusal/audit/backup/restore/shutdown/lease rehearsal, target requests zero.
+  Main health 200 and final bundle served, assets two/tasks four/traffic three
+  unchanged. Owned fixture server stops and main preview remains live.
