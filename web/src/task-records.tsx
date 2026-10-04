@@ -16,7 +16,7 @@ type Finding = {
   severity: string;
   status: string;
 };
-type Observation = {
+export type Observation = {
   id: string;
   url: string;
   asset_id: string;
@@ -215,7 +215,7 @@ function TaskCollection({
   );
 }
 
-function ObservationRecord({ record }: { record: Observation }) {
+export function ObservationRecord({ record }: { record: Observation }) {
   const matched = record.provenance?.status === "matched";
   return (
     <article className="finding-record">

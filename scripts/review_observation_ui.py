@@ -33,6 +33,8 @@ def main():
     parser.add_argument('--next-write-hold-flag',type=Path)
     parser.add_argument('--dependencies',action='store_true',help='Synthetic pending two-Worker dependency approval fixture')
     parser.add_argument('--fail-flag',type=Path,help='Owned QA flag: while present, only task observation GET returns503')
+    parser.add_argument('--worker-process',action='store_true',help='Seed synthetic isolated Worker events for readonly process UI QA')
+    parser.add_argument('--worker-fail-flag',type=Path,help='Owned QA flag: while present, Worker process and collection GET return503')
     args=parser.parse_args()
     if not 1<=args.port<=65535:parser.error('port must be1..65535')
     for key in list(os.environ):
@@ -60,6 +62,8 @@ def main():
         @app.middleware('http')
         async def failure(request,call_next):
             nonlocal task_posts,next_posts
+            if request.method=='GET' and '/workers/' in request.url.path and args.worker_fail_flag and args.worker_fail_flag.exists():
+                return JSONResponse({'detail':'합성 Worker 과정 조회 실패'},status_code=503)
             if request.url.path.endswith('/next-plan'):
                 if request.method=='GET' and args.next_read_fail_flag and args.next_read_fail_flag.exists():
                     return JSONResponse({'detail':'합성 제안 조회 실패'},status_code=503)
@@ -106,6 +110,14 @@ def main():
             for check in task['checks']:
                 store.put('coverage',slot(task,parent,check,status='completed'))
         store.put_many([('assets',asset),('tasks',task)])
+        if args.worker_process:
+            for i in range(31):
+                store.event(task['id'],f'합성 후행 Worker 단계 {i:02d}','info',
+                            {'asset_id':asset['id'],'worker_id':task['id']+':'+asset['id']})
+            store.event(task['id'],'합성 이전 Worker 기록','info',{'asset_id':asset['id']})
+            if args.next_plan:
+                store.event(task['id'],'합성 선행 Worker 기록','info',
+                            {'asset_id':parent['id'],'worker_id':task['id']+':'+parent['id']})
         for i in range(60):
             record_link(store,task,asset,'endpoint_inventory',asset['url']+f'owned-link-{i:02d}')
         store.put('observations',{'id':'qa-legacy','task_id':task['id'],'asset_id':asset['id'],

@@ -3588,3 +3588,7 @@ pre,
 .next-plan summary { overflow-wrap: anywhere; }
 
 .finding-record .observation-url { min-width: 0; max-width: 100%; }
+.worker-process { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.worker-process .observation-url { display: block; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.worker-process select, .worker-process input, .worker-process button { max-width: 100%; }
+.worker-process button { white-space: normal; overflow-wrap: anywhere; }

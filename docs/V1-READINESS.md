@@ -167,7 +167,10 @@
     관찰 출처 작업 열기·전용 상세 검색/페이지/URL 복원·출처 메타데이터 펼침 구현.
     합성 UI의 키보드 닫기/포커스·320/390px 문서·조회 실패/재시도 검수.
     작업/자산별 Worker 과정·커버리지·이벤트·관찰 단일 스냅샷 HTTP/MCP 조회 구현
-    ([WORKER-PROCESS.md](WORKER-PROCESS.md)). 전체 과정 검색 UI,
+    ([WORKER-PROCESS.md](WORKER-PROCESS.md)). 작업 상세 Worker 선택·과정 결과와
+    실행/관찰 독립 검색·페이지 UI 구현. 합성 desktop/320/390px·조회 실패/재시도·
+    자산 전환 시 이전 결과 제거·Worker 이력 분리 검수. 전체 워크스페이스 과정 검색·
+    선택/검색 URL 복원은 남아 있음.
     승인된 비순환 Worker 의존 실행·합류/독립 병렬·완료 근거/관찰 참조 전달·
     실패 차단·중지 처리와 승인/상세 표시 구현([WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md)).
     일반 계획/반복 예약의 의존 설정 폼·검색/페이지 선택 보존·순환 차단·오류 재시도 구현.

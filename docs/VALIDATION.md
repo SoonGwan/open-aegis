@@ -3916,3 +3916,37 @@ on 390×844 has no document overflow.
 - Basic replacement/retry lineage supersedes the preceding integration limitation.
   Automatic event-driven planning, semantic observation consumption/shared to-do,
   full accessibility/mobile journeys and all other V1-READINESS gates remain open.
+
+
+### 2026-10-05 — Worker process UI
+
+- Added task-detail Worker selection, explicit process read, coverage and independent
+  event/observation search/pages using existing bounded readonly endpoints.
+  Stored approval scope/revision is displayed; event metadata matched/unconfirmed
+  and observation provenance are distinguished. Selection changes unmount/abort
+  prior requests and clear old records. GET uses existing session completion guard.
+  Full-workspace process search, selection/search URL restoration, automated Planner
+  consumption and full assistive-technology/mobile journeys remain open.
+- Frontend73 passed328.180125ms; production build1.41s, final JS
+  `index-jUmwrGRR.js`, CSS `index-A1Pg18P4.css` (`artifacts/worker-process-ui-tests.txt`,
+  `...build.txt`). These existing unit tests do not exercise the new React interaction.
+  Appropriate Worker API tests on SQLite and actual PostgreSQL16:13 passed3.75s,
+  one existing Starlette/httpx warning (`...api-tests.txt`). No backend service changed;
+  the preceding full725-test result is historical, not rerun for this UI increment.
+- Actual built-service UI with disposable synthetic completion/coverage/events/
+  observations: child32 events, next page26–32, single observation search result;
+  parent switch removes child records before query and then returns one isolated
+  parent event, two completed cells and empty observations. Legacy Worker event
+  shown unconfirmed. Owned failure flag produces503 and alert, focus returns to
+  query button; after removal query succeeds. No execution approval was clicked.
+- Visual screenshots `...ui-desktop.jpg`, `...ui-320.jpg`, `...ui-390.jpg` inspected.
+  QA-only page button measures320 document320/320 and dialog277/277;390
+  document390/390 and dialog347/347. Overflow report contains intended table
+  scrolling, hidden skip link and collapsed sidebar brand; no Worker content overflow.
+  Existing metric named panel refers to next-plan, not the Worker panel; document/
+  dialog dimensions and overflow entries support the narrower claim here.
+  CSS-width frames do not prove physical mobile/touch/zoom/screen-reader behavior.
+- Owned tabs closed, flag removed, fixture shutdown: target requests0, task creation
+  POSTs0, next-plan POSTs0 and temporary data removed. Main preview backend remains
+  unchanged; final separate static assets and health verified on127.0.0.1:8790.
+  No hosted CI, container run, remote publishing or full v1 completion is claimed.

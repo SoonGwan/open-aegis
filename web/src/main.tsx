@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { validateWorkerDependencies, WorkerDependencyError } from "./worker-dependency-state";
 import { NextPlan } from "./NextPlan";
+import { WorkerProcess } from "./WorkerProcess";
 import { WorkerDependencies } from "./WorkerDependencies";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
@@ -2855,6 +2856,8 @@ function App() {
               />
             )}
             {selectedTask.llm_usage && <PlannerUsage call={selectedTask.llm_usage} />}
+            <WorkerProcess key={`worker-process-${selectedTask.id}`} taskId={selectedTask.id}
+              assets={selectedTask.scope_snapshot} tools={tools} />
             <TaskRecords
               key={`task-records-${selectedTask.id}`}
               taskId={selectedTask.id}
