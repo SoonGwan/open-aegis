@@ -1,5 +1,9 @@
 # Changelog
 
+- Explicit observed-response plans select up to10 verified Worker URLs, require new
+  approval, execute bounded GET configuration checks with per-URL proof/failures,
+  preserve original-URL retests and recover unknown create outcomes by request ID.
+
 ## Unreleased — v1 개발
 
 - Worker 관찰의 출처·완료 근거·현재 범위 확인 후 계획 당시 맥락 저장, 규칙/AI 도구 우선순위 반영과 URL 없는 제공자 입력, 포함·제외·표본 밖 수의 검토 화면.

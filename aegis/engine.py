@@ -12,7 +12,7 @@ from .checks import CATALOG, CHECK_IDS, run_check
 from .tool_contracts import require_contracts, validate_result, ToolContractMismatch
 from .network import Transport
 from .costs import price_snapshot, estimate
-from . import call_ledger, todos, observation_context
+from . import call_ledger, todos, observation_context, observation_execution
 from .llm import completion, token_usage
 from .store import identifier, now
 from .coverage import slot, finish_remaining
@@ -89,6 +89,7 @@ class Engine:
             if task['status'] != 'pending':
                 raise ValueError('승인 대기 중인 작업만 실행할 수 있습니다.')
             require_contracts(task)
+            observation_execution.require(task)
             validate_dependencies(task['asset_ids'], task.get('worker_dependencies', {}))
             if task.get('execution_policy') and task['execution_policy'] != self.policy.public():
                 raise ValueError('서버 실행 정책이 변경되었습니다. 현재 정책으로 새 계획을 만드세요.')
@@ -100,7 +101,9 @@ class Engine:
                     raise ValueError('계획 생성 후 자산이 수정되었습니다. 현재 범위로 새 계획을 만드세요.')
             self.stops[task_id] = threading.Event()
             self.store.patch('tasks', task_id, status='queued', approved_at=now(), execution_policy=self.policy.public(),
-                             worker_dependency_contract=dependency_contract(task))
+                             worker_dependency_contract=dependency_contract(task),
+                             **({'observation_execution_contract': observation_execution.approval_contract(task)}
+                                if task.get('observation_execution') else {}))
             self.store.event(task_id, '등록된 범위와 검증 도구를 승인했습니다.', detail={'checks': task['checks'], 'asset_ids': task['asset_ids'], 'tool_contracts': task['tool_contracts']})
             future=self.pool.submit(self.run, task_id)
             self.futures[task_id]=future
@@ -229,6 +232,7 @@ class Engine:
         try:
             require_contracts(task)
             require_dependency_contract(task)
+            observation_execution.require(task, approved=True)
             checks = self.plan(task, control)
             control.check()
             self.store.patch('tasks', task_id, plan=checks)
@@ -332,11 +336,14 @@ class Engine:
         if inputs:
             event('승인된 선행 Worker의 완료 근거와 관찰 참조를 받았습니다.', detail={'dependency_inputs': inputs})
         event('Worker 시작: ' + asset['name'], detail={'asset_id': asset['id']})
+        targets = observation_execution.targets_for(task, asset)
+        responses = {}
         try:
             require_contracts(task)
-            response = transport.get()
-            if not 200 <= response['status'] < 300:
-                raise ValueError('기본 응답이 2xx가 아니어서 설정 검증을 완료할 수 없습니다.')
+            if not targets:
+                response = transport.get()
+                if not 200 <= response['status'] < 300:
+                    raise ValueError('기본 응답이 2xx가 아니어서 설정 검증을 완료할 수 없습니다.')
         except Exception as exc:
             outcome['errors'].append(type(exc).__name__)
             event('대상 연결 또는 범위 검증 실패: ' + asset['name'], 'error', {'error_type': type(exc).__name__, 'asset_id': asset['id']})
@@ -352,6 +359,46 @@ class Engine:
             coverage(check, 'running', reason='검증 실행 중입니다.', started_at=now())
             event('검증 실행: ' + check, detail={'asset_id': asset['id'], 'check': check})
             try:
+                if targets:
+                    target_results = []
+                    for target in targets:
+                        try:
+                            control.check()
+                            if target['id'] not in responses:
+                                try:
+                                    value = transport.get(target['url'])
+                                    if not 200 <= value['status'] < 300:raise ValueError('관찰 응답이2xx가 아닙니다.')
+                                    responses[target['id']] = value
+                                except Exception as exc:responses[target['id']] = type(exc).__name__
+                            value = responses[target['id']]
+                            if type(value) is str:raise ValueError('관찰 응답을 확인하지 못했습니다.')
+                            findings, observed, skipped = validate_result(check, asset, run_check(check, asset, transport, value))
+                            if skipped or observed:raise ValueError('관찰 응답 검증 계약이 일치하지 않습니다.')
+                            findings = [{**item,
+                                'code': 'observed-'+observation_execution.digest(target['url'])[:24]+'-'+item['code'],
+                                'evidence': {**item['evidence'], 'observation_id': target['id'],
+                                             'requested_url': target['url']}} for item in findings]
+                            validate_result(check, asset, (findings, [], None))
+                            for item in findings:
+                                item = {**item, 'observation_id': target['id'],
+                                    'observation_source_task_id': task['observation_execution']['source_task_id']}
+                                finding, evidence, _ = record_observation(self.store, task, asset, item)
+                                outcome['fingerprints'].append(finding['fingerprint'])
+                                event(item['title'], 'finding', {'finding_id': finding['id'], 'severity': item['severity'], 'asset_id': asset['id']})
+                            target_results.append({'observation_id': target['id'], 'url': target['url'], 'status': 'completed'})
+                        except Exception as exc:
+                            target_results.append({'observation_id': target['id'], 'url': target['url'],
+                                'status': 'cancelled' if stop.is_set() else 'failed',
+                                'error_type': responses.get(target['id']) if type(responses.get(target['id'])) is str else type(exc).__name__})
+                    complete = all(row['status'] == 'completed' for row in target_results)
+                    coverage(check, 'completed' if complete else 'cancelled' if stop.is_set() else 'failed',
+                        reason='선택한 모든 관찰 응답의 검증을 완료했습니다.' if complete else '일부 관찰 응답의 검증을 완료하지 못했습니다.',
+                        targets=target_results, finished_at=now())
+                    if complete:outcome['completed_checks'].append(check)
+                    else:outcome['errors'].append(check)
+                    event('선택한 관찰 응답의 검증 결과를 기록했습니다.', 'info' if complete else 'warning',
+                          {'check': check, 'targets': target_results})
+                    continue
                 findings, observed, skipped = validate_result(check, asset, run_check(check, asset, transport, response))
                 if skipped:
                     coverage(check, 'skipped', reason=skipped, finished_at=now())

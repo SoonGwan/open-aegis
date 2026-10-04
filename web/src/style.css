@@ -3584,6 +3584,10 @@ pre,
 
 .next-plan { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .next-plan .observation-url { display: block; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.observation-execution fieldset { display: grid; gap: 10px; margin: 12px 0; }
+.observation-execution label { min-width: 0; gap: 8px; }
+.observation-execution p { margin: 8px 0; overflow-wrap: anywhere; }
+.observation-execution article { border-top: 1px solid var(--border); padding: 12px 0; }
 .next-plan button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .next-plan summary { overflow-wrap: anywhere; }
 

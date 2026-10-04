@@ -4376,3 +4376,53 @@ on 390×844 has no document overflow.
   (`...preview-health.json`). [OBSERVATION-PLANNING.md](OBSERVATION-PLANNING.md)
   documents boundaries. Semantic goal decomposition, explicit observed-URL execution,
   commercial-provider validation and other v1 readiness gates remain open.
+
+## Explicit observed-response execution — 2026-10-05
+
+- New readonly observation-plan preview and explicit operator selection create a
+  separate pending task for up to10 verified observed URLs and the four existing
+  response configuration checks. The final write transaction rechecks observation
+  context and current assets. The same request ID/input returns the same committed
+  task, including after source changes; a different input with that ID is refused.
+  Approval seals selected input/checks/scope and execution checks that contract.
+- Owned SQLite/native PostgreSQL cases demonstrate no requests before approval,
+  simultaneous duplicate creation, exact selected GETs/response reuse, frozen input,
+  invalid/stale selections and roles, approval tampering refusal, URL-specific proof,
+  failed/partial/denied responses, scoped redirect refusal, same-URL failing-before/
+  passing-after retest with original evidence retained, denied retest inconclusive,
+  replacement/retry selection and final-write mutation rollback. Observed response
+  coverage is excluded from base-asset latest completion in both native queries.
+- Related suite **24 passed30.89s** (`artifacts/observation-execution-targeted-final.txt`)
+  preceded the final retry replay ordering correction and its additional assertion.
+  Final native-enabled full suite **835 passed327.22s**, only existing Starlette
+  test-client deprecation warning (`...full.txt`), includes that correction. No service
+  source edits after the full run. Native cases added to CI configuration; hosted CI unrun.
+  Frontend **92 passed452.26ms** (`...node.txt`); these existing unit tests do not by
+  themselves prove the new selection interaction. Final TypeScript/Vite build1.48s
+  (`...build-final.txt`) includes subsequent spacing/wrapping classes and styles.
+- Wheel SHA256 **f1955f4ddf8d51bf75ed3947af831a5ec68ae513912d2863608e175f5af48860**,
+  all69 recursive service Python files byte-match checkout (`...wheel-proof.json`).
+  Final-UI installed default runtime and native PostgreSQL16.15 reviews both valid
+  (`...installed-runtime-final.json`, `...installed-postgres.json`). Native installed
+  HTTP additionally creates a selected pending plan, replays its request ID and
+  verifies exact execution context and replay after actual native backup/restore.
+  No approval of that selected installed plan; actual selected execution is exercised
+  by owned source-checkout HTTP tests above. Native owned lab requests3/source1,
+  external targets/sources0; default target requests0. Container/production DB unverified.
+- Built-app selection shows2 available out of63 observations. A committed POST with
+  substituted503 preserves selection, freezes controls, reloads saved request in a
+  new document and confirms the single existing pending task by same-request retry
+  (`...ui-lost.txt`, `...ui-restored.txt`, `...ui-pending.txt`). Final built desktop
+  screenshot inspected (`...ui-final.jpg`); no execution approval. Backend role/refusal
+  tests do not establish full browser role or navigation race journeys.
+- Final selected pending document measures320/320 and390/390 client/scroll widths;
+  dialog277/277 and347/347 (`...ui-widths.json`). Existing intentional table overflow,
+  hidden labels and320px internal report-action overflow remain. Actual mobile touch,
+  zoom, screen reader and selection controls on mobile are not verified.
+- Owned tabs and flag removed, fixture shut down: target requests0, ordinary task
+  POSTs0, next-plan POSTs0, observation-plan POSTs2, temporary data removed
+  (`...ui-fixture.txt`). Preview restarted with existing data; health ok, anonymous
+  observation-plan401, JSindex-C1BFzZvh.js / CSSindex-f-LhXaKA.css (`...preview-health.json`).
+- [OBSERVATION-EXECUTION.md](OBSERVATION-EXECUTION.md) defines limits. Semantic
+  goal/observation reasoning, automatic observed-target selection, selected-plan
+  follow-up/shared-todo integration and the broader v1 readiness gates remain open.

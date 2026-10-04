@@ -76,7 +76,9 @@ HTTP 로그인/역할을 대신 검증하지 않는다. 조회는 대상을 요�
 [WORKER-PROCESS.md](WORKER-PROCESS.md)를 따른다. 읽기와 실행 소비는 별도 단계다.
 
 승인된 Worker 의존 실행과 완료 근거/관찰 ID 참조 전달은
-[WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md)에 정리했다. 검증 도구가 관찰 URL을
-실행 입력으로 소비하는 단계는 남아 있다. 결과 기반 반복 제안과 이벤트 준비,
+[WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md)에 정리했다. 명시적으로 선택한 최대10개
+관찰 URL의 응답 설정 검사는 [OBSERVATION-EXECUTION.md](OBSERVATION-EXECUTION.md)에
+정리했다. 새 승인 이후 실제 GET 입력으로 사용하며 URL별 실패와 증거를 보존한다.
+관찰 기반 자동 목표/실행 대상 해석은 남아 있다. 결과 기반 반복 제안과 이벤트 준비,
 공유 할 일은 구현했다. [관찰 계획 맥락](OBSERVATION-PLANNING.md)은 출처/완료 근거를
 확인한 관찰 유형을 승인 도구 순서에 반영하고 생성 시점 항목을 보존한다.

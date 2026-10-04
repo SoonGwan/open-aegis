@@ -1,0 +1,15 @@
+from tests.test_postgres_transfer import postgres, schema
+from tests.test_postgres_http import configured, client
+from tests.test_validation import lab
+from tests.test_observation_execution import (
+    test_selected_requests_are_approval_gated_frozen_once_and_distinct_from_base_coverage as test_native_selected,
+    test_changed_input_refuses_pending_creation as test_native_stale,
+    test_selection_validation_and_roles_and_approval_tampering as test_native_roles,
+    test_observed_finding_retest_uses_same_endpoint_and_preserves_source_evidence as test_native_retest,
+    test_failed_observed_response_is_not_completed_and_retry_retains_selection as test_native_retry,
+    test_replacement_preserves_selected_urls_but_requires_new_approval as test_native_replacement,
+    test_one_failed_url_keeps_successful_proof_but_fails_the_check as test_native_partial,
+    test_denied_response_retest_is_inconclusive_instead_of_resolving as test_native_denied,
+    test_selected_redirect_uses_existing_scope_guard as test_native_redirect,
+    test_final_write_rechecks_observations_and_rolls_back_pending_records as test_native_final_write,
+)

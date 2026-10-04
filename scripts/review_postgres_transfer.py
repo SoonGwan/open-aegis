@@ -340,6 +340,13 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert proposal['basis']['todo_requested_checks']==['cookie_policy']
                     assert proposal['shared_todo_context']['items'][0]['revision']==1
                     assert proposal['worker_observation_context']['counts']['included']==1
+                    observed_preview=native_http('/api/tasks/native-engine/observation-plan')
+                    observation_selection={'fingerprint':observed_preview['context']['fingerprint'],
+                        'observation_ids':[row['id'] for row in observed_preview['context']['items']],
+                        'checks':['security_headers'],'request_id':'b'*32}
+                    observed_pending=native_http('/api/tasks/native-engine/observation-plan',observation_selection)
+                    assert observed_pending['status']=='pending' and observed_pending['approved_at'] is None
+                    assert native_http('/api/tasks/native-engine/observation-plan',observation_selection)['id']==observed_pending['id']
                     assert set(proposal['task']['checks']).isdisjoint({'security_headers','endpoint_inventory'})
                     followup=native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})
                     assert followup['status']=='pending' and followup['approved_at'] is None
@@ -440,6 +447,8 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                     assert backup_http('/api/tasks/native-engine/todos')['items'][0]['check_ids']==['cookie_policy']
                     assert backup_http('/api/tasks/'+first_followup_id)['task']['shared_todo_context']==proposal['shared_todo_context']
                     assert backup_http('/api/tasks/'+first_followup_id)['task']['worker_observation_context']==proposal['worker_observation_context']
+                    assert backup_http('/api/tasks/'+observed_pending['id'])['task']['observation_execution']==observed_pending['observation_execution']
+                    assert backup_http('/api/tasks/native-engine/observation-plan',observation_selection)['id']==observed_pending['id']
                     deadline=time.monotonic()+10
                     while True:
                         restored_review=backup_http('/api/tasks/native-engine/planner')

@@ -10,6 +10,12 @@ export const coverageNames: Record<string, string> = {
   stale: "이전 범위",
 };
 export type Coverage = {
+  targets?: {
+    observation_id: string;
+    url: string;
+    status: string;
+    error_type?: string;
+  }[];
   id: string;
   asset_id: string;
   task_id: string;
@@ -100,6 +106,20 @@ export function CoverageTable({
                     ? "이전 기록의 완료 결과"
                     : "상세 기록 없음")}
                 {row.error_type && <small> ({row.error_type})</small>}
+                {row.targets && (
+                  <details>
+                    <summary>관찰 URL별 결과 · {row.targets.length}개</summary>
+                    {row.targets.map((target) => (
+                      <p key={target.observation_id}>
+                        <code>{target.url}</code> ·{" "}
+                        {coverageNames[target.status] || "기록 없음"}
+                        {target.error_type && (
+                          <small> ({target.error_type})</small>
+                        )}
+                      </p>
+                    ))}
+                  </details>
+                )}
               </td>
             </tr>
           ))}

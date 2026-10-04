@@ -27,7 +27,8 @@ def latest_summary(db, asset_ids=None):
         JOIN assets a ON a.id=scope.value->>'id'
         LEFT JOIN records c ON c.kind='coverage' AND c.id=t.id||':'||a.id||':'||checks.value
           AND %s=t.id AND %s=a.id AND %s=checks.value
-        WHERE t.kind='tasks' AND (%s IS NOT NULL OR %s IN ('queued','running','stopping','completed','failed','stopped','interrupted'))
+        WHERE t.kind='tasks' AND t.data::jsonb->>'observation_execution' IS NULL
+          AND (%s IS NOT NULL OR %s IN ('queued','running','stopping','completed','failed','stopped','interrupted'))
       ), cells AS (
         SELECT a.id AS asset_id,CASE WHEN attempts.asset_id IS NULL THEN 'not_started'
           WHEN attempts.revision!=a.revision THEN 'stale' ELSE attempts.status END AS status

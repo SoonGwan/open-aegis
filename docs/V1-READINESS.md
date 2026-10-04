@@ -195,8 +195,11 @@
     실제 두 저장소의 자동 준비·커서 롤백/재처리·정책 재생·서버 재시작 복구를 검증.
     자유 문장의 의미적 목표 분해·자동 이벤트 처리의 장시간 자원/지연 SLO·
     Worker 관찰의 출처·완료·현재 범위 확인 후 맥락 저장과 규칙/AI 도구 순서 소비 구현
-    ([OBSERVATION-PLANNING.md](OBSERVATION-PLANNING.md)). 명시적 URL 실행 입력과
-    의미적 목표/관찰 해석·전체 모바일/SR 검수는 남아 있음
+    ([OBSERVATION-PLANNING.md](OBSERVATION-PLANNING.md)). 명시적으로 선택한 최대10개
+    관찰 URL의 새 승인·실제 GET 설정 검사·URL별 결과/증거·같은 URL 재검증 구현
+    ([OBSERVATION-EXECUTION.md](OBSERVATION-EXECUTION.md)). 기본 응답 완료율과 분리하고
+    미확인 요청의 새 문서 복원/같은 ID 재시도를 지원한다.
+    의미적 목표/관찰 해석·선택 검사의 자동 후속 회차/공유 할 일 연결·전체 모바일/SR 검수는 남아 있음
     ([WORKER-OBSERVATIONS.md](WORKER-OBSERVATIONS.md)).
   - 현재 LLM은 승인된 도구 순서만 정한다. 단계별 완료 근거·중복 방지·중단·재시작과
     다른 Worker 관찰의 출처 검증이 필요하다. 원본 기능 및 남은 계약은 [ARTEX 검토](ARTEX-REVIEW.md)를 따른다.

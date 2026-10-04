@@ -77,7 +77,8 @@ def latest_summary(db, asset_ids=None):
         LEFT JOIN records c ON c.kind='coverage' AND c.id=t.id||':'||a.id||':'||checks.value
           AND json_extract(c.data,'$.task_id')=t.id AND json_extract(c.data,'$.asset_id')=a.id
           AND json_extract(c.data,'$.check')=checks.value
-        WHERE a.id=json_extract(scope.value,'$.id') AND t.kind='tasks' AND (json_extract(t.data,'$.approved_at') IS NOT NULL
+        WHERE a.id=json_extract(scope.value,'$.id') AND t.kind='tasks'
+          AND json_extract(t.data,'$.observation_execution') IS NULL AND (json_extract(t.data,'$.approved_at') IS NOT NULL
           OR json_extract(t.data,'$.status') IN ('queued','running','stopping','completed','failed','stopped','interrupted'))
       ), cells AS (
         SELECT a.id AS asset_id, CASE

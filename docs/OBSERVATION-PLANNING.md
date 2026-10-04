@@ -54,5 +54,6 @@ AI에는 관찰의 id/task_id/asset_id/scope_revision/category, 집계 개수와
 이벤트를 항상 생성하지 않으므로 실행 종료/다른 변경 이벤트가 처리 시점이 되며,
 DB 직접 변경만을 자동 감지한다고 보장하지 않는다.
 
-명시적으로 선택한 관찰 엔드포인트의 새 승인 실행, 의미적 목표 분해·관찰 해석,
+명시적으로 선택한 관찰 URL의 새 승인 응답 설정 검사는
+[OBSERVATION-EXECUTION.md](OBSERVATION-EXECUTION.md)에 정리했다. 의미적 목표 분해·관찰 해석,
 외부 도구 격리/원격 MCP, 장시간 처리 부하·보존 정책과 전체 모바일/SR는 남아 있다.

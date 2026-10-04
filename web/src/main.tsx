@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { validateWorkerDependencies, WorkerDependencyError } from "./worker-dependency-state";
 import { NextPlan, TodoPlanBasis, WorkerObservationBasis, type TodoPlanContext, type ObservationPlanContext } from "./NextPlan";
+import { ObservationExecutionPicker, ObservationExecutionBasis, type ObservationExecution } from "./ObservationExecution";
 import { WorkerProcess } from "./WorkerProcess";
 import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
@@ -93,6 +94,7 @@ type Asset = {
   archived_at?: number | null;
 };
 type Task = {
+  observation_execution?: ObservationExecution;
   id: string;
   name: string;
   goal: string;
@@ -2819,7 +2821,7 @@ function App() {
               결과 기반 후속 {selectedTask.planning_round}회차 · <button type="button" disabled={busy}
                 onClick={() => navigation.openDetail({kind:"task",id:selectedTask.followup_of!})}>이전 회차 보기</button>
             </p>}
-            {selectedTask.approved_at && ["completed","failed","stopped","interrupted"].includes(selectedTask.status) && <NextPlan
+            {selectedTask.approved_at && !selectedTask.observation_execution && ["completed","failed","stopped","interrupted"].includes(selectedTask.status) && <NextPlan
               key={`next-plan-${selectedTask.id}`} taskId={selectedTask.id} canOperate={canOperate} busy={busy}
               names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))}
               onTask={id=>navigation.openDetail({kind:"task",id})}
@@ -2829,6 +2831,12 @@ function App() {
                 if (result) navigation.openDetail({kind:"task",id:result.id});
                 return result;
               }}
+            />}
+            {auth.user && selectedTask.approved_at && !selectedTask.observation_execution && ["completed","failed","stopped","interrupted"].includes(selectedTask.status) && <ObservationExecutionPicker
+              key={`observation-plan-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id} actorId={auth.user.id}
+              canOperate={canOperate} busy={busy} captureView={captureActionView}
+              names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))}
+              onCreated={async (id,current)=>{await refresh(); if (current()) navigation.openDetail({kind:"task",id});}}
             />}
             {selectedTask.retry_of && (
               <p className="subtle">
@@ -2866,6 +2874,7 @@ function App() {
             {selectedTask.llm_usage && <PlannerUsage call={selectedTask.llm_usage} />}
             <TodoPlanBasis context={selectedTask.shared_todo_context} planner={selectedTask.planner} names={Object.fromEntries(tools.map(t=>[t.id,t.name]))} />
             <WorkerObservationBasis context={selectedTask.worker_observation_context} />
+            <ObservationExecutionBasis execution={selectedTask.observation_execution} />
             <WorkerProcess key={`worker-process-${selectedTask.id}`} taskId={selectedTask.id}
               assets={selectedTask.scope_snapshot} tools={tools} state={navigation.taskWorker} onChange={navigation.updateTaskWorker} />
             {auth.user && <SharedTodos key={`todos-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id}

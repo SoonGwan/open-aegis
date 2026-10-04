@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--task-fail-flag',type=Path,help='Owned QA flag: while present, task creation POST returns503')
     parser.add_argument('--next-plan',action='store_true',help='Seed synthetic terminal two-Worker proposal evidence; never execute targets')
     parser.add_argument('--observation-planner',action='store_true',help='Seed completed predecessor API/session observations for frozen planner context')
+    parser.add_argument('--observation-lost-response-flag',type=Path,help='Owned observation-plan POST commit then503 probe')
     parser.add_argument('--next-read-fail-flag',type=Path)
     parser.add_argument('--planner-read-fail-flag',type=Path,help='Owned automatic planner GET failure probe')
     parser.add_argument('--next-write-fail-flag',type=Path)
@@ -66,9 +67,12 @@ def main():
         app.router.routes.insert(0,Route('/qa-frame',frame))
         task_posts=0
         next_posts=0
+        observation_posts=0
         @app.middleware('http')
         async def failure(request,call_next):
-            nonlocal task_posts,next_posts
+            nonlocal task_posts,next_posts,observation_posts
+            if request.method=='POST' and request.url.path.endswith('/observation-plan'):
+                observation_posts+=1
             if request.method=='GET' and request.url.path.endswith('/planner') and args.planner_read_fail_flag and args.planner_read_fail_flag.exists():
                 return JSONResponse({'detail':'합성 자동 계획 조회 실패'},status_code=503)
             if '/todos' in request.url.path:
@@ -97,6 +101,8 @@ def main():
             if request.url.path.startswith('/api/tasks/') and request.url.path.endswith('/observations') and args.fail_flag and args.fail_flag.exists():
                 return JSONResponse({'detail':'합성 관찰 조회 실패'},status_code=503)
             response=await call_next(request)
+            if request.method=='POST' and request.url.path.endswith('/observation-plan') and response.status_code==200 and args.observation_lost_response_flag and args.observation_lost_response_flag.exists():
+                return JSONResponse({'detail':'합성 관찰 계획 저장 후 응답 유실'},status_code=503)
             if request.method=='POST' and request.url.path.endswith('/todos') and response.status_code==200 and args.todo_lost_response_flag and args.todo_lost_response_flag.exists():
                 return JSONResponse({'detail':'합성 저장 후 응답 유실'},status_code=503)
             if request.query_params.get('qa_frame')=='1':
@@ -168,7 +174,7 @@ def main():
             assert store.count('traffic')==0
             assert store.get('tasks',task['id'])['status']==task['status']
             shutil.rmtree(temporary)
-            print('Fixture lifespan completed; target requests0; task creation POSTs'+str(task_posts)+'; next-plan POSTs'+str(next_posts)+'; temporary data removed',flush=True)
+            print('Fixture lifespan completed; target requests0; task creation POSTs'+str(task_posts)+'; next-plan POSTs'+str(next_posts)+'; observation-plan POSTs'+str(observation_posts)+'; temporary data removed',flush=True)
         app.router.lifespan_context=reviewed_lifespan
         print('Owned observation UI fixture at http://127.0.0.1:'+str(args.port),flush=True)
         AegisServer(app,host='127.0.0.1',port=args.port,log_level='warning',timeout_graceful_shutdown=5).run()
