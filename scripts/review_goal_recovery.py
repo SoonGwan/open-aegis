@@ -33,6 +33,10 @@ class OwnedTarget(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.requests.append(self.path)
+        if self.hold:
+            self.entered.set()
+            if not self.release.wait(timeout=10):
+                return
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         if self.hardened:
@@ -40,7 +44,10 @@ class OwnedTarget(BaseHTTPRequestHandler):
         body = b'{"owned_recovery_fixture":true}'
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # The owned crash scenario deliberately closes an in-flight socket.
 
 
 @contextmanager
@@ -52,6 +59,14 @@ def service(python, folder, environment, label):
     with (folder / (label + '.log')).open('w') as log:
         process = subprocess.Popen([str(python), '-I', '-m', 'aegis'], cwd=folder,
                                    env=environment, stdout=log, stderr=subprocess.STDOUT)
+        killed = False
+        def crash_owned():
+            nonlocal killed
+            if process.poll() is not None:
+                raise RuntimeError(label + ': cannot crash an exited owned service')
+            killed = True
+            process.kill()
+            assert process.wait(timeout=5) == -9
         def http(path, body=None, *, method=None, expected=200, headers=None):
             request_headers = dict(headers or {})
             if body is not None:
@@ -78,7 +93,7 @@ def service(python, folder, environment, label):
                     if time.monotonic() >= deadline:
                         raise RuntimeError(label + ': startup deadline exceeded')
                     time.sleep(.05)
-            yield http, cookies
+            yield http, cookies, crash_owned
         finally:
             if process.poll() is None:
                 process.terminate()
@@ -88,7 +103,7 @@ def service(python, folder, environment, label):
                 process.kill()
                 process.wait(timeout=5)
                 raise RuntimeError(label + ': shutdown deadline exceeded')
-            assert process.returncode in (0, -15, 143)
+            assert process.returncode in ((-9,) if killed else (0, -15, 143))
 
 
 def finished(http, task_id):
@@ -107,7 +122,54 @@ def finished(http, task_id):
         time.sleep(.05)
 
 
-def rehearse(backend, root, python, binaries, environment, run, dsn=None):
+def execute_restored(python, folder, environment, http_target, pending, origin_key, crash):
+    """Approve one pending plan; optionally crash its owned service during its GET."""
+    label = "restored-" + origin_key.replace("_", "-")
+    with service(python, folder, environment, label) as (http, _, crash_owned):
+        http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
+        before = len(http_target.requests)
+        if crash:
+            http_target.entered.clear()
+            http_target.release.clear()
+            http_target.hold = True
+        http('/api/tasks/' + pending['id'] + '/approve', method='POST')
+        if crash:
+            assert http_target.entered.wait(timeout=5), 'Owned target did not receive the approved request'
+            assert http('/api/tasks/' + pending['id'])['task']['status'] == 'running'
+            crash_owned()
+            http_target.hold = False
+            http_target.release.set()
+        else:
+            result = finished(http, pending['id'])
+            assert result['task'][origin_key] == pending[origin_key]
+        assert len(http_target.requests) == before + 1
+    if not crash:
+        return pending
+    with service(python, folder, environment, label + '-crash-recovered') as (http, _, _):
+        http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
+        interrupted = http('/api/tasks/' + pending['id'])
+        assert interrupted['task']['status'] == 'interrupted'
+        assert interrupted['task'][origin_key] == pending[origin_key]
+        assert all(row['status'] == 'interrupted' for row in interrupted['coverage'])
+        assert len(http_target.requests) == before + 1
+        task_count = http('/api/records/tasks')['total']
+        retry_path = '/api/tasks/' + pending['id'] + '/retry'
+        retry = http(retry_path, method='POST')
+        assert retry['status'] == 'pending' and retry['approved_at'] is None
+        assert retry[origin_key] == pending[origin_key]
+        assert retry.get('planning_round', 0) == pending.get('planning_round', 0)
+        assert http(retry_path, method='POST')['id'] == retry['id']
+        assert http('/api/records/tasks')['total'] == task_count + 1
+        assert all(row['status'] == 'not_started' for row in http('/api/tasks/' + retry['id'])['coverage'])
+        assert len(http_target.requests) == before + 1
+        http('/api/tasks/' + retry['id'] + '/approve', method='POST')
+        result = finished(http, retry['id'])
+        assert result['task'][origin_key] == pending[origin_key]
+        assert len(http_target.requests) == before + 2
+        return retry
+
+
+def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=False):
     folder = root / backend
     folder.mkdir()
     source = folder / 'source'
@@ -122,11 +184,14 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None):
     class Handler(OwnedTarget):
         requests = []
         hardened = False
+        hold = False
+        entered = threading.Event()
+        release = threading.Event()
     target = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     thread = threading.Thread(target=target.serve_forever, daemon=True)
     thread.start()
     try:
-        with service(python, folder, source_environment, 'source') as (http, cookies):
+        with service(python, folder, source_environment, 'source') as (http, cookies, crash_owned):
             assert http('/api/auth/setup', {'password': 'owned-goal-recovery-password',
                                           'setup_token': 'owned-goal-recovery-token'})['user']['role'] == 'admin'
             asset = http('/api/assets', {'name': 'Owned recovery target', 'authorized': True,
@@ -171,6 +236,21 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None):
                 assert all(row['status'] == 'not_started' for row in http('/api/tasks/' + pending['id'])['coverage'])
             assert Handler.requests == ['/']
             old_cookie = next(cookie.value for cookie in cookies if cookie.name == 'aegis_session')
+            source_task_count = http('/api/records/tasks')['total']
+            if crash:
+                crash_owned()
+        if crash:
+            with service(python, folder, source_environment, 'source-crash-recovered') as (http, _, _):
+                http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
+                assert http(round_path, round_input)['id'] == following['id']
+                assert http(retest_path, retest_input)['id'] == first_retest['id']
+                for pending, key in ((following, 'goal_plan'), (retest, 'goal_retest')):
+                    current = http('/api/tasks/' + pending['id'])
+                    assert current['task'][key] == pending[key]
+                    assert current['task']['status'] == 'pending' and current['task']['approved_at'] is None
+                    assert all(row['status'] == 'not_started' for row in current['coverage'])
+                assert http('/api/records/tasks')['total'] == source_task_count
+                assert Handler.requests == ['/']
         # Stop the source cleanly, then copy its consistent data using installed CLIs.
         archive = folder / ('backup.zip' if backend == 'postgres' else 'backup.db')
         checkpoint = folder / 'checkpoint.json'
@@ -192,7 +272,7 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None):
         restored_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], restored_environment)
         assert restored_audit['checkpoint'] == audit['checkpoint']
         assert Handler.requests == ['/']
-        with service(python, folder, restored_environment, 'restored') as (http, _):
+        with service(python, folder, restored_environment, 'restored') as (http, _, crash_owned):
             http('/api/assets', expected=401, headers={'Cookie': 'aegis_session=' + old_cookie})
             http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
             assert http('/api/settings')['storage'] == backend
@@ -211,32 +291,24 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None):
             assert restored_proof['goal_verified'] is False
             assert restored_proof['items'] == proof['items']
             assert Handler.requests == ['/']
-            # Recovery must not approve execution. Each new approval is explicit here.
-            Handler.hardened = True
-            http('/api/tasks/' + retest['id'] + '/approve', method='POST')
-            finished(http, retest['id'])
-            assert Handler.requests == ['/', '/']
-            retest_results = http('/api/findings/' + finding['id'])['retests']
-            resolved = next(row for row in retest_results if row['task_id'] == retest['id'])
-            assert resolved['conclusion'] == 'resolved' and resolved['goal_retest'] == retest['goal_retest']
-            latest = next(row for row in http(proof_path)['items'] if row['id'] == finding['id'])
-            assert latest['latest_retest']['task_id'] == retest['id']
-            assert latest['latest_retest']['conclusion'] == 'resolved'
-            http('/api/tasks/' + following['id'] + '/approve', method='POST')
-            round_result = finished(http, following['id'])
-            assert round_result['task']['goal_plan'] == following['goal_plan']
-            assert Handler.requests == ['/', '/', '/']
-            assert http('/api/tasks/' + following['id'] + '/goal-progress')['goal_verified'] is False
-            assert http('/api/tasks/' + goal['id'] + '/goal-progress')['goal_verified'] is False
+        # Recovery must not approve execution. Each new approval is explicit here.
+        Handler.hardened = True
+        retest = execute_restored(python, folder, restored_environment, Handler, retest, 'goal_retest', crash)
+        following = execute_restored(python, folder, restored_environment, Handler, following, 'goal_plan', crash)
         # Reopen the restored service again: completed results and request identities persist.
-        with service(python, folder, restored_environment, 'reopened') as (http, _):
+        with service(python, folder, restored_environment, 'reopened') as (http, _, _):
             http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
             assert http(round_path, round_input)['id'] == following['id']
             assert http(retest_path, retest_input)['id'] == first_retest['id']
             assert http('/api/tasks/' + following['id'])['task']['status'] == 'completed'
+            retest_results = http('/api/findings/' + finding['id'])['retests']
+            resolved = next(row for row in retest_results if row['task_id'] == retest['id'])
+            assert resolved['conclusion'] == 'resolved' and resolved['goal_retest'] == retest['goal_retest']
             latest = next(row for row in http(proof_path)['items'] if row['id'] == finding['id'])
             assert latest['latest_retest']['task_id'] == retest['id'] and latest['latest_retest']['conclusion'] == 'resolved'
-            assert Handler.requests == ['/', '/', '/']
+            assert http('/api/tasks/' + following['id'] + '/goal-progress')['goal_verified'] is False
+            assert http('/api/tasks/' + goal['id'] + '/goal-progress')['goal_verified'] is False
+            assert Handler.requests == ['/'] * (5 if crash else 3)
         unchanged_source_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], source_environment)
         final_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], restored_environment)
         assert unchanged_source_audit['checkpoint'] == audit['checkpoint']
@@ -244,6 +316,7 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None):
         if backend == 'postgres':
             assert not (source / 'aegis.db').exists() and not (restored / 'aegis.db').exists()
         return {'backend': backend, 'valid': True, 'owned_target_requests': len(Handler.requests),
+                'process_crash_rehearsed': crash, 'owned_service_sigkills': 3 if crash else 0,
                 'preapproval_restore_requests': 0, 'external_target_requests': 0,
                 'goal_round': following['id'], 'goal_retest': retest['id'], 'audit_events_before_backup': audit['events'],
                 'source_coverage': source_coverage,
@@ -252,8 +325,12 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None):
                            'installed backup/archive check/restore/audit checkpoint', 'old session refused',
                            'restored pending state without target requests', 'same request identities after restore',
                            'new explicit approvals and resolved origin', 'completed results survive another service restart',
-                           'source audit unchanged and restored audit extends its checkpoint']}
+                           'source audit unchanged and restored audit extends its checkpoint'] +
+                          (['pending SIGKILL recovery preserves plans and request identities',
+                            'in-flight retest and round SIGKILL recover as interrupted with no automatic requests',
+                            'one pending retry per interrupted task before fresh approval'] if crash else [])}
     finally:
+        Handler.release.set()
         target.shutdown()
         target.server_close()
         thread.join(timeout=2)
@@ -263,6 +340,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--wheel', required=True, type=Path)
     parser.add_argument('--backend', choices=('sqlite', 'postgres', 'both'), default='both')
+    parser.add_argument('--crash', action='store_true', help='SIGKILL owned pending and in-flight servers; verify interrupted recovery and newly approved retry')
     args = parser.parse_args()
     wheel = args.wheel.resolve(strict=True)
     repository = Path(__file__).resolve().parents[1]
@@ -297,7 +375,7 @@ def main():
                       'print(json.dumps({"module":aegis.__file__}))'], environment)
         results = []
         if args.backend in ('sqlite', 'both'):
-            results.append(rehearse('sqlite', root, python, binaries, environment, run))
+            results.append(rehearse('sqlite', root, python, binaries, environment, run, crash=args.crash))
         if native:
             cluster, socket_folder = root / 'cluster', root / 'socket'
             socket_folder.mkdir(mode=0o700)
@@ -307,7 +385,7 @@ def main():
                  "-c listen_addresses='' -k " + str(socket_folder) + ' -p ' + str(port), '-w', 'start'], environment)
             try:
                 dsn = 'host=' + str(socket_folder) + ' port=' + str(port) + ' dbname=postgres'
-                results.append(rehearse('postgres', root, python, binaries, environment, run, dsn))
+                results.append(rehearse('postgres', root, python, binaries, environment, run, dsn, crash=args.crash))
             finally:
                 run([postgres_binaries['pg_ctl'], '-D', cluster, '-w', '-m', 'fast', 'stop'], environment)
         print(json.dumps({'valid': True, 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),

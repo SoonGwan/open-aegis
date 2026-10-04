@@ -35,7 +35,7 @@ jobs:
       - name: Rehearse installed runtime and maintenance commands
         run: python scripts/review_runtime_package.py --wheel-dir artifacts/ci-wheel --web-dir web/dist --runtime-lock requirements.lock
       - name: Rehearse installed SQLite goal plan recovery and fresh approvals
-        run: python scripts/review_goal_recovery.py --wheel artifacts/ci-wheel/*.whl --backend sqlite
+        run: python scripts/review_goal_recovery.py --wheel artifacts/ci-wheel/*.whl --backend sqlite --crash
 
   postgres-storage:
     runs-on: ubuntu-24.04
@@ -57,7 +57,7 @@ jobs:
       - run: python -m pip wheel --no-deps . --wheel-dir artifacts/postgres-wheel
       - run: python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-wheel
       - name: Rehearse installed native goal plan recovery and fresh approvals
-        run: python scripts/review_goal_recovery.py --wheel artifacts/postgres-wheel/*.whl --backend postgres
+        run: python scripts/review_goal_recovery.py --wheel artifacts/postgres-wheel/*.whl --backend postgres --crash
 
   container:
     runs-on: ubuntu-24.04

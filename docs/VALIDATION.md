@@ -4764,3 +4764,37 @@ on 390×844 has no document overflow.
   CI is unrun. This evidence covers single-asset rules goals and normal stopped backup;
   sparse/dependent goal backup scenarios, power-loss recovery, PITR, remote storage,
   commercial-provider quality and semantic-goal/full v1 gates remain unproven.
+
+## Installed goal process-crash recovery — 2026-10-05
+
+- `review_goal_recovery.py --crash` now SIGKILLs only its live owned service Popen
+  handles, waiting for actual exit -9: pending goal plans, in-flight objective retest,
+  in-flight goal follow-up. In-flight GET is held by an owned target Event; its entry
+  and task running status are checked before killing. No production PID is selected.
+- Final installed SQLite/native PostgreSQL rehearsal **valid:true** for both
+  (`artifacts/goal-crash-recovery-installed-final.txt`): three owned service SIGKILLs
+  and five owned GETs per backend. First pending restart preserves plan references,
+  same-request IDs and exact task count with no new target request. Active restarts
+  mark all unfinished selected coverage interrupted and preserve goal/retest origin.
+- Each interrupted task's retry is pending/unapproved, retains its origin and round,
+  and repeated retry POST returns the same task with exact count +1. No automatic
+  target request before a new explicit approval. Approved retries finish; final reopen
+  preserves current follow-up identity, resolved retest origin/latest proof and false
+  semantic goal verification. Counts distinguish approved-but-interrupted GETs from
+  completed retries: source1, interrupted retest1, approved retest retry1, interrupted
+  follow-up1, approved follow-up retry1. External target requests0.
+- Same final helper without crash also **valid:true** in both backends, three owned
+  GETs and zero SIGKILLs (`...normal-regression.txt`). Earlier intermediate crash run
+  covered pending/follow-up only and four GETs (`...installed.txt`); final run extends
+  coverage to in-flight retest and exact retry counts rather than reusing that claim.
+- Crash-mode backup checkpoint43 events extends to99 after restored execution; source
+  checkpoint remains unchanged. Normal mode retains its40→74 continuation. API policy
+  absent: five rules checks complete, API authorization skipped, not successful.
+- Temporary installations removed and all72 service files still byte-match wheel
+  SHA256 **dbfdd035ffe1ab35aff498ba3a20d9df93b535025f494a03c2871fbe5d6054d9**
+  (`...proof.json`). Owned server/target contexts close; native cluster stops in finally.
+  No service/frontend changes, so previous unit/full/UI evidence was not rerun here.
+- CI storage jobs now use crash mode; hosted CI unrun. Database and host remain alive
+  during these process kills. This does not prove hardware power-loss durability,
+  PostgreSQL crash/PITR, remote backups, interrupted provider calls, sparse/dependent
+  goal recovery, complete production readiness or semantic-goal/full v1 completion.

@@ -36,6 +36,7 @@ Run the package stage locally from the repository root after building the fronte
 .venv/bin/python -m pip wheel --no-deps . --wheel-dir artifacts/ci-wheel
 .venv/bin/python scripts/review_runtime_package.py --wheel-dir artifacts/ci-wheel --web-dir web/dist --runtime-lock requirements.lock
 .venv/bin/python scripts/review_goal_recovery.py --wheel artifacts/ci-wheel/*.whl --backend sqlite
+.venv/bin/python scripts/review_goal_recovery.py --wheel artifacts/ci-wheel/*.whl --backend sqlite --crash
 ```
 
 Use a wheel directory containing exactly one Open Aegis wheel. The runtime review installs
@@ -59,6 +60,15 @@ and results must survive another server restart. Use `--backend postgres` or `bo
 with PostgreSQL binaries on PATH for an isolated native cluster; no external target or
 AI provider is contacted. Locked package installation still requires package-index
 access. Temporary servers, databases and installations are cleaned up on exit.
+
+`--crash` additionally SIGKILLs only the owned server processes: once with pending
+goal plans, once during the retest GET and once during the follow-up GET. Pending
+plans and request identities must survive restart. In-flight tasks must recover as
+interrupted, keep their origins and create exactly one pending retry; a new explicit
+approval completes each retry. This mode makes five owned target GETs per backend
+and verifies the resulting audit chain. It tests process death while the database
+remains available, not a machine power loss or database-server crash. CI uses this
+mode in both storage jobs.
 
 The wheel contains the Python backend/CLI, not the frontend bundle. Its UI is supplied
 explicitly via AEGIS_WEB_DIR for this review; Docker packages the separately built UI.
