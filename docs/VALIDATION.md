@@ -4725,3 +4725,42 @@ on 390×844 has no document overflow.
   task/next-plan/observation-plan/goal-retest/goal-draft POSTs0, provider calls0 and
   temporary data removed (`...ui-fixture.txt`, `...ui-failure-fixture.txt`).
   Owned failure flag removed. Full v1 readiness gates remain open.
+
+## Installed goal round/retest backup recovery — 2026-10-05
+
+- Added `scripts/review_goal_recovery.py`: actual wheel installed outside checkout
+  with locked runtime dependencies, owned loopback HTTP target and real server
+  processes. Each SQLite/native PostgreSQL scenario generates a rules goal, approves
+  source execution, reads actual objective proof, creates/replaces pending goal-round
+  and goal-origin retest plans, stops the source and uses installed backup/check/restore
+  and audit CLIs. No model mocking or external AI provider is involved.
+- Final both-backend run **valid:true** (`artifacts/goal-recovery-installed-final.txt`),
+  native PostgreSQL16.15. Restored old sessions refused; original goal draft acceptance,
+  follow-up fingerprint and retest request ID preserve their documented identities.
+  Round replay resolves its current replacement; objective retest nonce retains its
+  original task, whose replacement replan returns the current task. Each restored
+  replacement keeps its goal/reference and unexecuted pending coverage.
+- **Zero target requests during restore, startup and pending-request replay**. Per
+  backend exactly three owned GETs: approved source, newly approved restored retest,
+  newly approved restored goal round. Retest proves missing-nosniff resolved with the
+  original objective reference in the result and latest objective evidence. Completed
+  round/result and same-request identities survive another real service restart.
+  External target requests0. Package dependency installation accesses the package index.
+- Rules goals contain all six registered checks: five completed and API authorization
+  skipped because this fixture supplies no API policy. The initial rehearsal helper
+  incorrectly required all six to complete and failed (`...installed-initial.txt`).
+  Corrected the expectation to permit only that declared skipped check, while retaining
+  exact check membership and rejecting other failed/incomplete statuses. The service
+  was unchanged. Intermediate run valid (`...installed.txt`); final run additionally
+  verifies audit continuation and native operation without SQLite files.
+- Original audit checkpoint remains40 events; recovered chain extends it to74 events
+  in each backend. Restore/session/result checks pass before cleanup; installed origins
+  were inside the temporary environment, now removed (`...cleanup.json`). Native
+  cluster is stopped by the helper's finally block; owned target/server contexts close.
+- Reused wheel SHA256 **dbfdd035ffe1ab35aff498ba3a20d9df93b535025f494a03c2871fbe5d6054d9**;
+  all72 service Python files freshly byte-match checkout (`...wheel-proof.json`). No
+  service or frontend edits, so this turn did not repeat the earlier full/unit/UI runs.
+- CI now runs SQLite/native installed goal recovery in their respective jobs. Hosted
+  CI is unrun. This evidence covers single-asset rules goals and normal stopped backup;
+  sparse/dependent goal backup scenarios, power-loss recovery, PITR, remote storage,
+  commercial-provider quality and semantic-goal/full v1 gates remain unproven.

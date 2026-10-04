@@ -35,9 +35,10 @@ Run the package stage locally from the repository root after building the fronte
 .venv/bin/python scripts/check_design.py
 .venv/bin/python -m pip wheel --no-deps . --wheel-dir artifacts/ci-wheel
 .venv/bin/python scripts/review_runtime_package.py --wheel-dir artifacts/ci-wheel --web-dir web/dist --runtime-lock requirements.lock
+.venv/bin/python scripts/review_goal_recovery.py --wheel artifacts/ci-wheel/*.whl --backend sqlite
 ```
 
-Use a wheel directory containing exactly one Open Aegis wheel. The review installs
+Use a wheel directory containing exactly one Open Aegis wheel. The runtime review installs
 locked runtime dependencies (network access to the package index is required), checks
 dependency consistency and CLI entry points, starts the installed server on an inherited
 loopback socket, and exercises authentication, synthetic asset/pending-plan persistence,
@@ -47,6 +48,17 @@ Shutdown must finish the app lifespan and release the workspace lease. The exist
 installed backup/restore/audit rehearsal runs afterwards. Temporary installations and
 synthetic databases are removed on exit. This POSIX review supports Linux/macOS; Windows
 uses WSL or a container, consistent with the workspace-lock implementation.
+
+`review_goal_recovery.py` separately creates an owned loopback target and exercises
+actual approved goal execution, pending follow-up/retest replacement, installed CLI
+backup/restore and checkpoint comparison, session revocation and request replay.
+Restored plans stay pending until each explicit approval; three target GETs per backend
+cover the source, recovered retest and recovered goal round. The API authorization
+check is skipped without policies and is not reported as successful. Completed origin
+and results must survive another server restart. Use `--backend postgres` or `both`
+with PostgreSQL binaries on PATH for an isolated native cluster; no external target or
+AI provider is contacted. Locked package installation still requires package-index
+access. Temporary servers, databases and installations are cleaned up on exit.
 
 The wheel contains the Python backend/CLI, not the frontend bundle. Its UI is supplied
 explicitly via AEGIS_WEB_DIR for this review; Docker packages the separately built UI.
