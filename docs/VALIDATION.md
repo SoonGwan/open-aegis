@@ -3183,3 +3183,66 @@ on 390×844 has no document overflow.
 - Owned default SQLite preview completed normal shutdown before restarting
   current code on8790 (PID80736/session30994); `/api/health` and root HTTP200.
   Existing workspace retained; no user workspace migration was performed.
+
+
+## Native PostgreSQL online logical backup and fresh-schema restore
+
+- Added a data-only ZIP_STORED format for the supported schema2. Backup uses one
+  read-only REPEATABLE READ native snapshot and server cursors(batch32), preserves
+  raw record JSON/credential hashes/audit links/identity allocation gaps, omits
+  sessions and leaves source cookies valid. No SQLite staging database or archive
+  SQL is executed. A closed, verified0600 stage is fsynced and hard-linked without
+  overwrite, then its parent is fsynced. Stages are removed on success/failure.
+  A directory fsync failure after publication can leave the verified output;
+  this is documented rather than claiming all errors imply no output.
+- Restore verifies archive frames/audit and optional independent audit prefix
+  before opening target DB. Only a new quoted schema is accepted, under the
+  exclusive native runtime gate. Reviewed DDL/bound COPY, storage metadata and
+  sequence restoration, native audit/typed-row hash verification share one
+  transaction; precommit failures roll back every new object. Existing schemas
+  are never overwritten. A lost commit acknowledgment remains ambiguous and
+  requires checking the target schema; commands do not switch running services.
+- Actual owned DB cases cover a write after snapshot while a live owner holds
+  admission, source-cookie preservation/copy invalidation, exact raw-row manifests,
+  sequence gaps, existing schema/live-owner refusal, post-COPY rollback, concurrent
+  output creators, and read transaction exit failure before publication. Damaged
+  frames/audit/missing/extra/duplicate/compressed members, wrong sequence/scalar/
+  record JSON/canonical encoding, oversized line/metadata, non-ZIP and mismatched
+  external checkpoint are refused. Checkpoints authenticate only an audit prefix,
+  not all archive content; frame hashes are not signatures.
+- Real PostgreSQL HTTP backup while source runs, restore to another schema, then
+  recovered HTTP login: old cookie401, original password accepted, unfinished task
+  and started call interrupted, pending plan remains pending, owned target handler
+  receives zero requests. Source live cookie/task state remain unchanged by copy
+  restoration. Backend CLI defaults follow configured environment; DSN is only
+  environment-based. Actual subprocesses check archive without DB configuration,
+  restore, refuse incompatible SQLite path flags/occupied schema, sanitize failed
+  DSN/user/password errors, and never create a local SQLite fallback directory.
+- Initial subset:1 failed/22 passed because verification reused a closed owner-bound
+  Store. Fixture now creates a fresh independent reader after owner shutdown;
+  production fencing was retained. Final new+SQLite backup+transfer subset:
+  **43 passed in7.12s** (`artifacts/postgres-backups-targeted-final.txt`). Complete
+  backend with native PG opt-in: **570 passed in170.29s**, one existing
+  Starlette/httpx warning (`artifacts/postgres-backups-backend-final.txt`). UI
+  remains unchanged and was not rebuilt.
+- Wheel SHA256d5ccc97eab3d5bca61c2dec3da3773b07cf16734ed37d2dcca288728c4f7ef66
+  byte-matches all55 service Python files. Outside-checkout installed review passes
+  (`artifacts/postgres-backups-installed-review.json`,valid=true): installed live
+  native HTTP backup, no-DB archive/checkpoint verification, fresh-schema restore,
+  source manual cookie preserved/copy cookies invalid, actual restored native
+  HTTP password login/pending plan/reports/graph, then existing MCP/audit CLI,
+  real pg_dump/pg_restore/session-preserving source and SQLite return checks.
+  Owned target requests1 and owned source POST1, external target/source0. Default
+  installed SQLite/runtime/auth/UI/maintenance/release review of the same wheel
+  also passes (`artifacts/postgres-backups-runtime-review.json`,valid=true,
+  target_requests=0). Both disposable installed clusters/environments are stopped
+  and removed. CI includes new native cases; hosted execution remains unverified.
+- Scope is supported Open Aegis logical data, not roles/extensions/functions/
+  triggers/full instance/WAL/PITR/HA. Row4MiB and metadata64KiB bounds are enforced;
+  arbitrary hostile ZIP central-directory resources, remote faults/commit loss,
+  power failure, huge archives/server snapshot effects, native version upgrade
+  and full operating SLO remain unverified. Native release/update/config switching
+  and broader v1 UI/tool/resource gates remain open. No remote publication or
+  external target/provider/source request occurred.
+- Default SQLite preview completed normal shutdown, retained its workspace, and
+  restarted current code on8790 (PID11016/session32193). Health/root HTTP200.

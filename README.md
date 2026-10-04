@@ -221,10 +221,12 @@ DNS pinning, 비밀정보 비저장, 수정 전후 재검증, 오류 시 판정 
 합성 목록·요약·보고서 부하의 RSS/CPU와 입장 제한·정상 종료를 별도 서버에서
 측정하는 명령은 [로컬 부하 리허설](docs/RESOURCE-LOAD.md)에 있습니다.
 
-데이터 백업은 서버 실행 중에도 일관된 SQLite 백업 API로 수행합니다.
+기본 SQLite의 데이터 백업은 서버 실행 중에도 일관된 백업 API로 수행합니다.
+PostgreSQL 선택 시에는 [온라인 논리 백업·새 스키마 복구](docs/POSTGRES-STORAGE.md)를
+사용합니다. 백업·복구 CLI도 `AEGIS_STORAGE_BACKEND` 또는 `--backend`를 따릅니다.
 
 ```sh
-.venv/bin/python scripts/backup.py --output backups/aegis-backup.db
+.venv/bin/python scripts/backup.py --backend sqlite --output backups/aegis-backup.db
 ```
 
 백업에는 사용자 암호 해시와 세션 해시가 포함됩니다. 접근을 제한하세요.
@@ -232,8 +234,8 @@ DNS pinning, 비밀정보 비저장, 수정 전후 재검증, 오류 시 판정 
 별도 보존하고, 복구한 세션은 모두 무효화합니다.
 
 ```sh
-.venv/bin/python scripts/restore.py --source backups/aegis-backup.db --check-only
-.venv/bin/python scripts/restore.py --source backups/aegis-backup.db --destination data/aegis.db
+.venv/bin/python scripts/restore.py --backend sqlite --source backups/aegis-backup.db --check-only
+.venv/bin/python scripts/restore.py --backend sqlite --source backups/aegis-backup.db --destination data/aegis.db
 ```
 
 서버와 복구 도구는 같은 디렉터리의 파일 잠금을 사용합니다. 서버가 실행 중이면

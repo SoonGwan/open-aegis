@@ -1,4 +1,4 @@
-"""Offline, atomic storage transfer. PostgreSQL service execution is not enabled yet."""
+"""Offline, atomic transfer between SQLite and the native PostgreSQL storage format."""
 import hashlib
 import json
 import os

@@ -1,4 +1,4 @@
-"""Native PostgreSQL persistence. HTTP/runtime integration is a separate pending step."""
+"""Native PostgreSQL persistence for the explicitly configured HTTP/runtime backend."""
 import hashlib
 import json
 import threading

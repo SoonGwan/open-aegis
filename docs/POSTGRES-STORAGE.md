@@ -1,10 +1,10 @@
 # PostgreSQL 저장소와 전송
 
 현재 구현은 **오프라인 전송·되돌리기, 네이티브 Store와 선택 가능한 PostgreSQL HTTP
-백엔드**다. 기본 서버는 SQLite다. `AEGIS_POSTGRES_DSN`만 설정하면 전환되지 않으며
+백엔드, 온라인 논리 백업과 새 스키마 복구**다. 기본 서버는 SQLite다. `AEGIS_POSTGRES_DSN`만 설정하면 전환되지 않으며
 아래 명시적 backend/schema 설정이 필요하다. 대표 HTTP 인증·승인 실행·재검증·
-보고서·가져오기·재시작을 실제 DB에서 검수했다. 운영 백업/복구·업그레이드·전체
-오류/부하/장시간 검수는 남아 있어 전체 v1의 PostgreSQL 조건은 열린 상태다.
+보고서·가져오기·재시작과 온라인 백업→새 스키마 복구를 실제 DB에서 검수했다.
+전체 운영 복구·업그레이드·오류/부하/장시간 검수는 남아 있어 전체 v1의 PostgreSQL 조건은 열린 상태다.
 
 ## 설치와 연결
 
@@ -44,7 +44,8 @@ python -m aegis
 설정 API의 `storage`는 실제 선택을 반환한다. 관리자 초기 설정은 비어 있는 전송
 스키마에서도 기존 설치 토큰/로컬 설치 정책을 따른다. HTTP startup/config 실패의
 연결/스키마 오류는 원문 DSN을 출력하지 않는다. 종료 중 작업/긴 SQL/원격 접속 장애와
-scheduler의 전체 운영 SLO는 아래 남은 검수에 포함한다. backup/restore CLI는 SQLite 파일 경로를 쓰므로 PostgreSQL 운영 백업/복구를 대체하지 않는다.
+scheduler의 전체 운영 SLO는 아래 남은 검수에 포함한다. backup/restore CLI는 아래
+명시적 backend 선택으로 네이티브 논리 백업/새 스키마 복구를 지원한다.
 감사 CLI와 읽기 전용 MCP는 아래 명시적 저장소 선택을 지원한다.
 
 ## SQLite → PostgreSQL
@@ -284,14 +285,68 @@ PostgreSQL HTTP 저장소 선택/기본 권한/정상 재시작을 검수했으�
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py tests/test_postgres_readers.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py tests/test_postgres_readers.py tests/test_postgres_backups.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된
 PostgresStore로 읽기/쓰기·권한 변경 세션 폐기를 수행한 다음 실제 덤프/복구와
 SQLite 반환의 행/감사 해시를 비교한다. 설치된 PostgreSQL HTTP 서버의 인증·질의·
-보고서·대화·승인 대기 계획과 정상 종료도 검수한다. 전체 서비스의 운영 백업/복구·
-장애/종료/오류/부하 응답 조합 검수는 후속 필수 작업이다.
+보고서·대화·승인 대기 계획과 정상 종료도 검수한다. 실행 중 네이티브 백업/연결 없는
+파일 검증/새 스키마 복구, 복구한 실제 HTTP 서버의 로그인·대기 계획·보고서·그래프도
+검수한다. 전체 서비스의 운영 복구·장애/종료/오류/부하 응답 조합 검수는 후속 필수 작업이다.
+
+## 실행 중 논리 백업과 새 스키마 복구
+
+`aegis-backup`/`aegis-restore`는 `--backend` 또는 `AEGIS_STORAGE_BACKEND`를 따른다.
+SQLite 기본 동작과 별도로 PostgreSQL에서는 지원 스키마2의 데이터 전용 ZIP_STORED
+아카이브를 사용한다. SQL 덤프를 실행하거나 SQLite 복제 DB를 만들지 않는다.
+DSN은 `AEGIS_POSTGRES_DSN` 환경변수로만 지정한다.
+
+```sh
+aegis-backup --backend postgres --schema aegis_workspace --output backups/aegis-native.zip
+aegis-restore --backend postgres --source backups/aegis-native.zip --check-only
+aegis-restore --backend postgres --source backups/aegis-native.zip --check-only --checkpoint trusted-checkpoint.json
+aegis-restore --backend postgres --source backups/aegis-native.zip --schema aegis_recovery --checkpoint trusted-checkpoint.json
+```
+
+백업은 소스 실행 소유권을 빼앗거나 쓰기를 막지 않고 read-only REPEATABLE READ의
+한 스냅샷에서 records/users/events/event_hashes/audit_state를 서버 커서(batch32)로
+읽는다. 원문 JSON·계정 비밀번호 해시·감사 이력·identity 할당 상한을 보존한다.
+세션은 아카이브에서 제외하고 제외 건수만 기록한다. 원본 로그인은 유지한다.
+순번 할당기는 MVCC 대상이 아니므로 행 스냅샷보다 앞선 값일 수 있다. 이는 행의
+일관성을 깨지 않고 복구본의 할당 번호 재사용을 피하는 상한이다.
+
+닫힌 아카이브의 행 SHA-256·감사 체인·형식을 확인한 뒤 0600 새 파일로 공개한다.
+동시 생성자·기존 파일·심볼릭 링크를 덮어쓰지 않고 임시 파일은 정리한다. 검증/읽기
+트랜잭션 종료 실패는 공개 전 거절한다. 파일 공개 뒤 디렉터리 fsync가 실패하면
+유효한 파일이 남을 수 있으므로 오류 후 출력 경로와 `--check-only`를 확인한다.
+
+아카이브는 정해진6개 파일만 허용하고 압축/암호화/중복 파일명/추가 SQL은 거절한다.
+메타데이터64KiB, UTF-8 NDJSON의 한 행4MiB 제한을 적용한다. 행 해시·순서·스칼라 타입·
+엄격한 기록 JSON·감사 연결을 읽어 확인한다. `--check-only`는 DB 연결/복구를 하지 않는다.
+DB 제약과 실제 복구된 타입의 동일성은 복구 트랜잭션에서 추가 검증한다.
+이는 임의 비신뢰 ZIP의 모든 자원 공격을 방어한다는 보장이 아니다. 중앙 디렉터리
+파싱과 단일 최대 행의 Python 메모리·DB 서버 정렬/장기 snapshot 영향은 별도 검수 대상이다.
+
+복구는 기존 스키마를 삭제/교체하지 않고 **새 스키마만** 생성한다. 대상 schema의
+exclusive transaction gate를 획득하므로 실행 소유자가 있으면 거절한다. 검토된 고정
+DDL과 바인딩 COPY로 데이터를 넣고 DB 제약·감사 체인·각 행 해시를 다시 확인한다.
+커밋 전 실패는 스키마/테이블/복사본을 함께 롤백한다. 커밋 응답이 유실되면 완료가
+불확실할 수 있으므로 해당 새 스키마를 먼저 확인한다. 같은 이름의 재시도는 덮어쓰지 않는다.
+
+새 스키마에서 별도 HTTP 서버를 시작해 기존 비밀번호 로그인·자산·증거·보고서를
+확인한 뒤 운영 서버를 종료하고 `AEGIS_POSTGRES_SCHEMA`를 검증한 이름으로 변경한다.
+명령은 운영 서버/설정을 자동 전환하지 않는다. 이전 스키마는 그대로 남지만 전환 후
+양쪽에 생긴 쓰기는 자동 병합되지 않는다. 복구본의 기존 세션은 모두 무효이며 다시
+로그인해야 한다. 미완료 작업/호출은 시작 복구에서 interrupted로 표시하고, 승인 대기
+계획은 실행하지 않는다. 재점검/실행은 현재 계약과 범위를 확인하고 새로 승인한다.
+
+백업에는 비밀번호 해시와 증거가 있으므로 별도 보호된 보관소에 복사한다. 자체 행
+해시는 공격자가 전체 아카이브를 다시 만드는 것을 인증하지 못한다. 신뢰할 독립
+감사 체크포인트는 감사 접두부 비교에만 사용하며 모든 자산/계정의 서명이 아니다.
+DB 역할/권한/확장/함수/트리거와 전체 PostgreSQL 인스턴스는 백업하지 않는다.
+WAL/PITR·HA·전체 서버 복구·실제 버전 업그레이드·원격 장애·전원 차단은 미검수다.
+현재 지원 형식의 논리 데이터 복구이며 `aegis-release`의 SQLite 업데이트 계약은 별도다.
 
 ## 실행 소유권과 연결 상실
 
@@ -319,7 +374,8 @@ shared transaction permit으로 보호한다. 허용한 요청이 진행 중이�
 소유자에 연결하지 않은 Store 쓰기는 exclusive transaction gate를 사용하므로
 실행 소유자와 겹치지 않는다. 오프라인 반환도 exclusive gate를 즉시 획득해야 한다.
 사용 중이면 결과 파일을 만들지 않는다. 중지된 DB의 세션은 반환본에서만 제외한다.
-실행 중 서비스의 라이브 백업/전체 PostgreSQL 운영 복구 계약은 후속 작업이다. 독립 읽기 클라이언트는
+실행 중 서비스의 데이터 백업은 아래 읽기 스냅샷으로 가능하다. 전체 PostgreSQL
+운영 복구 검수는 남아 있다. 독립 읽기 클라이언트는
 읽기 스냅샷만 사용할 수 있으며 실행 permit은 소유권이 있어야 발급한다.
 
 일반 DB 계정의 schema/table/sequence 권한으로 동작함을 검수했다. advisory 계약은
