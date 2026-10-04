@@ -6,6 +6,12 @@ import "../../src/style.css";
 let failNext = false;
 let holdNext = false;
 const pending: (()=>void)[] = [];
+const pendingLabels: string[] = [];
+const recentRequests: string[] = [];
+function showRequests() {
+  const output=document.getElementById('summary-fixture-requests');
+  if(output) output.textContent=`대기: ${pendingLabels.join(', ') || '없음'} · 최근 요청: ${recentRequests.slice(-6).join(', ')}`;
+}
 const originalFetch = window.fetch.bind(window);
 window.fetch = async (input,init) => {
   if (!String(input).startsWith("/api/llm/usage")) return originalFetch(input,init);
@@ -20,8 +26,14 @@ window.fetch = async (input,init) => {
       completion_tokens:zero || missing ? null : "0",total_tokens:zero || missing ? null : "18915118434956081100"},
   };
   const response = new Response(JSON.stringify(body),{status:failNext ? 503 : 200,headers:{"Content-Type":"application/json"}});
+  const label=`${days || 'all'} HTTP ${response.status}`;
+  recentRequests.push(label);
+  if(recentRequests.length>6) recentRequests.shift();
   failNext=false;
-  if(holdNext) {holdNext=false;return new Promise(resolve=>pending.push(()=>resolve(response)));}
+  if(holdNext) {holdNext=false;return new Promise(resolve=>{
+    pending.push(()=>resolve(response));pendingLabels.push(label);showRequests();
+  });}
+  showRequests();
   return response;
 };
 function Review() {
@@ -31,7 +43,8 @@ function Review() {
     <h1>합성 사용량 집계 검수</h1>
     <button onClick={()=>{failNext=true;}}>다음 조회 오류</button>
     <button onClick={()=>{holdNext=true;}}>다음 조회 지연</button>
-    <button onClick={()=>pending.shift()?.()}>이전 조회 해제</button>
+    <button onClick={()=>{pending.shift()?.();pendingLabels.shift();showRequests();}}>이전 조회 해제</button>
+    <p id="summary-fixture-requests" role="status">대기: 없음</p>
     <UsageSummary />
   </main>;
   return <main style={{padding:16}}><h1>집계 너비 검수</h1>

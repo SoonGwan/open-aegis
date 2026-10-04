@@ -2143,3 +2143,30 @@ on 390×844 has no document overflow.
   analysis. Historical events are not retroactively imported. Large-query resource
   limits/soak, full native/mobile/AT picker recovery, citations/intervention and
   commercial models remain open v1 requirements.
+
+## 2026-10-04 — usage period selection and delayed-response recovery
+
+- Follow-up closes the semantic period-selection gap recorded above. Browser
+  combobox `selectOption('7'|'30'|'')` changes the actual native select. Seven days
+  displays zero calls with unknown token totals; 30 days displays one missing-only
+  call with unknown totals; all records restores 2,102 calls and the exact
+  18,915,118,434,956,081,100 token total. Earlier keyboard attempts do not establish
+  a production control defect; hardware keyboard/touch/AT journeys remain open.
+- Enhanced the isolated synthetic fixture with visible pending period/HTTP status
+  and a bounded six-request history. Confirmed a held `7 HTTP 200`, switched to 30
+  days and observed its result, then released the old response: 30 days stayed
+  selected with one call and unknown totals. Confirmed a held `7 HTTP 503`, switched
+  to all records and observed its result, then released: all records and exact
+  totals remained without an error alert. The fixture deliberately delivers held
+  responses despite cancellation; no real API/provider requests occur.
+- Current 30-day refresh returned synthetic 503 with the selected period intact.
+  Manual Retry recovered its one-call/missing-only result while preserving 30 days.
+  Final DOM snapshots inspected and artifacts/v1-usage-period-recovery.jpg visually
+  reviewed. An earlier fixture edit triggered HMR and cleared a held request; that
+  abandoned sequence is excluded from the evidence above and was repeated with
+  the stable fixture and explicitly observed pending labels.
+- This change affects only the browser fixture and documentation; production
+  service/UI source, bundle and wheel are unchanged. Previously recorded 343
+  backend and 64 frontend tests/build/package results were not rerun for this
+  fixture-only follow-up. Full native/mobile/accessibility journeys and the broader
+  open v1 requirements remain unverified.
