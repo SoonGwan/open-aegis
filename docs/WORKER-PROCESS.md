@@ -46,4 +46,5 @@ MCP `get_worker`, `list_worker_events`, `list_worker_observations`는 `id`(작�
 Worker 조회는 거절한다. 개별
 레코드 payload 크기를 강제 제한하는 기능이나 전체 실행 이력 보존 정책은 아니다.
 작업별 Worker 조회는 구현했지만 전체 워크스페이스 과정 검색 UI, 반복 Planner가
-이 과정을 자동 소비하는 단계, Worker 의존 실행·공유 할 일은 아직 남아 있다.
+이 과정을 자동 소비하는 단계, 공유 할 일은 아직 남아 있다. 승인된 의존 실행과 완료 근거/관찰 참조 전달은
+[WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md)에 구현 범위를 정리했다.

@@ -18,6 +18,7 @@ from .store import identifier, now
 from .coverage import slot, finish_remaining
 from .findings import record_observation, apply_retest
 from .worker_observations import record_link
+from .worker_dependencies import validate as validate_dependencies, evidence_inputs, contract as dependency_contract, require_contract as require_dependency_contract, WorkerDependencyMismatch
 
 
 class Engine:
@@ -88,6 +89,7 @@ class Engine:
             if task['status'] != 'pending':
                 raise ValueError('승인 대기 중인 작업만 실행할 수 있습니다.')
             require_contracts(task)
+            validate_dependencies(task['asset_ids'], task.get('worker_dependencies', {}))
             if task.get('execution_policy') and task['execution_policy'] != self.policy.public():
                 raise ValueError('서버 실행 정책이 변경되었습니다. 현재 정책으로 새 계획을 만드세요.')
             for snapshot in task['scope_snapshot']:
@@ -97,7 +99,8 @@ class Engine:
                 if current.get('revision', 1) != snapshot.get('revision', 1):
                     raise ValueError('계획 생성 후 자산이 수정되었습니다. 현재 범위로 새 계획을 만드세요.')
             self.stops[task_id] = threading.Event()
-            self.store.patch('tasks', task_id, status='queued', approved_at=now(), execution_policy=self.policy.public())
+            self.store.patch('tasks', task_id, status='queued', approved_at=now(), execution_policy=self.policy.public(),
+                             worker_dependency_contract=dependency_contract(task))
             self.store.event(task_id, '등록된 범위와 검증 도구를 승인했습니다.', detail={'checks': task['checks'], 'asset_ids': task['asset_ids'], 'tool_contracts': task['tool_contracts']})
             future=self.pool.submit(self.run, task_id)
             self.futures[task_id]=future
@@ -205,18 +208,12 @@ class Engine:
         self.store.event(task_id, 'Planner가 검증 계획을 준비합니다.')
         try:
             require_contracts(task)
+            require_dependency_contract(task)
             checks = self.plan(task, control)
             control.check()
             self.store.patch('tasks', task_id, plan=checks)
             self.store.event(task_id, '검증 작업을 병렬 Worker에 배정합니다.', detail={'workers': task['workers'], 'checks': checks})
-            outcomes = []
-            with concurrent.futures.ThreadPoolExecutor(max_workers=task['workers']) as workers:
-                futures = [workers.submit(self.validate_asset, task, asset, checks, control) for asset in task['scope_snapshot']]
-                for future in concurrent.futures.as_completed(futures):
-                    outcomes.append(future.result())
-                    with self.lock:
-                        current = self.store.get('tasks', task_id)
-                        self.store.patch('tasks', task_id, done=current['done'] + 1)
+            outcomes = self.run_workers(task, checks, control)
             timed_out = control.expired() and not stop.is_set()
             status = 'stopped' if stop.is_set() else 'failed' if timed_out or all(not o['completed_checks'] for o in outcomes) else 'completed'
             errors = max(1 if timed_out else 0, sum(len(o['errors']) for o in outcomes))
@@ -238,21 +235,67 @@ class Engine:
         except Exception as exc:
             timed_out = control.expired() and not stop.is_set()
             stopped = stop.is_set()
-            contract_changed = isinstance(exc, ToolContractMismatch)
+            dependency_changed = isinstance(exc, WorkerDependencyMismatch)
+            contract_changed = isinstance(exc, (ToolContractMismatch, WorkerDependencyMismatch))
+            contract_message = '승인한 Worker 의존 관계가 변경되어 실행하지 않았습니다. 새 계획을 만드세요.' if dependency_changed else '검증 도구 계약이 변경되어 실행하지 않았습니다. 새 승인 계획을 만드세요.'
             finish_remaining(self.store, task, 'cancelled' if stopped else 'failed',
                              '작업이 중지되었습니다.' if stopped else '작업 실행 시간 제한을 초과했습니다.' if timed_out else
-                             '검증 도구 계약이 변경되어 실행하지 않았습니다. 새 승인 계획을 만드세요.' if contract_changed else '내부 오류로 검증 결과를 기록하지 못했습니다.')
+                             contract_message if contract_changed else '내부 오류로 검증 결과를 기록하지 못했습니다.')
             if task.get('retest_of'):
                 apply_retest(self.store, task, 'inconclusive')
             current = self.store.get('tasks', task_id)
             self.store.patch('tasks', task_id, status='stopped' if stopped else 'failed', finished_at=now(),
-                             errors=max(1, current['errors']), termination_reason=('shutdown' if self.closed else 'operator_stop') if stopped else 'timeout' if timed_out else 'tool_contract_changed' if contract_changed else 'internal_error')
-            self.store.event(task_id, '작업 실행 시간 제한을 초과했습니다.' if timed_out else '작업이 중지되었습니다.' if stopped else '검증 도구 계약이 변경되어 실행하지 않았습니다.' if contract_changed else '작업 실행 중 내부 오류가 발생했습니다. 서버 로그를 확인하세요.', 'warning' if stopped or timed_out or contract_changed else 'error')
+                             errors=max(1, current['errors']), termination_reason=('shutdown' if self.closed else 'operator_stop') if stopped else 'timeout' if timed_out else 'worker_dependency_changed' if dependency_changed else 'tool_contract_changed' if contract_changed else 'internal_error')
+            self.store.event(task_id, '작업 실행 시간 제한을 초과했습니다.' if timed_out else '작업이 중지되었습니다.' if stopped else contract_message if contract_changed else '작업 실행 중 내부 오류가 발생했습니다. 서버 로그를 확인하세요.', 'warning' if stopped or timed_out or contract_changed else 'error')
         finally:
             with self.lock:
                 self.stops.pop(task_id, None)
 
-    def validate_asset(self, task, asset, checks, control):
+    def run_workers(self, task, checks, control):
+        dependencies = validate_dependencies(task['asset_ids'], task.get('worker_dependencies', {}))
+        pending = {asset['id']: asset for asset in task['scope_snapshot']}
+        outcomes, running = {}, {}
+        def finished(outcome):
+            outcomes[outcome['asset_id']] = outcome
+            with self.lock:
+                current = self.store.get('tasks', task['id'])
+                self.store.patch('tasks', task['id'], done=current['done'] + 1)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=task['workers']) as workers:
+            while pending or running:
+                if control.stop.is_set() or control.expired():
+                    pending.clear()
+                for id, asset in list(pending.items()):
+                    if control.stop.is_set() or control.expired():break
+                    parents = dependencies.get(id, [])
+                    if not all(parent in outcomes for parent in parents):continue
+                    if len(running) >= task['workers']:break
+                    try:
+                        inputs = evidence_inputs(self.store, task, parents) if parents else []
+                    except ValueError:
+                        for check in checks:
+                            self.store.put('coverage', {**slot(task, asset, check), 'status': 'failed',
+                                'reason': '선행 Worker의 검증 완료 근거가 없어 실행하지 않았습니다.',
+                                'error_type': 'WorkerDependencyBlocked', 'finished_at': now()})
+                        self.store.event(task['id'], '선행 Worker 입력을 검증하지 못해 실행하지 않았습니다.', 'warning',
+                            {'asset_id': id, 'worker_id': task['id']+':'+id, 'dependencies': parents})
+                        finished({'asset_id': id, 'completed_checks': [], 'fingerprints': [], 'errors': ['dependency_blocked']})
+                    else:
+                        args = (task, asset, checks, control, inputs) if inputs else (task, asset, checks, control)
+                        running[workers.submit(self.validate_asset, *args)] = id
+                    del pending[id]
+                if running:
+                    done, _ = concurrent.futures.wait(running, timeout=.05,
+                        return_when=concurrent.futures.FIRST_COMPLETED)
+                    for future in done:
+                        del running[future]
+                        finished(future.result())
+                elif pending:
+                    # A validated DAG must always expose a ready node.
+                    if control.stop.is_set() or control.expired():pending.clear()
+                    else:raise ValueError('Worker 의존 단계의 진행 근거를 확인할 수 없습니다.')
+        return list(outcomes.values())
+
+    def validate_asset(self, task, asset, checks, control, inputs=None):
         stop = control.stop
         task_id = task['id']
         worker_id = task_id + ':' + asset['id']
@@ -266,6 +309,8 @@ class Engine:
             self.store.put('traffic', dict(entry, id=identifier(), task_id=task_id, asset_id=asset['id'], created_at=now()))
         transport = Transport(asset['url'], self.allow_private, record, stop.is_set, policy=self.policy, limiter=self.limiter, control=control,
                               execution_permit=getattr(self.store,'execution_permit',None))
+        if inputs:
+            event('승인된 선행 Worker의 완료 근거와 관찰 참조를 받았습니다.', detail={'dependency_inputs': inputs})
         event('Worker 시작: ' + asset['name'], detail={'asset_id': asset['id']})
         try:
             require_contracts(task)

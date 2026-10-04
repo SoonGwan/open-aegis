@@ -23,6 +23,7 @@ from aegis.worker_observations import record_link
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8815)
+    parser.add_argument('--dependencies',action='store_true',help='Synthetic pending two-Worker dependency approval fixture')
     parser.add_argument('--fail-flag',type=Path,help='Owned QA flag: while present, only task observation GET returns503')
     args=parser.parse_args()
     if not 1<=args.port<=65535:parser.error('port must be1..65535')
@@ -56,6 +57,13 @@ def main():
               'created_at':time.time(),'started_at':1.,'finished_at':2.,'approved_at':1.,'done':1,'errors':0,
               'asset_ids':[asset['id']],'scope_snapshot':[asset],'checks':['endpoint_inventory'],
               'tool_contracts':contracts_for(['endpoint_inventory']),'workers':1,'planner':'rules'}
+        if args.dependencies:
+            parent={**asset,'id':'qa-parent-asset','name':'선행 검수 자산','url':asset['url']+'parent/'}
+            asset['name']='후행 검수 자산'
+            task.update(status='pending',approved_at=None,started_at=None,finished_at=None,done=0,
+                        asset_ids=[asset['id'],parent['id']],scope_snapshot=[asset,parent],
+                        worker_dependencies={asset['id']:[parent['id']]})
+            store.put('assets',parent)
         store.put_many([('assets',asset),('tasks',task)])
         for i in range(60):
             record_link(store,task,asset,'endpoint_inventory',asset['url']+f'owned-link-{i:02d}')
@@ -68,7 +76,7 @@ def main():
         async def reviewed_lifespan(application):
             async with original_lifespan(application):yield
             assert store.count('traffic')==0
-            assert store.get('tasks',task['id'])['status']=='completed'
+            assert store.get('tasks',task['id'])['status']==task['status']
             shutil.rmtree(temporary)
             print('Fixture lifespan completed; target requests0; temporary data removed',flush=True)
         app.router.lifespan_context=reviewed_lifespan

@@ -54,7 +54,7 @@ HTTP 로그인/역할을 대신 검증하지 않는다. 조회는 대상을 요�
 스냅샷과 메타데이터 불일치도 검증했다. 상세 결과는 [VALIDATION.md](VALIDATION.md)에 있다.
 
 여기까지는 다른 클라이언트가 Worker 관찰을 출처와 함께 읽을 수 있는 경로다.
-Worker 간 의존 단계·반복 Planner·관찰에 따른 다음 실행 제안/별도 승인·공유 할 일,
+반복 Planner·관찰에 따른 다음 실행 제안/별도 승인·공유 할 일,
 전체 모바일/보조 기술 검수는 아직 남아 있다.
 전체 반복/Worker 공유 항목을 완료로 표시하지 않는다.
 
@@ -74,3 +74,7 @@ Worker 간 의존 단계·반복 Planner·관찰에 따른 다음 실행 제안/
 
 자산별 Worker의 커버리지와 해당 이벤트·관찰을 함께 읽는 HTTP/MCP 계약은
 [WORKER-PROCESS.md](WORKER-PROCESS.md)를 따른다. 읽기와 실행 소비는 별도 단계다.
+
+승인된 Worker 의존 실행과 완료 근거/관찰 ID 참조 전달은
+[WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md)에 정리했다. 검증 도구가 관찰 URL을
+실행 입력으로 소비하는 단계와 반복 계획은 여전히 남아 있다.

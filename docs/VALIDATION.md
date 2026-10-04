@@ -3678,3 +3678,55 @@ on 390×844 has no document overflow.
 - Dedicated whole-workspace process search UI, automatic repeated planning,
   dependent Worker consumption, shared to-do and the whole v1 remain open. The
   process read contract is [WORKER-PROCESS.md](WORKER-PROCESS.md).
+
+## Approved Worker dependency execution — 2026-10-04
+
+- Added bounded task-local acyclic dependency declarations (20 assets/40 edges),
+  creation/approval/run validation and persisted approval contract. Ready Workers
+  use the declared pool size; joins wait for all predecessors, independent Workers
+  progress in parallel. Persisted expected coverage/approval scope/contracts are
+  read in one snapshot before admitting a dependent. Handoffs retain completed
+  checks and up to10 matched observation IDs from latest25, totals/omission state;
+  reading references adds no observed-link requests or execution scope.
+- Actual owned SQLite/PostgreSQL HTTP verifies no execution before approval, reversed
+  input-order dependency scheduling, two-parent join and independent parallelism,
+  failed parent/descendant blocking, cyclic/self/foreign/duplicate/type refusals,
+  changed approval contract refusal before requests, corrupted completed coverage
+  refusal, stop and replan preserving relationships with new pending approval.
+  Initial failed-parent test expected one request but existing GET retry policy
+  legitimately made two; assertion corrected to exact two parent-only requests.
+- Controlled real held-HTTP stop ordering exposed stopped task done0 after its
+  running Worker exited (`artifacts/worker-dependencies-stop-before.txt`,failed).
+  Scheduler now stops scheduling, drains running outcomes and records done1 while
+  cancelling unstarted dependent without a child request. Related final SQLite/
+  native/runtime/tool tests65passed37.77s (`...targeted-final.txt`).
+- Initial full run679passes/2failures was started while Vite rebuilt dist; backup
+  app startup observed the temporary missing assets directory (`...backend-first.txt`).
+  Fixed verification order, froze service source and built assets for final run:
+  native-enabled full backend681passed208.61s, no skips (`...backend-final.txt`), one
+  existing Starlette/httpx warning. Frontend68passed354.65ms and build1.57s;
+  JSindex-CWZgcYd4/CSSindex-DniDnrrf (`...frontend-tests.txt`, `...frontend-build.txt`).
+- Final wheel SHA256c9c3978b1400f82a99c7d38ccd0c9b5c07398488bdfe064de4ba4df79167d171
+  matches all63 service Python files (`...source-proof.json`). Final installed
+  native reviewer executes original owned task plus an explicitly declared two-
+  Worker dependency task, verifies persisted handoff/completion through Store/HTTP,
+  and retained Worker records through actual MCP stdio. Exactly requests /, /,
+  /dependency-only; /observed-only never visited. One owned source POST, external
+  targets/sources0. Existing backup/restore/audit/ownership/release/return workflows
+  also pass (`...installed-postgres.json`,valid=true). Final default installed
+  runtime valid with target_requests0 (`...installed-runtime.json`). Both runners
+  terminal0, stderr empty, temporary installations/clusters removed.
+- Built approval card and task detail show predecessor/dependent names and approved
+  URLs with failure/skip behavior. Synthetic pending fixture, no approval: 390px
+  iframe has actual document375px with15px vertical scrollbar and scroll375;
+  320px modal document320/scroll320/dialog296. Both displays wrap without horizontal
+  document overflow. Escape closes modal; underlying document305/scroll305. Actual
+  screenshots `worker-dependencies-approval-390.jpg`, `...detail-320.jpg`; compact
+  evidence `...ui-review.json`. Not actual-device/touch/zoom/screen-reader QA.
+  Fixture shutdown asserts pending state unchanged, zero target traffic and removes
+  temporary data. Preview restarted gracefully on final source, port8790 health/UI
+  200 with final bundle (`...preview-health.json`).
+- New declarations currently use API; dependency creation editor, adaptive repeated
+  Planner, observed-URL consumption by tools, shared to-do and full v1 remain open.
+  Contract [WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md). CI native list includes
+  these cases; actual hosted CI/container execution still unverified.

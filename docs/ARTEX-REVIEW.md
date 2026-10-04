@@ -42,7 +42,7 @@ ARTEX를 실행하거나 전체 코드를 감사한 결과가 아니다. 특정 
 
 | 구현 | 코드·계약 | 현재 경계 |
 |---|---|---|
-| 실행·계획 | [engine.py](../aegis/engine.py), [RUNTIME.md](RUNTIME.md) | LLM은 승인 도구 순서만 결정; 반복 자율 계획 없음 |
+| 실행·계획 | [engine.py](../aegis/engine.py), [RUNTIME.md](RUNTIME.md) | 승인된 Worker 의존 실행·완료 근거/관찰 참조 전달; LLM은 승인 도구 순서만 결정, 반복 자율 계획 없음 |
 | 관계·커버리지 | [GRAPH.md](GRAPH.md), [COVERAGE.md](COVERAGE.md) | 실제 저장 기록의 관계; 원본의 이중 그래프와 동등하지 않음 |
 | 요청 관찰 | [network.py](../aegis/network.py) | 범위와 DNS를 검사한 GET; 범용 트래픽 프록시 없음 |
 | 응답 계약 | [API-POLICY.md](API-POLICY.md) | 운영자 정의 스키마·소유권 기대값; 자동 소유권 추론 없음 |

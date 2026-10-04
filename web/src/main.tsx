@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
+import { WorkerDependencies } from "./WorkerDependencies";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
 import {
@@ -94,6 +95,7 @@ type Task = {
   asset_ids: string[];
   checks: string[];
   workers: number;
+  worker_dependencies?: Record<string, string[]>;
   planner: string;
   llm_usage?: PlannerCall;
   created_at: number;
@@ -1951,6 +1953,7 @@ function App() {
                       )}
                       <ToolContracts snapshot={t.tool_contracts} current={settings?.tool_contracts}
                         selected={t.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))} pending />
+                      <WorkerDependencies dependencies={t.worker_dependencies} assets={t.scope_snapshot} />
                       <div className="approval-buttons">
                         <button disabled={busy || !canOperate} onClick={() => void replanPending(t.id)}>
                           <RefreshCw size={15} />현재 범위로 새 계획
@@ -2787,6 +2790,7 @@ function App() {
             <ToolContracts snapshot={selectedTask.tool_contracts} current={settings?.tool_contracts}
               selected={selectedTask.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))}
               pending={selectedTask.status === "pending"} />
+            <WorkerDependencies dependencies={selectedTask.worker_dependencies} assets={selectedTask.scope_snapshot} />
             {replanError?.id === selectedTask.id && <p className="form-error" role="alert">{replanError.message}</p>}
             {selectedTask.retry_of && (
               <p className="subtle">

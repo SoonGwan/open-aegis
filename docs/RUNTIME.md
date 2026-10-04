@@ -138,4 +138,5 @@ SQLite 자체 캐시/정렬, 총 처리 시간에 대한 강제 상한은 아니
 새 Worker 실행의 시작·도구·발견·종료 이벤트에는 `worker_id=task_id:asset_id`를
 저장한다. [Worker 과정 조회](WORKER-PROCESS.md)는 승인된 자산별 범위·커버리지와
 해당 이벤트·관찰을 단일 읽기 스냅샷으로 제공한다. 읽기는 실행을 승인하지 않으며
-반복 Planner의 자동 의존 실행은 아직 구현하지 않았다.
+승인 계획 안의 의존 순서 실행은 [WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md)를
+따른다. 여러 회차 반복 Planner는 아직 구현하지 않았다.

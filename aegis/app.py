@@ -46,7 +46,7 @@ from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
 from .http_queries import SQLiteHTTP,PostgresHTTP
 from .worker_observations import task_page as observation_page
-from . import worker_process
+from . import worker_process, worker_dependencies
 
 
 class Credentials(BaseModel):
@@ -97,6 +97,12 @@ class TaskInput(BaseModel):
     checks: list[str] = Field(default_factory=lambda: [c['id'] for c in CATALOG], min_length=1, max_length=6)
     workers: int = Field(default=3, ge=1, le=4)
     planner: Literal['rules', 'ai'] = 'rules'
+    worker_dependencies: dict[str, list[str]] = Field(default_factory=dict)
+
+    @model_validator(mode='after')
+    def validate_dependencies(self):
+        worker_dependencies.validate(self.asset_ids, self.worker_dependencies)
+        return self
 
     @field_validator('checks')
     @classmethod

@@ -234,9 +234,25 @@ try:
     assert owned_requests==['/'] and len(owned_source_requests)==1
     assert owned_source_requests[0][0]=='/api/assets/asset' and owned_source_requests[0][1]=='Bearer owned-installed-source-secret'
     assert owned_source_requests[0][2]['pageIndex']==1 and owned_source_requests[0][2]['pageSize']==50
+    child={**asset,'id':'owned-dependent','name':'Installed dependent child','url':asset['url']+'dependency-only'}
+    dependent={**task,'id':'native-dependent','name':'Installed dependent task','created_at':time.time(),
+               'asset_ids':[child['id'],asset['id']],'scope_snapshot':[child,asset],'workers':2,
+               'worker_dependencies':{child['id']:[asset['id']]}}
+    s.put_many([('assets',child),('tasks',dependent),*[('coverage',row) for row in planned_slots(dependent)]])
+    assert owned_requests==['/']
+    engine.start(dependent['id']);deadline=time.monotonic()+8
+    while s.get('tasks',dependent['id'])['status'] not in ('completed','failed','stopped'):
+        assert time.monotonic()<deadline
+        time.sleep(.02)
+    assert s.get('tasks',dependent['id'])['status']=='completed' and s.get('tasks',dependent['id'])['done']==2
+    assert owned_requests==['/','/','/dependency-only']
+    process=get_process(s,dependent['id'],child['id'])
+    handoff=next(e for e in process['events']['items'] if 'dependency_inputs' in e['detail'])['detail']['dependency_inputs'][0]
+    assert handoff['source_worker_id']==dependent['id']+':'+asset['id'] and len(handoff['observation_ids'])==1
+    assert all(row['status']=='completed' for row in process['coverage'])
 finally:
     engine.shutdown();server.shutdown();server.server_close();thread.join(timeout=2)
-assert owned_requests==['/']
+assert owned_requests==['/','/','/dependency-only']
 retired=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer');lost=retired.acquire_runtime()
 try:
     with connect(os.environ['AEGIS_POSTGRES_DSN']) as db:
@@ -286,7 +302,7 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     native_http('/api/assets',expected=401)
                     assert native_http('/api/auth/login',{'username':'admin','password':'owned-installed-transfer-password'})['user']['role']=='operator'
                     assert native_http('/api/settings')['storage']=='postgres'
-                    assert native_http('/api/overview')['stats']['covered_assets']==1
+                    assert native_http('/api/overview')['stats']['covered_assets']==2
                     native_http('/api/users',expected=403)
                     assert native_http('/api/assignees')['total']==1
                     note=native_http('/api/notes',{'title':'Native HTTP note','content':'Owned server'})
@@ -295,6 +311,7 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     worker_page=native_http('/api/tasks/native-engine/observations')
                     assert worker_page['total']==1 and worker_page['items'][0]['provenance']['status']=='matched'
                     assert native_http('/api/tasks/native-engine/workers')['total']==1
+                    assert native_http('/api/tasks/native-dependent/workers/owned-dependent')['coverage'][0]['status']=='completed'
                     process_detail=native_http('/api/tasks/native-engine/workers/owned-lab')
                     assert all(row['status']=='completed' for row in process_detail['coverage'])
                     assert all(row['worker_provenance']['status']=='matched' for row in process_detail['events']['items'])
@@ -493,7 +510,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
                 'checks':['locked optional dependency','server fsync enabled','installed native initializer under a nonsuperuser role with database CREATE','fresh native HTTP first setup token, authentication, note and audit without SQLite','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
-                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed native append-only checkpoint archive and unchanged repeat','installed native Worker observations and process: actual approved execution, HTTP and MCP source/coverage/events checks without link visit','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
+                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed native append-only checkpoint archive and unchanged repeat','installed approved two-Worker dependency and bounded observation handoff with exact declared request order','installed native Worker observations and process: actual approved execution, HTTP and MCP source/coverage/events checks without link visit','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,
                 'external_target_requests':0,'service_postgres_backend_enabled':True}))
