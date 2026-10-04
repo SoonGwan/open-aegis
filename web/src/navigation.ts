@@ -5,6 +5,9 @@ import {
 } from "./call-navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  readTaskTodos,
+  updateTaskTodosQuery,
+  type TaskTodoState,
   readTaskWorker,
   updateTaskWorkerQuery,
   type TaskWorkerState,
@@ -68,6 +71,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     detail: readDetail(location.search),
     taskChat: readTaskChat(location.search),
     taskWorker: readTaskWorker(location.search),
+    taskTodos: readTaskTodos(location.search),
     taskCollections: {
       findings: readTaskCollection(location.search, "findings"),
       events: readTaskCollection(location.search, "events"),
@@ -109,6 +113,7 @@ export function useNavigation(allowedPages: readonly string[]) {
         detail: readDetail(location.search),
         taskChat: readTaskChat(location.search),
         taskWorker: readTaskWorker(location.search),
+        taskTodos: readTaskTodos(location.search),
         taskCollections: {
           findings: readTaskCollection(location.search, "findings"),
           events: readTaskCollection(location.search, "events"),
@@ -192,6 +197,11 @@ export function useNavigation(allowedPages: readonly string[]) {
     },
     [],
   );
+  const updateTaskTodos = useCallback(
+    (changes: Partial<TaskTodoState>, mode: HistoryMode = "push") => {
+      commit(updateTaskTodosQuery(location.search, changes), mode);
+    }, [],
+  );
   const updateTaskWorker = useCallback(
     (changes: Partial<TaskWorkerState>, mode: HistoryMode = "push") => {
       commit(updateTaskWorkerQuery(location.search, changes), mode);
@@ -210,6 +220,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     invalidateActionView: () => actionScope.current.invalidate(),
     updateTaskChat,
     updateTaskWorker,
+    updateTaskTodos,
     updateTaskCollection,
     updateFindingCollection,
     updateList,

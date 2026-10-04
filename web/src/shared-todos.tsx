@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { todoCollectionMatches } from "./navigation-state";
+import type {
+  TaskTodoState,
+  TaskCollectionState,
+  ListPosition,
+  HistoryMode,
+} from "./navigation-state";
 import { api, ApiError, captureSession } from "./api";
 import { useRecords, Pagination, RecordState } from "./records";
 import { pendingStorage } from "./chat-pending";
@@ -219,7 +226,6 @@ function TodoEditor({
         { expected_revision: base.revision, ...changes },
       );
       if (session()) {
-        window.dispatchEvent(new Event("aegis-records-changed"));
         if (active.current && current()) {
           setBase(value);
           setDraft(draftOf(value));
@@ -228,6 +234,7 @@ function TodoEditor({
           setConflict(false);
           onSaved(value);
         }
+        window.dispatchEvent(new Event("aegis-records-changed"));
       }
     } catch (e) {
       if (session() && active.current && current()) {
@@ -396,13 +403,26 @@ function TodoEditor({
     </form>
   );
 }
-function TodoHistory({ taskId, todoId }: { taskId: string; todoId: string }) {
-  const [search, setSearch] = useState("");
+function TodoHistory({
+  taskId,
+  todoId,
+  state,
+  onChange,
+}: {
+  taskId: string;
+  todoId: string;
+  state: TaskCollectionState;
+  onChange: (changes: Partial<TaskCollectionState>, mode?: HistoryMode) => void;
+}) {
+  const move = useCallback(
+    (position: ListPosition, mode?: HistoryMode) => onChange(position, mode),
+    [onChange],
+  );
   const records = useRecords<History>(
     "todo_history",
-    search,
+    state.search,
     {},
-    undefined,
+    { ...state, onPositionChange: move },
     `/tasks/${taskId}/todos/${todoId}/history`,
   );
   return (
@@ -411,9 +431,9 @@ function TodoHistory({ taskId, todoId }: { taskId: string; todoId: string }) {
       <label>
         이력 검색
         <input
-          value={search}
+          value={state.search}
           maxLength={200}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => onChange({ search: e.target.value })}
         />
       </label>
       {(!records.ready || records.error) && <RecordState records={records} />}
@@ -448,20 +468,95 @@ export function SharedTodos({
   actorId,
   canOperate,
   captureView,
+  state,
+  onChange,
 }: {
   taskId: string;
   actorId: string;
   canOperate: boolean;
   captureView: () => () => boolean;
+  state: TaskTodoState;
+  onChange: (changes: Partial<TaskTodoState>, mode?: HistoryMode) => void;
 }) {
-  const [search, setSearch] = useState(""),
-    [selected, setSelected] = useState<Todo | null>(null),
+  const [loadedTodo, setSelected] = useState<Todo | null>(null),
     [editing, setEditing] = useState(false);
+  const selected = loadedTodo?.id === state.todoId ? loadedTodo : null;
+  const [selectionRequest, setSelectionRequest] = useState({
+    id: "",
+    loading: false,
+    error: "",
+  });
+  const [selectionReload, setSelectionReload] = useState(0);
+  const selectionError =
+    selectionRequest.id === state.todoId ? selectionRequest.error : "";
+  const selectionLoading =
+    Boolean(state.todoId) &&
+    (selectionRequest.id !== state.todoId || selectionRequest.loading);
+  const move = useCallback(
+    (position: ListPosition, mode?: HistoryMode) => {
+      if (todoCollectionMatches(location.search, taskId, "list", state.list))
+        onChange({ list: { ...state.list, ...position } }, mode);
+    },
+    [
+      onChange,
+      taskId,
+      state.list.search,
+      state.list.offset,
+      state.list.snapshot,
+    ],
+  );
+  const changeHistory = useCallback(
+    (changes: Partial<TaskCollectionState>, mode?: HistoryMode) => {
+      if (
+        todoCollectionMatches(
+          location.search,
+          taskId,
+          "history",
+          state.history,
+          state.todoId,
+        )
+      )
+        onChange({ history: { ...state.history, ...changes } }, mode);
+    },
+    [
+      onChange,
+      taskId,
+      state.todoId,
+      state.history.search,
+      state.history.offset,
+      state.history.snapshot,
+    ],
+  );
+  useEffect(() => setEditing(false), [state.todoId]);
+  useEffect(() => {
+    if (!state.todoId) return;
+    const controller = new AbortController(),
+      id = state.todoId;
+    setSelectionRequest({ id, loading: true, error: "" });
+    api<Todo>(
+      `/tasks/${taskId}/todos/${id}`,
+      "GET",
+      undefined,
+      controller.signal,
+    )
+      .then((row) => {
+        if (!controller.signal.aborted) setSelected(row);
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted)
+          setSelectionRequest({ id, loading: false, error: e.message });
+      })
+      .finally(() => {
+        if (!controller.signal.aborted)
+          setSelectionRequest((previous) => ({ ...previous, loading: false }));
+      });
+    return () => controller.abort();
+  }, [taskId, state.todoId, selectionReload]);
   const records = useRecords<Todo>(
     "todos",
-    search,
+    state.list.search,
     {},
-    undefined,
+    { ...state.list, onPositionChange: move },
     `/tasks/${taskId}/todos`,
   );
   const [pending, setPending] = useState<TodoCreation | null>(() =>
@@ -524,11 +619,9 @@ export function SharedTodos({
           taskId,
           request.request_id,
         );
-        window.dispatchEvent(new Event("aegis-records-changed"));
-        if (active.current && current()) {
+        if (active.current) {
+          const ownsView = current();
           setPending(cleared ? null : request);
-          setSelected(row);
-          setEditing(false);
           if (cleared) {
             setTitle("");
             setDescription("");
@@ -536,10 +629,18 @@ export function SharedTodos({
           }
           setNotice(
             cleared
-              ? "할 일을 저장했습니다."
+              ? ownsView
+                ? "할 일을 저장했습니다."
+                : "앞서 보낸 할 일을 저장했습니다. 현재 탐색은 유지했습니다."
               : "저장은 확인했지만 재시도 정보 정리에 실패했습니다. 같은 요청을 다시 확인하세요.",
           );
+          if (ownsView) {
+            setSelected(row);
+            setEditing(false);
+            onChange({ todoId: row.id });
+          }
         }
+        window.dispatchEvent(new Event("aegis-records-changed"));
       }
     } catch (e) {
       if (session() && active.current && current()) {
@@ -618,9 +719,11 @@ export function SharedTodos({
         할 일 검색
         <input
           aria-label="공유 할 일 검색"
-          value={search}
+          value={state.list.search}
           maxLength={200}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            onChange({ list: { ...state.list, search: e.target.value } })
+          }
         />
       </label>
       {(!records.ready || records.error) && <RecordState records={records} />}
@@ -632,6 +735,7 @@ export function SharedTodos({
               onClick={() => {
                 setSelected(row);
                 setEditing(false);
+                onChange({ todoId: row.id });
               }}
             >
               {row.title}
@@ -646,6 +750,26 @@ export function SharedTodos({
         <p>공유 할 일이 없습니다.</p>
       )}
       <Pagination records={records} />
+      {state.todoId && (
+        <div aria-busy={selectionLoading}>
+          {selectionLoading && (
+            <p role="status">할 일 현재 기록을 불러오는 중…</p>
+          )}
+          {selectionError && <p role="alert">{selectionError}</p>}
+          <button
+            type="button"
+            disabled={selectionLoading}
+            onClick={() => setSelectionReload((n) => n + 1)}
+          >
+            현재 할 일 다시 조회
+          </button>
+          {!selected && (
+            <button type="button" onClick={() => onChange({ todoId: "" })}>
+              할 일 선택 닫기
+            </button>
+          )}
+        </div>
+      )}
       {selected && (
         <section className="todo-detail" aria-label="선택한 할 일">
           <h5>{selected.title}</h5>
@@ -658,7 +782,11 @@ export function SharedTodos({
             <p>완료·취소 사유: {selected.resolution_note}</p>
           )}
           {!editing && canOperate && (
-            <button type="button" onClick={() => setEditing(true)}>
+            <button
+              type="button"
+              disabled={selectionLoading || !!selectionError}
+              onClick={() => setEditing(true)}
+            >
               할 일 편집
             </button>
           )}
@@ -667,11 +795,12 @@ export function SharedTodos({
             onClick={() => {
               setSelected(null);
               setEditing(false);
+              onChange({ todoId: "" });
             }}
           >
             할 일 상세 닫기
           </button>
-          {editing && (
+          {editing && canOperate && (
             <TodoEditor
               key={`editor-${selected.id}`}
               row={selected}
@@ -688,6 +817,8 @@ export function SharedTodos({
             key={`history-${selected.id}`}
             taskId={taskId}
             todoId={selected.id}
+            state={state.history}
+            onChange={changeHistory}
           />
         </section>
       )}

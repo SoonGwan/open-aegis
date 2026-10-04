@@ -37,6 +37,8 @@ def main():
     parser.add_argument('--worker-fail-flag',type=Path,help='Owned QA flag: while present, Worker process and collection GET return503')
     parser.add_argument('--todos',action='store_true',help='Seed30 shared decisions for owned UI QA')
     parser.add_argument('--todo-lost-response-flag',type=Path,help='Return503 after real committed todo creation')
+    parser.add_argument('--todo-read-fail-flag',type=Path,help='Owned todo GET failure probe')
+    parser.add_argument('--todo-write-hold-flag',type=Path,help='Hold owned todo POST/PATCH for up to15 seconds')
     args=parser.parse_args()
     if not 1<=args.port<=65535:parser.error('port must be1..65535')
     for key in list(os.environ):
@@ -64,6 +66,13 @@ def main():
         @app.middleware('http')
         async def failure(request,call_next):
             nonlocal task_posts,next_posts
+            if '/todos' in request.url.path:
+                if request.method=='GET' and args.todo_read_fail_flag and args.todo_read_fail_flag.exists():
+                    return JSONResponse({'detail':'합성 공유 할 일 조회 실패'},status_code=503)
+                if request.method in ('POST','PATCH'):
+                    deadline=time.monotonic()+15
+                    while args.todo_write_hold_flag and args.todo_write_hold_flag.exists() and time.monotonic()<deadline:
+                        await asyncio.sleep(.05)
             if request.method=='GET' and ('/workers/' in request.url.path or request.url.path=='/api/worker-events') and args.worker_fail_flag and args.worker_fail_flag.exists():
                 return JSONResponse({'detail':'합성 Worker 과정 조회 실패'},status_code=503)
             if request.url.path.endswith('/next-plan'):
@@ -118,7 +127,12 @@ def main():
         if args.todos:
             from aegis import todos
             for i in range(30):
-                todos.create(store,task['id'],{'request_id':f'{i:032x}','title':f'공유 검수 과제 {i:02d}','description':'합성 UI 과제'},fixture_actor)
+                row=todos.create(store,task['id'],{'request_id':f'{i:032x}','title':f'공유 검수 과제 {i:02d}','description':'합성 UI 과제'},fixture_actor)
+            for i in range(30):
+                row=todos.update(store,task['id'],row['id'],{'expected_revision':row['revision'],'description':f'합성 이력 {i:02d}'},fixture_actor)
+            store.add_user(new_user('fixture-viewer','합성 조회자','viewer','observation-ui-fixture-only'))
+            for i in range(26):
+                store.add_user(new_user(f'fixture-operator-{i:02d}',f'합성 운영자 {i:02d}','operator','observation-ui-fixture-only'))
         if args.worker_process:
             store.event('missing-worker-task','합성 원본 없는 Worker 기록','info',
                         {'asset_id':asset['id'],'worker_id':'missing-worker-task:'+asset['id']})

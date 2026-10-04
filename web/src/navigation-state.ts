@@ -88,6 +88,7 @@ export function detailQuery(
       );
     writeTaskChat(query, readTaskChat(query.toString()));
     writeTaskWorker(query, readTaskWorker(query.toString()));
+    writeTaskTodos(query, readTaskTodos(query.toString()));
   } else clearTaskCollections(query);
   return query.toString();
 }
@@ -96,11 +97,69 @@ export type TaskCollectionKind = (typeof taskCollectionKinds)[number];
 export type TaskCollectionState = ListPosition & { search: string };
 function clearTaskCollections(query: URLSearchParams) {
   clearTaskWorker(query);
+  clearTaskTodos(query);
   for (const kind of taskCollectionKinds)
     for (const field of ["q", "offset", "snapshot"])
       query.delete(`task_${kind}_${field}`);
   for (const field of ["q", "open", "offset", "snapshot"])
     query.delete(`task_chat_${field}`);
+}
+export type TaskTodoState = {
+  list: TaskCollectionState;
+  todoId: string;
+  history: TaskCollectionState;
+};
+function clearTaskTodos(query: URLSearchParams) {
+  query.delete("task_todo_id");
+  for (const kind of ["todos", "todo_history"])
+    for (const field of ["q", "offset", "snapshot"])
+      query.delete(`task_${kind}_${field}`);
+}
+export function readTaskTodos(search: string): TaskTodoState {
+  const query = new URLSearchParams(search);
+  const scoped = readDetail(search)?.kind === "task";
+  const value = query.get("task_todo_id") || "";
+  const todoId = scoped && /^[A-Za-z0-9_-]{1,80}$/.test(value) ? value : "";
+  const collection = (kind: string, enabled: boolean): TaskCollectionState => ({
+    search: enabled ? searchText(query.get(`task_${kind}_q`)) : "",
+    offset: enabled ? Math.floor((integer(query.get(`task_${kind}_offset`), 10_000_000) || 0) / 25) * 25 : 0,
+    snapshot: enabled ? integer(query.get(`task_${kind}_snapshot`), Number.MAX_SAFE_INTEGER) : null,
+  });
+  return {list:collection("todos", scoped), todoId, history:collection("todo_history", Boolean(todoId))};
+}
+/** A previous collection callback must not rewrite another task/item's bookmark. */
+export function todoScopeMatches(search: string, taskId: string, todoId?: string): boolean {
+  const detail=readDetail(search);
+  return detail?.kind === "task" && detail.id === taskId &&
+    (todoId === undefined || readTaskTodos(search).todoId === todoId);
+}
+export function todoCollectionMatches(search: string, taskId: string, kind: "list" | "history",
+                                      expected: TaskCollectionState, todoId?: string): boolean {
+  if (!todoScopeMatches(search, taskId, todoId)) return false;
+  const current=readTaskTodos(search)[kind];
+  return current.search === expected.search && current.offset === expected.offset && current.snapshot === expected.snapshot;
+}
+function writeTaskTodos(query: URLSearchParams, state: TaskTodoState) {
+  clearTaskTodos(query);
+  if (state.todoId) query.set("task_todo_id", state.todoId);
+  for (const kind of ["list", "history"] as const) {
+    if (kind === "history" && !state.todoId) continue;
+    const row = state[kind], prefix = kind === "list" ? "task_todos_" : "task_todo_history_";
+    if (row.search) query.set(prefix + "q", searchText(row.search));
+    if (row.offset) query.set(prefix + "offset", String(row.offset));
+    if (row.snapshot !== null) query.set(prefix + "snapshot", String(row.snapshot));
+  }
+}
+export function updateTaskTodosQuery(search: string, changes: Partial<TaskTodoState>): string {
+  const detail = readDetail(search);
+  if (detail?.kind !== "task") return detailQuery(search, detail);
+  const query = new URLSearchParams(search), previous = readTaskTodos(search);
+  const next = {...previous, ...changes};
+  if (next.todoId !== previous.todoId) next.history = {search:"", offset:0, snapshot:null};
+  for (const kind of ["list", "history"] as const)
+    if (next[kind].search !== previous[kind].search) next[kind] = {...next[kind], offset:0, snapshot:null};
+  writeTaskTodos(query, next);
+  return detailQuery(query.toString(), detail);
 }
 export type TaskWorkerState = {
   assetId: string;

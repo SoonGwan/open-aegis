@@ -4153,3 +4153,70 @@ on 390×844 has no document overflow.
   recorded (`...ui-preview-health.json`). Final assets JSindex-CedO0ifR.js and
   CSSindex-CEJAE7Xo.css. No GitHub publication, container/hosted CI, commercial LLM
   call, automatic todo-driven Planner or complete v1 claim.
+
+### 2026-10-05 — Shared todo URL restoration and collection callback scope
+
+- Added task-scoped todo list search/offset/snapshot, selected todo ID and independent
+  history search/offset/snapshot URL state. Task closure/change clears these fields;
+  item change/closure clears only its history; one search resets only its own page.
+  Bounded ID/search/integer normalization applies before API paths/positions. Current
+  selected row uses authenticated point GET with abort/error/manual retry; malformed
+  IDs do not dispatch it. Edit-open/pre-dispatch drafts remain local, not in the URL.
+- Creation/edit UI completion now reconciles owned current state before dispatching
+  records-changed; URL snapshot updates can invalidate a view capture synchronously.
+  A late confirmed creation unlocks its frozen form and reports completion while
+  preserving the new selection/search/editor. Session/unmount guards remain.
+- First actual creation retry from a selected item with `updated` history search
+  exposed the old history listener writing its conditions into the new item's URL:
+  the new item showed0 history. Preserved before evidence (`artifacts/shared-todos-navigation-retry-before.json`). Added task/item and expected collection condition
+  guards to position callbacks, including the gap before React rerenders after a URL
+  change. Rerun shows empty history search, one creation entry, unlocked form and
+  preserved todo list position (`...navigation-retry-after.json`).
+- Expanded owned fixture:30 todos,31 history entries for one item,26 operators plus
+  admin/viewer, bounded POST/PATCH hold and todo GET failure flags. These fixtures
+  only write synthetic metadata; no validation target execution/approval occurs.
+- Actual built desktop: independent list/history last pages26–30, selected item and
+  both searches/snapshots restored in a new document. Closing selected item retained
+  list page; Back restored selection/history. Editing title through history search
+  and Back retained one editor/draft. Saving retained search/offset, cleared insertion
+  snapshots and advanced baseline32 (`...navigation-save.json`). A final guarded
+  description save advanced baseline33 while both offsets remained25
+  (`...navigation-current-guard-save.json`).
+- Last assignee page selected operator25; directory search changed to admin while
+  retaining that selection. A committed creation with substituted503 froze input;
+  same-tab reload restored its payload together with existing selected item/history
+  bookmark. Matching retry deduplicated and retained assignment. Retry before/after
+  artifacts distinguish the separately fixed history-condition leak.
+- Held another POST while changing search, selecting item28 and editing its title;
+  released response confirmed prior creation without changing new selection/draft,
+  and unlocked creation (`...navigation-late-save.json`).503 point/list/history reads
+  preserved existing draft and last received list; fresh bookmarked document showed
+  errors without a fabricated selected row/editor/empty result. Manual recovery
+  cleared alerts and retained draft (`...navigation-read-failure.json`,
+  `...navigation-read-recovery.json`).
+- Viewer login restored selected row/list/history pages without creation/editor/edit
+  button (`...navigation-viewer.json`). Missing valid ID showed404 without editor or
+  fabricated selection, with list page retained and explicit selection close
+  (`...navigation-missing.json`). Server permission guards were unchanged this turn.
+- Documents rendered with selected/history bookmark measured320/320 and390/390
+  client/scroll widths (`...navigation-widths.json`). Existing intentional table
+  scroll regions/hidden skip/icon labels remain wider internally; no todo overflow.
+  Actual desktop editor screenshot inspected (`...navigation-desktop.jpg`). Actual
+  mobile touch/zoom, full keyboard/SR journeys and role change race are not claimed.
+- Final **90 frontend tests passed472.03ms**, TypeScript/Vite build1.42s
+  (`...navigation-node.txt`, `...navigation-build.txt`). Six new navigation tests
+  verify independent positions, reset/cleanup, hostile bounds and old task/item or
+  collection callbacks being rejected. Final installed runtime review valid with0
+  target requests and final separately built UI (`...navigation-installed-runtime.json`).
+  Backend source/wheel unchanged, SHA256d09d8b9b9ea7bb24d3344d654f97a6c73aa52d9f96ccfa2a3731d74e9dfe1551.
+  The prior755 full/native suite and native installed review are historical evidence,
+  not rerun for this frontend change. No new backend/native coverage claimed.
+- Main preview keepsPID98945 and existing data; updated static assets are
+  JSindex-ii273h2V.js / CSSindex-CEJAE7Xo.css. No remote publication/container/hosted
+  CI or automatic todo-driven Planner. Full v1 remains unachieved.
+- Final current creation selected the new item, reset history search and showed one
+  creation entry while retaining list search/offset25 (`...navigation-final-create.json`).
+  All owned browser tabs/flags were removed. Fixture lifespan ended with target
+  requests0, task/next-plan creation POSTs0 and temporary data removed
+  (`...navigation-fixture-cleanup.txt`). Final preview health/static HTML recorded
+  (`...navigation-preview-health.json`).
