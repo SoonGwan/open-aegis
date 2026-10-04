@@ -115,6 +115,11 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                         if time.monotonic() >= deadline:
                             raise RuntimeError('Installed server startup timed out.')
                         time.sleep(.05)
+                environment['AEGIS_PORT'] = str(port)
+                try:
+                    run([python, '-I', '-m', 'aegis.healthcheck'], 'installed direct loopback health probe')
+                finally:
+                    environment.pop('AEGIS_PORT', None)
                 request('/api/assets', expected=401, opener=anonymous)
                 request('/openapi.json', expected=404, opener=anonymous)
                 request('/docs', expected=404, opener=anonymous)
@@ -267,7 +272,7 @@ asyncio.run(review())
             'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
             'installed_origin': origin['module'], 'target_requests': 0,
             'checks': ['locked runtime dependencies', 'pip check', 'eight CLI entry points',
-                       'installed server outside checkout', 'separate frontend assets',
+                       'installed server outside checkout', 'installed direct loopback health probe', 'separate frontend assets',
                        'authentication and logout', 'administrator schema and disabled public docs',
                        'asset and pending plan persistence', 'ScopeSentry review/apply/retry/provenance',
                        'recorded conversation citations, retry and persisted exchange',

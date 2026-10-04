@@ -70,6 +70,9 @@ http://127.0.0.1:8787 에 접속하고 관리자 비밀번호 및 설치 토큰�
 컨테이너는 비관리자 사용자로 실행되며 데이터는 `aegis-data` 볼륨에 보존됩니다.
 기본 포트 공개 범위는 호스트의 loopback입니다. Docker 실행은 현재 로컬 환경에
 Docker가 없어 검증하지 못했습니다. 로컬 Python 실행 및 프런트엔드 빌드는 검증했습니다.
+PostgreSQL 사용 시 `AEGIS_INSTALL_POSTGRES=1`로 재빌드하고 저장소 DSN·스키마를
+설정합니다. DB/스키마 준비는 [설치 계약](docs/POSTGRES-STORAGE.md)을 따릅니다.
+컨테이너 검수 절차와 확인 한계는 [운영 문서](docs/OPERATIONS.md)를 참고하세요.
 
 설치 패키지에는 `aegis-backup`, `aegis-restore`, `aegis-verify-audit` 유지보수
 명령이 포함됩니다. `aegis-checkpoint`로 최신 보관 기준과 비교한 체크포인트를

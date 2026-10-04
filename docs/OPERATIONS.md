@@ -189,3 +189,48 @@ HTTP 요청 본문은 2 MiB, 전체 본문 수신은 30초로 제한한다. Cont
 감사 기준의 주기적인 append-only 보관은 `aegis-checkpoint`와
 [AUDIT.md](AUDIT.md)의 독립 경로·스케줄러 계약을 따른다. 실제 운영 예약은
 운영자가 설정하며 원격 보관 신뢰/실행 실패 감시는 별도 검증이 필요하다.
+
+## 컨테이너 설정과 재현 검수
+
+기본 이미지는 SQLite를 사용한다. `.env`에서 `AEGIS_INSTALL_POSTGRES=1`로
+설정하고 재빌드하면 `requirements-postgres.lock`의 드라이버를 추가 설치한다.
+`AEGIS_STORAGE_BACKEND=postgres`, `AEGIS_POSTGRES_DSN`, `AEGIS_POSTGRES_SCHEMA`는
+Compose가 서버에 전달한다. 기존 이미지에 환경 변수만 추가해도 드라이버가
+설치되는 것은 아니다. DB/스키마를 먼저 준비하는 [네이티브 설치 계약](POSTGRES-STORAGE.md)은
+유지하며 Compose가 외부 DB를 생성하거나 자동 초기화하지 않는다. 컨테이너의
+127.0.0.1은 호스트 DB를 가리키지 않으므로 접근 가능한 DB 주소를 명시한다.
+
+AI 대화 사용·가격 JSON·ScopeSentry 연결 JSON과 보고서 동시성/시간 설정도
+Compose에 전달한다. ScopeSentry의 `token_env`로 지정한 별도 인증 변수는
+운영자가 Compose override의 환경 설정 등으로 전달해야 한다. 연결 JSON에
+인증 값을 직접 넣지 않는다. `docker compose config` 출력에는 DSN/API 키 등
+환경 값이 포함될 수 있으므로 공개 검증 자료에 복사하지 않는다.
+
+상태 검사는 `python -m aegis.healthcheck`를 실행한다. 환경의 `AEGIS_PORT`
+(기본8787)에 직접 loopback으로 연결하며 proxy와 redirect를 사용하지 않는다.
+HTTP200, 4KiB 이하 JSON, `status:ok`와 현재 프로그램 버전이 일치해야 성공한다.
+소켓 timeout은3초이며 이미지의 health timeout은5초다. 허용 Host를 원격 이름으로
+제한하면 `AEGIS_HEALTH_HOST`도 그 이름으로 설정한다. 이 값은 Host 헤더만 바꾸며
+실제 연결 주소는127.0.0.1이다. Compose의 기본 내부 포트는8787로 유지한다.
+
+Docker가 있는 독립 검수 환경에서는 다음 명령을 사용한다.
+
+```sh
+python3 scripts/review_container.py
+python3 scripts/review_container.py --postgres-extra
+```
+
+각 실행은 고유한 이미지·내부 네트워크·볼륨과 서버 컨테이너를 만들고 임의의
+호스트 loopback 포트만 공개한다. 비관리자/read-only 실행, 실제 health, UI 파일,
+최초 설정/인증, 승인 대기 계획, 볼륨/쿠키의 재시작 유지, 체크포인트 보관/반복,
+중지한 볼륨의 복구, 이전 세션 거절/비밀번호 유지·백업 이후 노트 제거, 정상 종료를
+검수하고 생성한 리소스를 정리한다. 대상 실행은 승인하지 않는다. `--postgres-extra`는
+추가 드라이버 import를 확인하지만 HTTP/복구 리허설의 저장소는 SQLite이며 실제
+PostgreSQL 컨테이너 검수를 대신하지 않는다. 빌드 캐시와 내려받은 base image는
+Docker에 남을 수 있다. 패키지 다운로드에는 빌드 네트워크가 필요하다.
+
+CI에 두 이미지 모드의 검수 job을 추가했지만 현재 로컬에는 Docker 실행기가 없다.
+이 스크립트의 문법/실행기 부재 거절과 직접 loopback 상태 검사·설치 패키지는
+검증했으며, 실제 image build/volume/restart/restore·CI hosted 실행·멀티 아키텍처는
+아직 확인되지 않았다. Docker 검수 성공으로 표시하려면 실제 결과 JSON과 종료/
+정리 결과를 기록해야 한다. 파일이 존재하는 것만으로 통과 판정하지 않는다.

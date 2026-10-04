@@ -3527,3 +3527,39 @@ on 390×844 has no document overflow.
   Starlette/httpx warning. Final editable package reinstall completed and the new
   `aegis-checkpoint --help` entry point succeeds. Preview's prior PID44273 completed
   normal lifespan shutdown before restarting with the existing data directory.
+
+## Container preparation and actual loopback probe (2026-10-04)
+
+- Replaced fixed-port urllib Docker health check with installed `aegis.healthcheck`:
+  direct127.0.0.1/configured port and Host, no proxy/redirect, bounded4096byte JSON,
+  required HTTP200/ok/current runtime version, socket3s/image health5s. Twelve actual
+  loopback fixture tests cover configured port/Host, ignored proxy, redirect/status/
+  body/version failures and invalid port refusal. New probe + existing HTTP/body
+  suite50passed13.69s (`artifacts/container-probe-tests.txt`); code-fingerprint/
+  execution contract suite17passed5.35s (`artifacts/container-contract-tests.txt`).
+- Image optional `AEGIS_INSTALL_POSTGRES=1` uses the existing exact PostgreSQL lock;
+  default remains SQLite. Compose now passes storage DSN/schema and optional chat/
+  price/source/export settings. No DB service or automatic schema creation added.
+  Added owned Docker reviewer for build/nonroot/read-only/health/UI/auth, synthetic
+  pending plan, cookie/data restart, checkpoint repeat, stopped-volume restore,
+  old-session refusal/password/data retention and target requests0, with owned
+  cleanup. Added a CI job for default/PG-driver images. The PG image rehearsal still
+  uses SQLite HTTP/restore; it does not verify native PostgreSQL in containers.
+- Docker/Colima/Podman executables remain absent. Actual reviewer exits2 before any
+  resource creation (`artifacts/container-review-unavailable.err`). Script compile,
+  Compose/CI YAML parsing and correctly joined Docker RUN shell syntax pass.
+  An initial validation helper mistakenly removed the RUN continuation while keeping
+  newlines and reported a shell syntax error; joining the actual continued command
+  correctly passes. This is not image-build evidence. Actual Docker/hosted CI,
+  volume permissions, port/internal network behavior, restore/cleanup, PG-container
+  and multi-architecture gates remain open. Docker official network-create and
+  port-publishing docs were read; their described behavior is not local execution proof.
+- All60 Python files in the candidate wheel match source
+  (`artifacts/container-candidate-source-proof.json`). Installed outside-checkout
+  runtime/UI/auth/eight CLI/maintenance/release review passes, now explicitly invokes
+  the installed probe against the actual owned server's assigned port
+  (`artifacts/container-candidate-installed-review.json`,valid=true,target_requests=0).
+  Actual current local preview probe on8790 also exits0. No external target review,
+  deployment or remote publish/push performed. No whole-backend rerun is claimed
+  for these deployment/probe-only changes; affected suites and installed workflow
+  are the recorded validation scope.

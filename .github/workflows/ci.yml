@@ -54,3 +54,23 @@ jobs:
           AEGIS_TEST_POSTGRES: '1'
       - run: python -m pip wheel --no-deps . --wheel-dir artifacts/postgres-wheel
       - run: python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-wheel
+
+  container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        postgres-extra: [false, true]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and rehearse owned image and disposable volume
+        env:
+          POSTGRES_EXTRA: ${{ matrix.postgres-extra }}
+        run: |
+          if [ "$POSTGRES_EXTRA" = "true" ]; then
+            python3 scripts/review_container.py --postgres-extra
+          else
+            python3 scripts/review_container.py
+          fi
