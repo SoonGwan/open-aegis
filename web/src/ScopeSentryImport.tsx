@@ -51,6 +51,7 @@ export function ScopeSentryImport({
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connection, setConnection] = useState("");
   const [connectionError, setConnectionError] = useState("");
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [source, setSource] = useState("");
   const [text, setText] = useState("");
   const [plan, setPlan] = useState<Preview | null>(null);
@@ -63,25 +64,54 @@ export function ScopeSentryImport({
   const inFlight = useRef(false);
   const active = useRef(true);
   const controller = useRef<AbortController | null>(null);
+  const listingController = useRef<AbortController | null>(null);
+  async function loadConnections() {
+    listingController.current?.abort();
+    const listing = new AbortController();
+    listingController.current = listing;
+    setConnectionsLoading(true);
+    setConnectionError("");
+    try {
+      const items = await api<Connection[]>(
+        "/integrations/scopesentry/connections",
+        "GET",
+        undefined,
+        listing.signal,
+      );
+      if (
+        active.current &&
+        listingController.current === listing &&
+        !listing.signal.aborted
+      ) {
+        setConnections(items);
+        setConnection((current) =>
+          items.some((item) => item.id === current && item.configured)
+            ? current
+            : "",
+        );
+      }
+    } catch (e) {
+      if (
+        active.current &&
+        listingController.current === listing &&
+        !listing.signal.aborted
+      )
+        setConnectionError((e as Error).message);
+    } finally {
+      if (
+        active.current &&
+        listingController.current === listing &&
+        !listing.signal.aborted
+      )
+        setConnectionsLoading(false);
+    }
+  }
   useEffect(() => {
     active.current = true;
-    const listing = new AbortController();
-    void api<Connection[]>(
-      "/integrations/scopesentry/connections",
-      "GET",
-      undefined,
-      listing.signal,
-    )
-      .then((items) => {
-        if (active.current && !listing.signal.aborted) setConnections(items);
-      })
-      .catch((e) => {
-        if (active.current && !listing.signal.aborted)
-          setConnectionError((e as Error).message);
-      });
+    void loadConnections();
     return () => {
       active.current = false;
-      listing.abort();
+      listingController.current?.abort();
       controller.current?.abort();
     };
   }, []);
@@ -183,17 +213,26 @@ export function ScopeSentryImport({
             관리자가 등록한 원본에서 한 번에 최대 50개를 조회합니다. 항목 반영은
             직접 선택하며 검증 작업 실행에는 별도 승인이 필요합니다.
           </p>
+          {connectionsLoading && (
+            <p role="status">원격 연결 목록을 불러오는 중…</p>
+          )}
           {connectionError && (
             <p role="alert" className="form-error">
               연결 목록 조회 실패: {connectionError}
             </p>
           )}
-          {!connectionError && !connections.length && (
+          {!connectionsLoading && !connectionError && !connections.length && (
             <p>
               등록된 원격 원본이 없습니다. 관리자가 서버 연결과 인증을
               설정하거나 파일 가져오기를 사용하세요.
             </p>
           )}
+          <button
+            disabled={connectionsLoading || busy || submitted}
+            onClick={() => void loadConnections()}
+          >
+            {connectionError ? "연결 목록 다시 시도" : "연결 목록 새로고침"}
+          </button>
           {connections.map((item) => (
             <label
               className="checkbox-label scopesentry-connection"
@@ -203,7 +242,13 @@ export function ScopeSentryImport({
                 type="radio"
                 name="scopesentry-connection"
                 checked={connection === item.id}
-                disabled={busy || submitted || !item.configured}
+                disabled={
+                  connectionsLoading ||
+                  !!connectionError ||
+                  busy ||
+                  submitted ||
+                  !item.configured
+                }
                 onChange={() => {
                   reset();
                   setConnection(item.id);
@@ -218,7 +263,9 @@ export function ScopeSentryImport({
           ))}
           {!plan && (
             <button
-              disabled={busy || !connection}
+              disabled={
+                connectionsLoading || !!connectionError || busy || !connection
+              }
               onClick={() => void preview()}
             >
               {busy ? "원본 조회 중…" : "첫 페이지 조회"}
@@ -410,7 +457,13 @@ export function ScopeSentryImport({
           </p>
           {plan.remote.has_more && plan.remote.page < 20 ? (
             <button
-              disabled={busy || (submitted && !result)}
+              disabled={
+                connectionsLoading ||
+                !!connectionError ||
+                !connection ||
+                busy ||
+                (submitted && !result)
+              }
               onClick={() => void preview(undefined, plan.id)}
             >
               {busy
@@ -427,7 +480,13 @@ export function ScopeSentryImport({
             </p>
           )}
           <button
-            disabled={busy || (submitted && !result)}
+            disabled={
+              connectionsLoading ||
+              !!connectionError ||
+              !connection ||
+              busy ||
+              (submitted && !result)
+            }
             onClick={() => void preview()}
           >
             원본 처음부터 다시 조회

@@ -80,7 +80,10 @@ ScopeSentry 가져오기에는 운영자가 제공한 NDJSON 파일이라는 새
 DNS/IP·TLS 검사, 리다이렉트 거절, 12초/1 MiB/50행/20페이지/동시 1개 제한을 적용한다.
 직전 페이지 변경·중복 ID 검사와 저장된 다음 페이지 재시도는 전체 누락 방지 보장이 아니다.
 JWT 원문은 저장/반환하지 않지만 회전 검사에 쓰는 비공개 계약 지문과 원본 URL은 저장한다.
-[SCOPESENTRY.md](SCOPESENTRY.md), [test_scopesentry.py](../tests/test_scopesentry.py)를 따른다.
+[SCOPESENTRY.md](SCOPESENTRY.md), [test_scopesentry.py](../tests/test_scopesentry.py),
+[test_scopesentry_tls.py](../tests/test_scopesentry_tls.py)를 따른다. 로컬 인증서 신뢰와
+호스트 거절, 합성 서명 JWT 만료/회전 및 재시작 이어받기를 검증했지만 실제 원본의
+JWT 발급·권한·배포 구성은 별도 검증이 필요하다.
 
 ## 검증 근거와 출시 전 남은 일
 

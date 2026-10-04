@@ -1362,3 +1362,59 @@ on 390×844 has no document overflow.
   stay unchecked.
 - QA app and owned source server stop normally. Main preview restarts with the new
   backend and final bundle; health is 200, original assets remain two and traffic three.
+
+
+## 2026-10-04 — source TLS/JWT lifecycle and connection-list recovery
+
+- Five new native source cases use a real owned HTTPS server and generated local
+  certificate. A trusted IP SAN certificate succeeds through the configured base path;
+  an untrusted certificate and trusted but mismatched SAN certificate each return local
+  502 before the server observes any HTTP Authorization request. Default private-address
+  refusal likewise produces no source HTTP request or preview. No TLS verification bypass
+  is added to the product.
+- The fixture issues HS256 JWTs and checks signatures plus expiry against a controlled
+  source clock. Moving that clock beyond exp makes continuation fail without advancing
+  its saved parent. Wrong-signature JWTs fail. Correct renewal makes old continuation
+  contract return 409 before a source request, and a fresh collection succeeds. A genuine
+  app/lifespan/workspace-lease restart then resumes the current collection and returns
+  the same cached next preview on retry, without duplicate source requests. Assets,
+  tasks and target traffic stay zero. This is a synthetic provider, not an actual
+  deployed ScopeSentry JWT issuance/permission integration.
+- Initial targeted **5 pass** in 3.78 s; full backend **321 pass** in 105.72 s; frontend
+  **47 pass**, TypeScript/Vite build passes. After the full run, the fixture assertions
+  additionally require exact Bearer/HS256 and exclude all issued JWT strings from persisted
+  previews. Those strengthened five cases pass again in 3.86 s; the entire 321-case run
+  is not repeated after this test-only assertion strengthening. Service Python is unchanged.
+- Connection loader now separates loading/error/empty/success, supports explicit refresh/
+  retry, guards completion by current AbortController and mounted instance, and aborts
+  on close. List errors/loading disable remote requests and preserve file drafts. A
+  successful refresh clears a removed or unconfigured selected connection; newly enabled
+  sources still require explicit selection. Source page buttons require a current selection.
+- Actual desktop console on isolated QA app 8811 receives synthetic list 503, then a held
+  successful response. Error is distinct from empty state; retry shows loading with both
+  refresh and first-page buttons disabled. Release restores the configured list, selecting
+  its radio enables first-page lookup, and switching back to file mode shows the original
+  `draft-preserved` identifier and NDJSON text. A DOM value-attribute probe on textarea is
+  null (not proof); the visible DOM snapshot is the evidence for restored text.
+- A held error refresh is closed; reopened modal fetches a successful list after gate
+  release and displays no old error. Further QA metadata changes exercise selected source
+  removal (empty message, first-page disabled), missing server credential (radio disabled),
+  and restored credential (radio enabled, first-page still disabled until explicit choice).
+  These are controlled fixture configuration changes; production configuration reload is
+  not implemented. No remote page or target request is made in this metadata-only journey.
+- Final viewed `artifacts/v1-scopesentry-list-recovery.jpg` shows the new refresh button,
+  selected radio/focus outline, source label and enabled first-page button. Final bundle
+  `index-DnMVWxb_.js` / `index-B5ysGB7c.css`; selected semantic token/AA checks pass. No full
+  screen reader, touch, mobile or whole UI concurrency claim is made.
+- Reuses previous wheel SHA-256
+  `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`: byte comparison confirms
+  all 36 packaged Python sources exactly match current service files. Installed runtime
+  outside checkout with final frontend passes locked dependencies, CLI/auth/schema,
+  file import/retry/source, empty remote listing/unconfigured-source refusal, audit and
+  backup/restore/shutdown/lease checks, zero target requests. TLS paging evidence remains
+  the new native fixtures, not the installed-runtime harness.
+- QA stops normally; its existing assets seven/source links three/tasks eighteen/traffic
+  zero remain unchanged. Main stays live without unnecessary backend restart; health 200,
+  assets two/tasks four/traffic three, served document references final bundle. Actual
+  source deployment, whole positional-source consistency, larger imports/retention, other
+  v1 integration and UX gates remain open.
