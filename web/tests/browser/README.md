@@ -199,17 +199,23 @@ complete backend/task-detail user journey. The fixture is outside production ent
 ## Usage aggregate recovery and widths
 
 Open `/tests/browser/usage-summary-review.html?frame=1` on Vite 8812 for the production
-UsageSummary with synthetic fetch only. Default total 18,915,118,434,956,081,100 must
+UsageSummary with synthetic fetch only. Default combined total 18,915,118,434,956,081,105 must
 retain all digits. Arm Next delay, Refresh and inspect loading/disabled refresh;
 Release restores data. Arm Next error, Refresh, then Retry must recover.
 Use the combobox locator `selectOption('7')`, `selectOption('30')`, and
 `selectOption('')` to select recent 7 days, recent 30 days, and all records. The empty
 7-day result has zero calls and unknown token totals; 30 days has one missing-only
-call and unknown totals. All records restores the exact large total above.
+call and unknown totals. All records restores the exact large total above. Select source planner for the
+original 18,915,118,434,956,081,100 total or conversation for 5. Delay a planner
+source request, switch to conversation and release: conversation must stay selected
+and keep 5. The source/period label in the fixture status identifies each request.
+Next previous-server response returns metadata without source/source_counts; the
+component must show a version compatibility error instead of crashing or showing
+planner-only data as combined usage. Refresh must recover under the same selection.
 The fixture status shows held request periods/status codes and the last six requests.
-Arm Next delay, select 7, confirm `7 HTTP 200` is pending, select 30, wait for its
+Arm Next delay, select 7, confirm `all/7 HTTP 200` is pending, select 30, wait for its
 result, then Release: the 30-day selection and result must remain. Arm Next error
-and Next delay, select 7, confirm `7 HTTP 503` is pending, select all, wait for its
+and Next delay, select 7, confirm `all/7 HTTP 503` is pending, select all, wait for its
 result, then Release: the all-period result must remain without an alert.
 Select 30, arm Next error, Refresh, then Retry: both error and recovered data must
 retain the 30-day selection. These semantic browser selections and response-order

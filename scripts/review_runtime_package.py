@@ -163,6 +163,11 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                 assert usage['calls'] == 0 and usage['reported_tokens']['total_tokens'] is None
                 assert request('/api/llm/usage?days=7')['days'] == 7
                 assert request('/api/llm/usage?days=30')['days'] == 30
+                combined = request('/api/llm/usage?source=all')
+                assert combined['source_counts'] == {'planner':0, 'conversation':0}
+                assert combined['source'] == 'all' and combined['calls'] == 0
+                assert request('/api/llm/usage?source=conversation&days=7')['days'] == 7
+                request('/api/llm/usage?source=unconfigured', expected=422)
                 request('/api/llm/usage?days=365', expected=422)
                 assert runtime['requests']['requests'] == 0
                 assert runtime['authentication']['parallel'] == 4

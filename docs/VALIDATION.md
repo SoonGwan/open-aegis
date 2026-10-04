@@ -2395,3 +2395,54 @@ on 390×844 has no document overflow.
   failure recovery, not migration across released versions/schemas or configuration
   and UI changes. Signing authority is rehearsal-only. No automatic service manager,
   Docker, publication or existing-workspace restore is performed. Whole v1 stays open.
+
+## Combined planner/conversation usage — 2026-10-04
+
+- Authenticated `/api/llm/usage` now accepts source=planner/conversation/all, retaining
+  the original planner-only default. The UI defaults to combined usage and offers
+  source and period selections. One SQLite query/read snapshot joins latest task
+  planner metadata with persisted assistant generation metadata. Questions, rules
+  replies, missing metadata, invalid timestamps and future records are excluded.
+  Reported values are revalidated and summed as exact decimal strings; missing,
+  partial and invalid values are not treated as zero. Result counts distinguish
+  rejected plans, rejected answers and failed requests.
+- Targeted usage/conversation tests: **27 passed**. New coverage includes source
+  separation, rejected and failed answers, wrong-source outcomes, periods, bool and
+  inconsistent counters, combined totals exceeding SQLite/JavaScript integer ranges,
+  authenticated viewer/operator access and private payload exclusion. Existing AI
+  exchange tests now assert retry counts once and audit rollback counts zero.
+- Initial full run: 394 passed, one backup test failed while the simultaneous UI
+  build replaced `web/dist/assets`. This was a review scheduling error; evidence
+  `artifacts/combined-usage-backend-initial-build-overlap.txt` retained. With the
+  build finished and files fixed, full backend rerun: **395 passed in 112.93s**,
+  one existing Starlette/httpx warning (`artifacts/combined-usage-backend-tests.txt`).
+- Final frontend suite: **65 passed in 346.96ms**. Final TypeScript/Vite build passes;
+  UI bundle index-BsfIISmt.js/index-a5815QM7.css. Backend source did not change after
+  the full rerun; later changes were UI response compatibility handling and review
+  scripts/docs. A fresh default-isolated wheel build succeeds; an initial attempt
+  without isolation could not build because this local venv lacks bdist_wheel.
+- Synthetic browser component review: source switch while prior planner response
+  is held, delayed response release, 503 and same-condition retry all preserve the
+  current selected source/result. Separate native source/period controls have labels.
+  Old server metadata without source/source_counts originally blanked the component;
+  reproduced then fixed to show a compatibility alert and retry. Retry with current
+  metadata recovers. 320px viewport yields client/scroll 305/305 (vertical scrollbar),
+  390px 390/390, 768px 768/768. Actual 320 screenshot visually inspected:
+  `artifacts/combined-usage-320.jpg`. Whole mobile/touch/SR journeys remain open.
+- Actual built UI + temporary owned HTTP AI provider: accepted draft, invalid
+  citation and HTTP 503 each committed one answer. Combined and conversation cards
+  show 3 calls, 2 reported/1 missing, accepted/rejected/failed 1 each, input40/output20/
+  total60; planner-only shows zero calls and unknown totals. Final rebuilt UI reload
+  preserves the result. Text evidence `artifacts/combined-usage-live-all.txt` and
+  `combined-usage-live-chat.txt`; visually inspected final screenshot
+  `artifacts/combined-usage-live-final.jpg`. No target requests or commercial calls.
+- Final wheel SHA256 788a41d9d8c7343399a4a9a235812fc83f74d9eda08ec0adf2ca8cab5b198f9e
+  byte-matches all 41 service Python files. Fresh locked installed package outside
+  checkout passes real HTTP usage source/period validation, auth, UI, backup/restore,
+  signatures/preflight and clean shutdown. `artifacts/combined-usage-package-review.json`
+  valid=true, target_requests=0. Temporary QA server/provider/Vite/tabs stopped.
+  Main preview restarted with preserved data and final matching UI; health HTTP200.
+- This is persisted usage reporting, not a billing ledger: provider attempts without
+  a committed reply (revocation/write failure) are absent, retry attempts/repeated
+  planner rounds/model costs are not accounted for. Price sources, actual commercial
+  provider verification, full accessibility and the whole v1 gate remain open.

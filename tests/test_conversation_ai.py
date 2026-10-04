@@ -41,6 +41,8 @@ def test_ai_citations_usage_audit_atomicity_and_retry(client,ai):
     assert 'owned-secret-must-not-persist' not in json.dumps([reply,events])
     client.app.state.store.patch('evidence','owned-proof',observation={'changed':True})
     assert client.post(PATH,json=PAYLOAD).json()==reply and len(calls)==1
+    usage=client.get('/api/llm/usage?source=conversation').json()
+    assert usage['calls']==1 and usage['reported_tokens']['total_tokens']=='20'
     assert client.post(PATH,json={**PAYLOAD,'mode':'rules'}).status_code==409
     assert client.get(PATH+'/page').json()['total']==2
     assert client.get('/api/settings').json()['llm_chat_configured'] is True
@@ -90,6 +92,7 @@ def test_ai_pair_and_usage_roll_back_when_audit_fails(client,ai,monkeypatch):
     with pytest.raises(RuntimeError,match='owned audit failure'):
         client.post(PATH,json=PAYLOAD)
     assert client.app.state.store.page('messages',filters={'task_id':'chat-task'})['total']==0
+    assert client.get('/api/llm/usage?source=all').json()['calls']==0
 
 
 def test_ai_admission_and_same_request_retry_make_one_provider_call(client,ai,monkeypatch):
