@@ -1,0 +1,89 @@
+# 서명된 릴리스와 오프라인 업데이트 사전 점검
+
+`aegis-release`는 wheel·빌드된 UI·runtime 잠금 파일의 SHA-256 목록을 Ed25519로
+서명하고 검증한다. 별도로 신뢰한 공개 키를 명시해야 하며 릴리스 안의 키를 자동으로
+신뢰하지 않는다. 서명은 해당 키의 소유자가 파일 목록에 서명했다는 증거다.
+코드의 안전성·실제 CI 통과·최신 버전·공식 배포자 신원을 독립적으로 증명하지 않는다.
+
+Linux/macOS의 OpenSSL 3.x와 Python 3.11 이상이 필요하다. 이 구현은 OpenSSL의
+[`pkeyutl -sign/-verify -rawin` 계약](https://docs.openssl.org/3.6/man1/openssl-pkeyutl/)
+및 [Ed25519 키 생성 명령](https://docs.openssl.org/3.6/man1/openssl-genpkey/)을 사용한다.
+기존 서버 실행에는 OpenSSL CLI가 필요하지 않으며 서명/검증 명령에서만 사용한다.
+서명 키의 배포·보관·회전과 공식 공개 키 전달 채널은 운영자가 별도로 준비해야 한다.
+
+## 제작과 검증
+
+아래는 로컬 리허설용 키 생성이다. 공개 배포용 키는 리허설 키와 구분하고,
+암호화/오프라인 보관 정책을 정한다. 현재 CLI는 로컬 비대화형 PEM 키만 지원한다.
+
+```sh
+umask 077
+openssl genpkey -algorithm ED25519 -out rehearsal-private.pem
+openssl pkey -in rehearsal-private.pem -pubout -out rehearsal-public.pem
+
+aegis-release create --wheel dist/open_aegis-0.1.0-py3-none-any.whl \
+  --web web/dist --lock requirements.lock --output release-0.1.0 \
+  --private-key rehearsal-private.pem --revision FULL_SOURCE_COMMIT_SHA
+
+aegis-release verify --bundle release-0.1.0 --public-key rehearsal-public.pem
+```
+
+wheel은 `open-aegis`, 현재 제작 도구와 같은 버전, Python >=3.11 메타데이터가 필요하다.
+`--revision`은 검증한 소스의 전체 40자리 Git SHA를 입력한다. 도구가 그 SHA의 코드와
+wheel의 동일성을 자동 증명하지 않으므로 빌드·소스 대조·설치 리허설을 먼저 수행한다.
+출력 경로는 새 디렉터리여야 하며 UI 입력 디렉터리 밖이어야 한다.
+
+출력은 `release.json`, 64바이트 `release.sig`, `runtime/` wheel, `web/` UI,
+`requirements.lock`이다. manifest는 정규 JSON 바이트로 서명하며 서명 확인 후
+전체 payload의 크기/해시를 검사한다. 경로 탈출·중복 키·심볼릭 링크·특수 파일,
+변조·누락·서명에 없는 추가 파일을 거절한다. manifest는 256 KiB,
+payload는 파일당 2 GiB·최대 10,000개 제한이다. 신뢰한 키의 지문도 확인한다.
+
+검증 직후에도 제삼자가 수정할 수 있는 디렉터리를 설치 대상으로 사용하지 않는다.
+검증 도구는 릴리스를 설치하거나 wheel 안의 코드를 실행하지 않는다. 의존성 잠금은
+파일의 서명/해시를 확인하는 것이며 외부 패키지 전체의 공급망 안전성 검사가 아니다.
+
+## 업데이트 전 중지·백업
+
+현재 서버의 설치 환경·UI·설정·검증된 이전 릴리스를 따로 보존한다. 실행 작업을
+정상 중지하고 서버를 종료한 뒤 수행한다. 실제 컨테이너/서비스 관리 명령은 배포
+환경의 절차를 따르며 아래 도구가 자동 중지하지 않는다.
+
+```sh
+aegis-release prepare --bundle release-0.1.0 --public-key rehearsal-public.pem \
+  --database data/aegis.db --output before-update
+```
+
+서명·파일 검증 후 워크스페이스의 독점 임대를 획득한다. 사용 중인 서버, SQLite/
+JSON/참조/감사 무결성 오류, 릴리스가 읽지 못하는 스키마, queued/running/stopping
+작업이 있으면 거절한다. 새 출력 디렉터리에 `before-update.db`와 `preflight.json`을
+저장하며 원본 DB를 업데이트하지 않는다. 백업은 실제 스키마·건수·감사 연결을 검증한다.
+백업과 점검 기록은 0600, 출력 디렉터리는 0700이다. 백업에는 인증 해시와 세션이
+있으므로 접근 권한과 보관 기간을 관리한다.
+
+receipt의 `installed=false`는 사전 점검만 완료됐다는 뜻이다. 서명된 manifest 해시,
+신뢰한 공개 키 지문, DB 경로, 백업 해시/크기·메타데이터·목표 쓰기 스키마를 기록한다.
+서명된 receipt가 아니므로 신뢰한 로컬 위치에 보관하고 외부 변조를 독립 보장하지 않는다.
+현재 제작 도구의 SQLite 계약은 읽기 0–2/쓰기 2이다. 미래 스키마와 PostgreSQL의
+마이그레이션·백업은 별도 구현/리허설이 필요하다.
+
+## 설치와 실패 복구
+
+준비 후 새 격리된 설치 환경에서 잠긴 runtime 의존성/wheel·별도 UI를 설치한다.
+서비스 시작 전에 이전 설치 환경을 보존하고, 인증·데이터·스키마·감사·UI·종료를
+검수한다. 현재 도구는 프로세스 전환이나 자동 업데이트를 수행하지 않는다.
+
+실패하면 새 서버를 먼저 종료한다. 원본 백업의 무결성을 확인한 뒤 기존 복구 CLI로
+DB를 복원한다. 복구 시 세션이 무효화되고 복구 직전 DB도 별도 보존된다.
+
+```sh
+aegis-restore --source before-update/before-update.db --destination data/aegis.db
+```
+
+그 후 검증된 이전 runtime·UI·설정을 사용해 서버를 시작한다. DB 백업만으로
+프로그램/화면/환경변수가 복구되는 것은 아니다. 새 버전에서 저장한 데이터는 이전
+백업 시점 이후의 변경이므로 복구 시 사라질 수 있다. 운영 업데이트는 사전 공지·
+중지 구간과 데이터 보존 요구에 맞춰 계획해야 한다.
+
+실제 새/이전 버전 간 설치·서비스 전환, 장애 주입, 컨테이너/볼륨, 공식 키의
+서명 릴리스·공개 배포 리허설은 전체 v1 출시 조건으로 남아 있다.

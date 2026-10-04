@@ -2315,3 +2315,50 @@ on 390×844 has no document overflow.
   That installed scenario uses default rules mode, so provider-specific evidence is
   the checkout integration/owned UI above. Whole AI intervention, usage dashboard/
   cost ledger and v1 release gates stay open; docs/CONVERSATION.md defines limits.
+
+## 2026-10-04 — signed release verification and offline update backup
+
+- Adds installed aegis-release create/verify/prepare commands. Builder signs canonical
+  manifest bytes with an explicitly supplied Ed25519 private key; verifier requires
+  a separately trusted public key and checks its DER fingerprint, signature and all
+  payload hashes/sizes. Payload includes one Open Aegis wheel, built UI and runtime
+  lock. No bundle code is executed and no installation/service switch is performed.
+- Strict manifest/path/type checks reject wrong keys, changed payload/manifest/
+  signature, extra or missing files, symlinks/special files, traversal and malformed
+  signed contracts. Creation rejects existing output and output inside UI input.
+  Bounds: 256 KiB manifest, 10,000 files, 2 GiB per file. OpenSSL CLI errors/timeouts
+  are bounded and do not print private material. Platform prerequisite is OpenSSL
+  3.x on supported Linux/macOS; locally OpenSSL 3.6.4 used. Documentation links the
+  primary OpenSSL signing/key command contracts in docs/RELEASES.md.
+- Preflight verifies release before acquiring workspace lease, validates SQLite/
+  JSON/foreign keys/audit, rejects unsupported read schema and unfinished execution
+  tasks, then writes a validated backup and receipt in a new protected directory.
+  Current DB is not migrated/installed. Backup/receipt modes 0600, directory 0700.
+  Existing restore path supplies data rollback and session revocation; previous
+  runtime/UI/configuration must also be preserved by the operator.
+- Fifteen new cases pass, including actual OpenSSL signatures, all tamper/contract
+  variants above, active lease refusal, incompatible schema/running task refusal,
+  offline backup and restored original records after simulated failed-update writes.
+  These unit fixtures use metadata-only synthetic wheels and do not prove wheel
+  installation; the real wheel scenario below covers that separately.
+- First full run: 390 passed and existing test_provider_response_size_is_bounded hit
+  its HTTP read deadline. Isolated retry passed in 0.53s; underlying cause remains
+  unproven, not claimed as a repaired race/resource bug. Initial failure evidence
+  artifacts/release-backend-initial-deadline.txt retained. Final full rerun after CLI
+  exception handling: **391 passed in 111.94s**, one existing Starlette/httpx warning;
+  artifacts/release-backend-tests.txt. Frontend source/build is unchanged this turn;
+  previous 65-test/final index-C9LagHtH.js/index-a5815QM7.css evidence remains applicable.
+- Final wheel matches all **41** current service Python files. SHA256
+  b105c8c3d814ed47ec60ba62076702a097f6ab8c5bb91df31091ac51c3c7a0aa.
+  Installed locked runtime outside checkout passes five CLI help checks, actual
+  server/auth/data/UI/maintenance/shutdown review, then installed release creation,
+  separately supplied public-key verification, changed-UI rejection with exit 2,
+  offline preflight backup and restored data after an injected note write. Installed
+  restore revokes sessions and keeps a pre-restore copy. Ephemeral test key and dummy
+  Git revision are explicitly synthetic and removed with the temporary installation.
+  artifacts/release-package-review.json valid=true, target requests zero.
+- This provides artifact verification, backup and data rollback building blocks.
+  Official signing authority/key distribution/rotation, old/new-version process and
+  configuration switching, failure injection across real upgrades, Docker volumes,
+  CI/public publication and the whole v1 release gate remain open. No existing main
+  workspace was restored or deployed in this review.

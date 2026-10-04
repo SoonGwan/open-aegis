@@ -53,7 +53,7 @@ def main():
             'import aegis,json,sys; from pathlib import Path; '
             'assert Path(aegis.__file__).is_relative_to(Path(sys.prefix)); '
             'print(json.dumps({"module":aegis.__file__}))'], 'installed package origin'))
-        for command in ('backup', 'restore', 'verify-audit', 'replay-policy'):
+        for command in ('backup', 'restore', 'verify-audit', 'replay-policy', 'release'):
             run([installation / 'bin' / ('aegis-' + command), '--help'], command + ' entry point')
 
         environment['AEGIS_WEB_DIR'] = str(web)
@@ -186,10 +186,45 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
              'lease=WorkspaceLease(sys.argv[1]); lease.close()', source], 'workspace lease release')
         run([python, Path(__file__).resolve().with_name('review_installed_commands.py'),
              '--wheel', wheel], 'installed maintenance rehearsal')
+        # Ephemeral rehearsal key: never an official publisher trust root.
+        release_key=root/'rehearsal-private.pem'; release_public=root/'rehearsal-public.pem'
+        run(['openssl','genpkey','-algorithm','ED25519','-out',release_key], 'rehearsal signing key')
+        release_key.chmod(0o600)
+        run(['openssl','pkey','-in',release_key,'-pubout','-out',release_public], 'rehearsal public key')
+        release_cli=installation/'bin'/'aegis-release'
+        bundle=root/'signed-release'
+        run([release_cli,'create','--wheel',wheel,'--web',web,'--lock',lock,
+             '--output',bundle,'--private-key',release_key,'--revision','0'*40], 'installed release creation')
+        verified=json.loads(run([release_cli,'verify','--bundle',bundle,'--public-key',release_public],
+                                'installed signature and payload verification'))
+        assert verified['package']=='open-aegis' and verified['sqlite_write']==2
+        html_path=bundle/'web'/'index.html'; original_html=html_path.read_bytes()
+        html_path.write_bytes(original_html+b'changed')
+        refused=subprocess.run([str(release_cli),'verify','--bundle',str(bundle),
+                                '--public-key',str(release_public)],cwd=root,env=environment,
+                               capture_output=True,text=True,timeout=30)
+        assert refused.returncode==2 and 'Traceback' not in refused.stderr
+        html_path.write_bytes(original_html)
+        preflight=root/'before-update'
+        receipt=json.loads(run([release_cli,'prepare','--bundle',bundle,'--public-key',release_public,
+                               '--database',source/'aegis.db','--output',preflight],
+                              'installed offline update preflight'))
+        assert receipt['installed'] is False and receipt['backup_metadata']['records']['tasks']==1
+        run([python,'-I','-c',
+             'from aegis.store import Store; import sys; '
+             'Store(sys.argv[1]).put("notes",{"id":"failed-update","title":"synthetic"})',
+             source/'aegis.db'], 'synthetic post-preflight update')
+        restored=json.loads(run([installation/'bin'/'aegis-restore','--source',preflight/'before-update.db',
+                                 '--destination',source/'aegis.db'], 'installed preflight rollback'))
+        assert restored['sessions_revoked'] and restored['rollback']
+        run([python,'-I','-c',
+             'from aegis.store import Store; import sys; '
+             'assert Store(sys.argv[1]).get("notes","failed-update") is None',
+             source/'aegis.db'], 'rollback state verification')
         print(json.dumps({'valid': True, 'wheel': wheel.name,
             'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
             'installed_origin': origin['module'], 'target_requests': 0,
-            'checks': ['locked runtime dependencies', 'pip check', 'four CLI entry points',
+            'checks': ['locked runtime dependencies', 'pip check', 'five CLI entry points',
                        'installed server outside checkout', 'separate frontend assets',
                        'authentication and logout', 'administrator schema and disabled public docs',
                        'asset and pending plan persistence', 'ScopeSentry review/apply/retry/provenance',
@@ -197,7 +232,8 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                        'authenticated usage periods and validation',
                        'ScopeSentry installed remote configuration and unconfigured-source refusal',
                        'login limit metrics', 'read-only audit review', 'clean shutdown and lease release',
-                       'installed backup/restore/audit rehearsal']}, ensure_ascii=False))
+                       'installed backup/restore/audit rehearsal',
+                       'ephemeral-key signed release, tamper refusal, preflight and data rollback']}, ensure_ascii=False))
 
 
 if __name__ == '__main__':
