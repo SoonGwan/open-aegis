@@ -4534,3 +4534,53 @@ on 390×844 has no document overflow.
   service source stayed unchanged during/after it. Existing preview data preserved
   on restart, health ok and anonymous goal-progress401, final JS/CSS confirmed
   (`...preview-health.json`).
+
+## Objective source proof and retest history — 2026-10-05
+
+- New [goal evidence contract](GOAL-PLANNING.md) and authenticated bounded findings
+  endpoint link objectives through actual source-task evidence. Finding task references
+  alone are insufficient: proof reference, task, asset, check and fingerprint must match.
+  Responses project compact finding fields and counts; no raw proof or full reference
+  arrays. Pagination insertion watermark does not freeze later triage/history updates.
+- Same-finding retest summaries require a matching approved retest task, single
+  asset/check, matching stored scope asset and recognized conclusion. Missing or
+  malformed scope/primitive elements, wrong task/finding/asset/check and unapproved
+  conclusions are excluded. Retests remain separately approved finding-level history;
+  no claim they share original goal revision or verify its natural-language criterion.
+- Final targeted SQLite/native HTTP tests **32 passed33.22s**
+  (`artifacts/goal-evidence-targeted-final-source.txt`): actual owned goal header
+  execution, original proof preserved, hardened lab followed by separately approved
+  resolved retest, paging/search/literal wildcard handling, viewer read-only/bounds,
+  six mismatched source-proof forms and eight unmatched retest forms. Original goal
+  progress remains independent and `goal_verified:false`. Earlier development runs
+  exposed a SQLite reserved alias and compact-test-fixture/role-helper mistakes; these
+  were corrected before final proof. Intermediate30-pass run predates the primitive
+  scope-element case; final32-pass source includes it.
+- Frontend existing suite **92 passed554.071083ms** (`...node.txt`), not standalone
+  proof of the new interactions. Final TypeScript/Vite build1.43s (`...build-verified.txt`)
+  uses JSindex-CB-uAFh5.js / CSSindex-Bi_eIbTY.css. No build overlapped final full tests.
+- Installed default and native PostgreSQL16.15 reviews valid (`...installed-runtime.json`,
+  `...installed-postgres.json`). Wheel SHA256
+  **112f7c9779dc2ecf7f964f60340f8f29e93770cb8d07f431d6dcaf3b424219c8**;
+  all71 service Python files byte-match checkout (`...wheel-proof.json`). Native installed
+  pending rules goal exposes empty objective evidence before/after actual backup/restore;
+  it stays unapproved. Actual goal proof/retest execution is covered by source HTTP tests.
+  Default target requests0; native owned target3/source1; external targets/sources0.
+- Built-app fixture seeds31 synthetic proofs and one resolved retest without target
+  execution. UI displays25 then6 records, searches to one record, and links its recent
+  retest task and finding detail (`...ui-first.txt`, `...ui-second.txt`, `...ui-search.txt`,
+  `...ui-retest.txt`). Browser evidence is synthetic metadata, not actual runtime
+  execution. Search/page state is currently component memory, without URL restoration;
+  full late-response/role/mobile/screen-reader journeys remain open.
+- Existing preview data retained on restart, health ok and anonymous objective findings401;
+  final built JS/CSS confirmed (`...preview-health.json`). Goal predicate verification,
+  goal-specific follow-up/retest-task references and broader v1 readiness remain open.
+- Final full SQLite/native regression **907 passed394.00s**, one upstream deprecation
+  warning (`artifacts/goal-evidence-full.txt`). No service edits during/after that run.
+  CI configuration includes the new native cases; hosted CI unrun.
+- Initial synthetic retest fixture copied two-asset done count into a one-asset task.
+  Corrected the fixture count and reran goal→recent retest navigation; final detail
+  shows1/1 (`...ui-retest-final.txt`). This was fixture metadata, without runtime target
+  execution. Both owned fixture processes stopped and all owned tabs closed: target
+  requests0, task/next-plan/observation-plan/goal-draft POSTs0, provider calls0, temporary
+  data removed (`...ui-fixture.txt`, `...ui-fixture-final.txt`).

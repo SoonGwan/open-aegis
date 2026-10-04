@@ -2878,7 +2878,7 @@ function App() {
             <WorkerObservationBasis context={selectedTask.worker_observation_context} />
             <ObservationExecutionBasis execution={selectedTask.observation_execution} />
             <GoalPlanSummary plan={selectedTask.goal_plan} names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))} assets={selectedTask.scope_snapshot} />
-            {selectedTask.goal_plan && <GoalProgress key={`goal-progress-${selectedTask.id}`} taskId={selectedTask.id} captureView={captureActionView} />}
+            {selectedTask.goal_plan && <GoalProgress key={`goal-progress-${selectedTask.id}`} taskId={selectedTask.id} captureView={captureActionView} onFinding={id=>navigation.openDetail({kind:"finding",id})} onTask={id=>navigation.openDetail({kind:"task",id})} />}
             {auth.user && !selectedTask.observation_execution && ["pending","completed","failed","stopped","interrupted"].includes(selectedTask.status) && <GoalDraftPanel
               key={`goal-draft-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id} actorId={auth.user.id}
               initialGoal={selectedTask.goal} busy={busy} canOperate={canOperate} captureView={captureActionView}

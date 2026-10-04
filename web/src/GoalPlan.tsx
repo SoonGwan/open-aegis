@@ -331,9 +331,13 @@ export function GoalDraftPanel({
 export function GoalProgress({
   taskId,
   captureView,
+  onFinding,
+  onTask,
 }: {
   taskId: string;
   captureView: () => () => boolean;
+  onFinding: (id: string) => void;
+  onTask: (id: string) => void;
 }) {
   const [rows, setRows] = useState<
     { id: string; title: string; completed: number; expected: number }[] | null
@@ -385,10 +389,70 @@ export function GoalProgress({
       </button>
       {error && <p role="alert">{error}</p>}
       {rows?.map((row) => (
-        <p key={row.id}>
-          {row.title} · 검사 완료 {row.completed}/{row.expected}
-        </p>
+        <article key={row.id}>
+          <p>{row.title} · 검사 완료 {row.completed}/{row.expected}</p>
+          <GoalObjectiveFindings taskId={taskId} objectiveId={row.id} title={row.title}
+            captureView={captureView} onFinding={onFinding} onTask={onTask} />
+        </article>
       ))}
     </section>
   );
+}
+
+type GoalFindingPage = {
+  items: { id: string; title: string; asset_name: string; check: string;
+    status: string; evidence_count: number; retests_count: number;
+    latest_retest: { task_id: string; conclusion: string; triage_effect: string } | null }[];
+  total: number; limit: number; offset: number; snapshot: number; has_more: boolean;
+};
+function GoalObjectiveFindings({taskId,objectiveId,title,captureView,onFinding,onTask}: {
+  taskId:string; objectiveId:string; title:string; captureView:()=>()=>boolean;
+  onFinding:(id:string)=>void; onTask:(id:string)=>void;
+}) {
+  const [page,setPage]=useState<GoalFindingPage|null>(null);
+  const [search,setSearch]=useState("");
+  const [applied,setApplied]=useState("");
+  const [error,setError]=useState("");
+  const [loading,setLoading]=useState(false);
+  const active=useRef(true),locked=useRef(false);
+  useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
+  async function load(offset=0,snapshot?:number,query=search) {
+    if(locked.current)return;
+    locked.current=true;setLoading(true);setError("");
+    const view=captureView(),session=captureSession();
+    try {
+      const params=new URLSearchParams({limit:"25",offset:String(offset),search:query});
+      if(snapshot!==undefined)params.set("snapshot",String(snapshot));
+      const result=await api<GoalFindingPage>("/tasks/"+encodeURIComponent(taskId)+"/goal-objectives/"+encodeURIComponent(objectiveId)+"/findings?"+params);
+      if(active.current&&view()&&session()){setPage(result);setApplied(query);}
+    } catch(err) {
+      if(active.current&&view()&&session())setError(err instanceof Error?err.message:"근거 조회 실패");
+    } finally {locked.current=false;if(active.current)setLoading(false);}
+  }
+  return <section className="goal-objective-evidence" aria-label={title+" 근거와 재검증"}>
+    <button type="button" disabled={loading} onClick={()=>void load()}>
+      {loading?"조회 중…":"근거·재검증 확인"}
+    </button>
+    {error&&<p role="alert">{error}</p>}
+    {page&&<>
+      <p>이 작업에서 기록한 증거가 일치하는 발견과 해당 발견의 별도 승인 재검증입니다. 재검증 결과는 원래 목표의 완료율을 변경하지 않습니다.</p>
+      <form aria-label={title+" 발견 검색"} onSubmit={e=>{e.preventDefault();void load();}}>
+        <label>발견 제목 검색<input value={search} maxLength={200} disabled={loading} onChange={e=>setSearch(e.target.value)} /></label>
+        <button type="submit" disabled={loading}>검색</button>
+      </form>
+      <p role="status">{page.total?`${page.offset+1}–${page.offset+page.items.length} / 전체 ${page.total}개`:"일치하는 발견이 없습니다. 발견이 없다는 사실만으로 목표 달성을 판정하지 않습니다."}</p>
+      {page.items.map(row=><article key={row.id}>
+        <p><strong>{row.title}</strong> · {row.asset_name} · 원본 증거 {row.evidence_count}개</p>
+        <p>연결된 재검증 {row.retests_count}개{row.latest_retest?" · 최근 결과: "+({resolved:"해결 확인",reproduced:"재현",inconclusive:"판정 불가"} as Record<string,string>)[row.latest_retest.conclusion]:""}</p>
+        {row.latest_retest?.triage_effect==="conflict"&&<p>재검증 조치 충돌 기록을 확인하세요. 자동 조치 상태 변경은 적용하지 않았습니다.</p>}
+        <button type="button" onClick={()=>onFinding(row.id)} aria-label={row.title+" 발견·재검증 이력 열기"}>발견·재검증 이력 열기</button>
+        {row.latest_retest&&<button type="button" onClick={()=>onTask(row.latest_retest!.task_id)} aria-label={row.title+" 최근 재검증 작업 열기"}>최근 재검증 작업 열기</button>}
+      </article>)}
+      <nav aria-label={title+" 근거 목록 페이지"}>
+        <button type="button" disabled={loading||page.offset===0} onClick={()=>void load(Math.max(0,page.offset-page.limit),page.snapshot,applied)}>이전</button>
+        <button type="button" disabled={loading||!page.has_more} onClick={()=>void load(page.offset+page.limit,page.snapshot,applied)}>다음</button>
+        <button type="button" disabled={loading} onClick={()=>void load(0,undefined,applied)}>최신 목록</button>
+      </nav>
+    </>}
+  </section>;
 }

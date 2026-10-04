@@ -383,6 +383,8 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     goal_pending=native_http('/api/tasks/native-engine/goal-plans/'+goal_draft['id']+'/accept',{'fingerprint':goal_draft['fingerprint']})
                     assert goal_pending['status']=='pending' and goal_pending['goal_plan']['decomposition']==goal_draft['decomposition']
                     assert goal_pending['goal_plan']['execution']==goal_draft['execution']=='objective_pairs'
+                    goal_evidence=native_http('/api/tasks/'+goal_pending['id']+'/goal-objectives/g1/findings')
+                    assert goal_evidence['items']==[] and goal_evidence['total']==0 and goal_evidence['goal_verified'] is False
                     assert native_http('/api/runtime')['queue_watchdog']['errors']==0
                     assert native_http('/api/runtime')['event_planner']['alive']
                     assert native_http('/api/runtime')['event_planner']['errors']==0
@@ -456,6 +458,8 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                     assert backup_http('/api/tasks/'+first_followup_id)['task']['worker_observation_context']==proposal['worker_observation_context']
                     assert backup_http('/api/tasks/'+observed_pending['id'])['task']['observation_execution']==observed_pending['observation_execution']
                     assert backup_http('/api/tasks/'+goal_pending['id'])['task']['goal_plan']==goal_pending['goal_plan']
+                    restored_goal_evidence=backup_http('/api/tasks/'+goal_pending['id']+'/goal-objectives/g1/findings')
+                    assert restored_goal_evidence['items']==[] and restored_goal_evidence['total']==0
                     assert backup_http('/api/tasks/native-engine/goal-plans',goal_input)['id']==goal_draft['id']
                     assert backup_http('/api/tasks/native-engine/goal-plans/'+goal_draft['id']+'/accept',{'fingerprint':goal_draft['fingerprint']})['id']==goal_pending['id']
                     assert backup_http('/api/tasks/native-engine/observation-plan',observation_selection)['id']==observed_pending['id']

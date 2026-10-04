@@ -51,7 +51,7 @@ from . import todos
 from .event_planner import EventPlanner
 from . import observation_context
 from . import observation_execution
-from . import goal_planner
+from . import goal_planner, goal_evidence
 
 
 class Credentials(BaseModel):
@@ -931,6 +931,15 @@ def create_app(data_dir=None, allow_private=None):
     @app.get('/api/tasks/{task_id}/goal-progress', dependencies=auth)
     def goal_progress(task_id: str):
         try:return goal_planner.progress(store,task_id)
+        except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+        except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+
+    @app.get('/api/tasks/{task_id}/goal-objectives/{objective_id}/findings', dependencies=auth)
+    def goal_findings(task_id: str, objective_id: str,
+                      limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
+                      snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                      search: str = Query('', max_length=200)):
+        try:return goal_evidence.page(store,task_id,objective_id,limit=limit,offset=offset,snapshot=snapshot,search=search)
         except LookupError as exc:raise HTTPException(404,str(exc)) from exc
         except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
 

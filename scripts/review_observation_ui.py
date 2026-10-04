@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--observation-planner',action='store_true',help='Seed completed predecessor API/session observations for frozen planner context')
     parser.add_argument('--observation-lost-response-flag',type=Path,help='Owned observation-plan POST commit then503 probe')
     parser.add_argument('--goal-planner',action='store_true',help='Owned mock-provider semantic goal draft fixture, no external calls')
+    parser.add_argument('--goal-evidence',action='store_true',help='Seed objective proof and retest navigation fixtures without target requests')
     parser.add_argument('--goal-sparse',action='store_true',help='Owned goal objectives select separate asset/check pairs')
     parser.add_argument('--goal-lost-response-flag',type=Path,help='Owned goal draft commit then503 probe')
     parser.add_argument('--next-read-fail-flag',type=Path)
@@ -164,6 +165,30 @@ def main():
             for check in task['checks']:
                 store.put('coverage',slot(task,parent,check,status='completed'))
         store.put_many([('assets',asset),('tasks',task)])
+        if args.goal_evidence:
+            from aegis import goal_planner
+            from aegis.findings import record_observation, apply_retest
+            goal_task={**task,'id':'qa-goal-evidence','name':'목표 근거·재검증 QA','checks':['security_headers'],
+                       'tool_contracts':contracts_for(['security_headers']),'worker_dependencies':{},'errors':0,
+                       'goal':'합성 목표 근거 연결 검수','status':'completed','approved_at':1.}
+            decomposition={'objectives':[{'id':'g1','title':'보안 헤더 설정 검토','rationale':'합성 근거 연결 검수',
+                'asset_ids':goal_task['asset_ids'],'checks':['security_headers'],'expected_evidence':'설정 검사와 재검증 이력',
+                'missing_inputs':[]}],'worker_dependencies':{}}
+            goal_plan={'draft_id':'qa-goal-draft','basis_fingerprint':'qa-owned-basis','goal':goal_task['goal'],
+                       'decomposition':decomposition,'mode':'rules','execution':'objective_pairs'}
+            goal_plan['fingerprint']=goal_planner.fingerprint(goal_plan);goal_task['goal_plan']=goal_plan
+            goal_planner.require_task(goal_task)
+            store.put('tasks',goal_task)
+            for scoped in goal_task['scope_snapshot']:store.put('coverage',slot(goal_task,scoped,'security_headers',status='completed'))
+            for i in range(31):
+                item={'check':'security_headers','code':f'qa-goal-{i:02d}','title':f'목표 근거 검수 {i:02d}',
+                      'severity':'low','confidence':'configuration','evidence':{'synthetic':True},'remediation':'합성 검수 항목'}
+                finding,_,_=record_observation(store,goal_task,asset,item)
+            retest={**goal_task,'id':'qa-goal-retest','name':'목표 발견 재검증 QA','retest_of':finding['id'],
+                    'asset_ids':[asset['id']],'scope_snapshot':[asset],'done':1,'retest_triage_revision':finding['triage_revision']}
+            retest.pop('goal_plan');store.put('tasks',retest)
+            store.put('coverage',slot(retest,asset,'security_headers',status='completed'))
+            apply_retest(store,retest,'resolved')
         if args.todos:
             from aegis import todos
             for i in range(30):

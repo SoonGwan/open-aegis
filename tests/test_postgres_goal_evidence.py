@@ -1,0 +1,9 @@
+from tests.test_postgres_transfer import postgres,schema
+from tests.test_postgres_http import configured,client
+from tests.test_validation import lab
+from tests.test_goal_evidence import (
+    test_objective_links_source_proof_and_resolved_retest_without_goal_verification as test_native_goal_retest,
+    test_objective_refuses_metadata_only_or_mismatched_evidence as test_native_goal_proof,
+    test_objective_ignores_unmatched_retest_history as test_native_goal_retest_mismatch,
+    test_objective_evidence_roles_bounds_and_readonly as test_native_goal_readonly,
+)

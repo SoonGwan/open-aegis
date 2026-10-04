@@ -3627,3 +3627,5 @@ pre,
 .automatic-plan-status { margin: 12px 0; padding: 12px; border: 1px solid var(--border); }
 .automatic-plan-status p { margin: 0; line-height: 1.6; }
 .automatic-plan-status button { margin-top: 8px; }
+
+.goal-objective-evidence button { margin: 4px 8px 4px 0; }
