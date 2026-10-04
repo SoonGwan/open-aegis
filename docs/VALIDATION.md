@@ -3127,3 +3127,59 @@ on 390×844 has no document overflow.
 - Owned default SQLite preview completed normal shutdown before restarting
   current code on8790 (PID61320/session26793); `/api/health` and root HTTP200.
   Existing workspace retained; no user workspace migration was performed.
+
+
+### Native read-only MCP and audit CLI selection
+
+- MCP uses the HTTP backend/DSN/schema environment selection. PostgreSQL reader
+  composes native Store reads only; no Engine, recovery, schema creation, sessions,
+  execution or approval is started. Unknown configuration/connection/schema refuses
+  with sanitized startup stderr/code2 and never falls back to a local SQLite DB.
+  Native runtime tool errors use the same fixed protocol error as SQLite.
+- Each tool call now validates before opening a readonly snapshot, then reads its
+  task/finding, coverage/proofs/retests/events and page counts on that connection.
+  Both Store event_page methods accept an existing connection; default HTTP event
+  behavior is preserved. Seven native tools compare with SQLite including literal
+  filters, compact references and pages; missing legacy coverage remains not_recorded
+  without writes.1200 proof/retest rows retain25-row detail and full counts.
+  A concurrent foreign-asset edit is excluded from the active finding detail
+  snapshot and excluded on the next call.512KiB serialized result refusal remains.
+- Actual native SELECT-only login role has schema usage and record/event/hash/state/
+  metadata SELECT, reads MCP/audit without users/sessions privileges, and is refused
+  on DELETE and users SELECT. MCP denies unknown command/SQL/invalid arguments and
+  does not expose authentication settings. Raw manifests before/after protocol
+  reads remain unchanged. These are local role tests, not external MCP clients or
+  protection against a DB administrator changing grants/raw records.
+- Audit CLI accepts explicit --backend/--schema or the same backend environment;
+  DSN remains environment-only. PostgreSQL --source is refused. SQLite retains
+  explicit --source and now uses configured data directory when source is omitted.
+  Actual child process exports a0600 checkpoint, compares its prefix after append,
+  refuses overwrite without changing the file, rejects mismatched prefix/tampered
+  event before output creation, and omits record/credential/error payloads.
+- Initial subset had1 failure/43 passes because generated missing-coverage timestamps
+  used a live clock while record clocks were fixed; the parity fixture now fixes
+  the coverage observation clock too. Production output/limits were not altered.
+  Final native+SQLite MCP/audit subset: **44 passed in6.95s**
+  (`artifacts/postgres-readers-targeted-final.txt`). Full backend with PG opt-in:
+  **549 passed in163.94s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-readers-backend-final.txt`). No UI edits or rebuild.
+- Wheel SHA2568618e24e12e48d342b7328e65983e22d19097a5ce6068ab995431d73e4251ff0
+  byte-matches all54 service Python files. Outside-checkout installed package
+  completes native HTTP lifecycle, then actual MCP stdio initialize/task/command
+  refusal and audit checkpoint export/compare before real dump/restore/session
+  return and returned SQLite HTTP verification
+  (`artifacts/postgres-readers-installed-review.json`,valid=true,target_requests=1,
+  owned_lab_requests=1,owned_source_requests=1,external_target_requests=0,
+  external_source_requests=0,service_postgres_backend_enabled=true). Same wheel's
+  default installed HTTP/auth/UI/records/maintenance/release review
+  passes (`artifacts/postgres-readers-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove disposable clusters/installations. CI includes
+  native reader cases; hosted execution remains unverified.
+- Complete v1 stays open: live PostgreSQL backup/operational restore/schema upgrade,
+  full native HTTP/provider/SSE/scheduler/failure/load combinations and broader
+  product gates remain required. Remote MCP client, external checkpoint automation,
+  huge record memory limits, remote DB faults and resource SLO remain unverified.
+  No remote publication or external target/provider/source request was performed.
+- Owned default SQLite preview completed normal shutdown before restarting
+  current code on8790 (PID80736/session30994); `/api/health` and root HTTP200.
+  Existing workspace retained; no user workspace migration was performed.

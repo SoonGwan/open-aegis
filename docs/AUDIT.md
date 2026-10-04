@@ -2,7 +2,7 @@
 
 스키마 2는 events 원본과 별도의 event_hashes·audit_state를 사용한다. 기존 이벤트
 조회 API의 형식은 유지한다. 새 이벤트·이전 해시·자체 해시·마지막 기준은 동일
-BEGIN IMMEDIATE 트랜잭션에 저장한다. 별도 Store 연결의 동시 기록도 순서를 공유하고,
+SQLite BEGIN IMMEDIATE 또는 PostgreSQL의 직렬화된 쓰기 트랜잭션에 저장한다. 별도 Store 연결의 동시 기록도 순서를 공유하고,
 해시 저장이 실패하면 이벤트 저장도 롤백한다.
 
 업무 데이터 변경과 감사 이벤트는 별도 트랜잭션인 경로가 있다. 감사 기록이 실패해도
@@ -93,3 +93,10 @@ DB에 쓰기 권한이 있는 공격자는 모든 이벤트와 해시·기준을
 백업·복구는 이 연결을 검사하며, 외부 체크포인트와의 비교는 별도 명령으로 수행한다.
 읽기 검증은 서비스를 실행 중에도 가능하지만 긴 읽기 스냅샷은 WAL 체크포인트에
 영향을 줄 수 있다. PostgreSQL 지원·대규모 부하·자동화된 외부 보관은 후속 작업이다.
+
+
+감사 CLI는 기본 HTTP 저장소 선택 환경을 따른다. PostgreSQL은
+`AEGIS_STORAGE_BACKEND=postgres`와 DSN/schema가 필요하며
+`aegis-verify-audit --backend postgres --schema aegis_workspace`로도 선택할 수 있다.
+이 모드의 `--source`는 거절한다. 기존 체크포인트 입력·새0600 파일 출력·덮어쓰기
+거절·실패 종료 코드2는 유지한다. [네이티브 읽기 계약](POSTGRES-STORAGE.md)을 따른다.

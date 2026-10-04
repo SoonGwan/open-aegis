@@ -44,8 +44,8 @@ python -m aegis
 설정 API의 `storage`는 실제 선택을 반환한다. 관리자 초기 설정은 비어 있는 전송
 스키마에서도 기존 설치 토큰/로컬 설치 정책을 따른다. HTTP startup/config 실패의
 연결/스키마 오류는 원문 DSN을 출력하지 않는다. 종료 중 작업/긴 SQL/원격 접속 장애와
-scheduler의 전체 운영 SLO는 아래 남은 검수에 포함한다. 현재 backup/restore/audit 및
-읽기 전용 MCP CLI는 SQLite 파일 경로를 쓰므로 PostgreSQL 운영 경로를 대체하지 않는다.
+scheduler의 전체 운영 SLO는 아래 남은 검수에 포함한다. backup/restore CLI는 SQLite 파일 경로를 쓰므로 PostgreSQL 운영 백업/복구를 대체하지 않는다.
+감사 CLI와 읽기 전용 MCP는 아래 명시적 저장소 선택을 지원한다.
 
 ## SQLite → PostgreSQL
 
@@ -123,6 +123,39 @@ GitHub hosted 실행 결과는 아직 없다.
 남은 v1 조건은 전체 HTTP/권한/동시성/재시작/부하 검수와 스키마 업그레이드,
 라이브 백업/복구의 운영 계약이다.
 현재 전송 형식은 그 기반이며, 이를 PostgreSQL 서비스 지원 완료로 표시하지 않는다.
+
+## 읽기 전용 MCP와 감사 CLI
+
+MCP stdio 서버는 HTTP와 같은 `AEGIS_STORAGE_BACKEND`/`AEGIS_POSTGRES_DSN`/
+`AEGIS_POSTGRES_SCHEMA` 선택을 사용한다. PostgreSQL은 준비된 지원 스키마를 읽고
+잘못된 설정/접속을 SQLite 파일로 대체하지 않는다. 도구7개의 이름·입력 한도·반환
+계약은 [MCP.md](MCP.md)와 같다. 각 tool call은 한 read-only REPEATABLE READ
+트랜잭션에서 작업·커버리지·발견·출처 확인된 증거·재검증·이벤트를 읽는다.
+페이지의 삽입 watermark는 별도 호출 사이의 편집을 복원하는 기능이 아니다.
+MCP는 Engine·작업 복구·스키마 수정·실행/승인을 시작하지 않는다. 오류는 고정 도구
+오류 또는 원문 DB 정보를 포함하지 않는 시작 오류로 반환한다.
+
+감사 CLI도 같은 backend 선택을 기본값으로 사용한다. 명시적으로 선택할 수도 있다.
+
+```sh
+aegis-verify-audit --backend postgres --schema aegis_workspace --output checkpoint.json
+aegis-verify-audit --backend postgres --schema aegis_workspace --checkpoint checkpoint.json
+```
+
+DSN은 환경변수로만 전달한다. PostgreSQL 모드의 `--source` 파일 지정은 거절한다.
+SQLite 선택은 기존 `--source` 또는 `AEGIS_DATA_DIR/aegis.db`를 읽는다. 지원하는
+읽기 snapshot의 전체 감사 연결을 서버 커서로 검증하고, 검증 성공 후에만0600 새
+체크포인트를 생성한다. 기존 파일은 덮어쓰지 않는다. 실패는 종료 코드2이며 비밀번호/
+서버 오류 본문을 출력하지 않는다. CLI는 관리자 UI의10초 전체 제한과 별도이며
+기존 연결/SQL 시간 제한을 사용한다.
+
+SELECT 전용 DB 계정의 schema USAGE와 records/events/event_hashes/audit_state/
+storage_metadata 읽기 권한으로 도구·감사 조회를 검수했다. users/sessions의 SELECT나
+쓰기 권한은 필요하지 않다. 실제 테스트에서 쓰기·users 읽기가 거절됐고 읽기 전용
+트랜잭션을 유지했다. 계정의 DB 접속/SSL/권한 부여는 운영자가 관리하며, MCP 설정의
+DSN은 연결 클라이언트에 노출될 수 있으므로 비밀 관리 설정을 사용한다. 외부 MCP
+클라이언트와 모델에는 조회한 증거가 전달될 수 있다. 원격 HTTP/SSE MCP 클라이언트나
+외부 체크포인트 자동 수집을 구현한 것은 아니다.
 
 ## 네이티브 Store 계층
 
@@ -211,7 +244,7 @@ pg_sleep 중 취소와 다음 검증 재시도, 동시 감사 추가의 스냅�
 단일 대형 이벤트·외부 체크포인트 수집 자동화의 전체 운영 검증을 뜻하지 않는다.
 검증 응답 자체는 서명/승인 증명이 아니며 신뢰할 외부 체크포인트 보관은 별도다.
 HTTP 앱의 관리자 감사 경로는 이 저장소 중립 검증기를 사용하나 PostgreSQL HTTP
-서비스 선택은 구현했고 전체 인증/운영 조합의 검수는 아직 남아 있다. 감사 CLI는 여전히 SQLite 경로다.
+서비스 선택은 구현했고 전체 인증/운영 조합의 검수는 아직 남아 있다. 감사 CLI도 명시적 PostgreSQL 선택을 지원한다.
 
 ScopeSentry의 파일/설정된 원본 조회 미리보기와 선택 반영도 네이티브 PostgreSQL
 트랜잭션을 사용한다. 저장소별 명시적 질의로 자산 URL 최대2개/출처/미리보기를
@@ -251,7 +284,7 @@ PostgreSQL HTTP 저장소 선택/기본 권한/정상 재시작을 검수했으�
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py tests/test_postgres_readers.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된

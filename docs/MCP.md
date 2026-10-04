@@ -1,8 +1,9 @@
 # 읽기 전용 MCP 조회 계약
 
-`python -m aegis.mcp`는 기존 DB를 SQLite `mode=ro`로 연다. 서버 초기화·스키마
-마이그레이션·작업 생성·실행·승인 도구를 제공하지 않는다. stdio 프로세스에 DB 파일을
-읽을 권한이 있어야 하며, HTTP 사용자 세션이나 역할을 대신 검증하는 서비스는 아니다.
+`python -m aegis.mcp`는 기본 SQLite `mode=ro` 또는 명시적으로 선택한 PostgreSQL
+읽기 전용 트랜잭션으로 기존 DB를 연다. 스키마 마이그레이션·작업 생성·실행·승인
+도구를 제공하지 않는다. stdio 프로세스에 DB 파일 읽기 또는 DB SELECT 권한이
+있어야 하며, HTTP 사용자 세션이나 역할을 대신 검증하는 서비스는 아니다.
 연결된 클라이언트/모델에 워크스페이스 내용이 전달될 수 있다. 원격 MCP는 미구현이다.
 
 | 도구 | 결과 |
@@ -40,3 +41,11 @@ ID는 1–80자다. 추가 인수, 잘못된 enum, null, bool을 정수로 전�
 임의로 커진 개별 레코드의 조회·직렬화 메모리를 강제로 제한한다는 뜻은 아니다.
 기존 stdin 줄 크기 검사는 줄을 읽은 뒤 수행한다. 운영 프로세스의 하드 메모리 제한과
 모든 HTTP/보고서 경로의 크기 제한은 별도의 미완료 작업이다.
+
+
+SQLite 기본 선택과 명시적 PostgreSQL 선택을 지원한다. PostgreSQL 설정은
+`AEGIS_STORAGE_BACKEND=postgres`, `AEGIS_POSTGRES_DSN`, `AEGIS_POSTGRES_SCHEMA`이며
+[저장소 계약](POSTGRES-STORAGE.md)의 준비된 스키마/선택 의존성이 필요하다. 각 호출의
+상세·증거·커버리지·이벤트는 같은 읽기 전용 snapshot으로 조회한다. 스키마/접속 오류는
+SQLite로 대체하지 않으며 원문 DSN을 출력하지 않는다. DB SELECT 전용 계정으로
+사용할 수 있고 users/sessions 읽기나 쓰기 권한을 요구하지 않는다.

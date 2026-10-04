@@ -30,8 +30,8 @@ def main():
         temporary=Path(directory);installation=temporary/'installation';data=temporary/'cluster';socket=temporary/'socket';socket.mkdir(mode=0o700)
         venv.EnvBuilder(with_pip=True).create(installation)
         python=installation/'bin'/'python';cli=installation/'bin'/'aegis-transfer-storage'
-        def run(command,label,env=None):
-            result=subprocess.run([str(item) for item in command],cwd=temporary,env=env or environment,capture_output=True,text=True,timeout=180)
+        def run(command,label,env=None,input=None):
+            result=subprocess.run([str(item) for item in command],cwd=temporary,env=env or environment,input=input,capture_output=True,text=True,timeout=180)
             if result.returncode:raise RuntimeError(label+' failed')
             return result.stdout
         run([python,'-m','pip','install','-r',root/'requirements.lock','-r',root/'requirements-postgres.lock'],'locked installation')
@@ -254,6 +254,21 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                 assert process.returncode in (0,-15,143) and not (temporary/'unused-sqlite').exists()
             final_native=json.loads(run([python,'-I','-c',"import json,os;from aegis.postgres_store import PostgresStore;from aegis.postgres_transfer import postgres_manifest;s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer');\nwith s.transaction() as db: manifest=postgres_manifest(db)\nprint(json.dumps({'manifest':manifest,'audit':s.audit_integrity()}))"],'installed native HTTP persisted snapshot'))
             native.update(final_native)
+            reader_env={**environment,'AEGIS_STORAGE_BACKEND':'postgres','AEGIS_POSTGRES_SCHEMA':'owned_transfer',
+                        'AEGIS_DATA_DIR':str(temporary/'unused-readers')}
+            requests=[{'jsonrpc':'2.0','id':1,'method':'initialize'},
+                      {'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':'get_task','arguments':{'id':'native-engine'}}},
+                      {'jsonrpc':'2.0','id':3,'method':'tools/call','params':{'name':'run_command','arguments':{'command':'must refuse'}}}]
+            replies=[json.loads(line) for line in run([python,'-I','-m','aegis.mcp'],'installed native MCP stdio',env=reader_env,
+                      input='\n'.join(json.dumps(item) for item in requests)+'\n').splitlines()]
+            assert replies[0]['result']['protocolVersion']=='2025-03-26'
+            detail=json.loads(replies[1]['result']['content'][0]['text'])
+            assert detail['task']['status']=='completed' and detail['coverage'][0]['status']=='completed'
+            assert replies[2]['result']['isError'] and not (temporary/'unused-readers').exists()
+            checkpoint=temporary/'native-checkpoint.json'
+            verified=json.loads(run([python,'-I','-m','aegis.cli.audit','--output',checkpoint],'installed native audit CLI',env=reader_env))
+            assert verified==native['audit'] and checkpoint.stat().st_mode & 0o777==0o600
+            assert json.loads(run([python,'-I','-m','aegis.cli.audit','--checkpoint',checkpoint],'installed native audit prefix',env=reader_env))==verified
             dump=temporary/'owned.dump'
             run([binaries['pg_dump'],'--format=custom','--schema','owned_transfer','--file',dump,'postgres'],'real pg_dump');dump.chmod(0o600)
             run([binaries['createdb'],'owned_restore'],'empty restore database')
@@ -316,7 +331,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
                 'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
-                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
+                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed native MCP stdio and audit checkpoint CLI','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,
                 'external_target_requests':0,'service_postgres_backend_enabled':True}))

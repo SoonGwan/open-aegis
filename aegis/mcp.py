@@ -8,6 +8,7 @@ import os
 import sqlite3
 import sys
 from pathlib import Path
+from contextlib import contextmanager,nullcontext
 from .store import ClosingConnection, Store, FINDING_READ_PROJECTION
 
 PAGE_PROPERTIES = {
@@ -36,6 +37,7 @@ for tool in TOOLS:
 
 
 class Reader:
+    errors=(sqlite3.Error,)
     def __init__(self, path):
         self.path = Path(path).resolve()
 
@@ -44,21 +46,26 @@ class Reader:
         db.row_factory = sqlite3.Row
         return db
 
+    @contextmanager
+    def read_transaction(self):
+        with self.connect() as db:
+            db.execute('BEGIN')
+            yield db
+
     def page(self, kind, **options):
         return Store.page(self, kind, compact_findings=True, **options)
 
-    def get(self, kind, id, *, required=True):
-        with self.connect() as db:
+    def get(self, kind, id, *, required=True, connection=None):
+        with (nullcontext(connection) if connection is not None else self.connect()) as db:
             projection = FINDING_READ_PROJECTION if kind == 'findings' else 'data'
             row = db.execute('SELECT ' + projection + ' FROM records WHERE kind=? AND id=?', (kind, id)).fetchone()
         if not row:
-            if not required:
-                return None
+            if not required:return None
             raise ValueError('Record not found')
         return json.loads(row[0])
 
-    def event_page(self, id, *, limit=25, offset=0, snapshot=None):
-        return Store.event_page(self, id, limit=limit, offset=offset, snapshot=snapshot)
+    def event_page(self, id, *, limit=25, offset=0, snapshot=None,connection=None):
+        return Store.event_page(self, id, limit=limit, offset=offset, snapshot=snapshot,connection=connection)
 
     def call(self, name, args):
         tool = next((tool for tool in TOOLS if tool['name'] == name), None)
@@ -78,30 +85,67 @@ class Reader:
                 raise ValueError('Invalid argument length')
             if 'enum' in rule and value not in rule['enum']:
                 raise ValueError('Invalid argument value')
+        with self.read_transaction() as db:
+            return self._call(name,args,db)
+
+    def _call(self,name,args,db):
         position = {key:args[key] for key in ('limit','offset','snapshot') if key in args}
+        position['connection']=db
         if name == 'list_assets':
             return self.page('assets', **position, search=args.get('search',''), archived=args.get('archived'))
         if name == 'list_findings':
             return self.page('findings', **position, search=args.get('search',''), filters={key:args[key] for key in ('status','severity','asset_id','task_id') if key in args})
         if name in ('list_finding_evidence','list_finding_retests','list_task_events'):
-            self.get('tasks' if name == 'list_task_events' else 'findings', args['id'])
+            self.get('tasks' if name == 'list_task_events' else 'findings', args['id'],connection=db)
             if name == 'list_task_events':
                 return self.event_page(args['id'], **position)
             kind = 'evidence' if name == 'list_finding_evidence' else 'retests'
             return self.page(kind, **position, search=args.get('search',''), filters={'finding_id':args['id']})
         if name in ('get_task', 'get_finding'):
             kind = 'tasks' if name == 'get_task' else 'findings'
-            record = self.get(kind, args['id'])
+            record = self.get(kind, args['id'],connection=db)
             if kind == 'tasks':
-                events = self.event_page(record['id'])
+                events = self.event_page(record['id'],connection=db)
                 from .coverage import task_rows
-                return {'task': record, 'coverage': task_rows(self, record, get_record=lambda kind, id: self.get(kind, id, required=False)), 'events': events['items'], 'events_page': {key:value for key,value in events.items() if key != 'items'}}
-            evidence = self.page('evidence', filters={'finding_id':record['id']})
-            retests = self.page('retests', filters={'finding_id':record['id']})
+                return {'task': record, 'coverage': task_rows(self, record, get_record=lambda kind, id: self.get(kind, id, required=False,connection=db)), 'events': events['items'], 'events_page': {key:value for key,value in events.items() if key != 'items'}}
+            evidence = self.page('evidence', filters={'finding_id':record['id']},connection=db)
+            retests = self.page('retests', filters={'finding_id':record['id']},connection=db)
             return {'finding': record, 'evidence': evidence['items'], 'retests': retests['items'],
                     'evidence_page': {key:value for key,value in evidence.items() if key != 'items'},
                     'retests_page': {key:value for key,value in retests.items() if key != 'items'}}
         raise ValueError('Unknown tool or invalid arguments')
+
+
+class PostgresReader(Reader):
+    def __init__(self,dsn,schema):
+        from .postgres_store import PostgresStore
+        from .postgres_transfer import driver
+        self.errors=(driver()[0].Error,)
+        self.store=PostgresStore(dsn,schema)
+
+    def connect(self):
+        return self.store.read_transaction()
+
+    def read_transaction(self):
+        return self.store.read_transaction()
+
+    def page(self,kind,**options):
+        return self.store.page(kind,compact_findings=True,**options)
+
+    def get(self,kind,id,*,required=True,connection=None):
+        record=self.store.get(kind,id,compact_findings=True,connection=connection)
+        if record is None and required:raise ValueError('Record not found')
+        return record
+
+    def event_page(self,id,*,limit=25,offset=0,snapshot=None,connection=None):
+        return self.store.event_page(id,limit=limit,offset=offset,snapshot=snapshot,connection=connection)
+
+
+def reader_from_env():
+    backend=os.environ.get('AEGIS_STORAGE_BACKEND','sqlite')
+    if backend=='sqlite':return Reader(Path(os.environ.get('AEGIS_DATA_DIR','data'))/'aegis.db')
+    if backend=='postgres':return PostgresReader(os.environ.get('AEGIS_POSTGRES_DSN',''),os.environ.get('AEGIS_POSTGRES_SCHEMA',''))
+    raise ValueError('Unknown storage backend')
 
 
 def dispatch(message, reader):
@@ -130,13 +174,17 @@ def dispatch(message, reader):
             if len(encoded.encode('utf-8')) > MAX_TOOL_BYTES:
                 raise ValueError('Result too large')
             return {**base, 'result': {'content': [{'type': 'text', 'text': encoded}], 'isError': False}}
-        except (ValueError, sqlite3.Error, KeyError):
+        except (ValueError, sqlite3.Error, KeyError) + getattr(reader,'errors',()):
             return {**base, 'result': {'content': [{'type': 'text', 'text': 'Tool unavailable, record missing, or arguments invalid.'}], 'isError': True}}
     return {**base, 'error': {'code': -32601, 'message': 'Method not found'}}
 
 
 def main():
-    reader = Reader(Path(os.environ.get('AEGIS_DATA_DIR', 'data')) / 'aegis.db')
+    try:
+        reader = reader_from_env()
+    except Exception:
+        print('MCP 저장소 연결·스키마·설정을 확인하세요.',file=sys.stderr)
+        raise SystemExit(2) from None
     for line in sys.stdin:
         try:
             if len(line) > 1024 * 1024:

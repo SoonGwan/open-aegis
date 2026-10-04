@@ -244,9 +244,9 @@ class PostgresStore:
             rows=db.execute('SELECT * FROM events ORDER BY seq DESC LIMIT %s',(limit,)).fetchall()
             return [{**row,'detail':json.loads(row['detail'])} for row in reversed(rows)]
 
-    def event_page(self,task_id,*,limit=25,offset=0,snapshot=None,search=''):
+    def event_page(self,task_id,*,limit=25,offset=0,snapshot=None,search='',connection=None):
         if not 1<=limit<=100 or offset<0 or (snapshot is not None and snapshot<0):raise ValueError('Invalid event query')
-        with self.transaction() as db:
+        with (nullcontext(connection) if connection is not None else self.transaction()) as db:
             if snapshot is None:snapshot=db.execute('SELECT coalesce(max(seq),0) AS snapshot FROM events WHERE task_id=%s',(task_id,)).fetchone()['snapshot']
             where='task_id=%s AND seq<=%s';args=[task_id,snapshot]
             if search:where+=' AND strpos(lower((message||\' \'||level) COLLATE "C"),lower(%s COLLATE "C"))>0';args.append(search)

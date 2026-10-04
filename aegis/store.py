@@ -311,11 +311,10 @@ class Store:
             rows = db.execute('SELECT * FROM events ORDER BY seq DESC LIMIT ?', (limit,)).fetchall()
         return [{**dict(row), 'detail': json.loads(row['detail'])} for row in reversed(rows)]
 
-    def event_page(self, task_id, *, limit=25, offset=0, snapshot=None, search=''):
+    def event_page(self, task_id, *, limit=25, offset=0, snapshot=None, search='', connection=None):
         if not 1 <= limit <= 100 or offset < 0 or (snapshot is not None and snapshot < 0):
             raise ValueError('Invalid event query')
-        with self.connect() as db:
-            db.execute('BEGIN')
+        with (nullcontext(connection) if connection is not None else self.read_transaction()) as db:
             if snapshot is None:
                 snapshot = db.execute('SELECT coalesce(max(seq),0) FROM events WHERE task_id=?', (task_id,)).fetchone()[0]
             where, args = 'task_id=? AND seq<=?', [task_id, snapshot]
