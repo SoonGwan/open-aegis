@@ -327,7 +327,7 @@ PostgreSQL HTTP 저장소 선택/기본 권한/정상 재시작을 검수했으�
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py tests/test_postgres_readers.py tests/test_postgres_backups.py tests/test_postgres_bootstrap.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py tests/test_postgres_readers.py tests/test_postgres_backups.py tests/test_postgres_bootstrap.py tests/test_postgres_releases.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된
@@ -388,7 +388,9 @@ DDL과 바인딩 COPY로 데이터를 넣고 DB 제약·감사 체인·각 행 �
 감사 체크포인트는 감사 접두부 비교에만 사용하며 모든 자산/계정의 서명이 아니다.
 DB 역할/권한/확장/함수/트리거와 전체 PostgreSQL 인스턴스는 백업하지 않는다.
 WAL/PITR·HA·전체 서버 복구·실제 버전 업그레이드·원격 장애·전원 차단은 미검수다.
-현재 지원 형식의 논리 데이터 복구이며 `aegis-release`의 SQLite 업데이트 계약은 별도다.
+현재 지원 형식의 논리 데이터 복구다. `aegis-release`는 format2의 서명된 native 선언과
+중지된 워크스페이스 사전 백업을 지원한다([RELEASES.md](RELEASES.md)). 실제 버전/
+스키마/설정 업그레이드와 운영 전환의 전체 검수는 남아 있다.
 
 ## 실행 소유권과 연결 상실
 

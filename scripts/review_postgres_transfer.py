@@ -374,6 +374,28 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
             verified=json.loads(run([python,'-I','-m','aegis.cli.audit','--output',checkpoint],'installed native audit CLI',env=reader_env))
             assert verified==native['audit'] and checkpoint.stat().st_mode & 0o777==0o600
             assert json.loads(run([python,'-I','-m','aegis.cli.audit','--checkpoint',checkpoint],'installed native audit prefix',env=reader_env))==verified
+            signing=temporary/'signing.pem';public=temporary/'trusted.pem'
+            run(['openssl','genpkey','-algorithm','ED25519','-out',signing],'ephemeral release signing key');signing.chmod(0o600)
+            run(['openssl','pkey','-in',signing,'-pubout','-out',public],'release public key')
+            release_web=temporary/'release-web';release_web.mkdir();(release_web/'index.html').write_text('<h1>Owned release contract fixture</h1>')
+            bundle=temporary/'release-bundle';release_cli=installation/'bin'/'aegis-release'
+            manifest=json.loads(run([release_cli,'create','--wheel',wheel,'--web',release_web,'--lock',root/'requirements.lock',
+                '--postgres-lock',root/'requirements-postgres.lock','--private-key',signing,'--revision','b'*40,'--output',bundle],
+                'installed signed native release declaration'))
+            assert manifest['format']==2 and manifest['postgres']['read']==[2,2]
+            assert json.loads(run([release_cli,'verify','--bundle',bundle,'--public-key',public],'installed native release signature'))==manifest
+            ordinary_receipt=json.loads(run([release_cli,'prepare','--bundle',bundle,'--public-key',public,'--output',temporary/'ordinary-preflight'],
+                'installed ordinary role preflight after database CREATE revocation',env=bootstrap_env))
+            assert ordinary_receipt['backend']=='postgres' and ordinary_receipt['schema']=='owned_bootstrap' and ordinary_receipt['installed'] is False
+            preflight=temporary/'native-preflight'
+            receipt=json.loads(run([release_cli,'prepare','--bundle',bundle,'--public-key',public,'--output',preflight],
+                'installed stopped native update preflight',env=reader_env))
+            assert receipt['installed'] is False and receipt['backend']=='postgres' and receipt['backup_metadata']['audit']==native['audit']
+            assert (preflight/'before-update.zip').stat().st_mode&0o777==0o600 and (preflight/'preflight.json').stat().st_mode&0o777==0o600
+            run([installation/'bin'/'aegis-restore','--source',preflight/'before-update.zip','--schema','owned_preflight'],
+                'installed native pre-update backup restore',env=reader_env)
+            run([python,'-I','-c',"import os;from aegis.postgres_store import PostgresStore;from aegis.postgres_transfer import postgres_manifest;a=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer');b=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_preflight');\nwith a.read_transaction() as db: before=postgres_manifest(db)\nwith b.read_transaction() as db: assert postgres_manifest(db)==before\nassert b.audit_integrity()==a.audit_integrity() and a.valid_session('owned-native-export-cookie') and not b.valid_session('owned-native-export-cookie')"],
+                'installed pre-update restored row and audit equality')
             dump=temporary/'owned.dump'
             run([binaries['pg_dump'],'--format=custom','--schema','owned_transfer','--file',dump,'postgres'],'real pg_dump');dump.chmod(0o600)
             run([binaries['createdb'],'owned_restore'],'empty restore database')
@@ -436,7 +458,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
                 'checks':['locked optional dependency','server fsync enabled','installed native initializer under a nonsuperuser role with database CREATE','fresh native HTTP first setup token, authentication, note and audit without SQLite','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
-                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
+                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,
                 'external_target_requests':0,'service_postgres_backend_enabled':True}))

@@ -3301,3 +3301,101 @@ on 390×844 has no document overflow.
   publication, target/provider/source request or existing user DB mutation occurred.
 - Default SQLite preview completed normal shutdown and restarted latest code on8790
   (PID33701/session55447); health and root HTTP200. Existing workspace retained.
+
+
+## Signed PostgreSQL compatibility and stopped update preflight — initial pass
+
+- Release create accepts optional PostgreSQL dependency lock. With it, format2
+  signs native storage format/read schema2–2/write2/fixed lock path plus complete
+  payload hashes; without it, format1 SQLite bundles remain unchanged. Verifier
+  accepts both formats, checks exact native field/range/int contracts and requires
+  the signed optional lock payload. Old format1 verifiers do not accept format2;
+  producer declarations do not prove wheel/source identity or operational safety.
+- Native prepare validates trusted-key signature/full payload/explicit native
+  compatibility before DB use. A read-only READ COMMITTED connection holds the
+  exclusive runtime transaction gate throughout checks and backup. This avoids
+  pinning a historical snapshot before admission; separate native backup owns its
+  consistent read-only REPEATABLE READ snapshot. Checks refuse owners/protected
+  operations/cooperative writers, unsupported schema/objects/audit, queued/running/
+  stopping tasks; captured backup task shapes/states are checked again before receipt.
+  Raw SQL/admin edits are outside the cooperative exclusion contract.
+- Private0700 stage holds a verified0600 before-update.zip and0600 preflight.json.
+  Only after successful DB transaction exit are files linked into a new0700 output;
+  files/output/parent are fsynced. Existing/concurrently created output is preserved.
+  Handled publication failure removes the command's created output and stage;
+  process/power loss can leave partial output and remains unverified. Shared digest
+  limits preflight archive to2GiB. Receipt records backend/schema, release/revision,
+  signer/manifest digest, backup digest/metadata and target write schema, installed=false;
+  no temporary output paths or DSN are included. Receipt itself is not signed.
+- Actual owned PG cases preserve source raw manifests/cookie, restore exact records/
+  credentials/audit into a fresh schema with invalid copied cookie; reject live
+  owner, unfinished tasks, legacy bundle, incompatible declared range and damaged
+  audit without published files. Native dependency mutation and malformed signed
+  declarations fail. Injected backup/read transaction exit/receipt publication
+  failures clean up; a competing output marker survives. A new owner is refused
+  during backup then succeeds after gate release. Actual native prepare child CLI
+  follows configured backend/schema, refuses SQLite database flag and sanitizes
+  user/password/connection failures without SQLite fallback or traceback.
+- Native release+SQLite release+native backup subset **55 passed in8.81s**
+  (`artifacts/postgres-release-targeted-final.txt`). Complete backend with PG opt-in
+  **598 passed in174.51s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-release-backend-final.txt`). UI unchanged, no UI rebuild.
+- Wheel SHA2567b0487b1bea40dbe74d1c7dd7df2daa531b8db1d3445c26ba1b3068a8db96262
+  byte-matches all57 service Python files. Outside-checkout installed native review
+  passes (`artifacts/postgres-release-installed-review-final.json`,valid=true):
+  installed create/verify format2 with ephemeral Ed25519 keys and real locked
+  dependency files, stopped native prepare, archive restore and exact native
+  source/copy manifest/audit comparison with source cookie maintained/copy cookie
+  invalidated. The ordinary bootstrap role also performs prepare after database
+  CREATE revocation. Signed UI and revision inputs here are explicitly synthetic
+  contract fixtures, not a new product UI/official source identity or publication.
+  Existing installed initializer/native HTTP/approval/import/graph/report/ownership/
+  MCP/audit/live backup/restore/dump/SQLite return checks remain passing. Owned
+  target requests1, owned source POST1, external validation target/source0.
+- Same wheel's default installed runtime/UI/auth/seven CLI/SQLite backup/restore/
+  format1 release review passes (`artifacts/postgres-release-runtime-review.json`,
+  valid=true,target_requests=0). Initial installed native review also passed before
+  adding the unresolved ordinary-role permission check; final review reran native
+  installed workflow for that added case. Successful runners stop/remove temporary
+  clusters/environments. CI includes native release cases; hosted runs unverified.
+- No bundle is installed by prepare, no source schema/data/session is mutated and
+  no operational config/service switch occurs. Real different-version/schema/
+  settings/UI upgrade and failed native startup rollback, official signing key
+  distribution/rotation, containers/power/remote faults/load remain open v1 gates.
+  Broader UI/tool/resource/AI gates remain open. No remote publication or external
+  validation target/provider/source request occurred.
+- Default SQLite preview completed normal shutdown, retained its workspace and
+  restarted current code on8790 (PID63100/session82952); health/root HTTP200.
+
+
+## Schema downgrade refusal and final native preflight regression
+
+- Review found that a read-compatible declaration could still name a lower target
+  write schema. Both SQLite and PostgreSQL prepare now refuse that declaration
+  before creating/publishing a backup. Signature/shape validity does not authorize
+  a schema downgrade. Genuine migration/version/config/operational transition
+  remains a separate unfinished release gate.
+- Reproduced previous committed SQLite behavior using the actual releases.py from
+  debe3b3 in an isolated Python module, with the same new signed fixture test:
+  source schema2/read0–2/write1 was accepted, yielding **1 failed / DID NOT RAISE
+  ReleaseError** (`artifacts/postgres-release-downgrade-before.txt`). Current SQLite
+  and real PostgreSQL cases refuse the lower write schema. No production DB or
+  workspace was used for reproduction.
+- Final release/native-backup subset **57 passed in9.26s**
+  (`artifacts/postgres-release-downgrade-targeted-final.txt`). Full backend rerun
+  after the guard **600 passed in174.97s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-release-downgrade-backend-final.txt`). Rerun was required by
+  the newly found compatibility gap; initial598-pass run is not final evidence.
+- Rebuilt wheel SHA256dea00a28c6131db44b607988e39c4c4a87771c195003130158b68476f515dee8
+  matches all57 service Python files. Native installed workflow, including signed
+  native declaration/preflight/backup restore and ordinary role after CREATE
+  revocation, passes (`artifacts/postgres-release-downgrade-installed-review.json`,
+  valid=true,owned_lab_requests=1,owned_source_requests=1,external_target_requests=0,
+  external_source_requests=0). Same final wheel's installed default SQLite/runtime/
+  UI/maintenance/format1 release checks pass
+  (`artifacts/postgres-release-downgrade-runtime-review.json`,valid=true,
+  target_requests=0). Successful runners remove owned disposable clusters/envs.
+- No UI edits/rebuild or remote publication. All broader v1 and actual native
+  different-version/schema/config/startup-failure transition gates remain open.
+  Default SQLite preview completed normal shutdown and restarted final code on8790
+  (PID79857/session80496), retained its workspace; health/root HTTP200.

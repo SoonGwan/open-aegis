@@ -70,7 +70,7 @@ def canonical(data):
     return (json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
 
 
-def create_release(wheel, web, lock, output, private_key, revision):
+def create_release(wheel, web, lock, output, private_key, revision, postgres_lock=None):
     wheel,web,lock=Path(wheel),Path(web),Path(lock)
     if not re.fullmatch(r'[a-f0-9]{40}',revision): raise ReleaseError('전체 Git revision이 필요합니다.')
     if wheel_metadata(wheel)!=__version__: raise ReleaseError('wheel 버전과 현재 코드 버전이 다릅니다.')
@@ -88,6 +88,7 @@ def create_release(wheel, web, lock, output, private_key, revision):
         (root/'runtime').mkdir()
         shutil.copyfile(wheel,root/'runtime'/wheel.name)
         shutil.copyfile(lock,root/'requirements.lock')
+        if postgres_lock is not None:shutil.copyfile(postgres_lock,root/'requirements-postgres.lock')
         (root/'web').mkdir()
         for source in web.rglob('*'):
             if source.is_symlink(): raise ReleaseError('UI 심볼릭 링크를 포함할 수 없습니다.')
@@ -101,6 +102,10 @@ def create_release(wheel, web, lock, output, private_key, revision):
         manifest={'format':1,'package':'open-aegis','version':__version__,'revision':revision,
                   'python_min':[3,11],'sqlite_read':[0,SCHEMA_VERSION],'sqlite_write':SCHEMA_VERSION,
                   'wheel':'runtime/'+wheel.name,'signer_sha256':signer,'files':files}
+        if postgres_lock is not None:
+            from .postgres_transfer import FORMAT
+            manifest.update(format=2,postgres={'format':FORMAT,'read':[SCHEMA_VERSION,SCHEMA_VERSION],
+                'write':SCHEMA_VERSION,'lock':'requirements-postgres.lock'})
         encoded=canonical(manifest)
         if len(encoded)>262144: raise ReleaseError('manifest 크기 제한을 초과했습니다.')
         (root/'release.json').write_bytes(encoded)
@@ -144,7 +149,8 @@ def verify_release(bundle, public_key):
                         parse_constant=lambda _: (_ for _ in ()).throw(ReleaseError('비정상 숫자입니다.')))
     fields={'format','package','version','revision','python_min','sqlite_read','sqlite_write',
             'wheel','signer_sha256','files'}
-    if (type(manifest) is not dict or set(manifest)!=fields or type(manifest['format']) is not int or manifest['format']!=1 or
+    if isinstance(manifest,dict) and manifest.get('format')==2:fields.add('postgres')
+    if (type(manifest) is not dict or set(manifest)!=fields or type(manifest['format']) is not int or manifest['format'] not in (1,2) or
             manifest['package']!='open-aegis' or manifest['signer_sha256']!=signer or
             raw!=canonical(manifest) or type(manifest['revision']) is not str or
             not re.fullmatch(r'[a-f0-9]{40}',manifest['revision']) or
@@ -154,6 +160,15 @@ def verify_release(bundle, public_key):
             any(type(n) is not int or n<0 for n in [*manifest['sqlite_read'],manifest['sqlite_write']]) or
             not manifest['sqlite_read'][0]<=manifest['sqlite_write']<=manifest['sqlite_read'][1]):
         raise ReleaseError('릴리스 manifest 계약이 올바르지 않습니다.')
+    if manifest['format']==2:
+        from .postgres_transfer import FORMAT
+        native=manifest['postgres']
+        if (type(native) is not dict or set(native)!={'format','read','write','lock'} or
+                native['format']!=FORMAT or native['lock']!='requirements-postgres.lock' or
+                type(native['read']) is not list or len(native['read'])!=2 or
+                any(type(n) is not int or n<0 for n in [*native['read'],native['write']]) or
+                not native['read'][0]<=native['write']<=native['read'][1]):
+            raise ReleaseError('PostgreSQL 릴리스 호환성 계약이 올바르지 않습니다.')
     files=manifest['files']
     if type(files) is not dict or not 1<=len(files)<=10000:
         raise ReleaseError('릴리스 파일 목록이 올바르지 않습니다.')
@@ -172,6 +187,7 @@ def verify_release(bundle, public_key):
     if actual!=set(files)|{'release.json','release.sig'}:
         raise ReleaseError('서명에 포함되지 않은 추가 파일이 있습니다.')
     if ('web/index.html' not in files or 'requirements.lock' not in files or
+            (manifest['format']==2 and 'requirements-postgres.lock' not in files) or
             manifest['wheel'] not in files or not manifest['wheel'].startswith('runtime/') or
             wheel_metadata(root/manifest['wheel'])!=manifest['version']):
         raise ReleaseError('릴리스의 runtime/UI 계약이 다릅니다.')
@@ -185,8 +201,9 @@ def prepare_update(bundle, public_key, database, output):
     if output.exists(): raise ReleaseError('사전 점검 출력 경로가 이미 있습니다.')
     with WorkspaceLease(database.parent):
         metadata=validate_backup(database)
-        if not manifest['sqlite_read'][0]<=metadata['schema_version']<=manifest['sqlite_read'][1]:
-            raise ReleaseError('현재 DB 스키마를 이 릴리스가 읽을 수 없습니다.')
+        if (not manifest['sqlite_read'][0]<=metadata['schema_version']<=manifest['sqlite_read'][1]
+                or manifest['sqlite_write']<metadata['schema_version']):
+            raise ReleaseError('현재 DB 스키마의 읽기/쓰기 호환성을 확인할 수 없습니다.')
         with closing(readonly(database)) as db:
             unfinished=db.execute("SELECT count(*) FROM records WHERE kind='tasks' AND "
                                   "json_extract(data,'$.status') IN ('queued','running','stopping')").fetchone()[0]
@@ -202,6 +219,62 @@ def prepare_update(bundle, public_key, database, output):
                      'sqlite_write':manifest['sqlite_write'],'installed':False}
             target=output/'preflight.json'
             target.write_bytes(canonical(receipt));target.chmod(0o600)
+        except BaseException:
+            shutil.rmtree(output)
+            raise
+    return receipt
+
+
+def prepare_postgres_update(bundle,public_key,dsn,schema,output):
+    """Stopped native workspace preflight. Never mutates the source or installs code."""
+    from . import postgres_transfer as transfer,postgres_backups as backups
+    from .postgres_maintenance import offline_export
+    manifest=verify_release(bundle,public_key)
+    if manifest['format']!=2:raise ReleaseError('PostgreSQL 호환성 선언이 있는 릴리스가 필요합니다.')
+    transfer.validate_schema(schema)
+    output=Path(output).absolute()
+    if output.exists() or output.is_symlink():raise ReleaseError('사전 점검 출력 경로가 이미 있습니다.')
+    # Stage privately; publish only after the database transaction exits. Its
+    # exclusive gate excludes cooperative writers and owners throughout backup.
+    output.parent.mkdir(parents=True,exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.pg-preflight-',dir=output.parent) as temporary:
+        stage=Path(temporary)
+        with transfer.connect(dsn) as db,db.transaction():
+            db.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED, READ ONLY')
+            offline_export(db,schema);transfer.set_schema(db,schema);backups.layout(db,schema)
+            state,audit=transfer.validate_postgres(db,require_empty_sessions=False)
+            contract=manifest['postgres']
+            if (not contract['read'][0]<=state['sqlite_schema']<=contract['read'][1]
+                    or contract['write']<state['sqlite_schema']):
+                raise ReleaseError('현재 PostgreSQL 스키마의 읽기/쓰기 호환성을 확인할 수 없습니다.')
+            unfinished=db.execute("SELECT count(*) AS count FROM records WHERE kind='tasks' AND data::jsonb->>'status' IN ('queued','running','stopping')").fetchone()['count']
+            if unfinished:raise ReleaseError('미완료 실행 작업이 있습니다. 먼저 중지·복구 상태를 확인하세요.')
+            backup=stage/'before-update.zip'
+            metadata=backups.backup(dsn,schema,backup)
+            with backups.Archive(backup) as archive:
+                for row in archive.rows('records'):
+                    if row['kind']=='tasks':
+                        task=json.loads(row['data'])
+                        if not isinstance(task,dict):raise ReleaseError('백업 작업 형식이 올바르지 않습니다.')
+                        if task.get('status') in ('queued','running','stopping'):raise ReleaseError('백업에 미완료 실행 작업이 있습니다.')
+            if metadata['audit']!=audit:raise ReleaseError('사전 점검 중 감사 스냅샷이 변경되었습니다.')
+            receipt={'format':2,'backend':'postgres','release':manifest['version'],'revision':manifest['revision'],
+                'signer_sha256':manifest['signer_sha256'],'manifest':digest(Path(bundle)/'release.json'),
+                'schema':schema,'backup':digest(backup),'backup_metadata':metadata,
+                'postgres_write':contract['write'],'installed':False}
+            # Do not embed temporary paths or connection credentials in the receipt.
+            receipt['backup_metadata']={k:v for k,v in metadata.items() if k!='output'}
+            target=stage/'preflight.json';target.write_bytes(canonical(receipt));target.chmod(0o600)
+            with target.open('rb') as file:os.fsync(file.fileno())
+        output.mkdir(mode=0o700)
+        try:
+            for name in ('before-update.zip','preflight.json'):os.link(stage/name,output/name)
+            directory=os.open(output,os.O_RDONLY)
+            try:os.fsync(directory)
+            finally:os.close(directory)
+            directory=os.open(output.parent,os.O_RDONLY)
+            try:os.fsync(directory)
+            finally:os.close(directory)
         except BaseException:
             shutil.rmtree(output)
             raise

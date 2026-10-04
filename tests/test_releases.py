@@ -105,3 +105,12 @@ def test_preflight_incompatible_or_running_tasks_do_not_create_backup(release,tm
     with pytest.raises(ReleaseError,match='미완료'):
         prepare_update(bundle,public,store.path,tmp_path/'out')
     assert not (tmp_path/'out').exists()
+
+
+def test_signed_read_compatible_but_lower_write_schema_is_refused(release,tmp_path):
+    bundle,key,public=release;store=Store(tmp_path/'workspace/aegis.db')
+    manifest=json.loads((bundle/'release.json').read_text())
+    manifest.update(sqlite_read=[0,2],sqlite_write=1);resign(bundle,key,manifest)
+    with pytest.raises(ReleaseError,match='스키마'):
+        prepare_update(bundle,public,store.path,tmp_path/'downgrade')
+    assert not (tmp_path/'downgrade').exists()
