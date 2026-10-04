@@ -190,3 +190,65 @@ def test_read_transaction_exit_failure_never_publishes_sqlite(postgres,source,tm
         transfer.postgres_to_sqlite(postgres['dsn'],name,output)
     assert not output.exists(), 'Output was published before read transaction exit succeeded'
     assert not list(output.parent.glob('.pg-transfer-*'))
+
+
+def test_native_sessions_omitted_on_return_and_preserved_in_source(postgres,source,tmp_path):
+    import time
+    from aegis.postgres_store import PostgresStore
+    name=schema();transfer.sqlite_to_postgres(source.path,postgres['dsn'],name)
+    pg=PostgresStore(postgres['dsn'],name);user=pg.user(username='admin')
+    pg.session('native-cookie-one',time.time()+300,user['id']);pg.session('native-cookie-two',time.time()+300,user['id'])
+    with pg.transaction() as db:before=transfer.postgres_manifest(db)
+    result=transfer.postgres_to_sqlite(postgres['dsn'],name,tmp_path/'sessions-return'/'aegis.db')
+    assert result['omitted_session_count']==2 and result['source_sessions_preserved'] is True
+    assert result['sessions_revoked'] is True and result['manifest']==before
+    assert pg.valid_session('native-cookie-one') and pg.valid_session('native-cookie-two')
+    returned=Store(result['output'])
+    assert not returned.valid_session('native-cookie-one') and not returned.valid_session('native-cookie-two')
+    assert returned.user(username='admin')==user and returned.audit_integrity()==result['audit']
+    with pg.transaction() as db:assert transfer.postgres_manifest(db)==before
+
+
+def test_return_failure_keeps_source_sessions_and_releases_gate(postgres,source,tmp_path,monkeypatch):
+    import time
+    from aegis.postgres_store import PostgresStore
+    from aegis.postgres_maintenance import PostgresLease
+    name=schema();transfer.sqlite_to_postgres(source.path,postgres['dsn'],name)
+    pg=PostgresStore(postgres['dsn'],name);user=pg.user(username='admin')
+    pg.session('native-cookie',time.time()+300,user['id'])
+    output=tmp_path/'sessions-failure'/'aegis.db'
+    original=transfer.validate_backup
+    def fail_stage(path):
+        if Path(path).name.startswith('.pg-transfer-'):raise InvalidBackup('Owned final validation failure')
+        return original(path)
+    monkeypatch.setattr(transfer,'validate_backup',fail_stage)
+    with pytest.raises(InvalidBackup):transfer.postgres_to_sqlite(postgres['dsn'],name,output)
+    assert not output.exists() and not list(output.parent.glob('.pg-transfer-*'))
+    assert pg.valid_session('native-cookie')
+    with PostgresLease(postgres['dsn'],name):pass
+
+
+def test_session_return_through_real_dump_restore_starts_authenticated_sqlite(postgres,source,tmp_path):
+    import time
+    from fastapi.testclient import TestClient
+    from aegis.app import create_app
+    from aegis.postgres_store import PostgresStore
+    name=schema();transfer.sqlite_to_postgres(source.path,postgres['dsn'],name)
+    pg=PostgresStore(postgres['dsn'],name);user=pg.user(username='admin')
+    pg.session('native-dump-cookie',time.time()+300,user['id'])
+    dump=tmp_path/'sessions.dump'
+    subprocess.run([postgres['binaries']['pg_dump'],'--dbname',postgres['dsn'],'--format=custom','--schema',name,'--file',str(dump)],check=True,capture_output=True)
+    subprocess.run([postgres['binaries']['createdb'],'--maintenance-db',postgres['dsn'],name],check=True,capture_output=True)
+    restored=postgres['dsn'].replace('dbname=postgres','dbname='+name)
+    subprocess.run([postgres['binaries']['pg_restore'],'--exit-on-error','--dbname',restored,str(dump)],check=True,capture_output=True)
+    output=tmp_path/'restored-service'/'aegis.db'
+    result=transfer.postgres_to_sqlite(restored,name,output)
+    assert result['omitted_session_count']==1 and pg.valid_session('native-dump-cookie')
+    with TestClient(create_app(output.parent)) as client:
+        client.cookies.set('aegis_session','native-dump-cookie')
+        assert client.get('/api/assets').status_code==401
+        login=client.post('/api/auth/login',json={'username':'admin','password':'owned-migration-password'})
+        assert login.status_code==200,login.text
+        assert client.get('/api/records/notes').status_code==200
+        assert client.app.state.store.get('notes','one')['price']=='0.000000000000001'
+        assert client.app.state.store.audit_integrity()['valid']

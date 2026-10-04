@@ -3,6 +3,11 @@ import argparse
 import hashlib
 import json
 import os
+from http.cookiejar import CookieJar
+from urllib.error import HTTPError,URLError
+from urllib.request import Request,build_opener,HTTPCookieProcessor,ProxyHandler
+import socket as socket_module
+import time
 from pathlib import Path
 import shutil
 import subprocess
@@ -66,6 +71,7 @@ from aegis.engine import Engine
 from aegis.runtime import ExecutionPolicy
 from aegis.tool_contracts import contracts_for
 from aegis.coverage import planned_slots
+from aegis.graph import build_graph
 from aegis.postgres_maintenance import PostgresLease
 from aegis.maintenance import WorkspaceBusy
 from aegis.postgres_transfer import postgres_to_sqlite,connect
@@ -130,6 +136,8 @@ try:
     assert s.count('findings')>0 and s.count('evidence')==s.count('findings')
     assert s.get('coverage','native-engine:owned-lab:security_headers')['status']=='completed'
     assert engine.metrics()['queue_watchdog']['errors']==0
+    graph=build_graph(s,'owned-lab','native-engine')
+    assert any(edge['relation']=='evidence' for edge in graph['edges']) and owned_requests==['/']
 finally:
     engine.shutdown();server.shutdown();server.server_close();thread.join(timeout=2)
 assert owned_requests==['/']
@@ -149,6 +157,7 @@ try:
         replacement.event(None,'설치본 소유권 교체 확인')
 finally:lost.close()
 s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
+s.session('owned-native-export-cookie',time.time()+300,u['id']);assert s.valid_session('owned-native-export-cookie')
 with s.transaction() as db:manifest=postgres_manifest(db)
 print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity(),'usage':usage,'owned_lab_requests':len(owned_requests)}))
 ''',forward_proof],'installed native PostgreSQL store'))
@@ -160,6 +169,8 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
             output=temporary/'returned'/'aegis.db'
             reverse=json.loads(run([cli,'postgres-to-sqlite','--schema','owned_transfer','--output',output],'installed reverse transfer'))
             assert native['manifest']==reverse['manifest'] and native['audit']==reverse['audit'] and forward['sessions_revoked']==1
+            assert reverse['omitted_session_count']==1 and reverse['source_sessions_preserved']
+            run([python,'-I','-c',"import os;from aegis.postgres_store import PostgresStore;s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer');assert s.valid_session('owned-native-export-cookie')"],'source session survives return')
             run([python,'-I','-c','''
 import sys
 from aegis.store import Store
@@ -167,16 +178,52 @@ from aegis.auth import password_hash
 s=Store(sys.argv[1]);u=s.user(username='admin')
 assert u['password_hash']==password_hash('owned-installed-transfer-password',u['salt'])
 assert not s.valid_session('owned-old-cookie')
+assert not s.valid_session('owned-native-export-cookie')
 assert s.get('notes','proof')['amount']=='0.000000000000001'
 assert s.get('notes','native')['amount']=='0.000000000000001'
 assert u['role']=='operator' and u['name']=='합성 PostgreSQL 관리자'
 s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
 ''',output],'installed returned credentials, record and audit continuation')
+            with socket_module.socket() as listener:
+                listener.bind(('127.0.0.1',0));port=listener.getsockname()[1]
+            server_env={**environment,'AEGIS_DATA_DIR':str(output.parent),'AEGIS_HOST':'127.0.0.1','AEGIS_PORT':str(port)}
+            with (temporary/'returned-server.log').open('w') as log:
+                process=subprocess.Popen([str(python),'-I','-m','aegis'],cwd=temporary,env=server_env,stdout=log,stderr=subprocess.STDOUT)
+                base='http://127.0.0.1:'+str(port)
+                authenticated=build_opener(ProxyHandler({}),HTTPCookieProcessor(CookieJar()))
+                def http(path,body=None,expected=200,headers=None,opener=authenticated):
+                    request_headers=dict(headers or {})
+                    if body is not None:request_headers['Content-Type']='application/json'
+                    request=Request(base+path,data=json.dumps(body).encode() if body is not None else None,headers=request_headers)
+                    try:response=opener.open(request,timeout=3)
+                    except HTTPError as error:response=error
+                    with response:
+                        if response.status!=expected:raise RuntimeError('Installed returned service HTTP validation failed')
+                        return json.loads(response.read())
+                try:
+                    deadline=time.monotonic()+15
+                    while True:
+                        if process.poll() is not None:raise RuntimeError('Installed returned service exited')
+                        try:
+                            assert http('/api/health')['status']=='ok';break
+                        except (URLError,TimeoutError):
+                            if time.monotonic()>=deadline:raise RuntimeError('Installed returned service startup timed out')
+                            time.sleep(.05)
+                    http('/api/assets',expected=401,headers={'Cookie':'aegis_session=owned-native-export-cookie'})
+                    http('/api/auth/login',{'username':'admin','password':'owned-installed-transfer-password'})
+                    assert http('/api/records/notes')['total']==2
+                    graph=http('/api/graph?asset_id=owned-lab&task_id=native-engine')
+                    assert any(edge['relation']=='evidence' for edge in graph['edges'])
+                finally:
+                    if process.poll() is None:process.terminate()
+                    try:process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:process.kill();process.wait(timeout=5);raise RuntimeError('Installed returned service shutdown timed out')
+                assert process.returncode in (0,-15,143)
             print(json.dumps({'valid':True,'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
-                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
-                          'installed SQLite return','revoked old sessions','preserved password hashes and exact record','audit continuation'],
+                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
+                          'installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'external_target_requests':0,'service_postgres_backend_enabled':False}))
         finally:

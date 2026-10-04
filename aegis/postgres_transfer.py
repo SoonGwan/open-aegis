@@ -114,12 +114,13 @@ def postgres_audit(db, checkpoint=None):
         if reader.stream is not None: reader.stream.close()
 
 
-def validate_postgres(db):
+def validate_postgres(db, *, require_empty_sessions=True):
     row=db.execute('SELECT * FROM storage_metadata WHERE id=1').fetchone()
     if (not row or row['format']!=FORMAT or row['sqlite_schema']!=SCHEMA_VERSION
             or type(row['event_sequence']) is not int or row['event_sequence']<0):
         raise TransferError('지원하지 않는 PostgreSQL 저장 형식입니다.')
-    if db.execute('SELECT count(*) AS count FROM sessions').fetchone()['count']:
+    sessions=db.execute('SELECT count(*) AS count FROM sessions').fetchone()['count']
+    if require_empty_sessions and sessions:
         raise TransferError('전송 스키마에 세션이 있습니다. 실행 저장소의 오프라인 내보내기 계약이 필요합니다.')
     audit=postgres_audit(db)
     maximum=db.execute('SELECT coalesce(max(seq),0) AS seq FROM events').fetchone()['seq']
@@ -132,7 +133,7 @@ def validate_postgres(db):
         raise TransferError('감사 이벤트의 순번 할당기가 없습니다.')
     _,sql,_=driver()
     allocated=db.execute(sql.SQL('SELECT last_value,is_called FROM {}').format(sql.Identifier(sequence['nspname'],sequence['relname']))).fetchone()
-    row={**row,'event_sequence':max(row['event_sequence'],allocated['last_value'] if allocated['is_called'] else 0)}
+    row={**row,'event_sequence':max(row['event_sequence'],allocated['last_value'] if allocated['is_called'] else 0),'session_count':sessions}
     return row,audit
 
 
@@ -196,7 +197,7 @@ def postgres_to_sqlite(dsn,schema,output):
                 objects=src.execute('SELECT c.relname,c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=%s AND c.relkind IN (\'r\',\'v\',\'m\',\'f\',\'p\')',(schema,)).fetchall()
                 if {row['relname'] for row in objects}!=set(TABLES)|{'sessions','storage_metadata'} or any(row['relkind']!='r' for row in objects):
                     raise TransferError('PostgreSQL 전송 스키마의 테이블 구성이 다릅니다.')
-                metadata,audit=validate_postgres(src);expected=postgres_manifest(src)
+                metadata,audit=validate_postgres(src,require_empty_sessions=False);expected=postgres_manifest(src)
                 fd,temporary=tempfile.mkstemp(prefix='.pg-transfer-',suffix='.db',dir=output.parent);os.close(fd)
                 stage=Path(temporary)
                 migrate(stage)
@@ -224,4 +225,5 @@ def postgres_to_sqlite(dsn,schema,output):
         finally:
             if stage is not None: stage.unlink(missing_ok=True)
         return {'format':FORMAT,'schema':schema,'manifest':expected,'audit':audit,
-                'sessions_revoked':True,'output':str(output),'service_backend_enabled':False}
+                'sessions_revoked':True,'omitted_session_count':metadata['session_count'],
+                'source_sessions_preserved':True,'output':str(output),'service_backend_enabled':False}

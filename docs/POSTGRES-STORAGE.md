@@ -55,9 +55,13 @@ aegis-transfer-storage postgres-to-sqlite --schema aegis_workspace --output retu
 ```
 
 위 전송 형식 `aegis-postgres-storage-v1`의 스키마를 일관된 REPEATABLE READ/READ ONLY
-트랜잭션으로 읽는다. 예상 테이블 구성·형식·순서 기준·빈 세션·감사 연결을 검사한다.
-뷰/외부 테이블/추가 테이블은 거절한다. 현재 형식에는 실행 중 PostgreSQL 서비스를 위한
-운영 세션이나 쓰기 배제 계약이 없으므로 세션이 들어 있는 스키마도 거절한다.
+트랜잭션으로 읽는다. 예상 테이블 구성·형식·순서 기준·감사 연결을 검사한다.
+뷰/외부 테이블/추가 테이블은 거절한다. 같은 DB/스키마의 exclusive runtime gate를
+획득해야 하므로 실행 소유자나 보호된 작업이 있으면 반환을 거절한다.
+중지한 스키마에 세션이 남아 있어도 반환할 수 있다. 세션은 반환본에 복사하지 않고
+`omitted_session_count`에 제외한 행 수를 기록한다. `sessions_revoked=true`는 반환본의
+세션이 비어 있음을 뜻하며 원본 세션을 삭제하는 명령이 아니다.
+`source_sessions_preserved=true`: 원본 PostgreSQL 세션은 기존 만료/폐기 규칙을 유지한다.
 
 새 SQLite 파일을 같은 출력 디렉터리의0600 임시 파일에 만들고, 행 해시·감사·SQLite
 무결성 검증과 PostgreSQL 읽기 트랜잭션/연결 종료를 마친 후 공개한다. 기존 출력 파일/심볼릭 링크는 덮어쓰지 않는다.
@@ -100,7 +104,7 @@ Engine의 큐 지표/기한 조회와 발견 관찰·조치·재검증은 저장
 사용한다. 소유한 단독 검수 환경에서 네이티브 PostgreSQL Engine의 승인→로컬 요청→
 증거/커버리지 저장, 재검증 해결 판정, 실행 중 중지·큐 만료·시작 복구를 검수했다.
 이것은 HTTP 서비스의 PostgreSQL 실행 검수가 아니다. 아래 실행 소유권 계약을
-Engine과 요청 경계에 연결했으며, 보고서/그래프/가져오기 및 전체 HTTP 경로가 남아 있다.
+Engine과 요청 경계에 연결했으며, 보고서/가져오기 및 전체 HTTP 경로가 남아 있다.
 
 발견 관찰·조치·재검증은 같은 쓰기 트랜잭션에서 현재 발견/담당자를 읽고 관련 증거,
 변경 이력과 함께 저장한다. PostgreSQL과 SQLite의 서로 다른 Store 인스턴스에서
@@ -131,6 +135,15 @@ AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 �
 실제 로컬 모형 제공자→PostgreSQL 시작 기록→응답 관찰→답변 원자 저장을 검수했다.
 사용량 조회 중 별도 DB 쓰기가 일어나도 토큰·비용은 같은 스냅샷의 값으로 집계했다.
 
+관계 그래프는 SQLite와 PostgreSQL의 명시적 질의를 사용한다. 같은 read transaction에서
+자산/작업/선택 자산의 커버리지와 발견·증거·관찰 링크를 읽는다. 발견 최대25개,
+발견별 증거2개, 관찰 링크10개의 기존 한도를 유지한다. 참조 배열 전체를 반환하지
+않고 SQL로 유효/누락/잘못된 참조를 계산한다. 다른 자산·검사·지문의 증거를 연결하지
+않고 다른 작업의 증거는 현재 작업의 증거 엣지로 표시하지 않는다. 1만 개 누락 참조와
+동시 증거 소속 변경, 500개 다른 자산이 있는 계획의 선택 자산만 조회하는 것을 검수했다.
+이는 정상 필드 모양의 대표 자료에 대한 검수이며 단일 증거 본문의 전체 크기나 대규모
+Graph SLO를 보장하지 않는다. 그래프는 조회이며 추가 대상 요청을 보내지 않는다.
+
 레코드는 원문 TEXT로 저장하고 검색/관계 연산만 jsonb로 투영한다. 검색 문자열은
 바인딩하고 `%`와 `_`도 문자 그대로 검색한다. JSON 객체의 원문 바이트 보존을 검증한
 전송과, jsonb 질의의 의미는 별도 계약이다. 중복 JSON 키·PostgreSQL numeric 범위를
@@ -147,7 +160,7 @@ AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 �
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된
@@ -180,8 +193,8 @@ shared transaction permit으로 보호한다. 허용한 요청이 진행 중이�
 
 소유자에 연결하지 않은 Store 쓰기는 exclusive transaction gate를 사용하므로
 실행 소유자와 겹치지 않는다. 오프라인 반환도 exclusive gate를 즉시 획득해야 한다.
-사용 중이면 결과 파일을 만들지 않는다. 반환 스키마의 빈 세션 조건은 아직 유지하며,
-운영 세션이 있는 실행 DB의 반환/복구 계약은 후속 작업이다. 독립 읽기 클라이언트는
+사용 중이면 결과 파일을 만들지 않는다. 중지된 DB의 세션은 반환본에서만 제외한다.
+실행 중 서비스의 라이브 백업/전체 PostgreSQL 운영 복구 계약은 후속 작업이다. 독립 읽기 클라이언트는
 읽기 스냅샷만 사용할 수 있으며 실행 permit은 소유권이 있어야 발급한다.
 
 일반 DB 계정의 schema/table/sequence 권한으로 동작함을 검수했다. advisory 계약은

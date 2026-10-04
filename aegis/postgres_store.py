@@ -113,6 +113,9 @@ class PostgresStore:
     def write_transaction(self):
         return self.transaction(write=True)
 
+    def read_transaction(self):
+        return self.transaction()
+
     def put_many(self,records,*,connection=None):
         with (nullcontext(connection) if connection is not None else self.write_transaction()) as db, db.cursor() as cursor:
             cursor.executemany('INSERT INTO records(kind,id,data) VALUES (%s,%s,%s) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data',

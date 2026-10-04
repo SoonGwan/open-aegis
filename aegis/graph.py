@@ -1,7 +1,8 @@
 """A bounded graph of stored references for one asset and one validation plan."""
 import json
 from .checks import CATALOG
-from .coverage import task_rows
+from .coverage import iter_task_rows
+from .graph_queries import SQLiteGraph, PostgresGraph
 
 
 class GraphNotFound(ValueError):
@@ -10,7 +11,7 @@ class GraphNotFound(ValueError):
 
 def build_graph(store, asset_id, task_id=None, *, check=None, severity=None, status=None,
                 limit=10, offset=0, snapshot=None):
-    if not 1 <= limit <= 25 or offset < 0:
+    if not 1 <= limit <= 25 or offset < 0 or (snapshot is not None and snapshot < 0):
         raise ValueError("Invalid graph page")
     nodes, edges = [], []
     node_ids = set()
@@ -22,11 +23,9 @@ def build_graph(store, asset_id, task_id=None, *, check=None, severity=None, sta
         return id
     def edge(source, target, relation):
         edges.append({'id': f'{source}>{target}:{relation}', 'source': source, 'target': target, 'relation': relation})
-    with store.connect() as db:
-        db.execute('BEGIN')
-        def get(kind, id):
-            row = db.execute('SELECT data FROM records WHERE kind=? AND id=?', (kind, id)).fetchone()
-            return json.loads(row['data']) if row else None
+    with store.read_transaction() as db:
+        queries=PostgresGraph(db) if getattr(store,'backend',None)=='postgres' else SQLiteGraph(db)
+        def get(kind,id):return store.get(kind,id,connection=db)
         asset = get('assets', asset_id)
         if not asset:
             raise GraphNotFound('자산이 없습니다.')
@@ -35,8 +34,7 @@ def build_graph(store, asset_id, task_id=None, *, check=None, severity=None, sta
         if task_id:
             task = get('tasks', task_id)
         else:
-            row = db.execute("SELECT data FROM records WHERE kind='tasks' AND EXISTS (SELECT 1 FROM json_each(records.data,'$.asset_ids') WHERE value=?) ORDER BY rowid DESC LIMIT 1", (asset_id,)).fetchone()
-            task = json.loads(row['data']) if row else None
+            task = queries.latest_task(asset_id)
         context = None
         result = {'asset': public_asset, 'task': context, 'nodes': nodes, 'edges': edges,
                   'findings': {'total': 0, 'limit': limit, 'offset': offset, 'snapshot': snapshot or 0, 'has_more': False},
@@ -57,7 +55,9 @@ def build_graph(store, asset_id, task_id=None, *, check=None, severity=None, sta
         edge(root, task_node, 'scope')
         names = {c['id']: c['name'] for c in CATALOG}
         check_nodes = {}
-        for row in task_rows(store, task, get_record=get):
+        # One asset graph must not read every other asset's coverage matrix.
+        selected={**task,'scope_snapshot':[scope]}
+        for row in iter_task_rows(store, selected, get_record=get):
             if row['asset_id'] != asset_id or row['check'] not in names or (check and row['check'] != check):
                 continue
             data = {key: row.get(key) for key in ('check', 'status', 'reason', 'asset_revision', 'error_type')}
@@ -66,38 +66,15 @@ def build_graph(store, asset_id, task_id=None, *, check=None, severity=None, sta
             edge(task_node, check_nodes[row['check']], 'planned_check')
         if not check_nodes:
             return result
-        if snapshot is None:
-            snapshot = db.execute("SELECT coalesce(max(rowid),0) FROM records WHERE kind='findings'").fetchone()[0]
-        clauses = ["kind='findings'", 'rowid<=?', "json_extract(data,'$.asset_id')=?",
-                   "EXISTS (SELECT 1 FROM json_each(records.data,'$.task_ids') WHERE value=?)",
-                   "json_extract(data,'$.check') IN (" + ','.join('?' for _ in check_nodes) + ')']
-        args = [snapshot, asset_id, task['id'], *check_nodes]
-        for key, value in (('severity', severity), ('status', status)):
-            if value:
-                clauses.append(f"json_extract(data,'$.{key}')=?")
-                args.append(value)
-        where = ' AND '.join(clauses)
-        total = db.execute('SELECT count(*) FROM records WHERE ' + where, args).fetchone()[0]
-        fields = ('title', 'check', 'severity', 'status', 'confidence')
-        projection = ','.join(f"json_extract(data,'$.{key}') AS \"{key}\"" for key in fields)
-        findings = [dict(row) for row in db.execute('SELECT id,' + projection + ' FROM records WHERE ' + where + ' ORDER BY rowid DESC LIMIT ? OFFSET ?', (*args, limit, offset))]
+        if snapshot is None:snapshot=queries.watermark()
+        total,findings=queries.findings(asset_id,task['id'],check_nodes,snapshot,severity,status,limit,offset)
         result['findings'] = {'total': total, 'limit': limit, 'offset': offset, 'snapshot': snapshot, 'has_more': offset + len(findings) < total}
         for finding in findings:
             finding_node = node('finding', finding['id'], finding['title'], finding)
             edge(check_nodes[finding['check']], finding_node, 'finding')
             # Membership, asset, task, check and fingerprint must all agree. Never
             # draw a proof edge merely because a foreign evidence ID was stored.
-            matches = """FROM records f CROSS JOIN json_each(f.data,'$.evidence_ids') ref
-              JOIN records e ON e.kind='evidence' AND e.id=ref.value
-              WHERE f.kind='findings' AND f.id=? AND json_extract(e.data,'$.asset_id')=?
-                AND json_extract(e.data,'$.task_id')=? AND json_extract(e.data,'$.check')=?
-                AND json_extract(e.data,'$.fingerprint')=json_extract(f.data,'$.fingerprint')"""
-            proof_args = (finding['id'], asset_id, task['id'], finding['check'])
-            count = db.execute('SELECT count(DISTINCT e.id) ' + matches, proof_args).fetchone()[0]
-            evidence_rows = db.execute('SELECT e.id,e.data ' + matches + ' GROUP BY e.id ORDER BY e.rowid DESC LIMIT 2', proof_args).fetchall()
-            references = db.execute("SELECT count(DISTINCT value) FROM records f,json_each(f.data,'$.evidence_ids') WHERE f.kind='findings' AND f.id=?", (finding['id'],)).fetchone()[0]
-            # Other-task references are valid history, not an inconsistency.
-            invalid = db.execute("SELECT count(DISTINCT ref.value) FROM records f CROSS JOIN json_each(f.data,'$.evidence_ids') ref LEFT JOIN records e ON e.kind='evidence' AND e.id=ref.value WHERE f.kind='findings' AND f.id=? AND (e.id IS NULL OR json_extract(e.data,'$.asset_id') IS NOT ? OR json_extract(e.data,'$.check') IS NOT ? OR json_extract(e.data,'$.task_id') IS NULL OR json_extract(e.data,'$.fingerprint') IS NULL OR json_extract(f.data,'$.fingerprint') IS NULL OR json_extract(e.data,'$.fingerprint') IS NOT json_extract(f.data,'$.fingerprint'))", (finding['id'], asset_id, finding['check'])).fetchone()[0]
+            count,evidence_rows,references,invalid=queries.proofs(finding['id'],asset_id,task['id'],finding['check'])
             finding['evidence_count'] = count
             finding['history_reference_count'] = references
             finding['invalid_reference_count'] = invalid
@@ -109,10 +86,7 @@ def build_graph(store, asset_id, task_id=None, *, check=None, severity=None, sta
                 evidence_node = node('evidence', proof['id'], names.get(proof.get('check'), '검증') + ' 증거', proof_data)
                 edge(finding_node, evidence_node, 'evidence')
         if 'endpoint_inventory' in check_nodes:
-            endpoint_where = "kind='observations' AND json_extract(data,'$.asset_id')=? AND json_extract(data,'$.task_id')=?"
-            endpoint_args = (asset_id, task['id'])
-            count = db.execute('SELECT count(*) FROM records WHERE ' + endpoint_where, endpoint_args).fetchone()[0]
-            endpoints = db.execute("SELECT id,json_extract(data,'$.url') AS url,json_extract(data,'$.created_at') AS created_at FROM records WHERE " + endpoint_where + ' ORDER BY rowid DESC LIMIT 10', endpoint_args).fetchall()
+            count,endpoints=queries.endpoints(asset_id,task['id'])
             result['omitted']['endpoints'] = max(0, count - len(endpoints))
             for endpoint in endpoints:
                 endpoint_id = node('endpoint', endpoint['id'], endpoint['url'], {'url': endpoint['url'], 'created_at': endpoint['created_at'], 'verified': False})

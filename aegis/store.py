@@ -60,6 +60,12 @@ class Store:
         return record
 
     @contextmanager
+    def read_transaction(self):
+        with self.connect() as db:
+            db.execute('BEGIN')
+            yield db
+
+    @contextmanager
     def write_transaction(self):
         with self.lock, self.connect() as db:
             db.execute('BEGIN IMMEDIATE')

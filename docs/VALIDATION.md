@@ -2864,3 +2864,51 @@ on 390×844 has no document overflow.
   gate stays open. No remote publication or external target/provider requests.
 - Owned preview completed normal shutdown before restarting current code on8790
   (PID47419/session73026); HTTP200. Existing preview data retained.
+
+
+### PostgreSQL session-aware return and native bounded graph
+
+- Stopped owned-schema PostgreSQL databases may now contain sessions during
+  reverse transfer. The exclusive runtime gate still refuses active ownership.
+  Return validates a consistent read-only snapshot, omits sessions from the new
+  SQLite database, records `omitted_session_count` and
+  `source_sessions_preserved=true`, and leaves source sessions valid. Users,
+  password hashes, records, audit chain and sequence state remain preserved.
+  `sessions_revoked` describes the returned copy, not source deletion. Stage
+  validation failure publishes nothing and preserves source authentication.
+- Added explicit native PostgreSQL graph queries within one read transaction,
+  sharing rendering with SQLite. Normal typed fields, proof ownership and
+  fingerprint checks, distinct reference counts, watermarks and filters match.
+  Output retains 25 findings, two proofs per finding and ten endpoints. Coverage
+  reads only the selected asset even with 500 sibling assets. Cases with 10,000
+  missing references and concurrent proof mutation exercise bounded rendering and
+  a consistent owner-bound snapshot. This is not a universal single-record or
+  query-time resource bound, malformed JSON type parity or production latency SLO.
+- Final graph/transfer/ownership subset: **44 passed in13.56s**
+  (`artifacts/postgres-return-graph-targeted-final.txt`). Full backend with PG
+  explicitly enabled: **497 passed in133.67s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-return-graph-backend-final.txt`). No UI edit or rebuild.
+  Test corrections used the existing notes API and isolated the large-reference
+  graph check from unrelated endpoint nodes; production limits were not weakened.
+- Wheel SHA2565be9f75e9b822640aa912beecac27b1260c4fc1b61436c201eb015e8fc0f22ea
+  byte-matches all50 service Python files. Outside-checkout installed package
+  validates native graph, real dump/restore containing a session, session omission
+  with source preservation, then starts the returned SQLite HTTP service and
+  proves old-cookie refusal, preserved-password login, notes and persisted graph
+  (`artifacts/postgres-return-graph-installed-review.json`,valid=true,
+  target_requests=1,owned_lab_requests=1,external_target_requests=0,
+  service_postgres_backend_enabled=false). An initial review script stopped before
+  HTTP startup because its socket directory variable shadowed the socket module;
+  the module alias fix and fresh full rerun passed using the same wheel.
+- Same wheel's default installed HTTP/auth/UI/maintenance/release review passes
+  (`artifacts/postgres-return-graph-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove their disposable clusters and installations.
+  Hosted CI execution remains unverified; its PG job now includes native graph.
+- This is offline migration into a new SQLite database. Live PostgreSQL backup,
+  full PostgreSQL operational restore, native HTTP selection, imports/reporting/
+  bounded audit integration and whole service lifecycle QA remain required. The
+  complete v1 gate remains open; no remote publication or external target request.
+- Owned preview completed normal shutdown before restarting current code on8790
+  (PID88314/session85734); `/api/health` and root HTTP200. Existing preview data
+  retained. Initial preview probe of nonexistent `/healthz` returned404; the
+  documented service health route succeeds.
