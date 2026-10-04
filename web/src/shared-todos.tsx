@@ -45,6 +45,7 @@ const labels: Record<string, string> = {
   assignee_id: "담당자 ID",
   assignee_name: "담당자",
   resolution_note: "완료·취소 사유",
+  check_ids: "다음 계획에 요청할 검증 도구",
 };
 function display(value: unknown): string {
   if (value === null || value === undefined || value === "") return "없음";
@@ -53,6 +54,47 @@ function display(value: unknown): string {
     : JSON.stringify(value);
 }
 
+type CheckChoice = { id: string; name: string };
+function TodoChecks({
+  choices,
+  value,
+  disabled,
+  onChange,
+}: {
+  choices: CheckChoice[];
+  value: string[];
+  disabled: boolean;
+  onChange: (ids: string[]) => void;
+}) {
+  return (
+    <fieldset className="todo-checks" disabled={disabled}>
+      <legend>다음 계획에 요청할 검증 도구</legend>
+      <p>
+        미완료·진행 중인 할 일의 요청을 다음 계획에 반영합니다. 실행은 새 계획의
+        별도 승인이 필요합니다. AI 계획 모드에서는 제목·설명·도구 요청을 설정된
+        AI 제공자에게 전송합니다.
+      </p>
+      {choices.map((c) => (
+        <label key={c.id}>
+          <input
+            type="checkbox"
+            checked={value.includes(c.id)}
+            onChange={(e) =>
+              onChange(
+                choices
+                  .filter((x) =>
+                    x.id === c.id ? e.target.checked : value.includes(x.id),
+                  )
+                  .map((x) => x.id),
+              )
+            }
+          />
+          {c.name}
+        </label>
+      ))}
+    </fieldset>
+  );
+}
 function AssigneePicker({
   value,
   selected,
@@ -182,12 +224,14 @@ function TodoEditor({
   row,
   taskId,
   captureView,
+  choices,
   onSaved,
   onClose,
 }: {
   row: Todo;
   taskId: string;
   captureView: () => () => boolean;
+  choices: CheckChoice[];
   onSaved: (row: Todo) => void;
   onClose: () => void;
 }) {
@@ -293,6 +337,12 @@ function TodoEditor({
           onChange={(e) => setDraft({ ...draft, description: e.target.value })}
         />
       </label>
+      <TodoChecks
+        choices={choices}
+        value={draft.check_ids}
+        disabled={busy}
+        onChange={(ids) => setDraft({ ...draft, check_ids: ids })}
+      />
       <AssigneePicker
         value={draft.assignee_id}
         selected={person}
@@ -466,6 +516,7 @@ function TodoHistory({
 export function SharedTodos({
   taskId,
   actorId,
+  choices,
   canOperate,
   captureView,
   state,
@@ -473,6 +524,7 @@ export function SharedTodos({
 }: {
   taskId: string;
   actorId: string;
+  choices: CheckChoice[];
   canOperate: boolean;
   captureView: () => () => boolean;
   state: TaskTodoState;
@@ -562,6 +614,9 @@ export function SharedTodos({
   const [pending, setPending] = useState<TodoCreation | null>(() =>
     readTodoPending(pendingStorage(), actorId, taskId),
   );
+  const [requestedChecks, setRequestedChecks] = useState<string[]>(
+    pending?.check_ids || [],
+  );
   const [title, setTitle] = useState(pending?.title || ""),
     [description, setDescription] = useState(pending?.description || "");
   const [person, setPerson] = useState<Person | null>(
@@ -587,6 +642,7 @@ export function SharedTodos({
       title: title.trim(),
       description: description.trim(),
       assignee_id: person?.id || null,
+      check_ids: requestedChecks,
       request_id: Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
         b.toString(16).padStart(2, "0"),
       ).join(""),
@@ -626,6 +682,7 @@ export function SharedTodos({
             setTitle("");
             setDescription("");
             setPerson(null);
+            setRequestedChecks([]);
           }
           setNotice(
             cleared
@@ -692,6 +749,12 @@ export function SharedTodos({
               onChange={(e) => setDescription(e.target.value)}
             />
           </label>
+          <TodoChecks
+            choices={choices}
+            value={requestedChecks}
+            disabled={busy || !!pending}
+            onChange={setRequestedChecks}
+          />
           <AssigneePicker
             value={person?.id || null}
             selected={person}
@@ -778,6 +841,12 @@ export function SharedTodos({
             {statuses[selected.status]} · {selected.assignee_name || "미지정"} ·
             버전 {selected.revision}
           </p>
+          <p>
+            요청한 검증 도구:{" "}
+            {(selected.check_ids || [])
+              .map((id) => choices.find((c) => c.id === id)?.name || id)
+              .join(", ") || "없음"}
+          </p>
           {selected.resolution_note && (
             <p>완료·취소 사유: {selected.resolution_note}</p>
           )}
@@ -806,6 +875,7 @@ export function SharedTodos({
               row={selected}
               taskId={taskId}
               captureView={captureView}
+              choices={choices}
               onSaved={(value) => {
                 setSelected(value);
                 setNotice("변경을 저장했습니다.");

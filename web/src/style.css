@@ -3611,3 +3611,10 @@ pre,
 .shared-todos dd { margin: 3px 0 10px; }
 .todo-assignee { display: grid; gap: 8px; min-width: 0; }
 .shared-todos button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.todo-checks { min-width: 0; margin: 0; }
+.todo-checks label { display: flex; align-items: center; gap: 8px; }
+.todo-checks input[type="checkbox"] { width: auto; flex: 0 0 auto; }
+.todo-plan-basis { margin: 18px 0; padding: 12px; border: 1px solid var(--border); }
+.todo-plan-basis summary { cursor: pointer; font-weight: 600; }
+.todo-plan-basis p { margin: 8px 0; line-height: 1.6; white-space: pre-wrap; }
+.todo-plan-basis article { padding: 12px 0; border-top: 1px solid var(--border); }

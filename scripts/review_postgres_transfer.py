@@ -320,7 +320,7 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     history=native_http('/api/worker-events?task_id=native-engine&asset_id=owned-lab&search=Worker')
                     assert history['total']==2 and all(row['worker_source']['available'] and row['worker_provenance']['status']=='matched' for row in history['items'])
                     assert not history['execution_authorized']
-                    shared_payload={'request_id':'e'*32,'title':'Installed shared review','description':'Owned manual decision'}
+                    shared_payload={'request_id':'e'*32,'title':'Installed shared review','description':'Owned manual decision','check_ids':['cookie_policy']}
                     shared_todo=native_http('/api/tasks/native-engine/todos',shared_payload)
                     assert shared_todo['revision']==1 and shared_todo['status']=='open'
                     assert native_http('/api/tasks/native-engine/todos',shared_payload)==shared_todo
@@ -328,9 +328,12 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert report['coverage'][0]['status']=='completed' and report['evidence']
                     proposal=native_http('/api/tasks/native-engine/next-plan')
                     assert proposal['available'] and not proposal['execution_authorized']
+                    assert proposal['basis']['todo_requested_checks']==['cookie_policy']
+                    assert proposal['shared_todo_context']['items'][0]['revision']==1
                     assert set(proposal['task']['checks']).isdisjoint({'security_headers','endpoint_inventory'})
                     followup=native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})
                     assert followup['status']=='pending' and followup['approved_at'] is None
+                    assert followup['shared_todo_context']==proposal['shared_todo_context']
                     assert native_http('/api/tasks/'+followup['id']+'/todos')['items'][0]['id']==shared_todo['id']
                     assert followup['followup_of']=='native-engine' and followup['planning_round']==1
                     assert native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})['id']==followup['id']
@@ -421,6 +424,8 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                     assert backup_http('/api/settings')['storage']=='postgres'
                     assert backup_http('/api/tasks/'+pending['id'])['task']['status']=='pending'
                     assert backup_http('/api/tasks/native-engine/todos')['items'][0]['status']=='done'
+                    assert backup_http('/api/tasks/native-engine/todos')['items'][0]['check_ids']==['cookie_policy']
+                    assert backup_http('/api/tasks/'+first_followup_id)['task']['shared_todo_context']==proposal['shared_todo_context']
                     assert backup_http('/api/tasks/native-engine/todos/'+shared_todo['id']+'/history')['total']==2
                     assert backup_http('/api/reports/export?format=json&task_id=native-engine')['evidence']
                     assert backup_http('/api/graph?asset_id=owned-lab&task_id=native-engine')['edges']

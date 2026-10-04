@@ -10,21 +10,23 @@ export type Todo = {
   assignee_name: string | null;
   assignee_username: string | null;
   resolution_note: string;
+  check_ids?: string[];
 };
 export type TodoDraft = Pick<
   Todo,
   "title" | "description" | "status" | "assignee_id" | "resolution_note"
->;
+> & { check_ids: string[] };
 export type TodoCreation = Pick<
   TodoDraft,
   "title" | "description" | "assignee_id"
-> & { request_id: string };
+> & { request_id: string; check_ids?: string[] };
 export const draftOf = (row: Todo): TodoDraft => ({
   title: row.title,
   description: row.description,
   status: row.status,
   assignee_id: row.assignee_id,
   resolution_note: row.resolution_note,
+  check_ids: row.check_ids || [],
 });
 const fields = [
   "title",
@@ -32,6 +34,7 @@ const fields = [
   "status",
   "assignee_id",
   "resolution_note",
+  "check_ids",
 ] as const;
 /** Only apply deliberate local edits; preserve unrelated changes made by other people. */
 export function changesOf(
@@ -40,7 +43,12 @@ export function changesOf(
 ): Partial<TodoDraft> {
   const changes: Partial<TodoDraft> = Object.fromEntries(
     fields
-      .filter((key) => base[key] !== draft[key])
+      .filter((key) =>
+        key === "check_ids"
+          ? JSON.stringify([...base.check_ids].sort()) !==
+            JSON.stringify([...draft.check_ids].sort())
+          : base[key] !== draft[key],
+      )
       .map((key) => [key, draft[key]]),
   );
   if (
@@ -73,6 +81,13 @@ function valid(value: unknown): value is TodoCreation {
       (typeof p.assignee_id === "string" &&
         p.assignee_id.length > 0 &&
         p.assignee_id.length <= 80)) &&
+    (p.check_ids === undefined ||
+      (Array.isArray(p.check_ids) &&
+        p.check_ids.length <= 6 &&
+        new Set(p.check_ids).size === p.check_ids.length &&
+        p.check_ids.every(
+          (id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(id),
+        ))) &&
     typeof p.request_id === "string" &&
     /^[a-f0-9]{32}$/.test(p.request_id)
   );
@@ -92,6 +107,7 @@ export function readTodoPending(
           description: p.description,
           assignee_id: p.assignee_id,
           request_id: p.request_id,
+          ...(p.check_ids === undefined ? {} : { check_ids: p.check_ids }),
         }
       : null;
   } catch {

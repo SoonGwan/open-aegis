@@ -1,6 +1,8 @@
 """Evidence-based, bounded follow-up proposals; proposal reads never execute tools."""
 import hashlib
 import json
+from contextlib import nullcontext
+from . import todos
 
 from .checks import CATALOG, CHECK_IDS
 from .coverage import task_rows
@@ -14,8 +16,8 @@ RETRYABLE = {'failed', 'cancelled', 'interrupted', 'not_recorded', 'not_started'
 NextPlanConflict = PlanningConflict
 
 
-def propose(store, task_id, policy):
-    with store.read_transaction() as db:
+def propose(store, task_id, policy, *, connection=None):
+    with (nullcontext(connection) if connection is not None else store.read_transaction()) as db:
         source = store.get('tasks', task_id, connection=db)
         if source is None:
             raise LookupError('작업이 없습니다.')
@@ -65,7 +67,9 @@ def propose(store, task_id, policy):
                  for r in rows]
         missing = [c['id'] for c in CATALOG if c['id'] not in seen_checks]
         retry = [c['id'] for c in CATALOG if any(r['check'] == c['id'] and r['status'] in RETRYABLE for r in rows)]
-        selected = [c['id'] for c in CATALOG if c['id'] in missing or c['id'] in retry]
+        context=todos.planning_context(store,task_id,connection=db)
+        requested=todos.requested_checks(context)
+        selected = [c['id'] for c in CATALOG if c['id'] in missing or c['id'] in retry or c['id'] in requested]
         task = {'name': ('다음 계획 · ' + source['name'])[:120], 'goal': source.get('goal', ''),
                 'asset_ids': ids, 'checks': selected, 'workers': source.get('workers', 3),
                 'planner': source.get('planner', 'rules'),
@@ -75,7 +79,7 @@ def propose(store, task_id, policy):
                  'round': round_number, 'ancestors': ancestors,
                  'scope_snapshot': scopes, 'assets': assets, 'coverage': cells,
                  'task': task, 'tool_contracts': contracts_for(selected) if selected else None,
-                 'execution_policy': policy}
+                 'execution_policy': policy, 'shared_todo_context':context}
         fingerprint = hashlib.sha256(json.dumps(basis, sort_keys=True, ensure_ascii=False,
                                                 allow_nan=False, separators=(',', ':')).encode()).hexdigest()
         limited = round_number >= MAX_ROUNDS
@@ -86,7 +90,8 @@ def propose(store, task_id, policy):
                 'available': bool(selected) and not limited and not history_limited and accepted is None,
                 'reason': 'already_accepted' if accepted else ('history_limit' if history_limited else 'round_limit' if limited else 'results_followup' if selected else 'no_remaining_checks'),
                 'task': task if selected and not limited and not history_limited else None,
-                'basis': {'missing_checks': missing, 'retry_checks': retry, 'coverage': cells,
+                'shared_todo_context':context,
+                'basis': {'missing_checks': missing, 'retry_checks': retry, 'todo_requested_checks':requested, 'coverage': cells,
                           'skipped_cells': [r['id'] for r in rows if r['status'] == 'skipped'],
                           'repeated_completed_cells': [r['id'] for r in rows if r['status'] == 'completed' and r['check'] in selected]},
                 'scope_snapshot': assets, 'execution_policy': policy,

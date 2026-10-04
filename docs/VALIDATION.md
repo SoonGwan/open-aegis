@@ -4220,3 +4220,55 @@ on 390×844 has no document overflow.
   requests0, task/next-plan creation POSTs0 and temporary data removed
   (`...navigation-fixture-cleanup.txt`). Final preview health/static HTML recorded
   (`...navigation-preview-health.json`).
+
+
+## Shared todo requests and frozen planning context — 2026-10-05
+
+- Current service: explicit check_ids for shared todos, canonical known catalog IDs,
+  old omitted-field creation digest replay and empty update compatibility. Active
+  requests join next-plan candidates without changing existing assets or approval.
+  Closed requests never suppress actual failure retry or mark coverage successful.
+- Family-wide context includes current ID/revision/status/title/description/check
+  requests/decision reason, validates every row and checksum, and refuses over100
+  items or64KiB UTF-8 without truncation. Follow-up creation recomputes its proposal
+  inside the final write transaction; changed or corrupted context refuses409 and
+  leaves no child/coverage partial commit. Previously accepted requests replay the
+  existing immutable pending plan. Replan/retry also capture current family context.
+- Rule/AI order uses stored context and intersects approved tools. Actual approved
+  owned loopback execution with mocked completion verifies frozen human text after
+  a live edit, exact six-field active item projection, call provenance and refusal
+  of injected tools/corrupt context before provider dispatch. No commercial provider
+  or operational target tested. Arbitrary prose goal decomposition and automatic
+  event-driven planning remain open.
+- Related SQLite/native PostgreSQL contracts: **68 passed35.75s**
+  (`artifacts/todo-planner-targeted.txt`). Full native-enabled suite:
+  **771 passed269.89s**, one existing Starlette test-client deprecation warning
+  (`artifacts/todo-planner-full.txt`). New native cases are included in CI configuration;
+  hosted CI was not executed. Frontend: **92 passed435.48ms**; final TypeScript/Vite
+  build1.58s (`...node.txt`, `...build.txt`). No backend edits after the full run.
+- Wheel SHA256 **ad9e635d82a1ec7cdd4c25cb6d888b7f3a9e70694040417d30993ed4065a6f89**,
+  all66 recursive service Python files byte-for-byte match checkout
+  (`artifacts/todo-planner-wheel-proof.json`). Installed default runtime and native
+  PostgreSQL16.15 reviews valid (`...installed-runtime.json`, `...installed-postgres.json`).
+  Native review now verifies check requests/proposal snapshot/frozen child and exact
+  context preservation after pg_dump/restore. Native owned lab requests3, owned source1,
+  external targets/sources0; default target requests0. Final UI review uses the last
+  separate build. Docker/hosted CI and production PostgreSQL are not claimed.
+- Actual built desktop: endpoint request joins skipped-but-not-successful check to
+  proposal; changing association to cookie after GET refuses stale POST; fresh GET
+  creates pending child. Child snapshot stays at version2 while live item changes
+  title/version3 (`...ui-stale.json`, `...ui-frozen.json`). No execution approval.
+  Committed create with substituted503 freezes CORS selection; same-tab reload restores
+  checked/disabled control and same-payload retry confirms one item
+  (`...ui-lost-restored.txt`, `...ui-lost-confirmed.txt`). Final AI export disclosure
+  visible at creation, stored context and proposal; final desktop screenshot inspected.
+- Final320/390px synthetic documents measure client/scroll320/320 and390/390
+  (`...ui-widths.json`). Intentional table scrolling/hidden labels and existing320px
+  report action internal overflow remain; no document/todo width overflow. Actual
+  mobile touch/zoom, screen reader and full role-race journeys are unverified.
+- Main preview restarted preserving artifacts/preview-data; health ok, final
+  JSindex-BQ8INzWl.js / CSSindex-Chq8UNaO.css (`...preview-health.json`).
+  Current increment is partial v1 progress, not full ARTEX parity or v1 completion.
+- Owned fixture/tabs/flags cleaned up; lifespan reported target requests0, ordinary
+  task creation POSTs0, next-plan POSTs2 (one stale refusal, one accepted pending
+  plan), temporary data removed (`artifacts/todo-planner-ui-fixture.txt`).

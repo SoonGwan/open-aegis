@@ -12,6 +12,89 @@ type Cell = {
   check: string;
   status: string;
 };
+export type TodoPlanContext = {
+  format: string;
+  root_task_id: string;
+  fingerprint: string;
+  items: {
+    id: string;
+    revision: number;
+    status: string;
+    title: string;
+    description: string;
+    check_ids: string[];
+  }[];
+};
+export function TodoPlanBasis({
+  context,
+  names,
+  planner,
+}: {
+  context?: TodoPlanContext;
+  names: Record<string, string>;
+  planner: string;
+}) {
+  if (!context) return null;
+  if (
+    !Array.isArray(context.items) ||
+    context.items.length > 100 ||
+    context.items.some(
+      (row) =>
+        !row ||
+        typeof row.id !== "string" ||
+        !Number.isSafeInteger(row.revision) ||
+        row.revision < 1 ||
+        typeof row.status !== "string" ||
+        typeof row.title !== "string" ||
+        typeof row.description !== "string" ||
+        !Array.isArray(row.check_ids) ||
+        row.check_ids.some((id) => typeof id !== "string"),
+    )
+  )
+    return <p role="alert">저장된 할 일 계획 맥락의 형식을 확인하세요.</p>;
+  return (
+    <section
+      className="next-plan todo-plan-basis"
+      aria-label="계획에 저장된 공유 할 일"
+    >
+      <details>
+        <summary>계획에 저장된 공유 할 일 · {context.items.length}개</summary>
+        <p>
+          계획 생성 시점의 항목과 버전입니다. 현재 할 일과 다를 수 있으며 새
+          내용으로 계획을 바꾸려면 재계획하세요.
+        </p>
+        {planner === "ai" && (
+          <p>
+            미완료·진행 중 항목의 제목·설명·도구 요청을 설정된 AI 제공자에게
+            전송해 승인된 도구의 순서를 정합니다.
+          </p>
+        )}
+        {context.items.map((row) => (
+          <article key={row.id}>
+            <strong>{row.title}</strong>
+            <p>
+              버전 {row.revision} ·{" "}
+              {(
+                {
+                  open: "미완료",
+                  in_progress: "진행 중",
+                  done: "완료",
+                  cancelled: "취소",
+                } as Record<string, string>
+              )[row.status] || row.status}
+            </p>
+            <p>{row.description}</p>
+            <p>
+              요청 도구:{" "}
+              {row.check_ids.map((id) => names[id] || id).join(", ") || "없음"}
+            </p>
+          </article>
+        ))}
+        {!context.items.length && <p>참조한 공유 할 일이 없습니다.</p>}
+      </details>
+    </section>
+  );
+}
 type Proposal = {
   format: "aegis-next-plan-v1";
   source_task_id: string;
@@ -40,9 +123,21 @@ type Proposal = {
   basis: {
     missing_checks: string[];
     retry_checks: string[];
+    todo_requested_checks?: string[];
     coverage: Cell[];
     skipped_cells: string[];
     repeated_completed_cells: string[];
+  };
+  shared_todo_context?: {
+    fingerprint: string;
+    items: {
+      id: string;
+      revision: number;
+      status: string;
+      title: string;
+      description: string;
+      check_ids: string[];
+    }[];
   };
   accepted_task_id?: string | null;
   accepted_kind?: "followup" | "retry" | null;
@@ -228,6 +323,41 @@ export function NextPlan({
               </p>
               <p>추가 검증: {checkNames(proposal.basis.missing_checks)}</p>
               <p>재시도 검증: {checkNames(proposal.basis.retry_checks)}</p>
+              <p>
+                공유 할 일의 검증 요청:{" "}
+                {checkNames(proposal.basis.todo_requested_checks || [])}
+              </p>
+              {proposal.shared_todo_context && (
+                <section aria-label="다음 계획이 참조한 공유 할 일">
+                  <h5>참조한 공유 할 일</h5>
+                  <p>
+                    생성 시점의 항목과 버전을 저장합니다. AI 계획을 선택하면
+                    미완료·진행 중 항목의 제목·설명·도구 요청을 설정된
+                    제공자에게 전송합니다.
+                  </p>
+                  {proposal.shared_todo_context.items.map((row) => (
+                    <article key={row.id}>
+                      <strong>{row.title}</strong>
+                      <p>
+                        버전 {row.revision} ·{" "}
+                        {(
+                          {
+                            open: "미완료",
+                            in_progress: "진행 중",
+                            done: "완료",
+                            cancelled: "취소",
+                          } as Record<string, string>
+                        )[row.status] || row.status}{" "}
+                        · {checkNames(row.check_ids)}
+                      </p>
+                    </article>
+                  ))}
+                  {!proposal.shared_todo_context.items.length && (
+                    <p>참조할 공유 할 일이 없습니다.</p>
+                  )}
+                </section>
+              )}
+
               <p>
                 {proposal.task.workers}개 Worker ·{" "}
                 {proposal.task.planner === "ai"

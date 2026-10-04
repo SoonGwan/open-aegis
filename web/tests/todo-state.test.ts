@@ -138,3 +138,43 @@ test("a new terminal decision sends its explicit reason even when text equals th
     resolution_note: "Manual review",
   });
 });
+
+test("check association compares by value and preserves concurrent tool choices during rebase", () => {
+  const base = { ...row, check_ids: ["cookie_policy", "cors_policy"] };
+  assert.deepEqual(
+    changesOf(
+      draftOf(base),
+      draftOf({ ...base, check_ids: ["cors_policy", "cookie_policy"] }),
+    ),
+    {},
+  );
+  const latest = { ...base, revision: 2, check_ids: ["security_headers"] };
+  const draft = { ...draftOf(base), description: "My description" };
+  assert.deepEqual(rebaseDraft(draftOf(base), draft, latest), {
+    ...draftOf(latest),
+    description: "My description",
+  });
+  assert.deepEqual(
+    changesOf(draftOf(base), { ...draftOf(base), check_ids: [] }),
+    { check_ids: [] },
+  );
+});
+test("pending check choices survive lost response; legacy requests remain byte-compatible and invalid arrays are refused", () => {
+  const s = storage();
+  const request = { ...pending, check_ids: ["cookie_policy", "cors_policy"] };
+  assert.equal(writeTodoPending(s, "a", "t", request), true);
+  assert.deepEqual(readTodoPending(s, "a", "t"), request);
+  assert.equal(
+    writeTodoPending(s, "a", "t", {
+      ...pending,
+      check_ids: ["cookie_policy", "cookie_policy"],
+    }),
+    false,
+  );
+  assert.equal(
+    writeTodoPending(s, "a", "t", { ...pending, check_ids: ["../bad"] }),
+    false,
+  );
+  assert.equal(writeTodoPending(s, "a", "t", pending), true);
+  assert.deepEqual(readTodoPending(s, "a", "t"), pending);
+});

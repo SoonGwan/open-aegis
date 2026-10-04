@@ -291,10 +291,12 @@ def create_app(data_dir=None, allow_private=None):
                     tool_contracts=contracts_for(data.checks), replan_of=replacing['id'] if replacing else None)
         if attempt_source:
             task.update(planning_history.metadata(attempt_source))
+            try:task['shared_todo_context']=todos.planning_context(store,attempt_source['id'])
+            except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         if followup:
             source, proposal = followup
             task.update(followup_of=source['id'], followup_fingerprint=proposal['fingerprint'],
-                        planning_round=proposal['planning_round'])
+                        planning_round=proposal['planning_round'],shared_todo_context=proposal['shared_todo_context'])
         records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]
         if followup:
             records.append(('tasks', {**source, 'next_plan_id': task['id'],
@@ -309,8 +311,17 @@ def create_app(data_dir=None, allow_private=None):
                            for row in iter_task_rows(store, replacing) if row['status'] not in
                            ('completed','skipped','failed','cancelled','interrupted','not_recorded'))
         # Source, replacement and both coverage matrices commit or roll back together.
-        store.put_many(records)
-        store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
+        if followup:
+            with store.write_transaction() as db:
+                try:fresh=next_plan.propose(store,source['id'],engine.policy.public(),connection=db)
+                except (planning_history.PlanningConflict,LookupError) as exc:raise HTTPException(409,str(exc)) from exc
+                if not fresh['available'] or fresh['fingerprint']!=proposal['fingerprint'] or assets!=fresh['scope_snapshot']:
+                    raise HTTPException(409,'계획 근거·공유 할 일이 변경되었습니다. 제안을 다시 확인하세요.')
+                store.put_many(records,connection=db)
+                store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.',connection=db)
+        else:
+            store.put_many(records)
+            store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
         if replacing:
             store.event(replacing['id'], '현재 범위와 도구의 새 승인 계획으로 대체했습니다.', detail={'replaced_by': task['id']})
         return task
