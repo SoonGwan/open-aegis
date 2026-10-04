@@ -23,7 +23,7 @@ def propose(store, task_id, policy, *, connection=None):
         if source is None:
             raise LookupError('작업이 없습니다.')
         if (not isinstance(source, dict) or source.get('id') != task_id
-                or source.get('status') not in TERMINAL or not source.get('approved_at')):
+                or source.get('status') not in TERMINAL or not goal_planner.has_execution_approval(source)):
             raise NextPlanConflict('승인되어 종료된 작업의 결과에서만 다음 계획을 제안할 수 있습니다.')
         if source.get('observation_execution'):
             raise NextPlanConflict('관찰 응답 계획은 출처 작업의 관찰 목록에서 새 선택 계획을 만드세요. 기본 자산 검증의 완료 근거로 사용하지 않습니다.')
@@ -31,8 +31,6 @@ def propose(store, task_id, policy, *, connection=None):
             raise NextPlanConflict('목표 발견 재검증은 원래 과제의 발견에서 새 재검증 계획을 만드세요.')
         goal_planner.require_task(source)
         goal=source.get('goal_plan')
-        if goal and not goal_planner.has_execution_approval(source):
-            raise NextPlanConflict('원래 목표의 실행 승인 기록을 확인하세요.')
         history = read_history(store, task_id, connection=db)
         if goal and any(attempt.get('goal_plan')!=goal for attempt in history):
             raise NextPlanConflict('목표 과제와 다른 후속 이력이 있습니다. 새 목표 초안을 검토하세요.')
@@ -43,7 +41,7 @@ def propose(store, task_id, policy, *, connection=None):
                 or source.get('planner', 'rules') not in ('rules', 'ai')):
             raise NextPlanConflict('원본 작업의 이름·목표·Worker 설정을 확인하세요.')
         round_number = source.get('planning_round', 0)
-        seen_checks = {check for attempt in history if attempt.get('approved_at') for check in attempt['checks']}
+        seen_checks = {check for attempt in history if goal_planner.has_execution_approval(attempt) for check in attempt['checks']}
         ancestors = [{k: t.get(k) for k in ('id', 'planning_round', 'checks', 'approved_at', 'status',
                      'next_plan_id', 'next_plan_fingerprint', 'scope_snapshot', 'tool_contracts',
                      'followup_of', 'followup_fingerprint', 'retry_of', 'replan_of', 'replaced_by', 'retry_successor', 'goal_plan')}
@@ -56,7 +54,7 @@ def propose(store, task_id, policy, *, connection=None):
         latest = {}
         current_revisions = {a['id']: a.get('revision', 1) for a in assets}
         for attempt in reversed(history):
-            if not attempt.get("approved_at"):continue
+            if not goal_planner.has_execution_approval(attempt):continue
             try:
                 require_contracts(attempt)
                 compatible = True

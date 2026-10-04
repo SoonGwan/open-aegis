@@ -10,6 +10,7 @@ from tests.test_next_plan import (
     test_no_remaining_checks_produces_no_plan_and_read_never_executes as test_native_followup_finished,
     test_old_round_completion_becomes_stale_on_asset_revision_change as test_native_historical_revision,
     test_eight_round_limit_prevents_endless_failed_check_loop as test_native_round_limit,
+    test_followup_refuses_invalid_execution_approval_without_changing_proof as test_native_followup_approval,
 )
 
 

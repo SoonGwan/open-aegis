@@ -9,19 +9,13 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 from .checks import CATALOG, CHECK_IDS
 from .tool_contracts import contracts_for
 from .worker_dependencies import validate as dependencies
-from .planning_history import PlanningConflict
+from .planning_history import PlanningConflict, has_execution_approval
 from . import todos, observation_context, call_ledger
 from .llm import completion, token_usage
 from .costs import price_snapshot, estimate
 from .store_util import now
 
 FORMAT = 'aegis-goal-plan-v1'
-
-
-def has_execution_approval(task):
-    """A boolean/string or missing timestamp is not a stored execution approval."""
-    value=task.get('approved_at')
-    return type(value) in (int,float) and 0<value<=1.7976931348623157e308
 
 
 class DraftInput(BaseModel):

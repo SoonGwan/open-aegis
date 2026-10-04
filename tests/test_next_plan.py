@@ -15,6 +15,36 @@ def completed(client, lab, checks=None):
     return original, '/api/tasks/'+original['id']+'/next-plan'
 
 
+@pytest.mark.parametrize('approval', [None, False, True, 0, -1, '1234', 'invalid'])
+@pytest.mark.parametrize('location', ['source', 'ancestor', 'accepted_source'])
+def test_followup_refuses_invalid_execution_approval_without_changing_proof(client, lab, approval, location):
+    original, path = completed(client, lab)
+    store = client.app.state.store
+    accepted_fingerprint = None
+    if location in ('ancestor', 'accepted_source'):
+        proposal = client.get(path).json()
+        child = client.post(path, json={'fingerprint': proposal['fingerprint']}).json()
+        if location == 'ancestor':
+            assert client.post('/api/tasks/'+child['id']+'/approve').status_code == 200
+            finish(client, child['id'])
+            path = '/api/tasks/'+child['id']+'/next-plan'
+        else:
+            accepted_fingerprint = proposal['fingerprint']
+    reviewed = client.get(path)
+    assert reviewed.status_code == 200, reviewed.text
+    store.patch('tasks', original['id'], approved_at=approval)
+    proof = store.get('coverage', original['id']+':'+original['asset_ids'][0]+':security_headers')
+    before = {kind: store.count(kind) for kind in ('tasks', 'coverage', 'evidence')}
+    event_count = store.count('events')
+    requests = list(lab[1].requests)
+    assert client.get(path).status_code == 409
+    assert client.post(path, json={'fingerprint': accepted_fingerprint or reviewed.json()['fingerprint']}).status_code == 409
+    assert {kind: store.count(kind) for kind in before} == before
+    assert store.count('events') == event_count
+    assert store.get('coverage', proof['id']) == proof and proof['status'] == 'completed'
+    assert lab[1].requests == requests
+
+
 def test_real_results_offer_unattempted_checks_and_chain_finishes_without_oscillation(client, lab):
     original, path = completed(client, lab)
     requests = list(lab[1].requests)

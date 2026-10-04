@@ -16,6 +16,12 @@ class PlanningConflict(ValueError):
     pass
 
 
+def has_execution_approval(task):
+    """A boolean/string or missing timestamp is not a stored execution approval."""
+    value = task.get('approved_at')
+    return type(value) in (int, float) and 0 < value <= 1.7976931348623157e308
+
+
 def record(store, id, db):
     if type(id) is not str or not id:raise PlanningConflict('작업 ID를 확인하세요.')
     task = store.get('tasks', id, connection=db)
@@ -39,7 +45,7 @@ def record(store, id, db):
         raise PlanningConflict('계획의 자산·도구·회차 기록을 확인하세요.') from None
     forwards = [key for key in ('next_plan_id', 'retry_successor', 'replaced_by') if task.get(key)]
     if (len(forwards) > 1
-            or (task.get('next_plan_id') and (task['status'] not in TERMINAL or not task.get('approved_at')))
+            or (task.get('next_plan_id') and (task['status'] not in TERMINAL or not has_execution_approval(task)))
             or (task.get('retry_successor') and task['status'] not in {'failed', 'interrupted', 'stopped'})
             or (task.get('replaced_by') and (task['status'] != 'rejected'
                 or task.get('termination_reason') != 'replanned' or task.get('approved_at')))):
@@ -106,7 +112,7 @@ def history(store, task_id, *, connection=None):
                         or not current.get('followup_fingerprint')
                         or parent.get('next_plan_fingerprint') != current.get('followup_fingerprint')
                         or parent['asset_ids'] != current['asset_ids']
-                        or parent.get('status') not in TERMINAL or not parent.get('approved_at')):
+                        or parent.get('status') not in TERMINAL or not has_execution_approval(parent)):
                     raise PlanningConflict('후속 계획의 회차·원본 연결이 일치하지 않습니다.')
             else:
                 if current.get('followup_of') or current.get('followup_fingerprint'):

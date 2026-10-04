@@ -4871,3 +4871,44 @@ on 390×844 has no document overflow.
   alive and after committed pending plans. It does not establish hardware power
   loss, lost/unflushed storage writes, a database crash during active work, PITR,
   remote-backup restoration or supported-version upgrades. Those gates remain open.
+
+### Ordinary follow-up approval-record consistency (2026-10-05)
+
+- Ordinary next-plan source/history checks previously accepted truthy boolean,
+  negative-number or string approval metadata. The corrected pre-change HTTP
+  reproduction produced 16 failures and 12 passes across source/ancestor cases on
+  SQLite/native PostgreSQL (`artifacts/followup-approval-before-corrected.txt`).
+  The first attempt used a nonexistent event-page helper and is not behavioral
+  evidence (`...-before.txt`); replacing it with the existing event count API made
+  the reproduction meaningful before service changes.
+- Shared `planning_history.has_execution_approval` requires a positive finite
+  numeric timestamp and remains available through the goal-planner import. Next
+  proposals, approved history evidence and earlier-round links use this guard.
+  Corrupt source approval also refuses already-accepted request replay through
+  history validation. Rejections retain stored completion proof and create no
+  task/coverage/evidence/event or target request.
+- Seven invalid approval representations × direct source/ancestor/already-accepted
+  source × two backends cover 42 new cases. Related next-plan/goal-round/goal-evidence
+  tests: **172 passed**,155.94s (`...-targeted.txt`). Final full backend suite with
+  owned PostgreSQL enabled: **1035 passed**,506.30s (`...-full.txt`), one upstream
+  Starlette deprecation warning. No service/test edits during or after the full run.
+- Standard isolated wheel build succeeded (`...-wheel-build-isolated.txt`); the
+  no-build-isolation attempt lacked local bdist_wheel and failed (`...-wheel-build.txt`).
+  Final wheel SHA256
+  `26aef0a38a9a39ad4e75cef9eafe1ed7ab26bcb7cc3ee0d3b3f8d6baa173ba40`;
+  all72 service Python files byte-match the checkout (`...-wheel-proof.json`).
+  Installed default runtime with the retained frontend passed, target requests0
+  (`...-installed-runtime.txt`). Installed SQLite/native goal crash recovery passed
+  (`...-installed-recovery.txt`), three owned service SIGKILLs and five owned GETs
+  per backend, audit43→99, zero preapproval/external target requests. PostgreSQL
+  immediate shutdown confirmed WAL recovery and preserved its audit checkpoint.
+  API authorization is skipped without policy; semantic goal verification is false.
+- Temporary installations removed (`...-installed-cleanup.json`). Owned preview
+  had zero active tasks and was cleanly restarted; exact record counts/task states
+  persist, health ok, anonymous next-plan401 (`...-preview-before.json`,
+  `...-preview-health.json`). Frontend retains index-KKOOlw2R.js; no frontend
+  rebuild or fresh browser/unit run was needed for this backend-only change.
+- This is stored-metadata consistency, not approval authenticity. Workspace legacy
+  coverage display retains its existing compatibility contract. Sparse retry
+  execution, full mobile/screen-reader journeys, actual container/hosted CI runs,
+  semantic goal evaluation and other full v1 gates remain open.
