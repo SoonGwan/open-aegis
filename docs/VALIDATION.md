@@ -1113,3 +1113,46 @@ on 390×844 has no document overflow.
 - Main app shuts down normally and restarts with the new API. Health and data are checked
   after restart. Full mobile/screen-reader/zoom, late-response timing races, unsaved draft
   restoration and retention/load remain unverified; broader v1 gates stay open.
+
+## Built-in tool contracts and result admission (2026-10-04)
+
+- New plans store selected check contracts and a process-start package Python-source
+  compatibility fingerprint. Server approval and pre-Planner execution reject missing,
+  changed, extra-field and bool/float-version manifests; Worker admission checks again
+  before its base GET. Approval events retain the snapshot. Check outputs are validated
+  in full before any finding/observation write, with JSON structure/count/size limits,
+  exact finding fields/check identity, finite numbers and scoped query-free observed URLs.
+  This is fixed built-in check admission, not external registration or code isolation.
+- **17 new backend cases** cover independent/deterministic manifests, legacy/version/hash/
+  type/field mismatch with zero requests, held-queue rejection before Planner, invalid
+  second finding rejecting the entire check without marker leakage, oversized/nonfinite/
+  mixed-skip/foreign observation results and valid results. Final full backend **265 tests
+  pass** in 82.50 seconds with the existing Starlette/httpx warning. An earlier full run
+  had one setup error because a concurrent Vite rebuild temporarily removed dist/assets;
+  that run is not reported as passing. Rebuilds and final full backend verification are
+  sequential thereafter.
+- Two frontend contract tests cover field-order independence, selected order, missing/
+  changed snapshots, versions, permissions, result budgets, method and extra fields.
+  Full frontend **39 passes** and TypeScript/Vite build passes: `index-DR8T903p.js` /
+  `index-fNMAZXjt.css`. New layout uses existing semantic colors; selected contrast/token
+  checks pass. Actual browser review finds adjacent contract paragraphs too close;
+  explicit 12px spacing is added and recaptured, with read-only bounds confirming separation.
+- Isolated built UI displays old-fingerprint and legacy approval cards disabled with
+  guidance, and the current card enabled. Keyboard Enter expands contract details.
+  `artifacts/v1-tool-contract-stale.jpg` is captured and visually inspected. The current
+  synthetic task is approved and reaches queued state; fixture submissions are deliberately
+  held so target traffic stays **zero**. Clean fixture shutdown marks it stopped. The
+  screenshot precedes the final extra-field UI guard, which does not alter its layout.
+- Rebuilt wheel SHA-256:
+  `37af81fc37ea421c079f35eee7a45e90d0d4d9b9bf297f388691253f888bbee5`.
+  Installed runtime rehearsal succeeds outside checkout, exercising resource-based source
+  fingerprint initialization and new-plan creation, prior auth/schema/CLI/audit/maintenance
+  checks, clean shutdown and lease release with zero target requests. A first harness
+  invocation omitted required CLI arguments and was corrected before successful execution.
+- Final main process restarts normally, health returns 200, assets stay two and target
+  traffic stays three. Contracts are compatibility data, not signed attestation or live
+  code/OS/dependency measurement. Result validation does not bound producer CPU/RSS or
+  automatically scrub arbitrary future evidence. UI guidance is not authorization; JSON
+  numeric representation may collapse in JavaScript, while server comparison stays strict.
+  Legacy pending tasks require new plans. External tool input/registration/execution
+  isolation, extension review, whole mobile/readers/zoom and full v1 remain incomplete.

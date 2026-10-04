@@ -51,6 +51,8 @@ import { useNavigation } from "./navigation";
 import { FindingRecords } from "./finding-records";
 import { TaskRecords } from "./task-records";
 import { ChatPanel } from "./chat-panel";
+import { ToolContracts } from "./ToolContracts";
+import { toolContractsMatch, type ToolManifest } from "./tool-contract-state";
 import {
   readNavigation,
   readDetail,
@@ -97,6 +99,7 @@ type Task = {
   retest_of?: string;
   retry_of?: string;
   execution_policy?: ExecutionPolicy;
+  tool_contracts?: ToolManifest;
   termination_reason?: string | null;
   queue_wait_ms?: number;
 };
@@ -152,6 +155,7 @@ type Observation = {
   created_at: number;
 };
 type Settings = {
+  tool_contracts?: ToolManifest;
   version: string;
   lab_mode: boolean;
   llm_configured: boolean;
@@ -1817,6 +1821,8 @@ function App() {
                       {t.execution_policy && (
                         <PolicySummary policy={t.execution_policy} />
                       )}
+                      <ToolContracts snapshot={t.tool_contracts} current={settings?.tool_contracts}
+                        selected={t.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))} pending />
                       <div className="approval-buttons">
                         <button
                           disabled={busy || !canOperate}
@@ -1834,7 +1840,7 @@ function App() {
                         </button>
                         <button
                           className="primary"
-                          disabled={busy || !canApprove}
+                          disabled={busy || !canApprove || !toolContractsMatch(t.tool_contracts, t.checks, settings?.tool_contracts)}
                           onClick={() =>
                             void act(
                               "/tasks/" + t.id + "/approve",
@@ -2632,6 +2638,9 @@ function App() {
                 <PolicySummary policy={selectedTask.execution_policy} />
               </details>
             )}
+            <ToolContracts snapshot={selectedTask.tool_contracts} current={settings?.tool_contracts}
+              selected={selectedTask.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))}
+              pending={selectedTask.status === "pending"} />
             {selectedTask.retry_of && (
               <p className="subtle">
                 원본 작업: {selectedTask.retry_of} · 현재 범위로 만든 재실행
@@ -2710,7 +2719,7 @@ function App() {
               {selectedTask.status === "pending" ? (
                 <button
                   className="primary"
-                  disabled={busy || !canApprove}
+                  disabled={busy || !canApprove || !toolContractsMatch(selectedTask.tool_contracts, selectedTask.checks, settings?.tool_contracts)}
                   onClick={async () => {
                     await act("/tasks/" + selectedTask.id + "/approve");
                     closeTask();

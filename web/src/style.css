@@ -3434,6 +3434,19 @@ pre,
 .chat-recovery p:last-child {
   margin: 10px 0 0;
 }
+.tool-contract-summary {
+  margin: 16px 0;
+}
+.tool-contract-summary > p {
+  margin: 0 0 12px;
+}
+.tool-contract-summary details > p {
+  margin: 12px 0;
+}
+.tool-contract-summary code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
 
 @media (max-width: 600px) {
   .report-card {

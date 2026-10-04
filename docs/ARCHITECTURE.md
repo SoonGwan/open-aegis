@@ -41,6 +41,12 @@ An LLM can reorder the selected checks only. Its result must be an exact
 permutation of approved check IDs. Provider errors and invalid plans fall
 back to the deterministic order and are visible in the activity log.
 
+`aegis/tool_contracts.py` snapshots built-in check contracts and a process-start Python
+source compatibility fingerprint into new plans. Approval, execution and Worker admission
+compare it before target requests. Complete check results pass shape/size/count/scope
+validation before any finding is written. This is not an external plugin loader, code
+signature or process sandbox; see [TOOL-CONTRACTS.md](TOOL-CONTRACTS.md).
+
 ## Evidence and conclusions
 
 A finding fingerprint is derived from asset ID, check ID, and observation

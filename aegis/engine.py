@@ -8,6 +8,7 @@ from .runtime import ExecutionPolicy, TaskControl, OriginLimiter
 from .dns import resolver
 
 from .checks import CATALOG, CHECK_IDS, run_check
+from .tool_contracts import require_contracts, validate_result, ToolContractMismatch
 from .network import Transport
 from .llm import completion
 from .store import identifier, now
@@ -77,6 +78,7 @@ class Engine:
             task = self.store.get('tasks', task_id)
             if task['status'] != 'pending':
                 raise ValueError('승인 대기 중인 작업만 실행할 수 있습니다.')
+            require_contracts(task)
             if task.get('execution_policy') and task['execution_policy'] != self.policy.public():
                 raise ValueError('서버 실행 정책이 변경되었습니다. 현재 정책으로 새 계획을 만드세요.')
             for snapshot in task['scope_snapshot']:
@@ -87,7 +89,7 @@ class Engine:
                     raise ValueError('계획 생성 후 자산이 수정되었습니다. 현재 범위로 새 계획을 만드세요.')
             self.stops[task_id] = threading.Event()
             self.store.patch('tasks', task_id, status='queued', approved_at=now(), execution_policy=self.policy.public())
-            self.store.event(task_id, '등록된 범위와 검증 도구를 승인했습니다.', detail={'checks': task['checks'], 'asset_ids': task['asset_ids']})
+            self.store.event(task_id, '등록된 범위와 검증 도구를 승인했습니다.', detail={'checks': task['checks'], 'asset_ids': task['asset_ids'], 'tool_contracts': task['tool_contracts']})
             future=self.pool.submit(self.run, task_id)
             self.futures[task_id]=future
             def cleanup(_):
@@ -167,6 +169,7 @@ class Engine:
         self.store.patch('tasks', task_id, status='running', started_at=task['started_at'], queue_wait_ms=round((task['started_at']-(task.get('approved_at') or task['started_at']))*1000))
         self.store.event(task_id, 'Planner가 검증 계획을 준비합니다.')
         try:
+            require_contracts(task)
             checks = self.plan(task, control)
             control.check()
             self.store.patch('tasks', task_id, plan=checks)
@@ -197,17 +200,19 @@ class Engine:
                              '중지되어 실행하지 못했습니다.' if status == 'stopped' else '작업 종료 전 결과를 기록하지 못했습니다.')
             self.store.patch('tasks', task_id, status=status, finished_at=now(), errors=errors, termination_reason='timeout' if timed_out else ('shutdown' if self.closed else 'operator_stop') if stop.is_set() else None)
             self.store.event(task_id, '작업 종료: ' + status, 'warning' if errors else 'info', {'errors': errors})
-        except Exception:
+        except Exception as exc:
             timed_out = control.expired() and not stop.is_set()
             stopped = stop.is_set()
+            contract_changed = isinstance(exc, ToolContractMismatch)
             finish_remaining(self.store, task, 'cancelled' if stopped else 'failed',
-                             '작업이 중지되었습니다.' if stopped else '작업 실행 시간 제한을 초과했습니다.' if timed_out else '내부 오류로 검증 결과를 기록하지 못했습니다.')
+                             '작업이 중지되었습니다.' if stopped else '작업 실행 시간 제한을 초과했습니다.' if timed_out else
+                             '검증 도구 계약이 변경되어 실행하지 않았습니다. 새 승인 계획을 만드세요.' if contract_changed else '내부 오류로 검증 결과를 기록하지 못했습니다.')
             if task.get('retest_of'):
                 apply_retest(self.store, task, 'inconclusive')
             current = self.store.get('tasks', task_id)
             self.store.patch('tasks', task_id, status='stopped' if stopped else 'failed', finished_at=now(),
-                             errors=max(1, current['errors']), termination_reason=('shutdown' if self.closed else 'operator_stop') if stopped else 'timeout' if timed_out else 'internal_error')
-            self.store.event(task_id, '작업 실행 시간 제한을 초과했습니다.' if timed_out else '작업이 중지되었습니다.' if stopped else '작업 실행 중 내부 오류가 발생했습니다. 서버 로그를 확인하세요.', 'warning' if stopped or timed_out else 'error')
+                             errors=max(1, current['errors']), termination_reason=('shutdown' if self.closed else 'operator_stop') if stopped else 'timeout' if timed_out else 'tool_contract_changed' if contract_changed else 'internal_error')
+            self.store.event(task_id, '작업 실행 시간 제한을 초과했습니다.' if timed_out else '작업이 중지되었습니다.' if stopped else '검증 도구 계약이 변경되어 실행하지 않았습니다.' if contract_changed else '작업 실행 중 내부 오류가 발생했습니다. 서버 로그를 확인하세요.', 'warning' if stopped or timed_out or contract_changed else 'error')
         finally:
             with self.lock:
                 self.stops.pop(task_id, None)
@@ -224,6 +229,7 @@ class Engine:
         transport = Transport(asset['url'], self.allow_private, record, stop.is_set, policy=self.policy, limiter=self.limiter, control=control)
         self.store.event(task_id, 'Worker 시작: ' + asset['name'], detail={'asset_id': asset['id']})
         try:
+            require_contracts(task)
             response = transport.get()
             if not 200 <= response['status'] < 300:
                 raise ValueError('기본 응답이 2xx가 아니어서 설정 검증을 완료할 수 없습니다.')
@@ -242,7 +248,7 @@ class Engine:
             coverage(check, 'running', reason='검증 실행 중입니다.', started_at=now())
             self.store.event(task_id, '검증 실행: ' + check, detail={'asset_id': asset['id'], 'check': check})
             try:
-                findings, observed, skipped = run_check(check, asset, transport, response)
+                findings, observed, skipped = validate_result(check, asset, run_check(check, asset, transport, response))
                 if skipped:
                     coverage(check, 'skipped', reason=skipped, finished_at=now())
                     self.store.event(task_id, skipped, 'warning', {'check': check, 'asset_id': asset['id']})

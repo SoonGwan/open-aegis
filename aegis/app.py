@@ -20,6 +20,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
 from .checks import CATALOG, CHECK_IDS
+from .tool_contracts import contracts_for
 from .engine import Engine
 from .network import in_scope, normalize_url
 from .store import Store, identifier, now, compact_finding, MessageRequestConflict
@@ -215,7 +216,8 @@ def create_app(data_dir=None, allow_private=None):
         task = dict(data.model_dump(), id=identifier(), status='pending', created_at=now(),
                     started_at=None, finished_at=None, approved_at=None, done=0, errors=0,
                     scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id,
-                    retest_triage_revision=triage_revision, retry_of=retry_of, execution_policy=engine.policy.public())
+                    retest_triage_revision=triage_revision, retry_of=retry_of, execution_policy=engine.policy.public(),
+                    tool_contracts=contracts_for(data.checks))
         store.put_many([('tasks', task)] + [('coverage', row) for row in planned_slots(task)])
         store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
         return task
@@ -776,6 +778,7 @@ def create_app(data_dir=None, allow_private=None):
     @app.get('/api/settings', dependencies=auth)
     def settings():
         return {'version': __version__, 'schema_version': SCHEMA_VERSION, 'storage': 'sqlite', 'lab_mode': private,
+                'tool_contracts': contracts_for([item['id'] for item in CATALOG]),
                 'llm_configured': bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL')),
                 'llm_model': os.environ.get('AEGIS_LLM_MODEL', ''), 'request_budget': engine.policy.request_budget, 'max_workers': 4,
                 'execution_policy': engine.policy.public(),
