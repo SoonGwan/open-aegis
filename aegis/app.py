@@ -46,6 +46,7 @@ from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
 from .http_queries import SQLiteHTTP,PostgresHTTP
 from .worker_observations import task_page as observation_page
+from . import worker_process
 
 
 class Credentials(BaseModel):
@@ -702,6 +703,25 @@ def create_app(data_dir=None, allow_private=None):
             return observation_page(store, task_id, limit=limit, offset=offset, snapshot=snapshot, search=search)
         except LookupError:
             raise HTTPException(404, '작업이 없습니다.')
+
+    @app.get('/api/tasks/{task_id}/workers', dependencies=auth)
+    def workers(task_id: str):
+        try:return worker_process.list_workers(store, task_id)
+        except worker_process.WorkerMissing as exc:raise HTTPException(404, str(exc)) from exc
+
+    @app.get('/api/tasks/{task_id}/workers/{asset_id}', dependencies=auth)
+    def worker_detail(task_id: str, asset_id: str):
+        try:return worker_process.get_process(store, task_id, asset_id)
+        except worker_process.WorkerMissing as exc:raise HTTPException(404, str(exc)) from exc
+
+    @app.get('/api/tasks/{task_id}/workers/{asset_id}/{kind}', dependencies=auth)
+    def worker_collection(task_id: str, asset_id: str, kind: Literal['events','observations'],
+                          limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
+                          snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                          search: str = Query('', max_length=200)):
+        try:return worker_process.collection(store, task_id, asset_id, kind, limit=limit, offset=offset,
+                                             snapshot=snapshot, search=search)
+        except worker_process.WorkerMissing as exc:raise HTTPException(404, str(exc)) from exc
 
     @app.post('/api/tasks/{task_id}/approve', dependencies=admins)
     def approve(task_id: str):

@@ -166,6 +166,8 @@
     실제 SQLite/PostgreSQL 승인 실행·역사적 범위/페이지/권한/불일치/조회 무실행 검수.
     관찰 출처 작업 열기·전용 상세 검색/페이지/URL 복원·출처 메타데이터 펼침 구현.
     합성 UI의 키보드 닫기/포커스·320/390px 문서·조회 실패/재시도 검수.
+    작업/자산별 Worker 과정·커버리지·이벤트·관찰 단일 스냅샷 HTTP/MCP 조회 구현
+    ([WORKER-PROCESS.md](WORKER-PROCESS.md)). 전체 과정 검색 UI,
     다음 실행 제안/의존 단계·반복 Planner·Worker 소비와 전체 모바일/SR 검수는 남아 있음
     ([WORKER-OBSERVATIONS.md](WORKER-OBSERVATIONS.md)).
   - 현재 LLM은 승인된 도구 순서만 정한다. 단계별 완료 근거·중복 방지·중단·재시작과

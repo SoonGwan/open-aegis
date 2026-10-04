@@ -255,6 +255,9 @@ class Engine:
     def validate_asset(self, task, asset, checks, control):
         stop = control.stop
         task_id = task['id']
+        worker_id = task_id + ':' + asset['id']
+        def event(message, level='info', detail=None):
+            self.store.event(task_id, message, level, {**(detail or {}), 'asset_id': asset['id'], 'worker_id': worker_id})
         outcome = {'asset_id': asset['id'], 'completed_checks': [], 'fingerprints': [], 'errors': []}
         def coverage(check, status, **details):
             record = self.store.get('coverage', f"{task_id}:{asset['id']}:{check}") or slot(task, asset, check)
@@ -263,7 +266,7 @@ class Engine:
             self.store.put('traffic', dict(entry, id=identifier(), task_id=task_id, asset_id=asset['id'], created_at=now()))
         transport = Transport(asset['url'], self.allow_private, record, stop.is_set, policy=self.policy, limiter=self.limiter, control=control,
                               execution_permit=getattr(self.store,'execution_permit',None))
-        self.store.event(task_id, 'Worker 시작: ' + asset['name'], detail={'asset_id': asset['id']})
+        event('Worker 시작: ' + asset['name'], detail={'asset_id': asset['id']})
         try:
             require_contracts(task)
             response = transport.get()
@@ -271,7 +274,7 @@ class Engine:
                 raise ValueError('기본 응답이 2xx가 아니어서 설정 검증을 완료할 수 없습니다.')
         except Exception as exc:
             outcome['errors'].append(type(exc).__name__)
-            self.store.event(task_id, '대상 연결 또는 범위 검증 실패: ' + asset['name'], 'error', {'error_type': type(exc).__name__, 'asset_id': asset['id']})
+            event('대상 연결 또는 범위 검증 실패: ' + asset['name'], 'error', {'error_type': type(exc).__name__, 'asset_id': asset['id']})
             for check in checks:
                 coverage(check, 'cancelled' if stop.is_set() else 'failed',
                          reason='요청이 중지되었습니다.' if stop.is_set() else '작업 실행 시간 제한을 초과했습니다.' if control.expired() else '기본 응답 또는 연결을 확인하지 못했습니다.', error_type=type(exc).__name__)
@@ -282,17 +285,17 @@ class Engine:
                     coverage(remaining, 'cancelled' if stop.is_set() else 'failed', reason='작업 중지로 실행하지 못했습니다.' if stop.is_set() else '작업 실행 시간 제한을 초과했습니다.', error_type='InterruptedError' if stop.is_set() else 'TaskDeadline')
                 break
             coverage(check, 'running', reason='검증 실행 중입니다.', started_at=now())
-            self.store.event(task_id, '검증 실행: ' + check, detail={'asset_id': asset['id'], 'check': check})
+            event('검증 실행: ' + check, detail={'asset_id': asset['id'], 'check': check})
             try:
                 findings, observed, skipped = validate_result(check, asset, run_check(check, asset, transport, response))
                 if skipped:
                     coverage(check, 'skipped', reason=skipped, finished_at=now())
-                    self.store.event(task_id, skipped, 'warning', {'check': check, 'asset_id': asset['id']})
+                    event(skipped, 'warning', {'check': check, 'asset_id': asset['id']})
                     continue
                 for item in findings:
                     finding, evidence, _ = record_observation(self.store, task, asset, item)
                     outcome['fingerprints'].append(finding['fingerprint'])
-                    self.store.event(task_id, item['title'], 'finding', {'finding_id': finding['id'], 'severity': item['severity'], 'asset_id': asset['id']})
+                    event(item['title'], 'finding', {'finding_id': finding['id'], 'severity': item['severity'], 'asset_id': asset['id']})
                 for url in observed:
                     record_link(self.store, task, asset, check, url)
                 coverage(check, 'completed', reason='승인된 검증을 완료했습니다.', finished_at=now())
@@ -302,8 +305,8 @@ class Engine:
                 coverage(check, 'cancelled' if stop.is_set() else 'failed',
                          reason='요청이 중지되었습니다.' if stop.is_set() else '작업 실행 시간 제한을 초과했습니다.' if control.expired() else '검증 결과를 확인하지 못했습니다.',
                          error_type=type(exc).__name__, finished_at=now())
-                self.store.event(task_id, '검증 결과를 확인할 수 없습니다.', 'warning', {'check': check, 'asset_id': asset['id'], 'error_type': type(exc).__name__})
-        self.store.event(task_id, 'Worker 종료: ' + asset['name'], detail={'completed_checks': outcome['completed_checks'], 'asset_id': asset['id']})
+                event('검증 결과를 확인할 수 없습니다.', 'warning', {'check': check, 'asset_id': asset['id'], 'error_type': type(exc).__name__})
+        event('Worker 종료: ' + asset['name'], detail={'completed_checks': outcome['completed_checks'], 'asset_id': asset['id']})
         return outcome
 
     def shutdown(self):

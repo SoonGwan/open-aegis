@@ -3637,3 +3637,44 @@ on 390×844 has no document overflow.
   Real preview8790 remains healthy and serves final bundle with DENY framing.
 - This completes the dedicated observation panel subset, not repeated Planner,
   Worker dependency/consumption, full accessibility/mobile QA or the full v1 gate.
+
+## Worker process sharing reads — 2026-10-04
+
+- Added task/asset Worker process list/detail and bounded event/observation pages in
+  authenticated HTTP; three read-only MCP tools now expose the same process. One
+  read transaction covers approval scope, expected coverage cells and latest25
+  events/observations each. SQL task/asset filtering excludes other Workers/tasks
+  and Planner events. New execution events retain Worker ID. Historical metadata
+  remains unconfirmed; missing/mismatched coverage never becomes completed.
+- Actual owned SQLite and native PostgreSQL execution verifies per-check completed
+  coverage, Worker events and source-matched observed link, with one base GET only
+  and no observed-link visit. Native parity checks pages/search, concurrent source/
+  observation changes, and string-only asset identity (boolean JSON does not match).
+  Viewer GET, anonymous401, unknown Worker404, page bounds, read-only MCP refusals,
+  unbounded-history prohibition and audit preservation also verified.
+- Related final tests34passed6.10s (`artifacts/worker-process-identity-after.txt`).
+  Initial full run had653passes and one old fixed8-tool catalog expectation;
+  changed it to an exact11-tool name set. Next full run654passed186.90s before
+  additional identity hardening (`...backend-before-identity.txt`). Inspection then
+  found a stored-key/payload-ID mismatch could redirect process history; actual
+  tampered SQLite API test failed200 vs404 before the fix (`...identity-before.txt`).
+  Added source identity guard and actual SQLite/PostgreSQL mismatch refusals.
+- Final native-enabled full backend657passed187.53s, no skips
+  (`artifacts/worker-process-backend-final.txt`). One existing Starlette/httpx
+  deprecation warning. Source remained frozen during this final run.
+- Final wheel SHA256a010cde05a2edc2e34c197b0489778c6aaaa789da8baeafc4310c3abc831b6c8
+  contains all62 service Python files matching source
+  (`artifacts/worker-process-source-proof.json`). Initial no-build-isolation wheel
+  attempt lacked bdist_wheel; normal isolated build succeeded. Final installed
+  native reviewer verifies process via Store, actual HTTP and real MCP stdio,
+  existing native backup/restore/audit/source/owner/release/return workflows too
+  (`...installed-postgres.json`,valid=true,external target/source0). Default installed
+  runtime also valid with target_requests0 (`...installed-runtime.json`). Both runners
+  terminal0 with empty stderr and removed temporary installations/clusters.
+- UI source/build unchanged this turn; previous68 frontend tests are historical,
+  not a newly rerun visual suite. Preview restarted gracefully on final code and
+  port8790 health200 (`...preview-health.json`). CI native list includes process
+  tests; hosted CI and real container execution remain unverified.
+- Dedicated whole-workspace process search UI, automatic repeated planning,
+  dependent Worker consumption, shared to-do and the whole v1 remain open. The
+  process read contract is [WORKER-PROCESS.md](WORKER-PROCESS.md).

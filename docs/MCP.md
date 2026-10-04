@@ -15,6 +15,9 @@
 | `list_finding_evidence` | `id`로 선택한 발견의 출처를 검증한 증거 페이지 |
 | `list_finding_retests` | `id`로 선택한 발견의 재검증 페이지 |
 | `list_task_observations` | `id`로 선택한 작업의 Worker 링크/승인 메타데이터 일치 상태 페이지 |
+| `get_worker` | `id`(작업)·`asset_id`의 Worker 범위·커버리지·최신 이벤트/관찰 각각 25개 |
+| `list_worker_events` | 해당 Worker 이벤트 검색·페이지·저장된 Worker 메타데이터 일치 상태 |
+| `list_worker_observations` | 해당 Worker 관찰 검색·페이지·승인 메타데이터 일치 상태 |
 | `list_task_events` | `id`로 선택한 작업의 최신 seq 순 이벤트 페이지 |
 
 페이지 결과는 `items`, `total`, `limit`, `offset`, `snapshot`, `has_more`다.
@@ -53,3 +56,5 @@ SQLite로 대체하지 않으며 원문 DSN을 출력하지 않는다. DB SELECT
 
 Worker 관찰은 [WORKER-OBSERVATIONS.md](WORKER-OBSERVATIONS.md)의 출처 일관성 계약을
 따른다. `matched`는 링크 실행·취약점 판정이나 Worker 신원 인증을 뜻하지 않는다.
+
+Worker 과정 조회의 출처와 완료 근거·이전 기록 경계는 [WORKER-PROCESS.md](WORKER-PROCESS.md)를 따른다.
