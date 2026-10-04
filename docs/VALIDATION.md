@@ -4272,3 +4272,67 @@ on 390×844 has no document overflow.
 - Owned fixture/tabs/flags cleaned up; lifespan reported target requests0, ordinary
   task creation POSTs0, next-plan POSTs2 (one stale refusal, one accepted pending
   plan), temporary data removed (`artifacts/todo-planner-ui-fixture.txt`).
+
+
+## Durable automatic event-driven proposal preparation — 2026-10-05
+
+- New EventPlanner consumes committed task/family and asset-ID events to prepare
+  rule-based follow-up proposals before explicit next-plan GET. It never calls
+  a provider, sends a target request, creates a task or grants approval. Source
+  coverage, tool contracts, bounded history and frozen human request context are
+  reused; current descendant terminal plans receive root todo changes.
+- SQLite/native PostgreSQL persist proposal and event cursor in one write
+  transaction. Cursor-save failure rolls both back; next step replays the event.
+  Asset fanout is25 tasks per step with saved insertion snapshot/offset; a new
+  processor resumes the unfinished page. Policy changes replay committed events.
+  Corrupt lineage becomes a blocked result without starving the next valid event.
+  Real HTTP server restart consumes an unprocessed human change without new execution.
+- **18 related cases passed14.62s** (`artifacts/event-planner-targeted.txt`). First
+  full run had789 passes but a report-only global Store.get prohibition also killed
+  the independent background reader. The report test now stops that consumer before
+  installing the unchanged prohibition. Final full native-enabled suite:
+  **789 passed281.78s**, only existing Starlette deprecation warning
+  (`artifacts/event-planner-full.txt`); no unhandled worker warning. No service source
+  change after these runs. Native event tests added to hosted CI configuration;
+  hosted CI itself unrun.
+- Final frontend **92 passed503.40ms**, TypeScript/Vite build1.71s
+  (`...node.txt`, `...build.txt`). New component polls status4s, aborts on unmount,
+  distinguishes stale displayed proposal, blocked preparation and failed reads,
+  and offers explicit read retry. No claim that existing unit tests alone prove
+  new interaction behavior; owned built-app evidence below provides that coverage.
+- Wheel **826e827e7b4171f660429850e89dd5e5388f62c50ed71b2f2088427b91b91ed7**,
+  all67 service Python files byte-match checkout (`...wheel-proof.json`). Installed
+  default/runtime and native PostgreSQL16.15 reviews both valid. Native installed
+  HTTP waits for an automatic ready proposal before manual proposal GET and verifies
+  exact equality; restored server automatically resumes to the existing connected
+  plan/no-proposal state. Runtime consumer alive/errors0 verified. Native target
+  requests3 and owned source1, external targets/sources0; default target requests0
+  (`...installed-postgres.json`, `...installed-runtime.json`). Final separately built
+  UI was included in default review.
+- Owned UI fixture shows automatic ready status before proposal lookup, then a
+  human endpoint request reflected by later event62 (`...ui-ready.txt`,
+  `...ui-proposal.txt`). Final built UI: while prior proposal remains displayed,
+  committed cookie request advances to event64.503 status GET shows failure and
+  explicit retry while preserving prior proposal. Retry restores stale-display
+  notice; proposal reload shows both requests (`...ui-read-error.txt`,
+  `...ui-display-stale.txt`, `...ui-fresh.txt`).
+- A second owned tab archives the synthetic source asset; final UI reports blocked
+  preparation while retaining old displayed proposal, rather than claiming a new
+  available proposal. Restoring asset prepares current revision and requires
+  proposal reload (`...ui-blocked.txt`, `...ui-restored.txt`). Explicit acceptance
+  creates a pending two-asset/six-tool plan with0/2 processed, all cells unexecuted
+  and32-item stored context (`...ui-pending.txt`). No execution approval.
+- Automatic-status default documents measure320/320 and390/390 client/scroll widths
+  (`...ui-widths.json`). Intentional table scroll/hidden label widths remain. Desktop
+  status panel and folded context screenshot inspected; final text-only guard change
+  subsequently verified with blocked/archive/restore interaction. Actual mobile
+  touch/zoom, screen reader and full event-load/latency SLO are not verified.
+- Existing preview data retained, new PID57068, health ok; anonymous planner401,
+  processed event88/head88 and3 stored reviews. Final static JSindex-PvAXzy1C.js /
+  CSSindex-ZAbl2hHS.css (`...preview-health.json`). Owned tabs/flag removed. Both UI
+  fixtures shut down with target requests0 and temporary data removed; final fixture
+  task creation POSTs0, explicit next-plan POST1 (`...ui-final-fixture.txt`).
+- [EVENT-PLANNER.md](EVENT-PLANNER.md) states boundaries: semantic goal decomposition,
+  Worker observation reasoning, live AI intervention, commercial provider, long
+  event/resource load, retention and complete mobile/SR remain open. Whole v1 is
+  still unachieved; no remote publication or container execution.

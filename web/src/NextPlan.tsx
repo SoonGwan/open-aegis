@@ -163,6 +163,87 @@ const statuses: Record<string, string> = {
   skipped: "건너뜀",
 };
 
+function AutomaticPlanStatus({
+  taskId,
+  displayedFingerprint,
+}: {
+  taskId: string;
+  displayedFingerprint?: string;
+}) {
+  const [notice, setNotice] = useState(
+    "자동 계획 준비 상태를 확인하고 있습니다.",
+  );
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    const request = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let active = true;
+    async function read() {
+      try {
+        const row = await api<{
+          format: string;
+          source_task_id: string;
+          status: string;
+          stale?: boolean;
+          event_seq?: number;
+          proposal?: { fingerprint: string } | null;
+        }>(
+          "/tasks/" + encodeURIComponent(taskId) + "/planner",
+          "GET",
+          undefined,
+          request.signal,
+        );
+        if (!active) return;
+        if (
+          row.format !== "aegis-event-planner-v1" ||
+          row.source_task_id !== taskId
+        )
+          throw new Error("다른 작업의 자동 계획 상태입니다. 다시 조회하세요.");
+        setFailed(false);
+        setNotice(
+          row.stale
+            ? "자동 계획 근거가 변경되었습니다. 최신 제안을 조회해 검토하세요."
+            : row.proposal &&
+                displayedFingerprint &&
+                row.proposal?.fingerprint !== displayedFingerprint
+              ? "새 이벤트가 반영됐습니다. 현재 표시된 제안은 이전 내용이므로 다시 조회하세요."
+              : row.status === "ready"
+                ? "이벤트 " +
+                  row.event_seq +
+                  "를 반영해 다음 계획을 자동으로 준비했습니다. 아래에서 제안을 검토하세요."
+                : row.status === "no_proposal"
+                  ? "이벤트를 반영했습니다. 추가 제안이 없거나 이미 연결된 계획이 있습니다."
+                  : row.status === "blocked"
+                    ? "자동 계획 준비가 보류됐습니다. 계획 근거·범위·공유 할 일을 확인하세요."
+                    : "종료·변경 이벤트의 자동 계획 처리를 기다리고 있습니다.",
+        );
+        timer = setTimeout(() => void read(), 4000);
+      } catch (error) {
+        if (!active || request.signal.aborted) return;
+        setFailed(true);
+        setNotice((error as Error).message);
+      }
+    }
+    void read();
+    return () => {
+      active = false;
+      request.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [taskId, attempt, displayedFingerprint]);
+  return (
+    <div className="automatic-plan-status">
+      <p role={failed ? "alert" : "status"}>{notice}</p>
+      {failed && (
+        <button type="button" onClick={() => setAttempt((value) => value + 1)}>
+          자동 계획 상태 다시 조회
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function NextPlan({
   taskId,
   canOperate,
@@ -277,6 +358,11 @@ export function NextPlan({
         반영하면 새 승인 대기 계획을 만들며 실행은 별도 관리자 승인이
         필요합니다.
       </p>
+      <AutomaticPlanStatus
+        key={taskId}
+        taskId={taskId}
+        displayedFingerprint={proposal?.fingerprint}
+      />
       <button
         ref={queryButton}
         type="button"
@@ -328,33 +414,41 @@ export function NextPlan({
                 {checkNames(proposal.basis.todo_requested_checks || [])}
               </p>
               {proposal.shared_todo_context && (
-                <section aria-label="다음 계획이 참조한 공유 할 일">
-                  <h5>참조한 공유 할 일</h5>
-                  <p>
-                    생성 시점의 항목과 버전을 저장합니다. AI 계획을 선택하면
-                    미완료·진행 중 항목의 제목·설명·도구 요청을 설정된
-                    제공자에게 전송합니다.
-                  </p>
-                  {proposal.shared_todo_context.items.map((row) => (
-                    <article key={row.id}>
-                      <strong>{row.title}</strong>
-                      <p>
-                        버전 {row.revision} ·{" "}
-                        {(
-                          {
-                            open: "미완료",
-                            in_progress: "진행 중",
-                            done: "완료",
-                            cancelled: "취소",
-                          } as Record<string, string>
-                        )[row.status] || row.status}{" "}
-                        · {checkNames(row.check_ids)}
-                      </p>
-                    </article>
-                  ))}
-                  {!proposal.shared_todo_context.items.length && (
-                    <p>참조할 공유 할 일이 없습니다.</p>
-                  )}
+                <section
+                  className="todo-plan-basis"
+                  aria-label="다음 계획이 참조한 공유 할 일"
+                >
+                  <details>
+                    <summary>
+                      참조한 공유 할 일 ·{" "}
+                      {proposal.shared_todo_context.items.length}개
+                    </summary>
+                    <p>
+                      생성 시점의 항목과 버전을 저장합니다. AI 계획을 선택하면
+                      미완료·진행 중 항목의 제목·설명·도구 요청을 설정된
+                      제공자에게 전송합니다.
+                    </p>
+                    {proposal.shared_todo_context.items.map((row) => (
+                      <article key={row.id}>
+                        <strong>{row.title}</strong>
+                        <p>
+                          버전 {row.revision} ·{" "}
+                          {(
+                            {
+                              open: "미완료",
+                              in_progress: "진행 중",
+                              done: "완료",
+                              cancelled: "취소",
+                            } as Record<string, string>
+                          )[row.status] || row.status}{" "}
+                          · {checkNames(row.check_ids)}
+                        </p>
+                      </article>
+                    ))}
+                    {!proposal.shared_todo_context.items.length && (
+                      <p>참조할 공유 할 일이 없습니다.</p>
+                    )}
+                  </details>
                 </section>
               )}
 

@@ -388,5 +388,6 @@ class Engine:
                     finish_remaining(self.store,task,'cancelled','서버 종료로 실행하지 못했습니다.')
                     if task.get('retest_of'):apply_retest(self.store,task,'inconclusive')
                     self.store.patch('tasks',task_id,status='stopped',finished_at=now(),termination_reason='shutdown')
+                    self.store.event(task_id,'서버 종료로 대기 작업을 중지했습니다. 새 승인 계획으로 다시 실행하세요.','warning')
             self.stops.clear()
             self.futures.clear()

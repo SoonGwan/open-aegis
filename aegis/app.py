@@ -48,6 +48,7 @@ from .http_queries import SQLiteHTTP,PostgresHTTP
 from .worker_observations import task_page as observation_page
 from . import worker_process, worker_dependencies, next_plan, planning_history
 from . import todos
+from .event_planner import EventPlanner
 
 
 class Credentials(BaseModel):
@@ -227,6 +228,7 @@ def create_app(data_dir=None, allow_private=None):
     queries=PostgresHTTP(store) if backend=='postgres' else SQLiteHTTP(store)
     audit_review = AuditReview(store)
     scheduler_stop = threading.Event()
+    event_planner = EventPlanner(store, lambda: engine.policy.public())
     shutdown_requested = threading.Event()
     try:
         source_connections = Sources.from_env(store, shutdown_requested)
@@ -349,12 +351,14 @@ def create_app(data_dir=None, allow_private=None):
     async def lifespan(app):
         thread = threading.Thread(target=scheduler, name='aegis-scheduler', daemon=True)
         thread.start()
+        event_planner.start()
         try:
             yield
         finally:
             scheduler_stop.set()
             thread.join(timeout=6)
             try:
+                await asyncio.to_thread(event_planner.close)
                 await asyncio.to_thread(engine.shutdown)
             finally:
                 if lease:lease.close()
@@ -362,6 +366,7 @@ def create_app(data_dir=None, allow_private=None):
     app = FastAPI(title='Open Aegis', version=__version__, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store, app.state.engine = store, engine
+    app.state.event_planner = event_planner
     app.state.exports = exports
     app.state.source_connections = source_connections
     @app.exception_handler(RequestValidationError)
@@ -847,6 +852,11 @@ def create_app(data_dir=None, allow_private=None):
         except LookupError as exc:raise HTTPException(404, str(exc)) from exc
         except next_plan.NextPlanConflict as exc:raise HTTPException(409, str(exc)) from exc
 
+    @app.get('/api/tasks/{task_id}/planner', dependencies=auth)
+    def automatic_plan_review(task_id: str):
+        try:return event_planner.review(task_id)
+        except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+
     @app.post('/api/tasks/{task_id}/next-plan', dependencies=operations)
     def accept_next_plan(task_id: str, data: NextPlanInput):
         with engine.lock, store.lock:
@@ -892,7 +902,8 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/runtime', dependencies=auth)
     def runtime():
-        return {**engine.metrics(), 'exports':exports.metrics(), 'authentication':login_gate.metrics()}
+        return {**engine.metrics(), 'exports':exports.metrics(), 'authentication':login_gate.metrics(),
+                'event_planner':event_planner.metrics()}
 
     @app.post('/api/audit/verify', dependencies=admins)
     def verify_audit(data: AuditReviewInput):

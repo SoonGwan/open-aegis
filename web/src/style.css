@@ -3618,3 +3618,6 @@ pre,
 .todo-plan-basis summary { cursor: pointer; font-weight: 600; }
 .todo-plan-basis p { margin: 8px 0; line-height: 1.6; white-space: pre-wrap; }
 .todo-plan-basis article { padding: 12px 0; border-top: 1px solid var(--border); }
+.automatic-plan-status { margin: 12px 0; padding: 12px; border: 1px solid var(--border); }
+.automatic-plan-status p { margin: 0; line-height: 1.6; }
+.automatic-plan-status button { margin-top: 8px; }

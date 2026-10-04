@@ -236,10 +236,10 @@ class PostgresStore:
     def audit_integrity(self,checkpoint=None):
         with self.transaction() as db:return transfer.postgres_audit(db,checkpoint)
 
-    def events(self,after=0,task_id=None,limit=200):
+    def events(self,after=0,task_id=None,limit=200,*,connection=None):
         where='seq>%s';args=[after]
         if task_id:where+=' AND task_id=%s';args.append(task_id)
-        with self.transaction() as db:
+        with (nullcontext(connection) if connection is not None else self.transaction()) as db:
             return [{**row,'detail':json.loads(row['detail'])} for row in db.execute('SELECT * FROM events WHERE '+where+' ORDER BY seq LIMIT %s',(*args,limit))]
 
     def recent_events(self,limit=100):

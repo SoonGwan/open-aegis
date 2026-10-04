@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--task-fail-flag',type=Path,help='Owned QA flag: while present, task creation POST returns503')
     parser.add_argument('--next-plan',action='store_true',help='Seed synthetic terminal two-Worker proposal evidence; never execute targets')
     parser.add_argument('--next-read-fail-flag',type=Path)
+    parser.add_argument('--planner-read-fail-flag',type=Path,help='Owned automatic planner GET failure probe')
     parser.add_argument('--next-write-fail-flag',type=Path)
     parser.add_argument('--next-write-hold-flag',type=Path)
     parser.add_argument('--dependencies',action='store_true',help='Synthetic pending two-Worker dependency approval fixture')
@@ -66,6 +67,8 @@ def main():
         @app.middleware('http')
         async def failure(request,call_next):
             nonlocal task_posts,next_posts
+            if request.method=='GET' and request.url.path.endswith('/planner') and args.planner_read_fail_flag and args.planner_read_fail_flag.exists():
+                return JSONResponse({'detail':'합성 자동 계획 조회 실패'},status_code=503)
             if '/todos' in request.url.path:
                 if request.method=='GET' and args.todo_read_fail_flag and args.todo_read_fail_flag.exists():
                     return JSONResponse({'detail':'합성 공유 할 일 조회 실패'},status_code=503)

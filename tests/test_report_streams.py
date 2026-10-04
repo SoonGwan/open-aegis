@@ -40,6 +40,8 @@ def test_complete_scoped_exports_no_full_reads_csv_and_auth(client,monkeypatch):
     seed(store)
     original_get=store.get
     monkeypatch.setattr(store,'all',lambda *_:pytest.fail('Unbounded export read'))
+    # This prohibition audits report reads, not the independently tested event consumer.
+    client.app.state.event_planner.close()
     monkeypatch.setattr(store,'get',lambda kind,id,**kw: original_get(kind,id,**kw) if kind=='tasks' else pytest.fail('Coverage escaped report snapshot'))
     path='/api/reports/export'
     response=client.get(path,params={'format':'json','task_id':'report-task'})

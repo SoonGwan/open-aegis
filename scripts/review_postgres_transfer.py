@@ -324,9 +324,18 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     shared_todo=native_http('/api/tasks/native-engine/todos',shared_payload)
                     assert shared_todo['revision']==1 and shared_todo['status']=='open'
                     assert native_http('/api/tasks/native-engine/todos',shared_payload)==shared_todo
+                    deadline=time.monotonic()+10
+                    while True:
+                        automatic=native_http('/api/tasks/native-engine/planner')
+                        if (automatic['status']=='ready' and not automatic['stale']
+                                and automatic['proposal']['basis']['todo_requested_checks']==['cookie_policy']):break
+                        if time.monotonic()>=deadline:raise RuntimeError('Installed native automatic proposal timed out')
+                        time.sleep(.05)
+                    assert not automatic['execution_authorized']
                     report=native_http('/api/reports/export?format=json&task_id=native-engine')
                     assert report['coverage'][0]['status']=='completed' and report['evidence']
                     proposal=native_http('/api/tasks/native-engine/next-plan')
+                    assert automatic['proposal']==proposal
                     assert proposal['available'] and not proposal['execution_authorized']
                     assert proposal['basis']['todo_requested_checks']==['cookie_policy']
                     assert proposal['shared_todo_context']['items'][0]['revision']==1
@@ -359,6 +368,8 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     pending=native_http('/api/tasks',{'name':'Installed native HTTP pending','asset_ids':[imported['id']],'checks':['security_headers']})
                     assert pending['status']=='pending'
                     assert native_http('/api/runtime')['queue_watchdog']['errors']==0
+                    assert native_http('/api/runtime')['event_planner']['alive']
+                    assert native_http('/api/runtime')['event_planner']['errors']==0
                     archive=temporary/'native-online.zip'
                     backup=json.loads(run([installation/'bin'/'aegis-backup','--output',archive],'installed live PostgreSQL backup',env=native_env))
                     assert archive.stat().st_mode & 0o777==0o600 and backup['omitted_sessions']==2
@@ -426,6 +437,13 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                     assert backup_http('/api/tasks/native-engine/todos')['items'][0]['status']=='done'
                     assert backup_http('/api/tasks/native-engine/todos')['items'][0]['check_ids']==['cookie_policy']
                     assert backup_http('/api/tasks/'+first_followup_id)['task']['shared_todo_context']==proposal['shared_todo_context']
+                    deadline=time.monotonic()+10
+                    while True:
+                        restored_review=backup_http('/api/tasks/native-engine/planner')
+                        if restored_review['status']=='no_proposal' and not restored_review['stale']:break
+                        if time.monotonic()>=deadline:raise RuntimeError('Restored native event planner did not resume')
+                        time.sleep(.05)
+                    assert restored_review['proposal']['accepted_task_id']==followup['id']
                     assert backup_http('/api/tasks/native-engine/todos/'+shared_todo['id']+'/history')['total']==2
                     assert backup_http('/api/reports/export?format=json&task_id=native-engine')['evidence']
                     assert backup_http('/api/graph?asset_id=owned-lab&task_id=native-engine')['edges']

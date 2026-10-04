@@ -42,13 +42,13 @@ ARTEX를 실행하거나 전체 코드를 감사한 결과가 아니다. 특정 
 
 | 구현 | 코드·계약 | 현재 경계 |
 |---|---|---|
-| 실행·계획 | [engine.py](../aegis/engine.py), [RUNTIME.md](RUNTIME.md) | 승인된 Worker 의존 실행·완료 근거/관찰 참조 전달; 결과 기반 후속 계획 HTTP 제안·새 승인, LLM은 승인 도구 순서만 결정; 상세 제안 검토/반영 UI 구현; 교체/재실행의 회차 보존·현재 시도 연결 구현; 자동 반복 계획은 남아 있음 |
+| 실행·계획 | [engine.py](../aegis/engine.py), [RUNTIME.md](RUNTIME.md) | 승인된 Worker 의존 실행·완료 근거/관찰 참조 전달; 결과 기반 후속 계획 HTTP 제안·새 승인, LLM은 승인 도구 순서만 결정; 상세 제안 검토/반영 UI 구현; 교체/재실행의 회차 보존·현재 시도 연결 구현; 이벤트 기반 제안 준비·처리 위치 저장/재개 구현; 의미적 목표/관찰 소비는 남아 있음 |
 | 관계·커버리지 | [GRAPH.md](GRAPH.md), [COVERAGE.md](COVERAGE.md) | 실제 저장 기록의 관계; 원본의 이중 그래프와 동등하지 않음 |
 | 요청 관찰 | [network.py](../aegis/network.py) | 범위와 DNS를 검사한 GET; 범용 트래픽 프록시 없음 |
 | 응답 계약 | [API-POLICY.md](API-POLICY.md) | 운영자 정의 스키마·소유권 기대값; 자동 소유권 추론 없음 |
 | 발견·조치 | [TRIAGE.md](TRIAGE.md) | 담당자·사유·수정 충돌·상태 보존 |
 | 사람과 대화 | [chat-panel.tsx](../web/src/chat-panel.tsx) | 기록/관찰 출처 인용·선택적 AI 초안·잘못된 인용의 규칙 복구·원자적 사용량 저장; AI 실행 개입 없음 |
-| 실행 과정 | [WORKER-PROCESS.md](WORKER-PROCESS.md) | 작업/자산별 근거와 여러 작업의 Worker 실행 기록 검색 HTTP/MCP/UI; 공유 할 일 저장·HTTP/MCP 조회 구현; 편집 UI·자동 Planner 소비는 남아 있음 |
+| 실행 과정 | [WORKER-PROCESS.md](WORKER-PROCESS.md) | 작업/자산별 근거와 여러 작업의 Worker 실행 기록 검색 HTTP/MCP/UI; 공유 할 일 저장·HTTP/MCP 조회 구현; 편집 UI·명시적 도구 요청·변경 이벤트 기반 제안 준비 구현; 의미적 관찰 소비는 남아 있음 |
 | 읽기 연동 | [MCP.md](MCP.md) | 로컬 stdio 조회; 원격 도구 실행 없음 |
 | 무결성 | [AUDIT.md](AUDIT.md), [AuditPanel.tsx](../web/src/AuditPanel.tsx) | 관리자 수동 연결 검증; 독립 보관 자동화 없음 |
 | 설치·복구 | [OPERATIONS.md](OPERATIONS.md) | SQLite·설치 패키지 검증; 실제 컨테이너 실행 미검증 |

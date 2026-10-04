@@ -297,7 +297,7 @@ class Store:
             db.execute('BEGIN')
             return verify_chain(db, checkpoint)
 
-    def events(self, after=0, task_id=None, limit=200):
+    def events(self, after=0, task_id=None, limit=200, *, connection=None):
         query = 'SELECT * FROM events WHERE seq>?'
         args = [after]
         if task_id:
@@ -305,7 +305,7 @@ class Store:
             args.append(task_id)
         query += ' ORDER BY seq LIMIT ?'
         args.append(limit)
-        with self.connect() as db:
+        with (nullcontext(connection) if connection is not None else self.connect()) as db:
             rows = db.execute(query, args).fetchall()
         return [{**dict(row), 'detail': json.loads(row['detail'])} for row in rows]
 
