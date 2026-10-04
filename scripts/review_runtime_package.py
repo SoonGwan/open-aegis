@@ -132,6 +132,18 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                 assert task['status'] == 'pending' and task['approved_at'] is None
                 assets = request('/api/assets')
                 assert len(assets) == 1 and assets[0]['id'] == asset['id']
+                imported = request('/api/integrations/scopesentry/preview', {
+                    'source_key': 'installed-runtime-fixture',
+                    'export': json.dumps({'_id': '000000000000000000000001', 'type': 'http',
+                                          'url': asset['url'], 'body': 'discarded-installed-fixture'})})
+                assert imported['rows'][0]['action'] == 'link'
+                selection = {'selected': ['000000000000000000000001'], 'authorized': True}
+                applied = request('/api/integrations/scopesentry/' + imported['id'] + '/apply', selection)
+                assert applied['created'] == 0 and applied['linked'] == 1
+                assert request('/api/integrations/scopesentry/' + imported['id'] + '/apply', selection) == applied
+                sources = request('/api/assets/' + asset['id'] + '/sources')
+                assert sources['total'] == 1 and sources['items'][0]['external_id'] == selection['selected'][0]
+                assert 'discarded-installed-fixture' not in json.dumps(sources)
                 runtime = request('/api/runtime')
                 assert runtime['requests']['requests'] == 0
                 assert runtime['authentication']['parallel'] == 4
@@ -160,7 +172,7 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
             'checks': ['locked runtime dependencies', 'pip check', 'four CLI entry points',
                        'installed server outside checkout', 'separate frontend assets',
                        'authentication and logout', 'administrator schema and disabled public docs',
-                       'asset and pending plan persistence',
+                       'asset and pending plan persistence', 'ScopeSentry review/apply/retry/provenance',
                        'login limit metrics', 'read-only audit review', 'clean shutdown and lease release',
                        'installed backup/restore/audit rehearsal']}, ensure_ascii=False))
 

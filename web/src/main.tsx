@@ -52,6 +52,7 @@ import { useNavigation } from "./navigation";
 import { FindingRecords } from "./finding-records";
 import { TaskRecords } from "./task-records";
 import { ChatPanel } from "./chat-panel";
+import { ScopeSentryImport, AssetSources } from "./ScopeSentryImport";
 import { ToolContracts } from "./ToolContracts";
 import { toolContractsMatch, type ToolManifest } from "./tool-contract-state";
 import {
@@ -435,7 +436,7 @@ function App() {
     navigation.updateList({ archived: value });
   const localActionScope = useRef(new ViewScope());
   const [modal, setModalState] = useState<
-    "asset" | "task" | "import" | "note" | null
+    "asset" | "task" | "import" | "note" | "scopesentry" | "sources" | null
   >(null);
   const setModal = useCallback((value: typeof modal) => {
     localActionScope.current.invalidate();
@@ -1119,6 +1120,9 @@ function App() {
                     <ArrowDownToLine size={15} />
                     JSON 가져오기
                   </button>
+                  <button disabled={!canOperate} onClick={() => openModal("scopesentry")}>
+                    ScopeSentry 가져오기
+                  </button>
                   <button
                     className="primary"
                     disabled={!canOperate}
@@ -1460,6 +1464,7 @@ function App() {
                         )}
                       </div>
                       <div className="asset-actions">
+                        <button onClick={() => {openModal("sources"); setEditingAsset(a);}}>출처</button>
                         {!a.archived_at && (
                           <button
                             disabled={!canOperate}
@@ -2360,7 +2365,12 @@ function App() {
         </div>
       )}
 
-      {modal && (
+      {modal === "scopesentry" && <ScopeSentryImport onClose={closeModal} onApplied={() => {
+        void refresh();
+        window.dispatchEvent(new Event("aegis-records-changed"));
+      }} />}
+      {modal === "sources" && editingAsset && <AssetSources key={editingAsset.id} asset={editingAsset} onClose={closeModal} />}
+      {modal && modal !== "scopesentry" && modal !== "sources" && (
         <Modal
           title={
             modal === "asset"

@@ -56,7 +56,8 @@ def initialize_chain(db):
 
 def append_event(db, values):
     # A database write transaction covers sequence allocation, link and local head.
-    db.execute('BEGIN IMMEDIATE')
+    if not db.in_transaction:
+        db.execute('BEGIN IMMEDIATE')
     state = db.execute('SELECT * FROM audit_state WHERE id=1').fetchone()
     validate_state(state)
     tail = db.execute('SELECT * FROM events ORDER BY seq DESC LIMIT 1').fetchone()

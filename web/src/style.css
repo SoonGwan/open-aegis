@@ -3495,3 +3495,17 @@ pre,
 .policy-rule-grid label { min-width: 0; }
 .policy-rule-grid .rule-wide { grid-column: 1 / -1; }
 @media (max-width: 600px) { .policy-rule-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.scopesentry-preview { margin-top: 20px; display: grid; gap: 12px; }
+.scopesentry-preview > p { margin: 0; }
+.scopesentry-rows { max-height: 360px; overflow: auto; border: 2px solid var(--ink); padding: 12px; display: grid; gap: 12px; }
+.scopesentry-row { display: flex; align-items: flex-start; gap: 12px; margin: 0; }
+.scopesentry-row > input { flex: 0 0 20px; width: 20px; height: 20px; accent-color: var(--montage-primary-normal); }
+.scopesentry-row > span { min-width: 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.scopesentry-row small { color: var(--montage-label-neutral); }
+.scopesentry-source { display: grid; gap: 8px; padding: 14px; margin-top: 12px; border: 2px solid var(--ink); background: var(--panel); }
+.scopesentry-source code, .scopesentry-preview code { overflow-wrap: anywhere; }
+.scopesentry-source p { margin: 0; }
+
+.scopesentry-sources { display: grid; gap: 12px; }
+.scopesentry-sources > p, .scopesentry-sources > label, .scopesentry-sources .scopesentry-source { margin: 0; }

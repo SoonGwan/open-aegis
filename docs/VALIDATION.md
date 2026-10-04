@@ -1239,3 +1239,75 @@ on 390×844 has no document overflow.
   sequence is performed here. QA stops normally and leaves no held request. Main preview
   stays healthy (200), assets two and target traffic three; the new UI is served without
   restarting the unchanged Python process.
+
+## ScopeSentry file review, provenance and transactional apply (2026-10-04)
+
+- Previous turn changes authoritative main action/modal ownership and verifies actual
+  stale responses (`306670a`): progress. This turn addresses a missing integration feature.
+  Original ScopeSentry export/service/model contracts are read at pinned commit
+  `8203c4932795f35d741dd54871345b9eca0943a8`, including Go MongoDB ObjectID serialization.
+  `asset` JSON export encodes one BSON document per line. The independent adapter supports
+  only that HTTP-asset NDJSON contract; real remote authentication/paging is not implemented.
+- New operator/admin preview validates UTF-8 1 MiB/100 nonempty lines, strict JSON keys/
+  constants, ObjectID identity and bounded HTTP URL with no userinfo/query/fragment/control.
+  Irrelevant original body/header/title/etc. are discarded before preview storage.
+  Fifty actor-bound, 15-minute active previews bound temporary admission; new previews
+  clear expired temporary records. Apply requires explicit IDs and permission acknowledgment.
+  Entire selection checks reviewed asset/source digests before writing, then commits
+  assets, source links/history, idempotent result and its import audit event in one SQLite
+  transaction. Common request audit and other service mutations remain separate.
+- Same URL reuses a locally configured asset; multiple IDs/instances may link to one.
+  Repeated import only confirms its source. Changed original URL requires an explicit new
+  reviewed link, retains old asset/scope/evidence and preserves previous source history.
+  Missing rows in a partial file never delete or archive assets/sources. Source read API
+  offers scoped SQL search, insertion watermark and default 25/max 100 paging with an
+  asset reference index. No scan/task/approval is created by apply.
+- **24 new backend cases** cover preview-only selection/privacy/no requests, concurrent
+  idempotency, local metadata preservation, original address changes and pending snapshots,
+  partial files, many-to-one/source identity, stale all-or-nothing conflicts, archives,
+  roles/actor/anonymous binding, expiry and changed retries, source paging/search/watermark,
+  admission/cleanup/audit validity, invalid URL/JSON/UTF-8/count/fields/duplicate identities.
+  Injected audit-link insertion failure rolls back assets, source records, result and audit.
+  Initial ScopeSentry/audit suites **44 pass**; final full backend **295 pass** in 90.97 s
+  with the existing Starlette/httpx warning. Complete frontend remains **47 passes**.
+- Actual built desktop console distinguishes two ready HTTP rows and one disabled TCP row,
+  starts with no selected IDs, requires acknowledgment and shows create/link details.
+  Controlled first apply commits then loses its response (503). UI locks the reviewed
+  selection and offers same-selection result recovery. Retry returns one created asset
+  and two links; SQLite remains assets 5 vs initial 4, sources 2, tasks unchanged 18,
+  traffic zero. A synthetic body marker is absent from assets/previews/sources/history.
+  This is committed-response-loss recovery; database rollback is the separate trigger test.
+- Same original ID with a changed URL is then visibly reviewed/acknowledged in the console.
+  Apply creates the new address's asset and keeps the old one; current sources remain two
+  and previous-link history becomes one. Old asset's history filter displays original URL/
+  ID, first/last confirmation and replacement time; explicit SHA-256 disclosure shows the
+  saved file fingerprint. Source instance search displays its matching record. An initial
+  keyboard disclosure attempt and immediate history toggle did not establish the intended
+  state; later explicit toggle, observed checked state, click disclosure and DOM assertions
+  establish the reported history/display behavior. No keyboard disclosure claim is made.
+- Actual initial screenshot shows source explanatory text/search too close. Source content
+  gets an explicit 12px grid gap, inherits existing semantic colors and hard borders, and
+  is rebuilt/reviewed. Final TypeScript/Vite build passes: `index-78Ib1nZu.js` /
+  `index-C0PcrrCO.css`. Selected semantic-token/AA pair checks pass; full rendered/mobile/
+  screen-reader/zoom/touch/new modal timing QA is not claimed. Visually inspected final
+  `artifacts/v1-scopesentry-provenance.jpg` shows preserved previous source and expanded
+  fingerprint; its list label is during an ordinary background refresh.
+- Wheel SHA-256 `0d69bf63b1a3a7a915937d9fa1893b9f38db5c41f19a453b9396c094b81056b8`.
+  Installed-runtime harness now exercises actual review/apply/idempotent retry/source read
+  outside checkout plus dependency/CLI/auth/schema/audit/maintenance, zero target requests,
+  normal shutdown and lease release. An earlier package run precedes that harness extension;
+  the final extended run is the evidence for the new API. No frontend rebuild runs during
+  full backend tests or package smoke.
+- QA stops cleanly, with final synthetic assets six/current sources two/history one/tasks
+  eighteen and zero traffic. Main preview restarts normally with new backend; health/data
+  checks follow. ScopeSentry overall release gate remains open for actual source instance,
+  remote auth/paging/resume/concurrent original changes, full mobile/accessibility, larger
+  file-batch journeys and history retention/load. This file adapter is not full parity.
+- A final additional backup/restore regression verifies the newly introduced source/link
+  history kinds and the applied preview's same-selection retry result survive an online
+  snapshot/offline restore. Restored sessions are revoked, login is explicit, original
+  URL/history and current source remain, retry creates no extra asset/task. That targeted
+  case **1 passes** in 0.56 s. It is added after the 295-case full run; current suite has
+  296 cases and is not described as a full 296-case rerun. Python service code is unchanged
+  after its full run and wheel build. Main final health is 200, assets two, traffic three,
+  and the served document references the final frontend bundle.

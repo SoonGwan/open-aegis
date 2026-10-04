@@ -29,6 +29,13 @@ ownership expectations on complete JSON responses. It rejects remote references,
 ambiguous/truncated bodies and excessive structure. Findings retain schema keyword
 names or match booleans, never response values. See [API-POLICY.md](API-POLICY.md).
 
+`aegis/scopesentry.py` independently parses reviewed asset NDJSON exports, stores bounded
+actor-bound preview records, and explicitly applies selected assets/source links. Source
+IDs and URL changes retain separate connection history without altering task snapshots.
+Its business writes and the import audit event share one SQLite write transaction; the
+HTTP request audit remains separate. There is no source network client or automatic
+execution. See [SCOPESENTRY.md](SCOPESENTRY.md).
+
 ## Task states
 
 `pending → queued → running → completed/failed/stopped`.

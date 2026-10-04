@@ -38,6 +38,7 @@ from .policy_models import AuthorizationRule
 from .reproduction import build_manifest, MAX_MANIFEST_BYTES
 from .audit_review import AuditReview, AuditReviewBusy, AuditReviewInput
 from .login_limits import LoginGate, LoginLimited
+from . import scopesentry
 
 
 class Credentials(BaseModel):
@@ -468,6 +469,26 @@ def create_app(data_dir=None, allow_private=None):
     @app.get('/api/assets', dependencies=auth)
     def assets(response: Response, include_archived: bool = False):
         return legacy_page(response, 'assets', archived=None if include_archived else False)
+
+    @app.post('/api/integrations/scopesentry/preview')
+    def scopesentry_preview(data: scopesentry.PreviewInput, actor=Depends(operator)):
+        return scopesentry.preview(store, data, actor['id'])
+
+    @app.post('/api/integrations/scopesentry/{preview_id}/apply')
+    def scopesentry_apply(preview_id: str, data: scopesentry.ApplyInput, actor=Depends(operator)):
+        with engine.lock:
+            if engine.closed:
+                raise HTTPException(409, '서버가 종료 중입니다.')
+            return scopesentry.apply(store, preview_id, data, actor['id'])
+
+    @app.get('/api/assets/{asset_id}/sources', dependencies=auth)
+    def asset_sources(asset_id: str, history: bool = False, limit: int = Query(25, ge=1, le=100),
+                      offset: int = Query(0, ge=0, le=10_000_000), search: str = Query('', max_length=200),
+                      snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807)):
+        if not store.get('assets', asset_id):
+            raise HTTPException(404, '자산이 없습니다.')
+        return store.page('asset_source_history' if history else 'asset_sources', limit=limit,
+                          offset=offset, snapshot=snapshot, search=search, filters={'asset_id': asset_id})
 
     @app.get('/api/graph', dependencies=auth)
     def graph(asset_id: str = Query(min_length=1, max_length=80), task_id: str | None = Query(None, max_length=80),

@@ -42,6 +42,7 @@ class Store:
         with self.connect() as db:
             db.execute('PRAGMA journal_mode=WAL')
             db.execute("CREATE INDEX IF NOT EXISTS records_asset_url ON records(json_extract(data,'$.url')) WHERE kind='assets'")
+            db.execute("CREATE INDEX IF NOT EXISTS records_source_asset ON records(kind,json_extract(data,'$.asset_id')) WHERE kind IN ('asset_sources','asset_source_history')")
             db.execute("CREATE INDEX IF NOT EXISTS records_task_status_approval ON records(json_extract(data,'$.status'),json_extract(data,'$.approved_at')) WHERE kind='tasks'")
             db.execute("CREATE INDEX IF NOT EXISTS records_schedule_due ON records(kind,json_extract(data,'$.next_at')) WHERE kind='schedules' AND json_extract(data,'$.enabled')=1")
 
@@ -148,6 +149,8 @@ class Store:
             'evidence': ('check', 'task_id'),
             'retests': ('conclusion', 'state_note', 'task_id'),
             'messages': ('content', 'role'),
+            'asset_sources': ('source_key', 'external_id', 'source_url'),
+            'asset_source_history': ('source_key', 'external_id', 'source_url'),
         }
         if kind not in fields or not 1 <= limit <= 1000 or offset < 0 or (snapshot is not None and snapshot < 0):
             raise ValueError('Invalid record query')
