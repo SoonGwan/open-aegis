@@ -1,6 +1,6 @@
 # PostgreSQL 저장소와 전송
 
-현재 구현은 **오프라인 전송·되돌리기, 네이티브 Store와 선택 가능한 PostgreSQL HTTP
+현재 구현은 **빈 네이티브 스키마 초기화, 오프라인 전송·되돌리기, 네이티브 Store와 선택 가능한 PostgreSQL HTTP
 백엔드, 온라인 논리 백업과 새 스키마 복구**다. 기본 서버는 SQLite다. `AEGIS_POSTGRES_DSN`만 설정하면 전환되지 않으며
 아래 명시적 backend/schema 설정이 필요하다. 대표 HTTP 인증·승인 실행·재검증·
 보고서·가져오기·재시작과 온라인 백업→새 스키마 복구를 실제 DB에서 검수했다.
@@ -19,9 +19,51 @@ PostgreSQL16.15와 psycopg3.3.6이다. 서버/클라이언트 도구와 접속 �
 줄 수 있으므로 실제 대상 DB/계정/인증 구성을 확인한다. 오류 출력에는 DSN·서버 오류
 본문·비밀번호를 포함하지 않는다.
 
+## PostgreSQL에서 처음 설치
+
+기존 SQLite 워크스페이스 없이 시작하려면 `aegis-init-postgres`를 사용한다.
+빈 DB의 별도 새 스키마에 검토된 테이블/identity/index·스키마2 저장 메타데이터·
+새 감사 chain ID와 genesis를 한 트랜잭션에서 만들고 검사한다. SQLite 파일을
+생성하지 않으며 사용자·세션·대상 요청·서버 시작도 만들지 않는다.
+
+```sh
+# 접속/TLS 비밀 설정은 AEGIS_POSTGRES_DSN으로 별도 제공한다.
+export AEGIS_STORAGE_BACKEND=postgres
+export AEGIS_POSTGRES_SCHEMA=aegis_workspace
+aegis-init-postgres --schema aegis_workspace
+python -m aegis
+```
+
+`--schema`를 생략하면 `AEGIS_POSTGRES_SCHEMA`를 사용한다. 선택 의존성 설치가
+필요하다. 설치된 CLI는 `.env`를 자동으로 읽지 않으므로 환경변수를 직접 제공한다.
+저장소의 `start.sh`는 기존처럼 `.env`를 읽는 서버 진입점을 사용한다. 저장소에서
+PostgreSQL로 실행할 때는 `.venv`에 `requirements-postgres.lock`도 먼저 설치한다.
+초기화 명령은 실제 운영 DB·역할·TLS 설정을 바꾸거나 자동 provisioning하지 않는다.
+
+스키마 이름은 전송/복구와 같은 제한·식별자 인용을 적용한다. 기존 스키마는 빈
+스키마여도 거절하며 삭제/수정하지 않는다. 같은 runtime key의 독점 transaction
+admission을 먼저 확인해 실행 소유자/진행 중 보호 작업/다른 초기화와 겹치지 않는다.
+동시 초기화는 하나만 성공한다. DDL·감사/행 검증의 커밋 전 실패는 스키마/테이블/
+순번 할당기를 함께 롤백한다. 커밋 응답 유실은 불확실할 수 있으므로 먼저 실제
+스키마를 확인하고 재시도한다. 잘못된 연결·권한·이름은 종료 코드2이며 DSN/서버
+오류 본문을 출력하지 않는다. 초기화는 기존 저장소 업그레이드/마이그레이션 명령이 아니다.
+
+초기화 계정에는 대상 DB의 CONNECT와 CREATE 권한이 필요하다. SUPERUSER·
+CREATEDB·CREATEROLE은 필요하지 않으며 생성 스키마와 테이블은 그 계정이 소유한다.
+초기화 후 DB CREATE를 회수한 같은 일반 계정으로 HTTP 최초 설정·로그인·노트·
+감사 검증을 실제 DB에서 확인했다. 별도 실행 역할의 GRANT/권한 분리·서버 인증과
+계정 운영은 관리자가 준비해야 한다. 명령이 역할을 생성하거나 권한을 부여하지 않는다.
+
+서버 시작 후 기존 최초 관리자 설정 화면에서 계정을 만든다. `AEGIS_SETUP_TOKEN`을
+설정하면 loopback 접속도 올바른 토큰이 필요하고, 토큰 없는 원격 최초 설정은
+거절한다. 초기화 CLI는 관리자 비밀번호를 받거나 계정을 자동 생성하지 않는다.
+생성 후 설정 API는409, 익명 보호 API는401이다. 정상 재시작의 로그인과 승인 대기
+계획은 유지하며 계획은 자동 실행하지 않는다.
+
 ## HTTP 서버 선택
 
-먼저 아래 전송 CLI로 스키마를 준비한다. 서버 시작은 기존 지원 형식의 스키마를
+먼저 위 초기화 CLI로 빈 스키마를 만들거나 아래 전송 CLI로 기존 SQLite를 이전한다.
+서버 시작은 기존 지원 형식의 스키마를
 읽으며 임의 스키마 생성/SQL 마이그레이션을 수행하지 않는다. 다음 값으로 실행한다.
 DSN에는 실제 접속 계정과 TLS 정책을 환경변수/운영 비밀 관리로 설정한다.
 
@@ -41,8 +83,8 @@ python -m aegis
 기존 사용자명 충돌은409다. 저장소 오류/확인된 소유권 상실은 본문을 숨긴503이며
 캐시를 금지한다. 대화 요약도 같은 네이티브 읽기 스냅샷을 사용한다.
 
-설정 API의 `storage`는 실제 선택을 반환한다. 관리자 초기 설정은 비어 있는 전송
-스키마에서도 기존 설치 토큰/로컬 설치 정책을 따른다. HTTP startup/config 실패의
+설정 API의 `storage`는 실제 선택을 반환한다. 관리자 초기 설정은 초기화/전송으로
+준비한 빈 스키마에서도 기존 설치 토큰/로컬 설치 정책을 따른다. HTTP startup/config 실패의
 연결/스키마 오류는 원문 DSN을 출력하지 않는다. 종료 중 작업/긴 SQL/원격 접속 장애와
 scheduler의 전체 운영 SLO는 아래 남은 검수에 포함한다. backup/restore CLI는 아래
 명시적 backend 선택으로 네이티브 논리 백업/새 스키마 복구를 지원한다.
@@ -160,7 +202,7 @@ DSN은 연결 클라이언트에 노출될 수 있으므로 비밀 관리 설정
 
 ## 네이티브 Store 계층
 
-`aegis.postgres_store.PostgresStore(dsn, schema)`는 전송으로 생성한 형식의 스키마를
+`aegis.postgres_store.PostgresStore(dsn, schema)`는 초기화/전송/복구한 지원 형식의 스키마를
 직접 읽고 쓴다. SQLite SQL 변환이나 SQLite 복제 DB를 사용하지 않는다. 생성자는
 형식/감사 기준을 읽기만 하며 세션 폐기·작업 복구·스키마 변경을 하지 않는다.
 HTTP 서비스는 명시적 backend/schema 설정으로 이 Store를 선택한다.
@@ -285,7 +327,7 @@ PostgreSQL HTTP 저장소 선택/기본 권한/정상 재시작을 검수했으�
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py tests/test_postgres_readers.py tests/test_postgres_backups.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py tests/test_postgres_readers.py tests/test_postgres_backups.py tests/test_postgres_bootstrap.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된

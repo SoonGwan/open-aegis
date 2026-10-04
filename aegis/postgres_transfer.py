@@ -69,6 +69,18 @@ def set_schema(db,schema):
     db.execute(sql.SQL('SET LOCAL search_path TO pg_catalog, {}').format(sql.Identifier(schema)))
 
 
+def create_schema(db,schema):
+    """Reviewed DDL only; caller owns the transaction and admission contract."""
+    validate_schema(schema);_,sql,_=driver()
+    db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+    set_schema(db,schema);qualified=sql.Identifier(schema).as_string(db)
+    for statement in DDL:
+        tokens=statement.split(' ')
+        statement=statement.replace(tokens[2],qualified+'.'+tokens[2],1) if tokens[1]=='TABLE' else statement.replace(' ON ',' ON '+qualified+'.',1)
+        db.execute(statement)
+    return qualified
+
+
 def digest_rows(rows,columns):
     digest=hashlib.sha256();count=0
     for row in rows:
@@ -155,17 +167,7 @@ def sqlite_to_postgres(source,dsn,schema):
         event_sequence=sequence[0] if sequence else 0
         sessions=src.execute('SELECT count(*) FROM sessions').fetchone()[0]
         with connect(dsn) as target, target.transaction():
-            target.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
-            set_schema(target,schema)
-            qualified=sql.Identifier(schema).as_string(target)
-            # pg_catalog is first for reads; explicitly qualify CREATE destinations.
-            for statement in DDL:
-                tokens=statement.split(' ')
-                if tokens[1]=='TABLE':
-                    statement=statement.replace(tokens[2],qualified+'.'+tokens[2],1)
-                else:
-                    statement=statement.replace(' ON ',' ON '+qualified+'.',1)
-                target.execute(statement)
+            qualified=create_schema(target,schema)
             for table,columns in TABLES.items():
                 with target.cursor() as cursor, cursor.copy(f'COPY {qualified}.{table} ({",".join(columns)}) FROM STDIN') as copy:
                     for row in src.execute(f'SELECT {",".join(columns)} FROM {table} ORDER BY {ORDER[table]}'):

@@ -41,6 +41,51 @@ def main():
         run([binaries['pg_ctl'],'-D',data,'-l',temporary/'server.log','-o',f"-c listen_addresses='' -k {socket} -p 55439",'-w','start'],'owned PostgreSQL start')
         environment.update(AEGIS_POSTGRES_DSN=f'host={socket} port=55439 dbname=postgres',PGHOST=str(socket),PGPORT='55439')
         try:
+            run([python,'-I','-c',"import os,psycopg;\nwith psycopg.connect(os.environ['AEGIS_POSTGRES_DSN']) as db:\n db.execute('CREATE ROLE owned_bootstrap_role LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT');db.execute('GRANT CONNECT,CREATE ON DATABASE postgres TO owned_bootstrap_role')"],
+                'owned ordinary initialization role')
+            bootstrap_env={**environment,'AEGIS_STORAGE_BACKEND':'postgres','AEGIS_POSTGRES_SCHEMA':'owned_bootstrap',
+                'AEGIS_POSTGRES_DSN':environment['AEGIS_POSTGRES_DSN']+' user=owned_bootstrap_role',
+                'AEGIS_DATA_DIR':str(temporary/'unused-bootstrap'),'AEGIS_SETUP_TOKEN':'owned-installed-bootstrap-token','AEGIS_HOST':'127.0.0.1'}
+            initialized=json.loads(run([installation/'bin'/'aegis-init-postgres'],'installed fresh native initialization',env=bootstrap_env))
+            assert initialized['created'] and initialized['users']==initialized['sessions']==0 and initialized['audit']['events']==0
+            run([python,'-I','-c',"import os,psycopg;\nwith psycopg.connect(os.environ['AEGIS_POSTGRES_DSN']) as db:\n db.execute('REVOKE CREATE ON DATABASE postgres FROM owned_bootstrap_role')"],
+                'revoke bootstrap database CREATE before runtime')
+            with socket_module.socket() as listener:
+                listener.bind(('127.0.0.1',0));bootstrap_port=listener.getsockname()[1]
+            bootstrap_env['AEGIS_PORT']=str(bootstrap_port)
+            with (temporary/'bootstrap-server.log').open('w') as log:
+                process=subprocess.Popen([str(python),'-I','-m','aegis'],cwd=temporary,env=bootstrap_env,stdout=log,stderr=subprocess.STDOUT)
+                bootstrap_base='http://127.0.0.1:'+str(bootstrap_port)
+                bootstrap_client=build_opener(ProxyHandler({}),HTTPCookieProcessor(CookieJar()))
+                def bootstrap_http(path,body=None,expected=200):
+                    headers={'Content-Type':'application/json'} if body is not None else {}
+                    request=Request(bootstrap_base+path,data=json.dumps(body).encode() if body is not None else None,headers=headers)
+                    try:response=bootstrap_client.open(request,timeout=3)
+                    except HTTPError as error:response=error
+                    with response:
+                        if response.status!=expected:raise RuntimeError('Installed fresh native HTTP validation failed')
+                        return json.loads(response.read())
+                try:
+                    deadline=time.monotonic()+15
+                    while True:
+                        if process.poll() is not None:raise RuntimeError('Installed fresh native service exited')
+                        try:assert bootstrap_http('/api/health')['status']=='ok';break
+                        except (URLError,TimeoutError):
+                            if time.monotonic()>=deadline:raise RuntimeError('Installed fresh native startup timed out')
+                            time.sleep(.05)
+                    assert bootstrap_http('/api/auth/status')['setup_required']
+                    bootstrap_http('/api/assets',expected=401)
+                    bootstrap_http('/api/auth/setup',{'password':'owned-installed-bootstrap-password'},expected=403)
+                    assert bootstrap_http('/api/auth/setup',{'password':'owned-installed-bootstrap-password','setup_token':'owned-installed-bootstrap-token'})['user']['role']=='admin'
+                    bootstrap_http('/api/auth/setup',{'password':'owned-installed-bootstrap-password','setup_token':'owned-installed-bootstrap-token'},expected=409)
+                    assert bootstrap_http('/api/settings')['storage']=='postgres'
+                    bootstrap_http('/api/notes',{'title':'Fresh native workspace','content':'Owned ordinary role'})
+                    assert bootstrap_http('/api/audit/verify',{},expected=200)['status']=='verified'
+                finally:
+                    if process.poll() is None:process.terminate()
+                    try:process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:process.kill();process.wait(timeout=5);raise RuntimeError('Installed fresh native shutdown timed out')
+                assert process.returncode in (0,-15,143) and not (temporary/'unused-bootstrap').exists()
             source=temporary/'source'/'aegis.db'
             origin=json.loads(run([python,'-I','-c','''
 import json,sys,time,os,psycopg
@@ -390,7 +435,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
             print(json.dumps({'valid':True,'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
-                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
+                'checks':['locked optional dependency','server fsync enabled','installed native initializer under a nonsuperuser role with database CREATE','fresh native HTTP first setup token, authentication, note and audit without SQLite','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
                           'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,

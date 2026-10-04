@@ -16,6 +16,7 @@ aegis-verify-audit = "aegis.cli.audit:main"
 aegis-replay-policy = "aegis.cli.replay_policy:main"
 aegis-release = "aegis.cli.release:main"
 aegis-transfer-storage = "aegis.cli.transfer:main"
+aegis-init-postgres = "aegis.cli.init_postgres:main"
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.2,<4"]

@@ -3246,3 +3246,58 @@ on 390×844 has no document overflow.
   external target/provider/source request occurred.
 - Default SQLite preview completed normal shutdown, retained its workspace, and
   restarted current code on8790 (PID11016/session32193). Health/root HTTP200.
+
+
+## Fresh native PostgreSQL initialization and first service setup
+
+- Added installed `aegis-init-postgres` and native bootstrap, without creating or
+  transferring a temporary SQLite workspace. Reviewed DDL, new random audit chain
+  ID/genesis, schema2 metadata and empty-row/audit verification share one transaction.
+  Same exclusive runtime admission key is checked before DDL; existing schemas
+  (including empty ones), active owners and competing initialization are refused.
+  Precommit DDL/verification errors roll back new schema/tables/identities together;
+  ambiguous lost commit acknowledgment still requires checking actual target state.
+- Extracted exactly the existing reviewed schema DDL into a common creator used by
+  initialization, SQLite→PG transfer and native archive restore. Each caller keeps
+  its own transaction/admission contract. No arbitrary supplied DDL, administrator
+  auto-creation, service start, execution or database/role/TLS provisioning occurs.
+  CLI DSN is environment-only, schema can be explicit or configured, and expected
+  failures exit2 without connection/user/password/SQL traceback payloads.
+- Actual owned PG cases check empty genesis and first record/event IDs1, native
+  backup/restore after initialization, concurrent creators/one winner, preservation
+  of existing note/audit data, live-owner refusal, DDL/audit/manifest failure rollback
+  and successful retry. New HTTP first setup requires configured token, rejects
+  missing token403 and repeated setup409, protects anonymous API401, authenticates,
+  creates a pending owned-lab plan with zero target requests and retains cookie/
+  pending state on restart. Local SQLite directory is never created.
+- Ordinary login role is NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOINHERIT; database
+  CONNECT/CREATE allows initialization and role owns the schema. CREATE is revoked
+  before real HTTP setup/note/audit validation, which still succeeds. A role lacking
+  database CREATE is refused before leaving any objects. These are owned local
+  PostgreSQL16.15 tests, not arbitrary production grant/role/TLS configurations.
+- Final initializer+native backup+transfer subset **50 passed in9.17s**
+  (`artifacts/postgres-bootstrap-targeted-final.txt`). Complete backend with native
+  opt-in **579 passed in172.70s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-bootstrap-backend-final.txt`). UI unchanged, no UI rebuild.
+- Wheel SHA2564dacc52066f35919ad2fb7b786ae7ec98c578a563e6bde9b281e6cc9e9531142
+  byte-matches all57 service Python files and contains the new console entry point.
+  Outside-checkout installed native review passes
+  (`artifacts/postgres-bootstrap-installed-review.json`,valid=true): actual initializer
+  under ordinary DB role, database CREATE revocation, fresh native HTTP setup token,
+  authenticated note/audit with no SQLite, plus previous approved owned execution,
+  graph/report/import/owner fencing, live backup/native restore, MCP/checkpoint,
+  real dump/restore and SQLite return. Owned target requests1, owned source POST1,
+  external target/source0. Same wheel's default runtime/install/HTTP/auth/UI/
+  maintenance/release review passes with **seven CLI help entry points**, including
+  native init help without the optional PostgreSQL dependency
+  (`artifacts/postgres-bootstrap-runtime-review.json`,valid=true,target_requests=0).
+  Installed runners stop/remove temporary clusters and environments. New native
+  tests included in CI; hosted execution remains unverified.
+- Local editable package was reinstalled without dependency changes; new CLI help
+  and pip check pass. Operators still provision DB/TLS/roles and optional dependency;
+  installed CLI does not automatically load .env. Existing native workspace upgrade,
+  signed PostgreSQL update preflight/version/config transition, full native operating
+  failures/long load and broader v1 UI/tool/resource gates remain open. No external
+  publication, target/provider/source request or existing user DB mutation occurred.
+- Default SQLite preview completed normal shutdown and restarted latest code on8790
+  (PID33701/session55447); health and root HTTP200. Existing workspace retained.

@@ -72,7 +72,9 @@ http://127.0.0.1:8787 에 접속하고 관리자 비밀번호 및 설치 토큰�
 Docker가 없어 검증하지 못했습니다. 로컬 Python 실행 및 프런트엔드 빌드는 검증했습니다.
 
 설치 패키지에는 `aegis-backup`, `aegis-restore`, `aegis-verify-audit` 유지보수
-명령이 포함됩니다. [백업·복구 운영 절차](docs/OPERATIONS.md)를 따르세요.
+명령이 포함됩니다. PostgreSQL 새 설치는 `aegis-init-postgres`로 SQLite 없이
+시작할 수 있습니다. [저장소 설치](docs/POSTGRES-STORAGE.md)와
+[백업·복구 운영 절차](docs/OPERATIONS.md)를 따르세요.
 
 ## 첫 검증
 
@@ -289,6 +291,7 @@ origin별 요청 속도·동시 수, DNS/HTTP/작업/대기열 시간 제한, �
 진행·완료·거절·시간 초과 지표를 확인할 수 있습니다. 스트리밍 계약과 한계는
 [보고서 문서](docs/REPORTS.md)에 정리했습니다.
 
+PostgreSQL 첫 설치는 `aegis-init-postgres`로 빈 네이티브 스키마를 준비합니다.
 SQLite와 새 PostgreSQL 스키마 사이의 검증된 오프라인 데이터 전송은
 `aegis-transfer-storage`로 수행합니다. 기본 HTTP 서비스는 SQLite이며,
 `AEGIS_STORAGE_BACKEND=postgres`와 DSN/schema 설정으로 준비된 PostgreSQL 저장소를 선택합니다.

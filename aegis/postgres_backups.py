@@ -217,18 +217,13 @@ def restore(source,dsn,schema,checkpoint=None):
 
 
 def _restore(source,dsn,schema,checkpoint=None):
-    transfer.validate_schema(schema);_,sql,_=transfer.driver()
+    transfer.validate_schema(schema)
     with Archive(source) as archive:
         metadata=verify(archive,checkpoint)
         with transfer.connect(dsn) as db,db.transaction():
             from .postgres_maintenance import offline_export
             offline_export(db,schema)
-            db.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
-            transfer.set_schema(db,schema);qualified=sql.Identifier(schema).as_string(db)
-            for statement in transfer.DDL:
-                tokens=statement.split(' ')
-                statement=statement.replace(tokens[2],qualified+'.'+tokens[2],1) if tokens[1]=='TABLE' else statement.replace(' ON ',' ON '+qualified+'.',1)
-                db.execute(statement)
+            qualified=transfer.create_schema(db,schema)
             for table,columns in transfer.TABLES.items():
                 with db.cursor() as cursor,cursor.copy(f'COPY {qualified}.{table} ({",".join(columns)}) FROM STDIN') as copy:
                     for row in archive.rows(table):copy.write_row(tuple(row[k] for k in columns))
