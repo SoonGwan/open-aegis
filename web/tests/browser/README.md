@@ -121,3 +121,29 @@ and keyboard checks, open `policy-editor-frame.html` directly: add/delete rules,
 optional fields, switch form/JSON, and try invalid schema or unsupported rule fields.
 Full registration, error/retry, native select interaction, 20-rule workload and assistive
 technology require separate real-app review.
+
+## Built-app session replacement during pending saves
+
+Build the frontend, then run `.venv/bin/python scripts/review_session_ui.py --port 8811`.
+Open `http://127.0.0.1:8811/`. This launcher creates disposable users `admin` and
+`operator`, both with synthetic password `owned-session-ui-password-only`. It removes
+inherited AEGIS settings and never opens existing data or executes target checks.
+The injected QA controls are outside the production bundle. Notes really persist on
+the local server; only successful POST acknowledgments are held. Other HTTP/auth/SSE
+remain real. Stop the launcher to remove all temporary data.
+
+1. Log in as admin, open Workspace → Write note and save. Confirm one held reply
+   and disabled saving button. With the modal focused, F9 invokes server logout.
+   Wait for the app's real periodic read to receive 401 and show Login.
+2. Log in as operator. User management must be absent. Note creation and logout
+   must be enabled even though the old acknowledgment remains pending.
+3. Open a new note, enter a different title/body and save. Confirm two held replies.
+   F8 releases the oldest reply. New modal/input must remain and saving stay disabled;
+   no old completion toast or records-changed event should appear.
+4. F8 releases the current reply. Dialog closes, records-changed becomes one and
+   controls unlock. Product Logout returns to Login.
+
+QA shortcuts work inside the modal; normal background inert still applies. Reload
+loses held client acknowledgments but retains committed notes until server shutdown.
+This checks one document's real cookie/session replacement and pending note save,
+not cross-tab/phone/tenant isolation or every mutation. It does not cancel committed writes.

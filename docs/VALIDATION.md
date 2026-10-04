@@ -1936,3 +1936,48 @@ on 390×844 has no document overflow.
   admin password-reset path, time expiry, already-authorized batch cancellation,
   slow consumers and prolonged soak remain outside these scenarios. v1 gates
   stay open. Main preview health remains HTTP 200; owned children terminate.
+
+## 2026-10-04 — session replacement cannot revive pending workspace mutations
+
+- Three new runViewAction regressions fail before the change: previous-session
+  success still refreshes/notifies/returns a navigation result, previous-session
+  failure still notifies, and a session replaced during refresh still completes.
+  After the change all 64 frontend tests pass. Same-session navigation/closed-modal
+  acknowledgment and reconciliation behavior remains covered by existing tests.
+- Common workspace actions capture session identity; the helper suppresses
+  reconciliation and callbacks across a session change, and checks again after
+  reconciliation. Main's reconcile callback guards records-changed after refresh.
+  Registration forms similarly guard post-mutation refresh, notifications, close,
+  navigation and errors. General API mutation acknowledgments remain available.
+  Each pending main action/form owns a unique lock; the unauthenticated transition
+  releases it, and an old finally cannot release a newer action's lock. Logout now
+  invokes the guarded auth API directly and transitions to Login, avoiding reads
+  with the logged-out cookie.
+- Added disposable built-app HTTP launcher `scripts/review_session_ui.py` and
+  injected `web/tests/browser/session-review.js`, with no production routes/bundle
+  changes. Two owned synthetic users share a real temporary workspace. Notes are
+  committed by the actual HTTP API; only successful note response delivery is held.
+  Browser sequence passes: admin's note pending → real server logout → periodic
+  real 401 returns Login → operator login shows operator identity and hides user
+  management → a second note can submit while the old acknowledgment is pending.
+- With two held responses, releasing the old admin response leaves the operator's
+  note dialog, title/body and disabled saving state intact, records-changed zero,
+  no old toast. Releasing the operator response closes the dialog, emits exactly one
+  records-changed event and unlocks controls. Product Logout then returns Login.
+  Screenshot `artifacts/v1-session-mutation-preserved.jpg` inspected visually:
+  focused synthetic title/body and disabled saving button remain in the actual
+  desktop modal. This is not mobile or real screen-reader validation.
+- Final TypeScript/Vite build passes: `index-BZ98Asdc.js` / `index-B5ysGB7c.css`.
+  Installed wheel + this separate built UI smoke passes with locked runtime deps,
+  outside-checkout HTTP/auth/persistence/import/audit/backup/restore/shutdown/lease,
+  zero target requests. Backend source unchanged; wheel SHA remains
+  `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`.
+  No full backend suite rerun is claimed. No actual before-build browser reproduction
+  of the new main form guards is claimed; failing-before evidence is the shared
+  helper tests, and the actual built-app sequence verifies the final integration.
+- Owned QA server reports completed shutdown and exits on requested Ctrl+C (130);
+  its initial launcher displayed Uvicorn's post-shutdown KeyboardInterrupt traceback.
+  Launcher now handles that interrupt without a traceback. Main preview remains live.
+  Cross-tab identity recovery, actual role/password-change browser flows, stale
+  generic mutations in other standalone panels, fault injection and all mobile
+  journeys remain separate open v1 requirements.

@@ -43,6 +43,63 @@ function harness() {
   return { scope, modalScope, request, refresh, effects, refreshing, action };
 }
 
+test("previous session mutation acknowledgment cannot refresh or notify a new session", async () => {
+  const session = new ViewScope();
+  const request = deferred<string>();
+  const effects: string[] = [];
+  const action = runViewAction({
+    execute: () => request.promise,
+    reconcile: async () => { effects.push("refresh"); },
+    isCurrent: () => true,
+    isSessionCurrent: session.capture(),
+    success: () => { effects.push("success"); },
+    failure: () => { effects.push("error"); },
+  });
+  session.invalidate();
+  request.resolve("committed");
+  assert.equal(await action, undefined);
+  assert.deepEqual(effects, []);
+});
+
+test("session change during reconciliation suppresses completion and navigation", async () => {
+  const session = new ViewScope();
+  const refresh = deferred<void>();
+  const effects: string[] = [];
+  let started!: () => void;
+  const refreshing = new Promise<void>((resolve) => { started = resolve; });
+  const action = runViewAction({
+    execute: async () => "committed",
+    reconcile: async () => { started(); await refresh.promise; },
+    isCurrent: () => true,
+    isSessionCurrent: session.capture(),
+    success: () => { effects.push("success"); },
+    failure: () => { effects.push("error"); },
+  });
+  await refreshing;
+  session.invalidate();
+  refresh.resolve();
+  assert.equal(await action, undefined);
+  assert.deepEqual(effects, []);
+});
+
+test("previous session mutation failure cannot surface in a new session", async () => {
+  const session = new ViewScope();
+  const request = deferred<string>();
+  const effects: string[] = [];
+  const action = runViewAction({
+    execute: () => request.promise,
+    reconcile: async () => { effects.push("refresh"); },
+    isCurrent: () => true,
+    isSessionCurrent: session.capture(),
+    success: () => { effects.push("success"); },
+    failure: () => { effects.push("error"); },
+  });
+  session.invalidate();
+  request.reject(new Error("old mutation failed"));
+  assert.equal(await action, undefined);
+  assert.deepEqual(effects, []);
+});
+
 test("current action refreshes committed data and permits its own navigation", async () => {
   const h = harness();
   h.request.resolve({ id: "replacement" });

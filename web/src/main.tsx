@@ -472,7 +472,7 @@ function App() {
     [connection, setConnection] = useState(true);
   const [formError, setFormError] = useState("");
   const [replanError, setReplanError] = useState<{id: string; message: string} | null>(null);
-  const actionInFlight = useRef(false);
+  const actionInFlight = useRef<symbol | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshSequence = useRef(0);
   const message = (text: string) => {
@@ -524,6 +524,8 @@ function App() {
   }, []);
   useEffect(() => {
     if (auth && !auth.authenticated) {
+      actionInFlight.current = null;
+      setBusy(false);
       refreshSequence.current++;
       setOverviewLoaded(false);
       setOverview(initial);
@@ -592,17 +594,20 @@ function App() {
     onFailure?: (message: string) => void,
   ) {
     if (busy || actionInFlight.current) return;
-    actionInFlight.current = true;
+    const action = Symbol("workspace action");
+    actionInFlight.current = action;
     setBusy(true);
     const isCurrent = captureActionView();
+    const isSessionCurrent = captureSession();
     try {
       return await runViewAction({
         execute: () => api(path, method, body),
         reconcile: async () => {
           await refresh();
-          window.dispatchEvent(new Event("aegis-records-changed"));
+          if (isSessionCurrent()) window.dispatchEvent(new Event("aegis-records-changed"));
         },
         isCurrent,
+        isSessionCurrent,
         success: (_result, current) =>
           message(current ? success : "이전 화면 요청 완료 · " + success),
         failure: (e, current) => {
@@ -614,8 +619,28 @@ function App() {
         },
       });
     } finally {
-      actionInFlight.current = false;
-      setBusy(false);
+      if (actionInFlight.current === action) {
+        actionInFlight.current = null;
+        setBusy(false);
+      }
+    }
+  }
+  async function logout() {
+    if (busy || actionInFlight.current) return;
+    const action = Symbol("logout");
+    actionInFlight.current = action;
+    const isSessionCurrent = captureSession();
+    setBusy(true);
+    try {
+      await api("/auth/logout", "POST");
+      setAuth({ setup_required: false, authenticated: false });
+    } catch (e) {
+      if (isSessionCurrent()) setError((e as Error).message);
+    } finally {
+      if (actionInFlight.current === action) {
+        actionInFlight.current = null;
+        setBusy(false);
+      }
     }
   }
   async function replanPending(id: string) {
@@ -831,11 +856,13 @@ function App() {
   async function submitForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy || actionInFlight.current) return;
-    actionInFlight.current = true;
+    const action = Symbol("workspace form");
+    actionInFlight.current = action;
     setBusy(true);
     setFormError("");
     const data = new FormData(e.currentTarget);
     const isCurrent = captureActionView();
+    const isSessionCurrent = captureSession();
     let destination: string | null = null;
     let successMessage = "저장했습니다.";
     try {
@@ -894,7 +921,9 @@ function App() {
         destination = "notes";
         successMessage = "노트를 저장했습니다.";
       }
+      if (!isSessionCurrent()) return;
       await refresh();
+      if (!isSessionCurrent()) return;
       window.dispatchEvent(new Event("aegis-records-changed"));
       const current = isCurrent();
       message(
@@ -905,14 +934,17 @@ function App() {
         if (destination) navigate(destination, true);
       }
     } catch (e) {
+      if (!isSessionCurrent()) return;
       const errorMessage = e instanceof SyntaxError
         ? "JSON 형식을 확인하세요."
         : (e as Error).message;
       if (isCurrent()) setFormError(errorMessage);
       else message("이전 화면 요청 실패 · " + errorMessage);
     } finally {
-      actionInFlight.current = false;
-      setBusy(false);
+      if (actionInFlight.current === action) {
+        actionInFlight.current = null;
+        setBusy(false);
+      }
     }
   }
   if (!auth || (auth.authenticated && !overviewLoaded))
@@ -1020,10 +1052,7 @@ function App() {
           <button
             className="nav-item"
             disabled={busy}
-            onClick={async () => {
-              const result = await act("/auth/logout");
-              if (result) setAuth({ setup_required: false, authenticated: false });
-            }}
+            onClick={() => void logout()}
           >
             <LogOut size={17} />
             로그아웃
