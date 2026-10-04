@@ -978,7 +978,7 @@ def create_app(data_dir=None, allow_private=None):
             raise HTTPException(429, '보고서 다운로드가 모두 사용 중입니다. 잠시 후 다시 시도하세요.',
                                 headers={'Retry-After':'5'})
         try:
-            return ReportResponse(report_stream(store.path,format,task_id,permit), permit=permit, media_type=media,
+            return ReportResponse(report_stream(store,format,task_id,permit), permit=permit, media_type=media,
                                   headers={'Content-Disposition':f'attachment; filename="aegis-report.{suffix}"',
                                            'Cache-Control':'no-store'})
         except BaseException:

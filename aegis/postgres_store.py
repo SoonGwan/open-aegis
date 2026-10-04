@@ -79,19 +79,22 @@ class PostgresStore:
         # Constructor performs no recovery, session revocation or schema writes.
 
     @contextmanager
-    def transaction(self, *, write=False):
+    def transaction(self, *, write=False, permit=None):
+        from .postgres_streams import query_permit
         with transfer.connect(self._dsn) as db, db.transaction():
+            # SET TRANSACTION must precede the guard's first SELECT.
             db.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED' if write else
                        'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
-            transfer.set_schema(db,self.schema)
-            if self.owner is not None:self.owner.protect(db,self._dsn,self.schema)
-            elif write:
-                from .postgres_maintenance import offline_write
-                offline_write(db,self.schema)
-            if write:
-                # One cooperative write order per database/schema, including other processes.
-                db.execute("SELECT pg_advisory_xact_lock(hashtextextended(current_database()||':'||%s,0))",(self.schema,))
-            yield db
+            with query_permit(db,permit):
+                transfer.set_schema(db,self.schema)
+                if self.owner is not None:self.owner.protect(db,self._dsn,self.schema)
+                elif write:
+                    from .postgres_maintenance import offline_write
+                    offline_write(db,self.schema)
+                if write:
+                    # One cooperative write order per database/schema, including other processes.
+                    db.execute("SELECT pg_advisory_xact_lock(hashtextextended(current_database()||':'||%s,0))",(self.schema,))
+                yield db
 
     def acquire_runtime(self):
         from .postgres_maintenance import PostgresLease

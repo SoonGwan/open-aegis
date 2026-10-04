@@ -1,4 +1,4 @@
-"""Complete report streams from one read-only SQLite snapshot.
+"""Complete report streams from one read-only storage snapshot.
 
 Memory grows with the largest record, not the number of exported records.
 Slow downloads retain their read snapshot (and can delay WAL checkpointing).
@@ -117,7 +117,25 @@ def markdown_report(snapshot, generated_at):
                          json.dumps(finding['evidence'],ensure_ascii=False,indent=2),'```','',finding['remediation'],''])+'\n'
 
 
+def render_chunks(snapshot, format, permit=None):
+    generator = {'json':json_report,'csv':csv_report,'markdown':markdown_report}[format]
+    rows = generator(snapshot) if format == 'csv' else generator(snapshot,now())
+    with closing(rows):
+        for chunk in rows:
+            if permit: permit.check()
+            yield chunk.encode('utf-8')
+
+
 def report_chunks(path, format, task_id=None, permit=None):
+    if getattr(path,'backend',None)=='postgres':
+        from .postgres_reporting import PostgresSnapshot
+        if permit:permit.check()
+        with path.transaction(permit=permit) as db:
+            # Pin the snapshot before the first streamed byte, including an empty DB.
+            db.execute('SELECT rowid FROM records LIMIT 1').fetchone()
+            yield from render_chunks(PostgresSnapshot(db,task_id,permit),format,permit)
+        return
+    path=getattr(path,'path',path)
     # Threadpool iteration is serialized but may use a different worker each time.
     uri = 'file:'+quote(str(path.resolve()),safe='/')+'?mode=ro'
     if permit: permit.check()
@@ -128,11 +146,7 @@ def report_chunks(path, format, task_id=None, permit=None):
             db.execute('BEGIN')
             db.execute('SELECT rowid FROM records LIMIT 1').fetchone()
             snapshot = Snapshot(db,task_id)
-            generator = {'json':json_report,'csv':csv_report,'markdown':markdown_report}[format]
-            rows = generator(snapshot) if format == 'csv' else generator(snapshot,now())
-            for chunk in rows:
-                if permit: permit.check()
-                yield chunk.encode('utf-8')
+            yield from render_chunks(snapshot,format,permit)
     except sqlite3.OperationalError:
         if permit: permit.check()
         raise

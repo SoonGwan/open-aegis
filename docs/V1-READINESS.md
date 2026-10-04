@@ -108,7 +108,8 @@
     단독 PostgreSQL Engine의 소유한 로컬 대상 실행/증거/재검증/중지/큐 만료와 발견 조치 트랜잭션도 구현·검수.
     DB/스키마별 실행 소유권·중복 시작 배제·소유 backend 종료 후 쓰기/요청 거절·진행 중 작업의 교체 배제도 구현·검수.
     중지된 PG DB의 세션 제외/원본 유지 반환·실제 덤프 복구→SQLite 인증 서버 시작과 네이티브 관계 그래프도 검수.
-    HTTP/작업 실행·보고서/감사 읽기·설정의 PostgreSQL 연결과 전체 HTTP 운영 검수는
+    JSON·CSV·Markdown의 네이티브 보고서 streaming과 실제 SQL/전송 취소·메모리·일관성도 검수.
+    HTTP/작업 실행·감사 읽기·설정의 PostgreSQL 연결과 전체 HTTP 운영 검수는
     아직 미구현이며 전체 조건은 열려 있음([POSTGRES-STORAGE.md](POSTGRES-STORAGE.md)).
 - [ ] 검토된 확장 도구 계약과 등록·실행·결과 검증.
   - 내장 6개 도구의 계약 버전·코드 지문·계획 스냅샷, 승인/실행/Worker 전 비교,

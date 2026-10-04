@@ -72,6 +72,8 @@ from aegis.runtime import ExecutionPolicy
 from aegis.tool_contracts import contracts_for
 from aegis.coverage import planned_slots
 from aegis.graph import build_graph
+from aegis.reporting import report_chunks
+from aegis.export_limits import ExportPolicy,ExportPool
 from aegis.postgres_maintenance import PostgresLease
 from aegis.maintenance import WorkspaceBusy
 from aegis.postgres_transfer import postgres_to_sqlite,connect
@@ -138,6 +140,16 @@ try:
     assert engine.metrics()['queue_watchdog']['errors']==0
     graph=build_graph(s,'owned-lab','native-engine')
     assert any(edge['relation']=='evidence' for edge in graph['edges']) and owned_requests==['/']
+    pool=ExportPool(ExportPolicy());permit=pool.acquire()
+    try:
+        report=json.loads(b''.join(report_chunks(s,'json','native-engine',permit)))
+        assert report['tasks'][0]['status']=='completed' and report['coverage'][0]['status']=='completed'
+        assert len(report['findings'])==s.count('findings') and len(report['evidence'])==len(report['findings'])
+        assert len(report['traffic'])==1 and report['finding_history']
+        assert b'remediation' in b''.join(report_chunks(s,'csv','native-engine',permit))
+        assert 'Installed approved task' in b''.join(report_chunks(s,'markdown','native-engine',permit)).decode()
+    finally:permit.finish('completed')
+    assert pool.metrics()['active']==0 and owned_requests==['/']
 finally:
     engine.shutdown();server.shutdown();server.server_close();thread.join(timeout=2)
 assert owned_requests==['/']
@@ -222,7 +234,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
             print(json.dumps({'valid':True,'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
-                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
+                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
                           'installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'external_target_requests':0,'service_postgres_backend_enabled':False}))

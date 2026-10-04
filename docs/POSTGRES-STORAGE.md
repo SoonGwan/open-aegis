@@ -144,6 +144,26 @@ AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 �
 이는 정상 필드 모양의 대표 자료에 대한 검수이며 단일 증거 본문의 전체 크기나 대규모
 Graph SLO를 보장하지 않는다. 그래프는 조회이며 추가 대상 요청을 보내지 않는다.
 
+보고서의 JSON·CSV·Markdown은 같은 생성기를 쓰고 PostgreSQL에서는 명시적
+네이티브 질의와 서버 측 커서(batch32)로 전체 행을 읽는다. 작업·발견·증거·조치
+이력·커버리지·트래픽을 한 read-only REPEATABLE READ 스냅샷에서 읽고, 첫 전송
+전에 스냅샷을 고정한다. 선택한 작업의 참조만 포함하고 고아 증거/트래픽은 제외한다.
+커버리지의 추가 조회도 같은 연결을 사용한다. CSV 수식 시작 문자 보호를 유지한다.
+6,000개씩의 발견·증거·이력·트래픽을 JSON으로 내보내는 로컬 검수에서 Python peak
+memory2MB 미만을 확인했다. DB 서버의 실행 계획/정렬 메모리, 단일 대형 레코드의
+파싱/출력 자원이나 장시간 snapshot의 vacuum 영향까지 보장하는 검수는 아니다.
+
+기존 ExportPermit의 승인 슬롯과 총 다운로드 시간 제한을 사용한다. PostgreSQL
+트랜잭션 내부에는 남은 시간으로 statement_timeout을 설정하고 취소 감시 스레드가
+시간 초과/다운로드 중단 때 현재 DB 쿼리의 cancel_safe를 요청한다. 쿼리 전/행 처리
+시에도 permit을 확인한다. 실제 pg_sleep 중 취소·ASGI 전송 대기 timeout·조기 close에서
+커서/연결/감시 스레드/승인 슬롯 해제를 검수했다. 감시를 시작하기 전 연결 수립에는
+기존5초 connect_timeout이 적용된다. libpq17 이전 cancel_safe fallback, 원격 네트워크
+blackhole·프록시·HA 환경의 전체 종료 시간은 미검수다. 활성 보고서의 공유 transaction
+gate는 소유 세션을 종료해도 반환/교체를 막고, 보고서를 닫은 다음 교체할 수 있다.
+조회는 대상에 추가 HTTP 요청을 보내지 않는다. HTTP 앱은 이 저장소 중립 보고서
+경로를 호출하지만 PostgreSQL backend 선택 자체는 아직 활성화하지 않았다.
+
 레코드는 원문 TEXT로 저장하고 검색/관계 연산만 jsonb로 투영한다. 검색 문자열은
 바인딩하고 `%`와 `_`도 문자 그대로 검색한다. JSON 객체의 원문 바이트 보존을 검증한
 전송과, jsonb 질의의 의미는 별도 계약이다. 중복 JSON 키·PostgreSQL numeric 범위를
@@ -160,7 +180,7 @@ Graph SLO를 보장하지 않는다. 그래프는 조회이며 추가 대상 요
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된

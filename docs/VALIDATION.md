@@ -2912,3 +2912,49 @@ on 390×844 has no document overflow.
   (PID88314/session85734); `/api/health` and root HTTP200. Existing preview data
   retained. Initial preview probe of nonexistent `/healthz` returned404; the
   documented service health route succeeds.
+
+
+### PostgreSQL complete report streams and cancellation
+
+- Added explicit native report queries with named server-side cursors (batch32),
+  complete scoped JSON/CSV/Markdown output and the same renderers as SQLite. One
+  read-only repeatable-read transaction pins before the first byte and includes
+  coverage/history lookup. Orphan evidence/traffic are excluded; task values are
+  bound, including literal SQL-like IDs. CSV formula guards remain. The HTTP
+  export route now accepts its Store rather than assuming a SQLite file path.
+- Actual PostgreSQL tests compare all three scoped formats and full JSON against
+  SQLite, with1005 findings/proofs/history/traffic each. Concurrent task/finding/
+  coverage/history edits and a new proof do not enter the active snapshot. Native
+  readonly refusal, invalid JSON failure, early synchronous/asynchronous close
+  release connections. Export of6000 rows in each main collection exceeds12MB
+  while Python traced peak stays below2MB; all six report cursors use batch32 and
+  close. This does not prove server sorting memory, huge single-record bounds,
+  long-lived snapshot vacuum behavior or production resource SLO.
+- Native transaction permits set remaining-time statement_timeout and use a joined
+  cancellation watcher. Actual pg_sleep(10) is interrupted by a .2-second permit
+  and by ASGI2.0 disconnect, each under2 seconds. ASGI2.4 slow-send expiry releases
+  connection and admission slot. No cancellation watcher remains. Killing the
+  dedicated owner during an admitted report still fences replacement until the
+  report closes; stale-owner future reports are refused. Connection establishment
+  before the guard retains the existing5-second connection timeout. Remote network
+  blackhole, old-libpq cancellation fallback, proxies and HA remain unverified.
+- Native+SQLite report/export subset: **27 passed in14.37s**
+  (`artifacts/postgres-reports-targeted.txt`). Full backend with explicit PG opt-in:
+  **506 passed in144.57s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-reports-backend-final.txt`). No UI edits or rebuild.
+- Wheel SHA2562ec9d5b5d9d759e366b8d4b2424cc3b0f8f93ed4e0cf052966bf0152cfad5723
+  byte-matches all52 service Python files. Outside-checkout installed native Engine
+  produces real persisted proofs and reads JSON/CSV/Markdown reports under runtime
+  ownership, then completes ownership-loss/dump/restore/session-aware SQLite return
+  and returned HTTP authentication/graph checks
+  (`artifacts/postgres-reports-installed-review.json`,valid=true,target_requests=1,
+  owned_lab_requests=1,external_target_requests=0,service_postgres_backend_enabled=false).
+  Same wheel's default installed HTTP/auth/UI/maintenance/release checks pass
+  (`artifacts/postgres-reports-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove disposable clusters and installations. CI now
+  includes native reports; hosted execution remains unverified.
+- Full PostgreSQL service selection, import transactions, bounded audit review,
+  startup/HTTP lifecycle and operational backup/restore remain required. No remote
+  publication or external target/provider request; the complete v1 gate stays open.
+- Owned preview completed normal shutdown before restarting current code on8790
+  (PID3544/session42309); `/api/health` and root HTTP200. Existing workspace retained.
