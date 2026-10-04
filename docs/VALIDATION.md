@@ -3463,3 +3463,23 @@ on 390×844 has no document overflow.
   completed normal shutdown and current candidate restarted on8790 (PID28802/
   session84430). Health/root HTTP200; existing workspace/session/schema retained.
   Old pending contracts were not rewritten and require current reviewed replan.
+
+## Concurrent HTTP body admission (2026-10-04)
+
+- Added a process-local limit of 16 concurrent body readers before application/JSON
+  entry. Full slots reject immediately with503/Retry-After1 without reading the
+  rejected body. Existing2MiB/30s caps remain. Success, streamed oversize,
+  disconnect, timeout and cancellation release reader admission.
+- Body limit tests:7passed0.50s, including recovery after cancellation/disconnect/
+  timeout and413. Full default-backend run completed447passed155skipped115.62s
+  (`artifacts/body-reader-backend.txt`); that run collected before the final
+  standalone oversize-recovery test was added. All7 body tests then passed.
+  Native PostgreSQL HTTP suite explicitly enabled:11passed9.21s
+  (`artifacts/body-reader-postgres-http.txt`). Existing Starlette/httpx deprecation
+  warning remains. Skipped native suites were not counted as passing.
+- Actual owned loopback Uvicorn with16partial-body sockets and2s shortened receive
+  timeout: excessrequest503/Retry-After1, all16readers408, subsequentrequest200,
+  serverthreadterminated; targetrequests0 (`artifacts/body-reader-http-review.json`).
+  This tests receive admission only, not total memory/connections/downstream work
+  limits or a default30s/long soak. No Docker/Colima/Podman executable was found;
+  actual container verification and other v1 gates remain open.
