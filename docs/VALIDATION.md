@@ -4336,3 +4336,43 @@ on 390×844 has no document overflow.
   Worker observation reasoning, live AI intervention, commercial provider, long
   event/resource load, retention and complete mobile/SR remain open. Whole v1 is
   still unachieved; no remote publication or container execution.
+
+## Frozen Worker observation planning context — 2026-10-05
+
+- Follow-up, replacement and retry plans store bounded observation context. Only
+  matching recorded provenance, completed endpoint inventory and current active,
+  authorized scope/revision contribute. Counts disclose exclusions and observations
+  outside the100-row sample; context above64KiB is refused. Path-name categories
+  affect relevance ordering within approved checks and do not establish a vulnerability.
+  Human requested checks retain their original group order before other relevant checks.
+- SQLite/native PostgreSQL tests cover changed-observation stale proposal refusal,
+  accepted nonce replay and frozen child context, invalid provenance/coverage/revision,
+  query-bearing URLs, mismatched keys and malformed list-valued IDs, bounded sampling,
+  oversize refusal and context tampering. Mock-provider approved loopback execution
+  verifies the exact five-field projection, recorded references and no observation
+  URL visits; later live observations do not change the stored provider input.
+- Final related cases: **38 passed27.53s** (`artifacts/observation-context-targeted-final.txt`).
+  Final native-enabled full suite: **811 passed295.28s**, only the existing Starlette
+  test-client deprecation warning (`...full-final.txt`). The earlier809-case full run
+  preceded the final malformed-ID regression pair. No service edits after final tests.
+  Frontend: **92 passed481.01ms**, TypeScript/Vite build1.42s (`...node.txt`, `...build.txt`).
+  Native cases are configured in CI; hosted CI was not run.
+- Wheel SHA256 **63a6dd5c5b0e3b0d96e2653347552fea225506160adc86ccdcf2d9207a2256e5**;
+  all68 recursive service Python files byte-match checkout (`...wheel-proof.json`).
+  Installed default runtime and native PostgreSQL16.15 reviews are valid
+  (`...installed-runtime.json`, `...installed-postgres.json`). Native review asserts
+  one source observation in the proposal, exact child snapshot and exact preservation
+  after real pg_dump/restore. Native owned lab requests3, owned source1, external
+  targets/sources0; default target requests0. Docker and production PostgreSQL untested.
+- Built-app proposal and accepted pending task show2 included observations out of63,
+  with61 exclusions and0 omitted. Reloaded final built UI displays session/API paths,
+  scope revision/source and provider projection disclosure; desktop screenshot inspected
+  (`...ui-proposal.txt`, `...ui-pending.txt`, `...ui-final.txt`, `...ui-final.jpg`).
+  No execution approval. This increment does not establish new mobile/SR coverage.
+  Owned tab closed and fixture stopped: target requests0, ordinary task POSTs0,
+  next-plan POSTs1, temporary data removed (`...ui-fixture.txt`).
+- Main preview restarted preserving existing data; health status ok and anonymous
+  planner access401. Final JSindex-DS-FF9lF.js / CSSindex-ZAbl2hHS.css
+  (`...preview-health.json`). [OBSERVATION-PLANNING.md](OBSERVATION-PLANNING.md)
+  documents boundaries. Semantic goal decomposition, explicit observed-URL execution,
+  commercial-provider validation and other v1 readiness gates remain open.

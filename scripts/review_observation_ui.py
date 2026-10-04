@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--editor',action='store_true',help='Seed30 extra synthetic selectable assets for dependency editor QA')
     parser.add_argument('--task-fail-flag',type=Path,help='Owned QA flag: while present, task creation POST returns503')
     parser.add_argument('--next-plan',action='store_true',help='Seed synthetic terminal two-Worker proposal evidence; never execute targets')
+    parser.add_argument('--observation-planner',action='store_true',help='Seed completed predecessor API/session observations for frozen planner context')
     parser.add_argument('--next-read-fail-flag',type=Path)
     parser.add_argument('--planner-read-fail-flag',type=Path,help='Owned automatic planner GET failure probe')
     parser.add_argument('--next-write-fail-flag',type=Path)
@@ -41,6 +42,7 @@ def main():
     parser.add_argument('--todo-read-fail-flag',type=Path,help='Owned todo GET failure probe')
     parser.add_argument('--todo-write-hold-flag',type=Path,help='Hold owned todo POST/PATCH for up to15 seconds')
     args=parser.parse_args()
+    if args.observation_planner and not args.next_plan:parser.error('--observation-planner requires --next-plan')
     if not 1<=args.port<=65535:parser.error('port must be1..65535')
     for key in list(os.environ):
         if key.startswith('AEGIS_'):del os.environ[key]
@@ -148,6 +150,9 @@ def main():
                             {'asset_id':parent['id'],'worker_id':task['id']+':'+parent['id']})
         for i in range(60):
             record_link(store,task,asset,'endpoint_inventory',asset['url']+f'owned-link-{i:02d}')
+        if args.observation_planner:
+            for path in ('api/account','login'):
+                record_link(store,task,parent,'endpoint_inventory',parent['url']+path)
         store.put('observations',{'id':'qa-legacy','task_id':task['id'],'asset_id':asset['id'],
                                  'url':asset['url']+'legacy-link','created_at':time.time()})
         store.put('observations',{'id':'qa-missing','task_id':'missing-task','asset_id':asset['id'],

@@ -25,6 +25,101 @@ export type TodoPlanContext = {
     check_ids: string[];
   }[];
 };
+export type ObservationPlanContext = {
+  format: string;
+  fingerprint: string;
+  counts: {
+    total: number;
+    inspected: number;
+    included: number;
+    excluded: number;
+    omitted: number;
+  };
+  items: {
+    id: string;
+    task_id: string;
+    asset_id: string;
+    url: string;
+    scope_revision: number;
+    category: string;
+  }[];
+};
+export function WorkerObservationBasis({
+  context,
+}: {
+  context?: ObservationPlanContext;
+}) {
+  if (!context) return null;
+  if (
+    !context.counts ||
+    [
+      context.counts.total,
+      context.counts.inspected,
+      context.counts.included,
+      context.counts.excluded,
+      context.counts.omitted,
+    ].some((value) => !Number.isSafeInteger(value) || value < 0) ||
+    !Array.isArray(context.items) ||
+    context.items.length > 100 ||
+    context.counts.included !== context.items.length ||
+    context.counts.included + context.counts.excluded !==
+      context.counts.inspected ||
+    context.counts.inspected + context.counts.omitted !==
+      context.counts.total ||
+    context.items.some(
+      (row) =>
+        !row ||
+        typeof row.url !== "string" ||
+        typeof row.id !== "string" ||
+        typeof row.task_id !== "string" ||
+        typeof row.category !== "string" ||
+        !Number.isSafeInteger(row.scope_revision) ||
+        row.scope_revision < 1,
+    )
+  )
+    return <p role="alert">저장된 Worker 관찰 계획 맥락을 확인하세요.</p>;
+  const labels: Record<string, string> = {
+    api_path: "API 경로",
+    session_path: "세션 경로",
+    management_path: "관리 경로",
+    other: "기타 경로",
+  };
+  return (
+    <section
+      className="todo-plan-basis next-plan"
+      aria-label="계획에 저장된 Worker 관찰"
+    >
+      <details>
+        <summary>
+          계획에 저장된 Worker 관찰 · {context.counts.included}개
+        </summary>
+        <p>
+          생성 당시 출처·완료 근거·현재 범위가 일치한 관찰입니다. 경로 유형을
+          도구 순서의 참고로 사용하며 링크 방문·취약점 판정·새 실행 권한을
+          뜻하지 않습니다.
+        </p>
+        <p>
+          전체 {context.counts.total}개 · 확인 {context.counts.inspected}개 ·
+          제외 {context.counts.excluded}개 · 표본 밖 {context.counts.omitted}개
+        </p>
+        <p>
+          AI 모드에서는 관찰 ID·출처 작업/자산 ID·범위 버전·경로 유형만 설정된
+          제공자에게 전송합니다. URL·경로 원문은 전송하지 않습니다.
+        </p>
+        {context.items.map((row) => (
+          <article key={row.id}>
+            <code className="observation-url">{row.url}</code>
+            <p>
+              {labels[row.category] || row.category} · 범위 버전{" "}
+              {row.scope_revision} · 작업 {row.task_id}
+            </p>
+          </article>
+        ))}
+        {!context.items.length && <p>계획 순서에 사용할 관찰이 없습니다.</p>}
+      </details>
+    </section>
+  );
+}
 export function TodoPlanBasis({
   context,
   names,
@@ -96,6 +191,7 @@ export function TodoPlanBasis({
   );
 }
 type Proposal = {
+  worker_observation_context?: ObservationPlanContext;
   format: "aegis-next-plan-v1";
   source_task_id: string;
   fingerprint: string;
@@ -413,6 +509,9 @@ export function NextPlan({
                 공유 할 일의 검증 요청:{" "}
                 {checkNames(proposal.basis.todo_requested_checks || [])}
               </p>
+              <WorkerObservationBasis
+                context={proposal.worker_observation_context}
+              />
               {proposal.shared_todo_context && (
                 <section
                   className="todo-plan-basis"

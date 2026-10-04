@@ -1,0 +1,11 @@
+from tests.test_postgres_transfer import postgres,schema
+from tests.test_postgres_http import configured,client
+from tests.test_validation import lab
+from tests.test_observation_context import (
+    test_real_observation_freezes_with_proposal_and_stale_snapshot_is_refused as test_native_frozen_observations,
+    test_unconfirmed_incomplete_or_changed_scope_is_excluded as test_native_excluded_observations,
+    test_sampling_counts_are_explicit_and_frozen_validation_refuses_tampering as test_native_sample_counts,
+    test_context_byte_budget_refuses_overflow_without_truncating_fields as test_native_context_budget,
+    test_malformed_observation_page_refuses_planning_without_partial_context as test_native_malformed_page,
+    test_approved_provider_reads_frozen_categories_without_urls_or_extra_checks as test_native_provider_categories,
+)

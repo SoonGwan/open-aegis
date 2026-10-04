@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { validateWorkerDependencies, WorkerDependencyError } from "./worker-dependency-state";
-import { NextPlan, TodoPlanBasis, type TodoPlanContext } from "./NextPlan";
+import { NextPlan, TodoPlanBasis, WorkerObservationBasis, type TodoPlanContext, type ObservationPlanContext } from "./NextPlan";
 import { WorkerProcess } from "./WorkerProcess";
 import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
@@ -104,6 +104,7 @@ type Task = {
   planner: string;
   llm_usage?: PlannerCall;
   shared_todo_context?:TodoPlanContext;
+  worker_observation_context?:ObservationPlanContext;
   created_at: number;
   done: number;
   approved_at?: number | null;
@@ -2864,6 +2865,7 @@ function App() {
             )}
             {selectedTask.llm_usage && <PlannerUsage call={selectedTask.llm_usage} />}
             <TodoPlanBasis context={selectedTask.shared_todo_context} planner={selectedTask.planner} names={Object.fromEntries(tools.map(t=>[t.id,t.name]))} />
+            <WorkerObservationBasis context={selectedTask.worker_observation_context} />
             <WorkerProcess key={`worker-process-${selectedTask.id}`} taskId={selectedTask.id}
               assets={selectedTask.scope_snapshot} tools={tools} state={navigation.taskWorker} onChange={navigation.updateTaskWorker} />
             {auth.user && <SharedTodos key={`todos-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id}

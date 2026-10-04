@@ -2,7 +2,7 @@
 import hashlib
 import json
 from contextlib import nullcontext
-from . import todos
+from . import todos, observation_context
 
 from .checks import CATALOG, CHECK_IDS
 from .coverage import task_rows
@@ -69,6 +69,7 @@ def propose(store, task_id, policy, *, connection=None):
         retry = [c['id'] for c in CATALOG if any(r['check'] == c['id'] and r['status'] in RETRYABLE for r in rows)]
         context=todos.planning_context(store,task_id,connection=db)
         requested=todos.requested_checks(context)
+        observations=observation_context.snapshot(store,task_id,connection=db)
         selected = [c['id'] for c in CATALOG if c['id'] in missing or c['id'] in retry or c['id'] in requested]
         task = {'name': ('다음 계획 · ' + source['name'])[:120], 'goal': source.get('goal', ''),
                 'asset_ids': ids, 'checks': selected, 'workers': source.get('workers', 3),
@@ -79,7 +80,7 @@ def propose(store, task_id, policy, *, connection=None):
                  'round': round_number, 'ancestors': ancestors,
                  'scope_snapshot': scopes, 'assets': assets, 'coverage': cells,
                  'task': task, 'tool_contracts': contracts_for(selected) if selected else None,
-                 'execution_policy': policy, 'shared_todo_context':context}
+                 'execution_policy': policy, 'shared_todo_context':context, 'worker_observation_context':observations}
         fingerprint = hashlib.sha256(json.dumps(basis, sort_keys=True, ensure_ascii=False,
                                                 allow_nan=False, separators=(',', ':')).encode()).hexdigest()
         limited = round_number >= MAX_ROUNDS
@@ -91,6 +92,7 @@ def propose(store, task_id, policy, *, connection=None):
                 'reason': 'already_accepted' if accepted else ('history_limit' if history_limited else 'round_limit' if limited else 'results_followup' if selected else 'no_remaining_checks'),
                 'task': task if selected and not limited and not history_limited else None,
                 'shared_todo_context':context,
+                'worker_observation_context':observations,
                 'basis': {'missing_checks': missing, 'retry_checks': retry, 'todo_requested_checks':requested, 'coverage': cells,
                           'skipped_cells': [r['id'] for r in rows if r['status'] == 'skipped'],
                           'repeated_completed_cells': [r['id'] for r in rows if r['status'] == 'completed' and r['check'] in selected]},

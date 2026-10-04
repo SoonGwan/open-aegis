@@ -49,6 +49,7 @@ from .worker_observations import task_page as observation_page
 from . import worker_process, worker_dependencies, next_plan, planning_history
 from . import todos
 from .event_planner import EventPlanner
+from . import observation_context
 
 
 class Credentials(BaseModel):
@@ -295,10 +296,13 @@ def create_app(data_dir=None, allow_private=None):
             task.update(planning_history.metadata(attempt_source))
             try:task['shared_todo_context']=todos.planning_context(store,attempt_source['id'])
             except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+            try:task['worker_observation_context']=observation_context.snapshot(store,attempt_source['id'])
+            except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         if followup:
             source, proposal = followup
             task.update(followup_of=source['id'], followup_fingerprint=proposal['fingerprint'],
                         planning_round=proposal['planning_round'],shared_todo_context=proposal['shared_todo_context'])
+            task['worker_observation_context']=proposal['worker_observation_context']
         records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]
         if followup:
             records.append(('tasks', {**source, 'next_plan_id': task['id'],

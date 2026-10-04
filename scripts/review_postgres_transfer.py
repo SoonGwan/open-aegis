@@ -339,10 +339,12 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert proposal['available'] and not proposal['execution_authorized']
                     assert proposal['basis']['todo_requested_checks']==['cookie_policy']
                     assert proposal['shared_todo_context']['items'][0]['revision']==1
+                    assert proposal['worker_observation_context']['counts']['included']==1
                     assert set(proposal['task']['checks']).isdisjoint({'security_headers','endpoint_inventory'})
                     followup=native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})
                     assert followup['status']=='pending' and followup['approved_at'] is None
                     assert followup['shared_todo_context']==proposal['shared_todo_context']
+                    assert followup['worker_observation_context']==proposal['worker_observation_context']
                     assert native_http('/api/tasks/'+followup['id']+'/todos')['items'][0]['id']==shared_todo['id']
                     assert followup['followup_of']=='native-engine' and followup['planning_round']==1
                     assert native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})['id']==followup['id']
@@ -437,6 +439,7 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                     assert backup_http('/api/tasks/native-engine/todos')['items'][0]['status']=='done'
                     assert backup_http('/api/tasks/native-engine/todos')['items'][0]['check_ids']==['cookie_policy']
                     assert backup_http('/api/tasks/'+first_followup_id)['task']['shared_todo_context']==proposal['shared_todo_context']
+                    assert backup_http('/api/tasks/'+first_followup_id)['task']['worker_observation_context']==proposal['worker_observation_context']
                     deadline=time.monotonic()+10
                     while True:
                         restored_review=backup_http('/api/tasks/native-engine/planner')
