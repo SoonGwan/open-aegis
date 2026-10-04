@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--observation-planner',action='store_true',help='Seed completed predecessor API/session observations for frozen planner context')
     parser.add_argument('--observation-lost-response-flag',type=Path,help='Owned observation-plan POST commit then503 probe')
     parser.add_argument('--goal-planner',action='store_true',help='Owned mock-provider semantic goal draft fixture, no external calls')
+    parser.add_argument('--goal-retest-lost-response-flag',type=Path,help='Owned objective retest commit then503 probe')
     parser.add_argument('--goal-evidence',action='store_true',help='Seed objective proof and retest navigation fixtures without target requests')
     parser.add_argument('--goal-sparse',action='store_true',help='Owned goal objectives select separate asset/check pairs')
     parser.add_argument('--goal-lost-response-flag',type=Path,help='Owned goal draft commit then503 probe')
@@ -73,6 +74,7 @@ def main():
         next_posts=0
         observation_posts=0
         goal_posts=0
+        goal_retest_posts=0
         goal_provider_calls=[]
         if args.goal_planner:
             from aegis import goal_planner
@@ -96,7 +98,9 @@ def main():
             goal_planner.completion=goal_provider
         @app.middleware('http')
         async def failure(request,call_next):
-            nonlocal task_posts,next_posts,observation_posts,goal_posts
+            nonlocal task_posts,next_posts,observation_posts,goal_posts,goal_retest_posts
+            if request.method=='POST' and '/goal-objectives/' in request.url.path and request.url.path.endswith('/retest'):
+                goal_retest_posts+=1
             if request.method=='POST' and request.url.path.endswith('/goal-plans'):
                 goal_posts+=1
             if request.method=='POST' and request.url.path.endswith('/observation-plan'):
@@ -129,6 +133,8 @@ def main():
             if request.url.path.startswith('/api/tasks/') and request.url.path.endswith('/observations') and args.fail_flag and args.fail_flag.exists():
                 return JSONResponse({'detail':'합성 관찰 조회 실패'},status_code=503)
             response=await call_next(request)
+            if request.method=='POST' and '/goal-objectives/' in request.url.path and request.url.path.endswith('/retest') and args.goal_retest_lost_response_flag and args.goal_retest_lost_response_flag.exists() and response.status_code==200:
+                return JSONResponse({'detail':'합성 목표 재검증 응답 유실'},status_code=503)
             if request.method=='POST' and request.url.path.endswith('/goal-plans') and response.status_code==200 and args.goal_lost_response_flag and args.goal_lost_response_flag.exists():
                 return JSONResponse({'detail':'합성 목표 초안 저장 후 응답 유실'},status_code=503)
             if request.method=='POST' and request.url.path.endswith('/observation-plan') and response.status_code==200 and args.observation_lost_response_flag and args.observation_lost_response_flag.exists():
@@ -228,7 +234,7 @@ def main():
             assert store.count('traffic')==0
             assert store.get('tasks',task['id'])['status']==task['status']
             shutil.rmtree(temporary)
-            print('Fixture lifespan completed; target requests0; task creation POSTs'+str(task_posts)+'; next-plan POSTs'+str(next_posts)+'; observation-plan POSTs'+str(observation_posts)+'; goal draft POSTs'+str(goal_posts)+'; goal provider calls'+str(len(goal_provider_calls))+'; temporary data removed',flush=True)
+            print('Fixture lifespan completed; target requests0; task creation POSTs'+str(task_posts)+'; next-plan POSTs'+str(next_posts)+'; observation-plan POSTs'+str(observation_posts)+'; goal retest POSTs'+str(goal_retest_posts)+'; goal draft POSTs'+str(goal_posts)+'; goal provider calls'+str(len(goal_provider_calls))+'; temporary data removed',flush=True)
         app.router.lifespan_context=reviewed_lifespan
         print('Owned observation UI fixture at http://127.0.0.1:'+str(args.port),flush=True)
         AegisServer(app,host='127.0.0.1',port=args.port,log_level='warning',timeout_graceful_shutdown=5).run()

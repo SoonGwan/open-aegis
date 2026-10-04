@@ -1,10 +1,11 @@
 """Bounded objective findings linked by actual source proof, with validated retests."""
 import json
+from contextlib import nullcontext
 from .goal_planner import require_task
 
 
-def page(store, task_id, objective_id, *, limit=25, offset=0, snapshot=None, search=''):
-    with store.read_transaction() as db:
+def page(store, task_id, objective_id, *, limit=25, offset=0, snapshot=None, search='', finding_id=None, connection=None):
+    with (nullcontext(connection) if connection is not None else store.read_transaction()) as db:
         task=store.get('tasks',task_id,connection=db)
         if not task:raise LookupError('작업이 없습니다.')
         require_task(task)
@@ -28,6 +29,8 @@ def page(store, task_id, objective_id, *, limit=25, offset=0, snapshot=None, sea
                ' AND '+field('e','fingerprint')+'='+field('f','fingerprint')+' AND '+contains('f','evidence_ids','e.id'))
         where="f.kind='findings' AND f.rowid<="+bind+' AND '+field('f','asset_id')+' IN ('+','.join(bind for _ in objective['asset_ids'])+') AND '+field('f','check')+' IN ('+','.join(bind for _ in objective['checks'])+') AND '+contains('f','task_ids',bind)+' AND EXISTS (SELECT 1 '+proof+')'
         args=[snapshot,*objective['asset_ids'],*objective['checks'],task_id,task_id]
+        if finding_id is not None:
+            where+=' AND f.id='+bind;args.append(finding_id)
         if search:
             expression=field('f','title')
             where+=' AND '+(f'position(lower({bind}) in lower({expression}))>0' if native else f'instr(lower({expression}),lower({bind}))>0')

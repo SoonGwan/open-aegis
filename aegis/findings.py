@@ -113,6 +113,7 @@ def apply_retest(store, task, conclusion):
             effect, note = 'changed','재검증의 관찰 결과에 따라 조치 상태를 변경했습니다.'
         retest = {'id':identifier(),'finding_id':before['id'],'task_id':task['id'],'conclusion':conclusion,
                   'created_at':now(),'triage_effect':effect,'state_note':note}
+        if task.get('goal_retest'):retest['goal_retest']=task['goal_retest']
         entry = history(after,'retest',public_actor(task_id=task['id']),before,after,note,
                         task_id=task['id'],retest_id=retest['id'],conclusion=conclusion,triage_effect=effect)
         store.put_many([('findings',after),('retests',retest),('finding_history',entry)],connection=db)

@@ -333,11 +333,14 @@ export function GoalProgress({
   captureView,
   onFinding,
   onTask,
+  actorId, canOperate, busy, onRetest,
 }: {
   taskId: string;
   captureView: () => () => boolean;
   onFinding: (id: string) => void;
   onTask: (id: string) => void;
+  actorId:string; canOperate:boolean; busy:boolean;
+  onRetest:(path:string,requestId:string,onFailure:(message:string)=>void)=>Promise<boolean>;
 }) {
   const [rows, setRows] = useState<
     { id: string; title: string; completed: number; expected: number }[] | null
@@ -392,7 +395,7 @@ export function GoalProgress({
         <article key={row.id}>
           <p>{row.title} · 검사 완료 {row.completed}/{row.expected}</p>
           <GoalObjectiveFindings taskId={taskId} objectiveId={row.id} title={row.title}
-            captureView={captureView} onFinding={onFinding} onTask={onTask} />
+            captureView={captureView} onFinding={onFinding} onTask={onTask} actorId={actorId} canOperate={canOperate} busy={busy} onRetest={onRetest} />
         </article>
       ))}
     </section>
@@ -405,9 +408,11 @@ type GoalFindingPage = {
     latest_retest: { task_id: string; conclusion: string; triage_effect: string } | null }[];
   total: number; limit: number; offset: number; snapshot: number; has_more: boolean;
 };
-function GoalObjectiveFindings({taskId,objectiveId,title,captureView,onFinding,onTask}: {
+function GoalObjectiveFindings({taskId,objectiveId,title,captureView,onFinding,onTask,actorId,canOperate,busy,onRetest}: {
   taskId:string; objectiveId:string; title:string; captureView:()=>()=>boolean;
   onFinding:(id:string)=>void; onTask:(id:string)=>void;
+  actorId:string;canOperate:boolean;busy:boolean;
+  onRetest:(path:string,requestId:string,onFailure:(message:string)=>void)=>Promise<boolean>;
 }) {
   const [page,setPage]=useState<GoalFindingPage|null>(null);
   const [search,setSearch]=useState("");
@@ -446,6 +451,7 @@ function GoalObjectiveFindings({taskId,objectiveId,title,captureView,onFinding,o
         <p>연결된 재검증 {row.retests_count}개{row.latest_retest?" · 최근 결과: "+({resolved:"해결 확인",reproduced:"재현",inconclusive:"판정 불가"} as Record<string,string>)[row.latest_retest.conclusion]:""}</p>
         {row.latest_retest?.triage_effect==="conflict"&&<p>재검증 조치 충돌 기록을 확인하세요. 자동 조치 상태 변경은 적용하지 않았습니다.</p>}
         <button type="button" onClick={()=>onFinding(row.id)} aria-label={row.title+" 발견·재검증 이력 열기"}>발견·재검증 이력 열기</button>
+        {canOperate&&<GoalRetestButton actorId={actorId} taskId={taskId} objectiveId={objectiveId} findingId={row.id} busy={busy} onRetest={onRetest} />}
         {row.latest_retest&&<button type="button" onClick={()=>onTask(row.latest_retest!.task_id)} aria-label={row.title+" 최근 재검증 작업 열기"}>최근 재검증 작업 열기</button>}
       </article>)}
       <nav aria-label={title+" 근거 목록 페이지"}>
@@ -454,5 +460,46 @@ function GoalObjectiveFindings({taskId,objectiveId,title,captureView,onFinding,o
         <button type="button" disabled={loading} onClick={()=>void load(0,undefined,applied)}>최신 목록</button>
       </nav>
     </>}
+  </section>;
+}
+
+function GoalRetestButton({actorId,taskId,objectiveId,findingId,busy,onRetest}:{
+  actorId:string;taskId:string;objectiveId:string;findingId:string;busy:boolean;
+  onRetest:(path:string,requestId:string,onFailure:(message:string)=>void)=>Promise<boolean>;
+}) {
+  const storageKey="aegis:goal-retest:"+JSON.stringify([actorId,taskId,objectiveId,findingId]);
+  const [pending,setPending]=useState(()=>{try{const value=pendingStorage()?.getItem(storageKey);return value&&/^[a-f0-9]{32}$/.test(value)?value:null;}catch{return null;}});
+  const [saving,setSaving]=useState(false),[error,setError]=useState("");
+  const locked=useRef(false),active=useRef(true);
+  useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
+  async function create(){
+    if(locked.current||busy)return;
+    locked.current=true;setSaving(true);setError("");
+    try {
+      const requestId=pending||crypto.randomUUID().replaceAll("-","");
+      const storage=pendingStorage();if(!storage)throw new Error("복구 저장소를 사용할 수 없습니다.");
+      storage.setItem(storageKey,requestId);setPending(requestId);
+      const path="/tasks/"+encodeURIComponent(taskId)+"/goal-objectives/"+encodeURIComponent(objectiveId)+"/findings/"+encodeURIComponent(findingId)+"/retest";
+      const success=await onRetest(path,requestId,message=>{if(active.current)setError(message);});
+      if(success){storage.removeItem(storageKey);if(active.current)setPending(null);}
+    }catch(err){if(active.current)setError(err instanceof Error?err.message:"재검증 계획 생성 실패");}
+    finally{locked.current=false;if(active.current)setSaving(false);}
+  }
+  return <>
+    <button type="button" disabled={busy||saving} onClick={()=>void create()}>{saving?"처리 중…":pending?"같은 목표 재검증 요청 확인":"이 과제의 재검증 계획 만들기"}</button>
+    {error&&<p role="alert">{error}</p>}
+    {pending&&<p>저장한 요청으로 기존 계획을 확인합니다. 실행은 별도 승인이 필요합니다.</p>}
+  </>;
+}
+
+export type GoalRetestRef = {source_task_id:string;source_task_name:string;objective_title:string;finding_id:string;objective_id:string};
+export function GoalRetestOrigin({origin,onTask,onFinding}:{origin?:GoalRetestRef;onTask:(id:string)=>void;onFinding:(id:string)=>void}){
+  if(!origin)return null;
+  return <section className="next-plan goal-objective-evidence" aria-label="목표 재검증의 원래 과제">
+    <h4>원래 목표와 과제</h4>
+    <p>{origin.source_task_name} · {origin.objective_title}</p>
+    <p>이 과제에서 만든 발견 재검증입니다. 현재 실행 범위를 별도로 승인하며 원래 목표의 완료율이나 목표 달성 판정을 변경하지 않습니다.</p>
+    <button type="button" onClick={()=>onTask(origin.source_task_id)}>원래 목표 작업 열기</button>
+    <button type="button" onClick={()=>onFinding(origin.finding_id)}>원래 발견 열기</button>
   </section>;
 }

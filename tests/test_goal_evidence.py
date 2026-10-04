@@ -87,10 +87,11 @@ def test_objective_ignores_unmatched_retest_history(client,lab,monkeypatch,damag
 
 def test_objective_evidence_roles_bounds_and_readonly(client,lab,monkeypatch):
     goal,execution,path=executed_goal(client,lab,monkeypatch)
-    viewer=add(client,'viewer','goal-evidence-viewer');login(client,'goal-evidence-viewer')
-    store=client.app.state.store;before=store.count('events');requests=list(lab[1].requests)
-    assert client.get(path).status_code==200
-    for params in ({'limit':101},{'offset':-1},{'snapshot':-1},{'search':'x'*201}):
-        assert client.get(path,params=params).status_code==422
-    assert client.get(path.replace('/g1/','/g12/')).status_code==404
-    assert store.count('events')==before and lab[1].requests==requests
+    add(client,'viewer','goal-evidence-viewer')
+    with login(client.app,'goal-evidence-viewer') as read:
+        store=client.app.state.store;before=store.count('events');requests=list(lab[1].requests)
+        assert read.get(path).status_code==200
+        for params in ({'limit':101},{'offset':-1},{'snapshot':-1},{'search':'x'*201}):
+            assert read.get(path,params=params).status_code==422
+        assert read.get(path.replace('/g1/','/g12/')).status_code==404
+        assert store.count('events')==before and lab[1].requests==requests

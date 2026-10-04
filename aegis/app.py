@@ -15,7 +15,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response, Query
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
@@ -51,7 +51,7 @@ from . import todos
 from .event_planner import EventPlanner
 from . import observation_context
 from . import observation_execution
-from . import goal_planner, goal_evidence
+from . import goal_planner, goal_evidence, goal_retests
 
 
 class Credentials(BaseModel):
@@ -249,7 +249,7 @@ def create_app(data_dir=None, allow_private=None):
         with store.lock:
             return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None, goal_retest=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
@@ -287,6 +287,8 @@ def create_app(data_dir=None, allow_private=None):
             related=queries.active_related_task('retest_of',retest_of,replacing['id'] if replacing else '')
             if related:
                 if replacing or resuming:raise HTTPException(409, '같은 발견의 다른 재검증 계획이 진행 중입니다.')
+                if goal_retest and related.get('goal_retest')!=goal_retest:
+                    raise HTTPException(409,'같은 발견의 다른 재검증 계획이 진행 중입니다. 기존 계획을 확인하세요.')
                 return related
             triage_revision = finding.get('triage_revision', 1)
         if store.count('tasks', statuses=['pending','queued','running','stopping']) - (1 if replacing else 0) >= engine.policy.pending_limit:
@@ -308,6 +310,7 @@ def create_app(data_dir=None, allow_private=None):
         if attempt_source:
             task.update(planning_history.metadata(attempt_source))
             if attempt_source.get('goal_plan'):task['goal_plan']=attempt_source['goal_plan']
+            if attempt_source.get('goal_retest'):task['goal_retest']=attempt_source['goal_retest']
             try:task['shared_todo_context']=todos.planning_context(store,attempt_source['id'])
             except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
             try:task['worker_observation_context']=observation_context.snapshot(store,attempt_source['id'])
@@ -330,6 +333,9 @@ def create_app(data_dir=None, allow_private=None):
             task['goal_plan']={key:goal_draft[key] for key in ('basis_fingerprint','goal','decomposition','mode','fingerprint')}
             task['goal_plan']['draft_id']=goal_draft['id']
             if 'execution' in goal_draft:task['goal_plan']['execution']=goal_draft['execution']
+        if goal_retest:task['goal_retest']=goal_retest
+        try:goal_retests.require(task)
+        except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         try:goal_planner.require_task(task)
         except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]
@@ -355,6 +361,16 @@ def create_app(data_dir=None, allow_private=None):
                     raise HTTPException(409,'계획 근거·공유 할 일이 변경되었습니다. 제안을 다시 확인하세요.')
                 store.put_many(records,connection=db)
                 store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.',connection=db)
+        elif goal_retest:
+            with store.write_transaction() as db:
+                try:fresh=goal_retests.prepare(store,goal_retest['source_task_id'],goal_retest['objective_id'],
+                    goal_retest['finding_id'],goal_retest['request_id'],connection=db)
+                except (planning_history.PlanningConflict,LookupError) as exc:raise HTTPException(409,str(exc)) from exc
+                if fresh!=goal_retest or any(store.get('assets',a['id'],connection=db)!=a for a in assets):
+                    raise HTTPException(409,'목표 재검증의 출처 또는 자산이 변경되었습니다.')
+                store.put_many(records,connection=db)
+                store.event(task['id'],'원래 목표 과제를 연결한 재검증 계획. 별도 승인을 기다립니다.',
+                            detail={'goal_retest':goal_retest},connection=db)
         elif goal_draft:
             with store.write_transaction() as db:
                 try:fresh=goal_planner.snapshot(store,goal_draft['task_id'],engine.policy.public(),connection=db)
@@ -942,6 +958,31 @@ def create_app(data_dir=None, allow_private=None):
         try:return goal_evidence.page(store,task_id,objective_id,limit=limit,offset=offset,snapshot=snapshot,search=search)
         except LookupError as exc:raise HTTPException(404,str(exc)) from exc
         except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+
+    class GoalRetestInput(BaseModel):
+        model_config = ConfigDict(extra='forbid')
+        request_id: str = Field(pattern=r'^[a-f0-9]{32}$')
+
+    @app.post('/api/tasks/{task_id}/goal-objectives/{objective_id}/findings/{finding_id}/retest', dependencies=operations)
+    def goal_retest_plan(task_id: str, objective_id: str, finding_id: str, data: GoalRetestInput):
+        with engine.lock, store.lock:
+            if engine.closed:raise HTTPException(409,'서버가 종료 중입니다.')
+            planned_id=goal_planner.digest({'goal_retest':task_id,'objective':objective_id,'finding':finding_id,'request':data.request_id})[:16]
+            existing=store.get('tasks',planned_id)
+            if existing:
+                ref=existing.get('goal_retest',{})
+                if (ref.get('source_task_id'),ref.get('objective_id'),ref.get('finding_id'),ref.get('request_id'))!=(task_id,objective_id,finding_id,data.request_id):
+                    raise HTTPException(409,'저장된 목표 재검증 요청이 일치하지 않습니다.')
+                try:goal_retests.require(existing)
+                except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+                return existing
+            try:ref=goal_retests.prepare(store,task_id,objective_id,finding_id,data.request_id)
+            except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+            except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+            finding=store.get('findings',finding_id)
+            data=TaskInput(name=('목표 재검증 · '+finding['title'])[:120],asset_ids=[ref['asset_id']],
+                           checks=[ref['check']],workers=1,planner='rules')
+            return create_task_locked(data,retest_of=finding_id,planned_id=planned_id,goal_retest=ref)
 
     @app.post('/api/tasks/{task_id}/goal-plans/{draft_id}/accept', dependencies=operations)
     def accept_goal_plan(task_id: str, draft_id: str, data: NextPlanInput):

@@ -4584,3 +4584,56 @@ on 390×844 has no document overflow.
   execution. Both owned fixture processes stopped and all owned tabs closed: target
   requests0, task/next-plan/observation-plan/goal-draft POSTs0, provider calls0, temporary
   data removed (`...ui-fixture.txt`, `...ui-fixture-final.txt`).
+
+## Goal-origin retest plans — 2026-10-05
+
+- Operators can create a pending single-finding retest from an objective's verified
+  source evidence. The immutable goal_retest reference records source task/objective
+  names and IDs, plan/finding fingerprints, asset/check and request ID. Approval/run
+  require local reference/execution consistency. Final transaction rechecks source proof
+  and current asset, atomically storing task, coverage and audit. Competing active retests
+  are refused; same deterministic request returns its original task even after replacement.
+- Replacement/retry retain the origin, and retest results copy it. New task detail links
+  to the original goal and finding. Origin is historical provenance; it does not claim
+  unchanged source semantics/revision, external authenticity or semantic goal achievement.
+- Final targeted goal-origin and evidence suites **40 passed41.38s**
+  (`artifacts/goal-retest-targeted-final-source.txt`): actual owned goal/retet execution,
+  pending creation/no new target before approval, nonce replay/conflicting active plan,
+  preserved origin on replan/resolved result, wrong proof/operator/tamper refusal and
+  final-write source-change rollback. Both SQLite/native variants covered.
+- The previous evidence viewer-read test incorrectly called a context-manager helper
+  without entering it and therefore exercised the existing administrator session.
+  Corrected it to enter an actual viewer session; viewer authenticated read/no writes
+  and viewer retest POST403 now execute in both backends. Earlier viewer-read claims
+  were weaker than stated. Initial new role test caught the same helper misuse before
+  final verification; backend role enforcement was unchanged.
+- Final full SQLite/native regression **915 passed404.98s**, one upstream deprecation
+  warning (`...full.txt`), with final build completed before tests and no service edits
+  during/after them. Two subsequently added actual application close/reopen tests
+  **2 passed3.07s** (`...restart.txt`): stored pending origin and same-request identity,
+  no target during restart/replay, then newly approved execution with origin in result.
+  These two tests were not part of the915-test collection. No OS reboot/process-kill claim.
+- Frontend **92 passed616.134833ms** (`...node.txt`); final TypeScript/Vite build1.57s
+  (`...build-final.txt`), JSindex-qb9xqnII.js / CSSindex-Bi_eIbTY.css. Existing unit tests
+  alone do not prove new request recovery interactions.
+- Wheel SHA256 **d136e5c4d3e90a7a99066f86099755dd52607d017619e59579319e80b9a92ba4**;
+  all72 service Python files byte-match checkout (`...wheel-proof.json`). Installed default
+  runtime and native PostgreSQL16.15 reviews valid (`...installed-runtime.json`,
+  `...installed-postgres.json`). These existing installed scenarios exercise goal drafts
+  and recovery, not goal-origin retest backup/restore specifically. Native owned target3/
+  source1, external0; default targets0. Source application restart tests cover new origin
+  persistence and execution in both backends.
+- Built-app synthetic proof fixture commits an objective retest then substitutes503.
+  Input row preserves its request; a new document reloads goal progress/proofs and
+  retrieves the original pending task via the same request (`...ui-lost.txt`,
+  `...ui-restored.txt`). No approval/target request in this browser fixture. Request ID
+  is saved per actor/task/objective/finding before POST; storage failure refuses POST.
+  Full role/navigation race/keyboard/mobile/screen-reader journeys remain open.
+- Existing preview data retained on restart, health ok and anonymous objective retest
+  POST401; final asset names confirmed (`...preview-health.json`). Hosted CI/container/
+  production verification and semantic-goal/full v1 gates remain open.
+- Recovered built-app detail is the single original pending goal retest, with one
+  asset/check and the frozen original task/objective names and navigation links
+  (`...ui-pending.txt`). Owned tab closed, flag removed and fixture shut down:
+  target requests0, ordinary task/next-plan/observation-plan/goal-draft POSTs0,
+  objective retest POSTs2, provider calls0; temporary data removed (`...ui-fixture.txt`).

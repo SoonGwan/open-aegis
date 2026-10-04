@@ -12,7 +12,7 @@ from .checks import CATALOG, CHECK_IDS, run_check
 from .tool_contracts import require_contracts, validate_result, ToolContractMismatch
 from .network import Transport
 from .costs import price_snapshot, estimate
-from . import call_ledger, todos, observation_context, observation_execution, goal_planner
+from . import call_ledger, todos, observation_context, observation_execution, goal_planner, goal_retests
 from .llm import completion, token_usage
 from .store import identifier, now
 from .coverage import slot, finish_remaining
@@ -93,6 +93,7 @@ class Engine:
             require_contracts(task)
             observation_execution.require(task)
             goal_planner.require_task(task)
+            goal_retests.require(task)
             validate_dependencies(task['asset_ids'], task.get('worker_dependencies', {}))
             if task.get('execution_policy') and task['execution_policy'] != self.policy.public():
                 raise ValueError('서버 실행 정책이 변경되었습니다. 현재 정책으로 새 계획을 만드세요.')
@@ -237,6 +238,7 @@ class Engine:
             require_dependency_contract(task)
             observation_execution.require(task, approved=True)
             goal_planner.require_task(task)
+            goal_retests.require(task)
             checks = self.plan(task, control)
             control.check()
             self.store.patch('tasks', task_id, plan=checks)
