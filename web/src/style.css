@@ -2635,6 +2635,10 @@ legend,
   border: 0;
   background: transparent;
 }
+.planner-usage { border: 2px solid var(--ink); padding: 16px; margin: 20px 0; background: var(--montage-background-normal-alternative); overflow-wrap: anywhere; }
+.planner-usage dl { display: flex; flex-wrap: wrap; gap: 24px; margin: 12px 0; }
+.planner-usage dt { font-size: 12px; color: var(--montage-label-neutral); }
+.planner-usage dd { margin: 4px 0 0; font-weight: 800; }
 .checkbox-label input,
 .selection input {
   width: 20px;

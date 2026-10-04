@@ -242,6 +242,14 @@ def test_real_tls_verification_and_provider_plan_with_usage(client,tls_peer,lab,
     assert result['task']['status']=='completed' and result['task']['plan']==list(reversed(checks))
     usage=next(event['detail']['tokens'] for event in result['events'] if 'tokens' in event['detail'])
     assert usage['total_tokens']==48 and handler.calls==['/','/v1/chat/completions']
+    assert usage['status']=='reported'
+    call=result['task']['llm_usage']
+    assert call['tokens']==usage and call['outcome']=='accepted'
+    exported=client.get('/api/reports/export',params={'format':'json','task_id':plan['id']}).json()
+    assert exported['tasks'][0]['llm_usage']==call
+    markdown=client.get('/api/reports/export',params={'format':'markdown','task_id':plan['id']})
+    assert markdown.status_code==200 and 'AI 계획 호출 기록' in markdown.text
+    assert '"total_tokens": 48' in markdown.text and '"status": "reported"' in markdown.text
     assert 'tls-provider-fixture-key' not in str(result)
 
 

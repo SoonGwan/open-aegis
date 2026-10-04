@@ -246,6 +246,7 @@ def test_ai_planner_cannot_expand_or_drop_approved_tools(tmp_path,monkeypatch,pr
     store=Store(tmp_path/'aegis.db')
     engine=Engine(store)
     approved=['security_headers','cookie_policy']
+    store.put('tasks', {'id':'task','status':'pending'})
     plan=engine.plan({'id':'task','checks':approved,'planner':'ai','goal':'Fixture','scope_snapshot':[]})
     assert set(plan) == set(approved) and len(plan) == len(approved)
     if proposed == ['cookie_policy','security_headers']: assert plan == proposed

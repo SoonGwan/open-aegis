@@ -251,6 +251,19 @@ class Store:
         with self.lock, self.connect() as db:
             append_event(db, (now(), task_id, level, message, json.dumps(detail or {}, ensure_ascii=False)))
 
+    def record_planner_call(self, task_id, detail, message, level):
+        """Commit bounded planner metadata and its audit event together."""
+        with self.lock, self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute("SELECT data FROM records WHERE kind='tasks' AND id=?", (task_id,)).fetchone()
+            if row is None:
+                raise KeyError(task_id)
+            task = json.loads(row['data'])
+            task['llm_usage'] = detail
+            db.execute("UPDATE records SET data=? WHERE kind='tasks' AND id=?",
+                       (json.dumps(task, ensure_ascii=False), task_id))
+            append_event(db, (now(), task_id, level, message, json.dumps(detail, ensure_ascii=False)))
+
     def audit_integrity(self, checkpoint=None):
         with self.connect() as db:
             db.execute('BEGIN')

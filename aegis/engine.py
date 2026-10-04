@@ -10,7 +10,7 @@ from .dns import resolver
 from .checks import CATALOG, CHECK_IDS, run_check
 from .tool_contracts import require_contracts, validate_result, ToolContractMismatch
 from .network import Transport
-from .llm import completion
+from .llm import completion, token_usage
 from .store import identifier, now
 from .coverage import slot, finish_remaining
 from .findings import record_observation, apply_retest
@@ -133,17 +133,28 @@ class Engine:
         payload = {'model': model, 'messages': [
             {'role': 'system', 'content': 'Return JSON only: {"checks": [check ids]}. Order all supplied checks by relevance. Never invent tools, URLs, commands, or omit checks.'},
             {'role': 'user', 'content': json.dumps(prompt, ensure_ascii=False)}], 'temperature': 0}
+        usage = token_usage(None)
+        outcome = 'request_failed'
+        proposed = checks
         try:
             raw = completion(base, key, payload, allow_local=self.allow_private, control=control, timeout=self.policy.request_timeout)
+            outcome = 'invalid_plan'
+            usage = token_usage(raw.get('usage') if isinstance(raw, dict) else None)
             text = raw['choices'][0]['message']['content'].strip().removeprefix('```json').removeprefix('```').removesuffix('```').strip()
             proposed = json.loads(text)['checks']
             if not isinstance(proposed, list) or len(proposed) != len(checks) or set(proposed) != set(checks):
                 raise ValueError('invalid plan')
-            self.store.event(task['id'], 'AI가 승인된 검증 도구의 실행 순서를 계획했습니다.', detail={'checks': proposed, 'model': model, 'tokens': raw.get('usage', {})})
-            return proposed
+            outcome = 'accepted'
         except Exception:
-            self.store.event(task['id'], 'AI 계획을 검증하지 못해 규칙 기반 계획으로 진행합니다.', 'warning')
-            return checks
+            proposed = checks
+        accepted = outcome == 'accepted'
+        self.store.record_planner_call(task['id'], {
+            'model':model, 'outcome':outcome, 'observed_at':now(), 'tokens':usage,
+            'checks':proposed,
+        }, 'AI가 승인된 검증 도구의 실행 순서를 계획했습니다.' if accepted else
+           'AI 계획을 검증하지 못해 규칙 기반 계획으로 진행합니다.',
+           'info' if accepted else 'warning')
+        return proposed
 
     def run(self, task_id):
         task = self.store.get('tasks', task_id)

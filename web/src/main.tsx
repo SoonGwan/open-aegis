@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import {
   Activity,
   ArrowDownToLine,
@@ -92,6 +93,7 @@ type Task = {
   checks: string[];
   workers: number;
   planner: string;
+  llm_usage?: PlannerCall;
   created_at: number;
   done: number;
   approved_at?: number | null;
@@ -2807,6 +2809,7 @@ function App() {
                 tools={tools}
               />
             )}
+            {selectedTask.llm_usage && <PlannerUsage call={selectedTask.llm_usage} />}
             <TaskRecords
               key={`task-records-${selectedTask.id}`}
               taskId={selectedTask.id}

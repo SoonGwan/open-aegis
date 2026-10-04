@@ -2053,3 +2053,48 @@ on 390×844 has no document overflow.
   No backend edit or full backend suite rerun claimed. Full v1 gates remain open,
   including cross-tab behavior, remote setup-token failures, mobile/keyboard/AT
   review, and all authentication failure/recovery sequences.
+
+## 2026-10-04 — explicit bounded AI planner usage with atomic provenance
+
+- AI planner previously persisted raw provider usage on accepted plans only. New
+  normalization retains just prompt/completion/total counters, integer range
+  0..2^53-1, and explicit reported/partial/missing/invalid status. Missing values
+  stay null, real reported zero stays zero. Booleans, strings, floats, negatives,
+  oversized counters and inconsistent totals cannot become validated usage.
+  Provider extra fields/response bodies/error strings are not persisted by this
+  new path; historical audit events are not rewritten.
+- Each actual configured planner call records outcome accepted/invalid_plan/
+  request_failed, configured model, observation time, approved checks and normalized
+  tokens in task metadata and audit event in one SQLite transaction. Invalid plans
+  retain returned usage while falling back to approved checks. Transport/response
+  failure keeps unknown usage instead of zero. Audit failure rolls back metadata.
+  Scope/tool execution boundaries remain unchanged; no calls added to rule planning.
+- Added 17 backend cases for numeric/data boundaries, rejected-plan usage, failure
+  secrecy and atomic rollback. Targeted suite 24 passed; full backend 338 passed
+  in 105.42s, one existing Starlette httpx deprecation warning. Evidence
+  artifacts/llm-usage-backend-tests.txt. After that run, strengthened existing TLS
+  test assertions verify task metadata plus actual JSON and Markdown HTTP exports;
+  that selected test passes in 1.47s. It uses the actual trusted local HTTPS provider
+  with 32 input/16 output/48 total and approved synthetic lab execution, not a
+  commercial model. No further production Python edits occurred after the full run.
+- Task detail includes the production PlannerUsage card; JSON task records and
+  Markdown exports include call metadata. CSV remains a findings report. Synthetic
+  browser component fixture displays all four usage states and accepted/fallback
+  outcomes. Actual iframe documents client/scroll widths 320/320, 390/390, 768/768.
+  Screenshot artifacts/v1-planner-usage-320.jpg inspected; values and unknown/error
+  labels wrap without horizontal overflow. This is component QA, not a real phone
+  or complete task-detail journey. Initial fixture measurements 316/386/764 were
+  border-box widths; explicit content-box sizing corrected the requested documents.
+- Existing frontend 64 tests pass (artifacts/llm-usage-frontend-tests.txt).
+  Production build index-B3gq2ef6.js / index-BDg0otot.css passes; selected color AA
+  pairs pass. New wheel SHA 866374d6c3317f0c51fa185444d7ededbc2cb9162b327b5a2b3d8e834476ad77
+  matches all 36 current service Python files. Installed locked-runtime package +
+  final UI smoke passes outside checkout, auth/persistence/import/audit/backup/
+  restore/shutdown/lease with zero target requests. Evidence
+  artifacts/llm-usage-package-review.json. Initial non-isolated wheel attempt failed
+  because local bdist_wheel was absent; standard isolated pip wheel build succeeded.
+- Main preview was gracefully stopped and restarted to load changed backend source;
+  port 8790 health 200 and assets two/tasks four/traffic three preserved. Vite QA
+  stopped. Provider-reported counters are not invoice verification; conversation
+  citations/intervention, pricing provenance/costs, iterative calls, aggregate usage,
+  live commercial models and full mobile/AT validation remain open v1 gates.

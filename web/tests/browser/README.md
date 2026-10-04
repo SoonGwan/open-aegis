@@ -185,3 +185,13 @@ For first setup, run a separate empty fixture with
 setup token blank and burst-submit. One setup request, all three disabled inputs and
 successful administrator workspace after release are expected. This does not test
 remote token configuration/errors, real credential providers or every mobile/AT flow.
+
+## Planner usage statuses and narrow documents
+
+Run Vite on port 8812 and open `/tests/browser/planner-usage-review.html`. It imports
+production PlannerUsage and styles with synthetic reported/partial/missing/invalid
+calls, including a rejected plan and unavailable response. No API/provider calls occur.
+Select 320/390/768, then Measure: root client/scroll width should match the requested
+actual iframe document. Check labels, unknown counts and total mismatch remain
+readable and wrapped. This is component/manual document QA, not real mobile/AT or a
+complete backend/task-detail user journey. The fixture is outside production entry.
