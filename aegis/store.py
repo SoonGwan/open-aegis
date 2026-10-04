@@ -3,6 +3,7 @@ import hashlib
 import json
 import sqlite3
 import threading
+from contextlib import nullcontext
 from pathlib import Path
 
 
@@ -81,8 +82,8 @@ class Store:
                             for record in (question, reply)])
         return reply
 
-    def get(self, kind, id, *, compact_findings=False):
-        with self.connect() as db:
+    def get(self, kind, id, *, compact_findings=False, connection=None):
+        with (nullcontext(connection) if connection is not None else self.connect()) as db:
             projection = FINDING_READ_PROJECTION if kind == 'findings' and compact_findings else 'data'
             row = db.execute("SELECT " + projection + " AS data FROM records WHERE kind=? AND id=?", (kind, id)).fetchone()
         return json.loads(row['data']) if row else None
@@ -131,7 +132,7 @@ class Store:
             rows = db.execute("SELECT data FROM records WHERE kind=? ORDER BY rowid DESC", (kind,)).fetchall()
         return [json.loads(row['data']) for row in rows]
 
-    def page(self, kind, *, limit=25, offset=0, snapshot=None, search='', filters=None, archived=None, compact_findings=False, priority=False):
+    def page(self, kind, *, limit=25, offset=0, snapshot=None, search='', filters=None, archived=None, compact_findings=False, priority=False, connection=None):
         """Bounded SQL reads; an insertion watermark keeps later inserts out of a page walk.
 
         Updates remain live. The watermark is not a historical database snapshot.
@@ -161,8 +162,9 @@ class Store:
             raise ValueError('Unknown record filter')
         if 'enabled' in filters and kind != 'schedules':
             raise ValueError('Enabled filter is only valid for schedules')
-        with self.connect() as db:
-            db.execute('BEGIN')
+        with (nullcontext(connection) if connection is not None else self.connect()) as db:
+            if connection is None:
+                db.execute('BEGIN')
             if snapshot is None:
                 snapshot = db.execute('SELECT coalesce(max(rowid),0) FROM records WHERE kind=?', (kind,)).fetchone()[0]
             clauses, args = ['kind=?', 'rowid<=?'], [kind, snapshot]

@@ -130,6 +130,18 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                     'url': 'https://runtime-package-fixture.invalid/', 'authorized': True})
                 task = request('/api/tasks', {'name': 'Synthetic pending plan', 'asset_ids': [asset['id']]})
                 assert task['status'] == 'pending' and task['approved_at'] is None
+                message_path = '/api/tasks/' + task['id'] + '/messages'
+                question = {'content':'검증 요약', 'request_id':'installed-citation-0001'}
+                reply = request(message_path, question)
+                assert reply['provenance']['mode'] == 'recorded_rules'
+                assert reply['provenance']['finding_total'] == 0
+                citation = reply['provenance']['citations'][0]
+                assert citation['kind'] == 'task' and citation['id'] == task['id']
+                assert citation['snapshot']['status'] == 'pending'
+                assert request(message_path, question) == reply
+                messages = request(message_path + '/page')
+                assert messages['total'] == 2
+                assert next(m for m in messages['items'] if m['role'] == 'assistant') == reply
                 assets = request('/api/assets')
                 assert len(assets) == 1 and assets[0]['id'] == asset['id']
                 assert request('/api/integrations/scopesentry/connections') == []
@@ -181,6 +193,8 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                        'installed server outside checkout', 'separate frontend assets',
                        'authentication and logout', 'administrator schema and disabled public docs',
                        'asset and pending plan persistence', 'ScopeSentry review/apply/retry/provenance',
+                       'recorded conversation citations, retry and persisted exchange',
+                       'authenticated usage periods and validation',
                        'ScopeSentry installed remote configuration and unconfigured-source refusal',
                        'login limit metrics', 'read-only audit review', 'clean shutdown and lease release',
                        'installed backup/restore/audit rehearsal']}, ensure_ascii=False))

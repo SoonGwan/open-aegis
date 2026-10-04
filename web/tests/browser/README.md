@@ -217,3 +217,14 @@ sequences were executed; hardware keyboard, mobile touch and screen-reader picke
 journeys still require verification. Avoid fixture edits/HMR while responses are held.
 Open without frame query to measure actual 320/390/768 documents. No API/provider
 requests occur and the fixture is outside the production entry.
+
+## Recorded conversation provenance
+
+Open `/tests/browser/message-provenance-review.html?frame=1` on Vite 8812.
+The fixture imports production MessageProvenance and automatically opens the native
+details for width review. Its task and finding IDs are synthetic and have no backend
+records. Test Enter to collapse/reopen, inspect task/finding links and the historical
+values, and verify the legacy answer has no fabricated provenance. Open without the
+frame query for real 320/390/768px document widths with long titles/remediation.
+Only the owned built-app review can verify actual persisted exchanges and link
+destinations; this component fixture makes no API/provider requests.

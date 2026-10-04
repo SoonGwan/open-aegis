@@ -7,6 +7,7 @@ import {
 } from "react";
 import { ArrowRight } from "lucide-react";
 import { api } from "./api";
+import { MessageProvenance, type RecordedProvenance } from "./MessageProvenance";
 import { useRecords, Pagination, RecordState } from "./records";
 import {
   readDetail,
@@ -30,6 +31,7 @@ type Message = {
   content: string;
   created_at: number;
   finding_ids?: string[];
+  provenance?: RecordedProvenance;
 };
 
 export function ChatPanel({
@@ -222,6 +224,7 @@ export function ChatPanel({
                     </time>
                   </small>
                   <p>{m.content}</p>
+                  <MessageProvenance provenance={m.provenance} />
                   {!!m.finding_ids?.length && (
                     <small>연결된 발견 사항 {m.finding_ids.length}개</small>
                   )}

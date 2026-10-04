@@ -1953,6 +1953,17 @@ pre {
   color: var(--montage-label-neutral);
   font-size: 12px;
 }
+.message-provenance {
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.message-provenance summary { cursor: pointer; }
+.message-provenance ol { padding-left: 24px; }
+.message-provenance li { margin-top: 12px; }
+.message-provenance dl { margin: 8px 0; }
+.message-provenance dl > div { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.message-provenance dt { font-weight: 700; }
+.message-provenance dd { margin: 0; min-width: 0; }
 .chat-messages {
   max-height: 320px;
   overflow-y: auto;

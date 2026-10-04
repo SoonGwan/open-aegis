@@ -40,6 +40,7 @@ from .audit_review import AuditReview, AuditReviewBusy, AuditReviewInput
 from .login_limits import LoginGate, LoginLimited
 from . import scopesentry
 from .usage import planner_summary
+from .conversation import summarize_task
 from .scopesentry_remote import Sources, PageInput
 
 
@@ -723,26 +724,12 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.post('/api/tasks/{task_id}/messages', dependencies=operations)
     def ask(task_id: str, data: MessageInput, actor=Depends(operator)):
-        task = store.get('tasks', task_id)
-        if not task:
+        summary = summarize_task(store, task_id, data.content)
+        if summary is None:
             raise HTTPException(404, '작업이 없습니다.')
-        findings = store.page('findings', limit=8, filters={'task_id':task_id},
-                              compact_findings=True, priority=True)['items']
-        completed_checks = sum(c['status'] == 'completed' for c in iter_task_rows(store, task))
-        answer = [f"작업 상태: {task['status']}. {len(task['asset_ids'])}개 자산 중 {task['done']}개 처리, {completed_checks}개 검증 완료, {task['errors']}개 오류입니다."]
-        if task['status'] == 'pending':
-            answer.append('아직 대상 요청을 보내지 않았습니다. 실행 범위를 확인한 후 승인하세요.')
-        if any(word in data.content for word in ('수정', '조치', '우선', '해결')):
-            answer += [f"[{f['severity'].upper()}] {f['title']} ({f['asset_name']}): {f['remediation']}" for f in findings[:8]]
-        else:
-            answer += [f"[{f['severity'].upper()}] {f['title']} · 판정 유형: {f['confidence']} · 상태: {f['status']}" for f in findings[:8]]
-        if not findings:
-            answer.append('이 작업에 연결된 발견 사항이 없습니다. 미실행·검증 실패·미지원 취약점은 별도로 확인해야 합니다.')
-        answer.append('이 답변은 저장된 작업·증거의 규칙 기반 요약입니다. 추가 요청이나 명령을 실행하지 않습니다.')
         timestamp = now()
         question = {'id':identifier(), 'task_id':task_id, 'role':'user', 'content':data.content, 'created_at':timestamp}
-        reply = {'id':identifier(), 'task_id':task_id, 'role':'assistant', 'content':'\n\n'.join(answer),
-                 'finding_ids':[f['id'] for f in findings], 'created_at':timestamp}
+        reply = {'id':identifier(), 'task_id':task_id, 'role':'assistant', **summary, 'created_at':timestamp}
         if data.request_id:
             # Separate namespaces from legacy random IDs; the token is scoped to actor/task.
             digest = hashlib.sha256(json.dumps([actor['id'], task_id, data.request_id],

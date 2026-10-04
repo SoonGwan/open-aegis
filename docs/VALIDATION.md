@@ -2170,3 +2170,48 @@ on 390×844 has no document overflow.
   backend and 64 frontend tests/build/package results were not rerun for this
   fixture-only follow-up. Full native/mobile/accessibility journeys and the broader
   open v1 requirements remain unverified.
+
+## 2026-10-04 — recorded conversation citations and consistent context
+
+- New recorded-rule replies label the task and up to eight priority findings and
+  persist provenance version/mode, observation time, total finding count, source IDs,
+  titles and only the fields used in the answer. A single SQLite read transaction
+  spans task, compact finding page and validated coverage rows. Source updates
+  after the first read cannot produce a mixture of old task/new findings or coverage.
+  More than eight findings is explicitly disclosed; raw responses/fingerprints and
+  growing evidence/task arrays are excluded from citation snapshots.
+- Three new backend tests cover persisted citations after source edits, original
+  reply/provenance replay, remediation-specific fields, foreign-task exclusion,
+  bounded selection disclosure, missing task and real concurrent SQLite writes.
+  The concurrency case commits task/finding/coverage updates on another connection
+  after reading the task and confirms all cited values stay at the earlier snapshot.
+  Existing exchange atomicity, idempotency, role and page tests remain passing.
+- Targeted conversation/message tests: 10 passed. Full backend **346 passed in
+  106.90s**, one existing Starlette/httpx deprecation warning; evidence
+  artifacts/conversation-backend-tests.txt. Existing frontend **64 passed** in
+  332.69ms; artifacts/conversation-frontend-tests.txt. TypeScript/Vite build succeeds:
+  index-DsrmiRhf.js / index-D9FSMAbC.css.
+- Production MessageProvenance uses native details, source labels, historical values
+  and current-record links. Legacy messages have no fabricated provenance. Standalone
+  fixture keyboard Enter opens details; link destinations and displayed values read
+  from DOM. Later fixture default-open mode provides actual iframe documents with
+  long title/remediation: widths 320/320, 390/390, 768/768. Screenshot
+  artifacts/v1-message-provenance-320.jpg visually inspected. No provider/API calls
+  occur in that component fixture; synthetic link IDs have no backend destination.
+- Separate disposable actual HTTP server and built UI: authenticated admin creates
+  an owned pending task, submits a question, reads stored reply, keyboard-opens
+  provenance, follows the current-task link to the actual matching dialog, and opens
+  a fresh document to recover the original reply/provenance. Screenshot
+  artifacts/v1-message-provenance-built.jpg inspected; native message-region scrolling
+  means it shows only part of expanded provenance. No task approval/target execution.
+- New wheel matches all **38** current service Python files. SHA256
+  56153fc0905e95f2fe7f997b4d243ca055ee3f5ec60f610e7535e4dc0052143c.
+  Installed locked runtime outside checkout passes actual conversation citation,
+  request-ID retry and persisted pair assertions alongside usage/auth/HTTP/maintenance/
+  shutdown/lease checks; target requests zero. Evidence
+  artifacts/conversation-package-review.json has valid=true. Owned Vite and disposable
+  HTTP server shut down gracefully. Main preview updated separately to current code.
+- This is task/finding-record provenance for rules summaries, not individual proof
+  excerpts, model-grounded conversation, historical database integrity guarantees or
+  execution intervention. Whole v1 gate stays open; remaining contracts are described
+  in docs/CONVERSATION.md and docs/V1-READINESS.md.
