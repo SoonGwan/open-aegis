@@ -1795,3 +1795,48 @@ on 390×844 has no document overflow.
   workloads. The full v1 resource/soak gate stays open, with instructions in
   `docs/RESOURCE-LOAD.md`. No full backend or frontend suite rerun is claimed for
   this scripts/docs-only change. Main preview health/data verification follows.
+
+
+## 2026-10-04 — open event streams during load, rollover and shutdown
+
+- Resource harness adds bounded optional `--sse-clients` 0–32, default zero. Each
+  owned authenticated HTTP stream verifies SSE media type, receives a first line,
+  reads IDs/JSON/heartbeat without retaining payload, and reconnects immediately
+  after natural EOF with the last cursor. It does not simulate the product UI's
+  three-second reconnect wait. At shutdown it requires the configured number of
+  streams still open; SIGTERM must yield normal EOF and joined client threads.
+  Stream transport/JSON errors fail the run; marker/lease checks remain required.
+  Initial indentation caught by compilation is corrected before server execution.
+- Five-second smoke with four streams plus four read/export clients, 1,000 assets
+  and 1,000 findings: 282 read/export requests, no unexpected failures; four streams
+  open before shutdown, four normal EOF, four data messages, forty heartbeats, zero
+  stream errors. Shutdown/client cleanup 0.535s, clean lifespan/lease, target zero.
+  Evidence `artifacts/resource-sse-smoke.json`.
+- Sixty-second run: actual 60.130s, **3,321** read/export requests (assets/runtime/
+  overview each 830 HTTP 200, exports 434 HTTP 200 plus 397 expected admission
+  HTTP 429). Unexpected failures zero. Four stream readers open eight HTTP streams
+  total, reconnect four times at natural lifetime rollover, receive four data messages
+  and 476 heartbeats. Four are open just before SIGTERM; all four reach normal EOF,
+  active ends zero, errors zero. Shutdown/client cleanup 0.140s; lifespan completes
+  and workspace lease can be reacquired. Final report slots zero, all 434 admitted
+  exports complete, rejected 397, failed/cancelled/timed-out zero. Counts of assets/
+  findings each 1,000 and tasks/traffic zero are preserved; target requests zero.
+- Child RSS KiB baseline 62,224 / sampled peak 77,712 / final 70,528 (about
+  60.77/75.89/68.88 MiB); thirty samples, CPU load time 68.83s. Last 2,000 mixed
+  normal/admission replies p50 5.263ms / p95 210.412ms. These are observations,
+  not a no-leak or resource-SLO proof. Evidence `artifacts/resource-sse-60s.json`;
+  service source SHA-256 remains
+  `65487a3e60dddcfd238ba87d6d8a9d91d2331684c403915d250946f0736cf8d8`.
+- Default no-SSE regression with one client, 25 assets/findings and two seconds
+  passes: 49 requests, zero errors, no stream counters, 12 reports complete, clean
+  shutdown/lease. It overlapped the beginning of the 60-second run on this host,
+  so these timings are not an isolated comparison benchmark. Final CLI rejects
+  sse-clients 33 with exit 2 before producing an output file. Compile and diff checks
+  pass. Runtime/frontend service source is unchanged; no full backend/frontend or
+  wheel reinstall rerun is claimed for this scripts/docs-only change.
+- This verifies four consuming subscribers, one normal rollover and loaded graceful
+  shutdown in an owned loopback scenario. It does not cover stalled consumers,
+  session revocation/expiry under load, many subscribers, real mobile EventSource
+  recovery, network failure, actual targets/LLM or extended soak. The v1 gate stays
+  open. Main health 200 and assets two/tasks four/traffic three remain unchanged;
+  owned child servers exit, main preview remains live.

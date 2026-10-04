@@ -83,6 +83,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--duration', type=bounded_int(1, 3600), default=60)
     parser.add_argument('--clients', type=bounded_int(1, 32), default=4)
+    parser.add_argument('--sse-clients', type=bounded_int(0, 32), default=0)
     parser.add_argument('--assets', type=bounded_int(25, 20000), default=1000)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
@@ -110,6 +111,10 @@ def main():
         listener.close()
         stopped = threading.Event()
         workers = []
+        stream_workers = []
+        shutdown_sent = threading.Event()
+        streams = {'opened':0, 'active':0, 'natural_reconnections':0,
+                   'shutdown_eof':0, 'data_messages':0, 'heartbeats':0, 'errors':0}
         try:
             with httpx.Client(base_url=base, trust_env=False, timeout=10) as authenticated:
                 startup = time.monotonic()+20
@@ -130,6 +135,54 @@ def main():
                 cookie = dict(authenticated.cookies)
                 first = authenticated.get('/api/records/assets', params={'limit':25}).json()
                 assert first['total'] == args.assets and len(first['items']) == 25
+                ready_streams = [threading.Event() for _ in range(args.sse_clients)]
+
+                def stream_worker(index):
+                    cursor = 0
+                    try:
+                        with httpx.Client(base_url=base, cookies=cookie, trust_env=False,
+                                          timeout=httpx.Timeout(10, read=None)) as client:
+                            while not shutdown_sent.is_set():
+                                with client.stream('GET', '/api/events/stream', params={'after':cursor}) as response:
+                                    response.raise_for_status()
+                                    assert response.headers['Content-Type'].startswith('text/event-stream')
+                                    with lock:
+                                        streams['opened'] += 1
+                                        streams['active'] += 1
+                                    try:
+                                        for line in response.iter_lines():
+                                            if line.startswith('id:'):
+                                                cursor = max(cursor, int(line[3:].strip()))
+                                            elif line.startswith('data:'):
+                                                assert isinstance(json.loads(line[5:]), dict)
+                                                with lock:
+                                                    streams['data_messages'] += 1
+                                            elif line.startswith(':'):
+                                                with lock:
+                                                    streams['heartbeats'] += 1
+                                            ready_streams[index].set()
+                                    finally:
+                                        with lock:
+                                            streams['active'] -= 1
+                                if shutdown_sent.is_set():
+                                    with lock:
+                                        streams['shutdown_eof'] += 1
+                                    return
+                                with lock:
+                                    streams['natural_reconnections'] += 1
+                    except Exception as error:
+                        with lock:
+                            streams['errors'] += 1
+                            if len(errors) < 10:
+                                errors.append(f'event stream: {type(error).__name__}')
+
+                for index in range(args.sse_clients):
+                    thread = threading.Thread(target=stream_worker, args=(index,), name=f'owned-sse-{index}')
+                    stream_workers.append(thread)
+                    thread.start()
+                for ready in ready_streams:
+                    if not ready.wait(10):
+                        raise RuntimeError('Owned event stream did not deliver a first frame')
                 started = time.monotonic()
                 deadline = started+args.duration
                 baseline = process_sample(process.pid)
@@ -193,11 +246,32 @@ def main():
                 assert runtime['exports']['active'] == 0
                 assert not runtime['tasks']
                 elapsed = time.monotonic()-started
+                # A natural 30-second stream rollover can briefly reconnect.
+                stream_deadline = time.monotonic()+5
+                while True:
+                    with lock:
+                        open_at_shutdown = streams['active']
+                        stream_errors = streams['errors']
+                    if stream_errors:
+                        raise RuntimeError('Owned event stream failed during load')
+                    if open_at_shutdown == args.sse_clients:
+                        break
+                    if time.monotonic() >= stream_deadline:
+                        raise RuntimeError('Owned event streams are not open before shutdown')
+                    time.sleep(.02)
+            shutdown_started = time.monotonic()
+            shutdown_sent.set()
             process.send_signal(signal.SIGTERM)
             process.wait(timeout=10)
             # Uvicorn can re-raise the requested SIGTERM after finishing lifespan.
             assert process.returncode in (0, -signal.SIGTERM)
             assert (workspace/'shutdown-complete').read_text() == 'complete'
+            for thread in stream_workers:
+                thread.join(5)
+                if thread.is_alive():
+                    raise RuntimeError('Owned event stream did not close after shutdown')
+            assert streams['shutdown_eof'] == args.sse_clients and streams['errors'] == 0
+            shutdown_elapsed = time.monotonic()-shutdown_started
             with WorkspaceLease(workspace):
                 store = Store(workspace/'aegis.db')
                 assert store.count('assets') == args.assets
@@ -211,6 +285,9 @@ def main():
                 'platform':sys.platform, 'duration_requested_seconds':args.duration,
                 'elapsed_seconds':round(elapsed,3), 'clients':args.clients, 'assets':args.assets,
                 'synthetic_findings':args.assets,
+                'event_streams':{'clients':args.sse_clients, 'open_before_shutdown':open_at_shutdown,
+                    **streams},
+                'shutdown_seconds':round(shutdown_elapsed,3),
                 'target_requests':0, 'fixture_record_counts_preserved':True,
                 'record_counts':{'assets':args.assets,'findings':args.assets,'tasks':0,'traffic':0},
                 'environment':{'python':platform.python_version(),'machine':platform.machine(),
@@ -235,6 +312,7 @@ def main():
                 raise SystemExit(1)
         finally:
             stopped.set()
+            shutdown_sent.set()
             if process.poll() is None:
                 process.terminate()
                 try:
@@ -244,6 +322,8 @@ def main():
                     process.wait(timeout=5)
             for thread in workers:
                 thread.join(15)
+            for thread in stream_workers:
+                thread.join(5)
 
 
 if __name__ == '__main__':
