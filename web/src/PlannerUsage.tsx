@@ -1,7 +1,10 @@
+import { CallCost, type CallCostRecord } from "./CallCost";
+
 export type PlannerCall = {
   model: string;
   outcome: "accepted" | "invalid_plan" | "request_failed";
   observed_at: number;
+  cost?: CallCostRecord;
   tokens: {
     status: "reported" | "partial" | "missing" | "invalid";
     prompt_tokens: number | null;
@@ -33,7 +36,8 @@ export function PlannerUsage({call}: {call: PlannerCall}) {
           <div key={label}><dt>{label} 토큰</dt><dd>{value === null ? "미확인" : value.toLocaleString("ko-KR")}</dd></div>
         ))}
       </dl>
-      <p className="subtle">제공자가 반환한 값입니다. 청구 확인이나 비용 추정은 제공하지 않습니다.</p>
+      <CallCost cost={call.cost} />
+      <p className="subtle">제공자가 반환한 값입니다. 실제 청구를 확인한 기록은 아닙니다.</p>
     </section>
   );
 }

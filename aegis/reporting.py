@@ -96,7 +96,7 @@ def markdown_report(snapshot, generated_at):
                 value = json.dumps(task[key],ensure_ascii=False) if key == 'execution_policy' else task[key]
                 lines += [label+': '+value,'']
         if task.get('llm_usage'):
-            lines += ['AI 계획 호출 기록 (제공자 보고값; 청구 확인·비용 추정 아님):',
+            lines += ['AI 계획 호출 기록 (제공자 보고값·설정 가격의 비용 추정; 청구 확인 아님):',
                       '```json', json.dumps(task['llm_usage'],ensure_ascii=False,indent=2), '```', '']
         completed = total = 0
         for record in iter_task_rows(None,task,get_record=snapshot.get):

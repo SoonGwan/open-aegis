@@ -6,6 +6,7 @@ import sys
 import tempfile
 import json
 import threading
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -22,7 +23,10 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8811)
     parser.add_argument('--ai-fixture',action='store_true',help='Use an owned loopback provider for AI draft/recovery QA')
+    parser.add_argument('--price-fixture',action='store_true',help='Use synthetic flat text-token prices for owned QA')
     args=parser.parse_args()
+    if args.price_fixture and not args.ai_fixture:
+        parser.error('--price-fixture requires --ai-fixture')
     if not 1<=args.port<=65535:
         parser.error('port must be 1..65535')
     for key in list(os.environ):
@@ -50,6 +54,12 @@ def main():
         os.environ.update(AEGIS_LLM_CHAT_ENABLED='1',AEGIS_LLM_MODEL='owned-synthetic-model',
                           AEGIS_LLM_API_KEY='owned-synthetic-provider-key',
                           AEGIS_LLM_BASE_URL=f'http://127.0.0.1:{provider.server_port}/v1')
+    if args.price_fixture:
+        os.environ['AEGIS_LLM_PRICES']=json.dumps([{'model':'owned-synthetic-model',
+            'provider':os.environ['AEGIS_LLM_BASE_URL'],'currency':'USD',
+            'input_per_million':'1.25','output_per_million':'2.5',
+            'source_url':'https://prices-fixture.invalid/synthetic-only',
+            'as_of':datetime.now(timezone.utc).date().isoformat(),'basis':'flat_text_tokens'}])
     with tempfile.TemporaryDirectory(prefix='aegis-conversation-ui-') as workspace:
         app=create_app(workspace,allow_private=args.ai_fixture)
         store=app.state.store

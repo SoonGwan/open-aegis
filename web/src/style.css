@@ -3546,3 +3546,7 @@ pre,
 
 .modal .scopesentry-connection input[type="radio"] { width: 20px; height: 20px; min-height: 20px; padding: 0; flex: 0 0 20px; border: 0; }
 .scopesentry-connection span { min-width: 0; overflow-wrap: anywhere; }
+
+.call-cost { overflow-wrap: anywhere; }
+.call-cost p { margin: 8px 0; }
+.usage-summary > .detail-heading { margin: 18px; }

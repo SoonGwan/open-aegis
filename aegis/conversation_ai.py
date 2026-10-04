@@ -2,6 +2,7 @@
 import json
 import os
 from .llm import completion, token_usage
+from .costs import price_snapshot, estimate
 from .store_util import now
 
 
@@ -22,10 +23,13 @@ def draft(summary, question, *, allow_local=False, control=None):
     if len(prompt.encode())>65536:
         raise ValueError('AI 대화에 전달할 기록이 64 KiB를 초과합니다. 규칙 기반 요약을 사용하세요.')
     model=os.environ['AEGIS_LLM_MODEL']
-    metadata={'model':model,'outcome':'request_failed','tokens':token_usage(None)}
+    base=os.environ.get('AEGIS_LLM_BASE_URL','https://api.openai.com/v1').rstrip('/')
+    started_at=now()
+    price=price_snapshot(model,base,started_at)
+    metadata={'model':model,'outcome':'request_failed','tokens':token_usage(None),'started_at':started_at}
     result=summary
     try:
-        raw=completion(os.environ.get('AEGIS_LLM_BASE_URL','https://api.openai.com/v1').rstrip('/'),
+        raw=completion(base,
             os.environ['AEGIS_LLM_API_KEY'], {'model':model,'temperature':0,'messages':[
                 {'role':'system','content':
                  'You write a read-only security review draft in Korean from supplied records only. '
@@ -62,4 +66,5 @@ def draft(summary, question, *, allow_local=False, control=None):
         # Never persist rejected provider text, bodies or exception messages.
         result={**summary,'content':'AI 답변을 확인하지 못해 저장된 기록의 규칙 기반 요약으로 복구했습니다.\n\n'+summary['content']}
     metadata['observed_at']=now()
+    metadata['cost']=estimate(metadata['tokens'],price,metadata['observed_at'])
     return {**result,'assistant_generation':metadata}

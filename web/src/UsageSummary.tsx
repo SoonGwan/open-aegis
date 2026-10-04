@@ -5,6 +5,10 @@ type Summary = {
   source: "planner"|"conversation"|"all";
   calls: number;
   source_counts: Record<"planner"|"conversation",number>;
+  costs?: {
+    states: Record<string,number>;
+    totals: {currency:string; amount:string; calls:number}[];
+  };
   usage_states: Record<"reported"|"partial"|"missing"|"invalid",number>;
   outcomes: Record<"accepted"|"invalid_plan"|"invalid_answer"|"request_failed"|"unknown_outcome",number>;
   reported_tokens: Record<"prompt_tokens"|"completion_tokens"|"total_tokens",string|null>;
@@ -56,7 +60,18 @@ export function UsageSummary() {
       {([["입력 토큰",data.reported_tokens.prompt_tokens],["출력 토큰",data.reported_tokens.completion_tokens],
         ["합계 토큰",data.reported_tokens.total_tokens]] as const).map(([label,value])=><div className="setting-row" key={label}>
         <span>{label}</span><strong>{count(value)}</strong></div>)}
-      <p className="subtle">형식과 합계가 검증된 보고값만 합산합니다. 계획·대화가 거절된 호출도 포함됩니다. 청구 확인·비용 추정은 제공하지 않습니다.</p>
+      <p className="subtle">형식과 합계가 검증된 보고값만 합산합니다. 계획·대화가 거절된 호출도 포함됩니다.</p>
+      <h4 className="detail-heading">토큰 비용 추정</h4>
+      {data.costs ? <>
+        <div className="setting-row"><span>계산 가능 / 미확인</span><strong>{data.costs.states.estimated} / {data.calls-data.costs.states.estimated}개</strong></div>
+        {data.costs.totals.map(total=><div className="setting-row" key={total.currency}>
+          <span>{total.currency} · {total.calls}개 호출</span><strong>{total.amount}</strong>
+        </div>)}
+        {data.costs.totals.length === 0 && <p className="subtle">계산 가능한 가격·사용량 기록이 없습니다. 비용은 미확인입니다.</p>}
+        {data.costs.states.invalid_configuration > 0 && <p className="form-error">가격 설정 오류: {data.costs.states.invalid_configuration}개 호출</p>}
+        {data.costs.states.invalid_record > 0 && <p className="form-error">비용 기록 검증 오류: {data.costs.states.invalid_record}개 호출</p>}
+      </> : <p className="subtle">이 서버 응답에는 비용 집계가 없습니다.</p>}
+      <p className="subtle">호출 당시 설정한 입력·출력 단가로 추정한 부분 합계입니다. 통화별로 표시하며 가격·사용량이 없는 호출, 캐시·추가 요금·할인·세금은 반영하지 않습니다. 실제 청구와 비교하세요.</p>
     </>}
     <button type="button" disabled={loading} onClick={()=>setRetry(value=>value+1)}>{error ? "다시 조회" : "새로 조회"}</button>
   </section>;

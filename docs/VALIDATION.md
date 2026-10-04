@@ -2446,3 +2446,53 @@ on 390×844 has no document overflow.
   a committed reply (revocation/write failure) are absent, retry attempts/repeated
   planner rounds/model costs are not accounted for. Price sources, actual commercial
   provider verification, full accessibility and the whole v1 gate remain open.
+
+## Call-time price quotes and exact token cost estimates — 2026-10-04
+
+- Optional `AEGIS_LLM_PRICES` supplies bounded model/provider-matched flat text-token
+  quotes with currency, decimal-string input/output rates, source URL and as-of date.
+  Planner and conversation snapshot quotes before provider calls and persist exact
+  cost metadata with existing usage/audit transactions. Invalid configuration is
+  explicit and does not persist raw parser messages or become a zero-cost estimate.
+  Quote URLs are never fetched. No published provider rates are hardcoded; all review
+  rates/URLs below are synthetic. Contract and official unit reference: LLM-COSTS.md.
+- New cost tests cover exact fractional and zero amounts, call-time quote retention
+  across config changes, 15 malformed quote variants, unknown model/provider,
+  duplicate identities/JSON keys, deep configuration rejection, separate currencies,
+  changed amounts/models, old unrecorded costs and large-plus-tiny precision.
+  Real test-client conversation retries keep the original quote and one aggregate
+  call; planner test changes config during provider response and keeps the start
+  quote. Targeted cost/usage/LLM/conversation run: **68 passed**.
+- Initial full backend: **416 passed in 112.98s**. Review then added rejection of
+  valid reported usage mislabeled as usage_unavailable; cost/usage rerun **30 passed**.
+  Final full backend: **416 passed in 112.35s**, one existing Starlette/httpx warning
+  (`artifacts/costs-backend-tests.txt`). No further backend edits. Frontend **65 passed
+  in 296.99ms**. Final TypeScript/Vite build after cost heading alignment passes:
+  index-DIxRRKfh.js/index-DozFChs7.css. Neither UI rebuild ran during backend checks.
+- Browser planner component: Enter opens native price-proof summary; Space closes.
+  Opened long synthetic source URL fits 320/390/768 documents: client/scroll
+  305/305, 375/375, 753/753 with vertical scrollbars. Screenshot
+  `artifacts/costs-price-proof-320.jpg` visually inspected. Aggregate cost card with
+  exact USD18915118434956.081107 also fits those document widths; source switching
+  with held prior response and 503/retry retains current conversation cost0.000007.
+  `artifacts/costs-summary-320.jpg` records its narrow document.
+- Actual built UI + disposable owned provider + synthetic price fixture: accepted
+  and invalid-citation answers each retain reported20/10/30 and USD0.00005. Native
+  price-proof reveals model, loopback provider, source URL, as-of and rates1.25/2.5.
+  HTTP503 reply shows unknown cost with retained valid price proof. System settings
+  shows estimated2/unknown1, currency-specific USD0.0001, and token total60. Final
+  UI bundle reload/requery preserves values. `artifacts/costs-live-all.txt` and
+  visually inspected `artifacts/costs-live-all.jpg` record the result. No target or
+  commercial provider calls.
+- Final wheel SHA256 f005480879200b074698923cddfd43a09fbb9511096d170566de56eb793b2397
+  byte-matches all **42** service Python files. Installed locked runtime outside
+  checkout verifies empty cost states/totals without inferring zero, authentication,
+  real HTTP/UI, maintenance, signed release/preflight/rollback and clean shutdown.
+  Review was repeated with final UI bundle; `artifacts/costs-package-review.json`
+  valid=true,target_requests=0. Temporary provider/server/Vite/browser tabs closed.
+  Main preview refreshed with same data (assets2/tasks4/traffic3), final UI and HTTP200.
+- This is an operator-quoted flat token-price estimate and partial currency total.
+  Cached/context-tier/service-mode/tool fees/tax/discounts/exchange rates, real bill
+  reconciliation, model-level cost grouping, uncommitted provider attempts and
+  repeated planner history remain unimplemented/unverified. Price source authenticity,
+  commercial models, full accessibility/mobile and the whole v1 gate stay open.

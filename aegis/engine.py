@@ -10,6 +10,7 @@ from .dns import resolver
 from .checks import CATALOG, CHECK_IDS, run_check
 from .tool_contracts import require_contracts, validate_result, ToolContractMismatch
 from .network import Transport
+from .costs import price_snapshot, estimate
 from .llm import completion, token_usage
 from .store import identifier, now
 from .coverage import slot, finish_remaining
@@ -133,6 +134,8 @@ class Engine:
         payload = {'model': model, 'messages': [
             {'role': 'system', 'content': 'Return JSON only: {"checks": [check ids]}. Order all supplied checks by relevance. Never invent tools, URLs, commands, or omit checks.'},
             {'role': 'user', 'content': json.dumps(prompt, ensure_ascii=False)}], 'temperature': 0}
+        started_at = now()
+        price = price_snapshot(model, base, started_at)
         usage = token_usage(None)
         outcome = 'request_failed'
         proposed = checks
@@ -148,8 +151,10 @@ class Engine:
         except Exception:
             proposed = checks
         accepted = outcome == 'accepted'
+        observed_at = now()
         self.store.record_planner_call(task['id'], {
-            'model':model, 'outcome':outcome, 'observed_at':now(), 'tokens':usage,
+            'model':model, 'outcome':outcome, 'observed_at':observed_at, 'started_at':started_at,
+            'tokens':usage, 'cost':estimate(usage, price, observed_at),
             'checks':proposed,
         }, 'AI가 승인된 검증 도구의 실행 순서를 계획했습니다.' if accepted else
            'AI 계획을 검증하지 못해 규칙 기반 계획으로 진행합니다.',

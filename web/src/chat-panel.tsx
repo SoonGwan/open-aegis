@@ -25,6 +25,8 @@ import {
   type PendingQuestion,
 } from "./chat-pending";
 
+import { CallCost, type CallCostRecord } from "./CallCost";
+
 type Message = {
   id: string;
   role: string;
@@ -34,6 +36,7 @@ type Message = {
   provenance?: RecordedProvenance;
   assistant_generation?: {
     model: string; outcome: string;
+    cost?: CallCostRecord;
     tokens: {status: string; prompt_tokens: number|null; completion_tokens: number|null; total_tokens: number|null};
   };
 };
@@ -243,6 +246,7 @@ export function ChatPanel({
                   {m.assistant_generation && <div className="message-generation">
                     <p>AI 대화 · {m.assistant_generation.model} · {m.assistant_generation.outcome === "accepted" ? "초안 저장" : "규칙 요약으로 복구"}</p>
                     <p>사용량: {m.assistant_generation.tokens.status} · 입력 {m.assistant_generation.tokens.prompt_tokens ?? "미확인"} / 출력 {m.assistant_generation.tokens.completion_tokens ?? "미확인"} / 합계 {m.assistant_generation.tokens.total_tokens ?? "미확인"}</p>
+                    <CallCost cost={m.assistant_generation.cost} />
                   </div>}
                   <MessageProvenance provenance={m.provenance} />
                   {!!m.finding_ids?.length && (

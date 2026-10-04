@@ -5,7 +5,11 @@ import "../../src/style.css";
 
 const calls: PlannerCall[] = [
   {model:"owned-synthetic-model",outcome:"accepted",observed_at:1,
-   tokens:{status:"reported",prompt_tokens:32,completion_tokens:16,total_tokens:48}},
+   tokens:{status:"reported",prompt_tokens:32,completion_tokens:16,total_tokens:48},
+   cost:{status:"estimated",amount:"0.00008",quote:{model:"owned-synthetic-model",
+     currency:"USD",provider:"https://provider-fixture.invalid/v1",as_of:"2026-01-01",
+     input_per_million:"1.25",output_per_million:"2.5",
+     source_url:"https://prices-fixture.invalid/"+"synthetic-long-source/".repeat(20)}}},
   {model:"owned-synthetic-model",outcome:"invalid_plan",observed_at:1,
    tokens:{status:"partial",prompt_tokens:32,completion_tokens:null,total_tokens:null}},
   {model:"owned-synthetic-model",outcome:"request_failed",observed_at:1,
@@ -25,6 +29,8 @@ function Review() {
   return <main style={{padding:16}}>
     <h1>AI 계획 사용량 너비 검수</h1><p>실제 제공자 호출을 하지 않는 합성 표시입니다.</p>
     {[320,390,768].map(value=><button key={value} onClick={()=>{setWidth(value);setMetrics("");}}>{value}px</button>)}
+    <button onClick={()=>{const detail=document.querySelector("iframe")?.contentDocument?.querySelector("details");
+      if(detail) detail.open=!detail.open;}}>문서 가격 근거 펼침</button>
     <button onClick={()=>{
       const root=document.querySelector("iframe")?.contentDocument?.documentElement;
       setMetrics(root ? `문서 너비 ${root.clientWidth} / scroll ${root.scrollWidth}` : "준비 중");

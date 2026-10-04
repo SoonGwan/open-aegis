@@ -1,5 +1,7 @@
 """Snapshot aggregate of persisted planner and conversation usage; no inference."""
 import time
+import json
+from .costs import CostSummary, STATES
 
 
 class ExactSum:
@@ -40,7 +42,7 @@ def usage_summary(store, days=None, *, source='planner'):
         FROM records WHERE kind='messages' AND json_extract(data,'$.role')='assistant'
           AND json_type(data,'$.assistant_generation')='object'
       ), calls AS (
-        SELECT source, {projections}, json_extract(metadata,'$.outcome') AS outcome,
+        SELECT source, metadata, {projections}, json_extract(metadata,'$.outcome') AS outcome,
           CASE WHEN json_extract(metadata,'$.tokens.status')='reported'
             AND {numeric}
             AND json_extract(metadata,'$.tokens.total_tokens')=
@@ -51,7 +53,7 @@ def usage_summary(store, days=None, *, source='planner'):
         FROM recorded WHERE (?='all' OR source=?)
           AND json_type(metadata,'$.observed_at') IN ('integer','real')
           AND json_extract(metadata,'$.observed_at') BETWEEN ? AND ?
-      ) SELECT count(*) AS calls,
+      ) SELECT count(*) AS calls, cost_summary(metadata) AS costs,
         count(*) FILTER (WHERE status='reported') AS reported,
         count(*) FILTER (WHERE status='partial') AS partial,
         count(*) FILTER (WHERE status='missing') AS missing,
@@ -70,6 +72,7 @@ def usage_summary(store, days=None, *, source='planner'):
     """
     with store.connect() as db:
         db.create_aggregate('exact_sum', 1, ExactSum)
+        db.create_aggregate('cost_summary', 1, CostSummary)
         db.execute('BEGIN')
         row = dict(db.execute(query, (source, source, max(0, since), until)).fetchone())
     return {
@@ -79,6 +82,8 @@ def usage_summary(store, days=None, *, source='planner'):
         'source':source, 'source_counts':{key:row[key] for key in ('planner','conversation')},
         'days':days, 'since':max(0, since), 'until':until,
         'calls':row['calls'],
+        'costs':json.loads(row['costs']) if row['costs'] else
+            {'states':dict.fromkeys(STATES,0),'totals':[]},
         'usage_states':{key:row[key] for key in ('reported','partial','missing','invalid')},
         'outcomes':{key:row[key] for key in ('accepted','invalid_plan','invalid_answer','request_failed','unknown_outcome')},
         'reported_tokens':{key:row[key] if row['reported'] else None for key in fields},

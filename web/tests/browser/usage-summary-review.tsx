@@ -23,6 +23,11 @@ window.fetch = async (input,init) => {
   const missing = days === "30";
   const body = failNext ? {detail:"합성 집계 조회 실패"} : {
     source:source,
+    costs:{states:{estimated:zero || missing ? 0 : source === "all" ? 2101 : source === "planner" ? 2100 : 1,
+      usage_unavailable:missing ? 1 : 0,unconfigured:0,model_unpriced:0,invalid_configuration:0,
+      unrecorded:zero || missing || source === "conversation" ? 0 : 2,invalid_record:0},
+      totals:zero || missing ? [] : [{currency:"USD",calls:source === "all" ? 2101 : source === "planner" ? 2100 : 1,
+        amount:source === "all" ? "18915118434956.081107" : source === "planner" ? "18915118434956.0811" : "0.000007"}]},
     calls:zero ? 0 : missing ? 1 : source === "all" ? 2103 : source === "planner" ? 2102 : 1,
     source_counts:{planner:source === "conversation" || zero ? 0 : missing ? 1 : 2102,
       conversation:source === "planner" || zero ? 0 : missing ? (source === "conversation" ? 1 : 0) : 1},

@@ -198,6 +198,22 @@ complete backend/task-detail user journey. The fixture is outside production ent
 
 ## Usage aggregate recovery and widths
 
+The combined card now also displays synthetic flat token-price estimates. All-source
+cost USD 18915118434956.081107, planner 18915118434956.0811 and conversation
+0.000007 must preserve all decimals; empty/missing periods have no calculated totals.
+Source delay/release and 503/retry must preserve both tokens and cost for the current
+selection. These are synthetic prices, not actual provider charges.
+
+The planner usage fixture includes one synthetic price quote with a long source URL.
+In `?frame=1`, Enter/Space on the native price summary must open/close its proof.
+On the outer page, the owned "문서 가격 근거 펼침" button toggles the iframe's native
+details to allow measuring its opened 320/390/768 documents. No URL is fetched.
+Actual AI UI + synthetic prices: start review_conversation_ui.py with
+`--ai-fixture --price-fixture`. Accepted/invalid-citation calls each report 20/10/30
+tokens and should estimate USD0.00005 at the fixture 1.25/2.5 per-million rates.
+HTTP503 must show unknown cost. After those three questions, system settings should
+show estimated2/unknown1 and USD0.0001. All fixture URLs/rates are synthetic.
+
 Open `/tests/browser/usage-summary-review.html?frame=1` on Vite 8812 for the production
 UsageSummary with synthetic fetch only. Default combined total 18,915,118,434,956,081,105 must
 retain all digits. Arm Next delay, Refresh and inspect loading/disabled refresh;
