@@ -147,3 +147,19 @@ QA shortcuts work inside the modal; normal background inert still applies. Reloa
 loses held client acknowledgments but retains committed notes until server shutdown.
 This checks one document's real cookie/session replacement and pending note save,
 not cross-tab/phone/tenant isolation or every mutation. It does not cancel committed writes.
+
+## Submission input locking and failure recovery
+
+The same built-app fixture can hold a note save to inspect its actual input state.
+After submitting, native title/body controls must match `:disabled`, the form exposes
+aria-busy true, and a separate status explains that input is locked until completion.
+F8 can be pressed with Close focused to release the reply; inputs are disabled, so
+do not send that key through a disabled textbox. Cancel/Close remain available and
+retain the existing closed-view completion behavior.
+
+For failure recovery, open a new note and enter a title/body. F7 makes the next note
+POST return a synthetic 503 **before any server request**. Save must leave the modal,
+both values and the error visible, with aria-busy false and inputs enabled. Edit and
+resubmit, confirm inputs lock again, then F8 completes the actual successful save.
+The rejected fixture request must not create a note. This is transport fault injection,
+not a real server outage, and does not certify every registration form or mobile state.

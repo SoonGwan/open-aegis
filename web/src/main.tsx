@@ -2441,7 +2441,13 @@ function App() {
           }
           onClose={closeModal}
         >
-          <form onSubmit={submitForm}>
+          {busy && (
+            <p className="subtle" role="status">
+              입력한 내용을 저장하고 있습니다. 완료될 때까지 내용을 변경할 수 없습니다.
+            </p>
+          )}
+          <form onSubmit={submitForm} aria-busy={busy}>
+            <fieldset className="submission-fields" disabled={busy || !canOperate} aria-label="등록 내용">
             {modal === "asset" && (
               <>
                 <div className="form-grid">
@@ -2614,6 +2620,7 @@ function App() {
                 </label>
               </>
             )}
+            </fieldset>
             {formError && (
               <p className="form-error" role="alert">
                 {formError}

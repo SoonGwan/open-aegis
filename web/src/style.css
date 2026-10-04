@@ -2628,6 +2628,13 @@ legend,
 .selection small {
   color: var(--ink);
 }
+.modal .submission-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
 .checkbox-label input,
 .selection input {
   width: 20px;

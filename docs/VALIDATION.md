@@ -1981,3 +1981,38 @@ on 390×844 has no document overflow.
   Cross-tab identity recovery, actual role/password-change browser flows, stale
   generic mutations in other standalone panels, fault injection and all mobile
   journeys remain separate open v1 requirements.
+
+## 2026-10-04 — common registration inputs lock during submission
+
+- Actual previous built app reproduces input loss: save a note while its successful
+  HTTP acknowledgment is held, edit the still-enabled title, then release success.
+  Dialog closes and the list shows only the originally submitted title; the later
+  title disappears. This is a same-modal user sequence, distinct from closed-view
+  or previous-session callback races.
+- Main's common asset/plan/import/note forms now wrap their inputs in a native
+  disabled fieldset while busy or without operator permission. The wrapper removes
+  its own border/padding/background and preserves inner tool/policy groups. Form
+  aria-busy and a separate status explain the waiting state. Submit and cancellation
+  controls stay outside the fieldset. FormData is captured synchronously before
+  React applies the disabled state. Cancellation keeps the existing view guard.
+- Final actual built-app note scenario passes: held successful save shows title and
+  body matching :disabled, original submitted values retained, aria-busy true and
+  progress status; releasing response closes the modal and shows the stored note.
+  Fixture F7 intercepts the next note POST with synthetic 503 before network send:
+  the error appears, title/body remain, aria-busy false and inputs become enabled.
+  Edit the title and retry: native inputs lock again, release the real HTTP success,
+  dialog closes and the edited title is present. Final workspace has three notes
+  (before reproduction, successful lock, successful retry), no failure-created note.
+- Screenshot `artifacts/v1-submission-input-lock.jpg` inspected: submitted synthetic
+  title/body, progress message, disabled saving button and existing desktop modal
+  border/shadow remain readable. No color tokens changed. Selected design AA pairs
+  pass via scripts/check_design.py; this is not full rendered accessibility checking.
+- Existing 64 frontend tests pass (artifacts/submission-lock-tests.txt); no new
+  implementation-mirroring test added for native fieldset behavior. TypeScript/Vite
+  build passes: index-BN7GnyGW.js / index-rJkCwRk2.css. Installed unchanged wheel plus
+  final built UI smoke passes, locked deps/auth/persistence/import/audit/maintenance/
+  shutdown/lease, target requests zero. Wheel SHA remains
+  48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba.
+  No backend source changes or full backend rerun claimed. Actual browser before/
+  after evidence covers the note form; asset/plan/import share the fieldset in source
+  but their full busy-state journeys, mobile/zoom and assistive technology remain open.
