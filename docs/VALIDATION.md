@@ -2215,3 +2215,52 @@ on 390×844 has no document overflow.
   excerpts, model-grounded conversation, historical database integrity guarantees or
   execution intervention. Whole v1 gate stays open; remaining contracts are described
   in docs/CONVERSATION.md and docs/V1-READINESS.md.
+
+## 2026-10-04 — same-task observation evidence in conversation citations
+
+- Each selected finding now cites the most recently stored matching observation
+  from the current task. The existing verified evidence query requires membership
+  in the finding's references, matching asset/check/fingerprint and task membership;
+  an additional current-task filter excludes other retest attempts. Task, finding,
+  coverage and evidence reads share the same SQLite read transaction.
+- Citation snapshots store source IDs/check/time, matching count, at most 4,096
+  characters of formatted observation JSON and an explicit truncation flag. Invalid
+  observation shape/time or no matching source produces an unavailable-evidence
+  notice. No guessed proof or substitution from another task. Evidence ID was added
+  to literal SQL search fields so the current-proof link can open a filtered finding
+  history; its provenance checks still apply. Historical replies remain untouched.
+- Twelve new backend cases exercise actual citations/retry preservation/ID search,
+  cross-asset/check/fingerprint/task and malformed proof rejection, reference exclusion,
+  same-task latest selection, excerpt bounds, and a concurrent committed evidence
+  update after the first task read. Targeted conversation/finding/message suite:
+  **27 passed**. Strengthened the real loopback check integration: every cited excerpt
+  equals the engine's persisted observation and target requests stay at one after
+  asking the question. Synthetic UI seeds are separate from that execution evidence.
+- Initial full backend run overlapped Vite's asset replacement and one fixture setup
+  failed because web/dist/assets momentarily did not exist: 357 passed, one setup
+  error (artifacts/conversation-evidence-backend-build-race.txt). Build was complete
+  before the next run: final **358 passed in 108.01s**, one existing Starlette/httpx
+  deprecation warning. Evidence artifacts/conversation-evidence-backend-tests.txt.
+  Existing frontend **64 passed in 364.27ms**; TypeScript/Vite build passes:
+  index-D_jFmUmd.js / index-C-57Ezt8.css. Corresponding artifacts use the
+  conversation-evidence-frontend-tests/build prefixes.
+- Disposable actual HTTP/built-UI review seeds explicitly synthetic observations.
+  Admin submits a question, keyboard-opens provenance, reads both missing-evidence
+  and truncation notices, follows the proof link to one matching source, and opens
+  its 7,135-character original. A new task document restores the 4,096-character
+  excerpt and missing notice. Literal script text produces zero script nodes in
+  excerpt/original. This proves text rendering, not model prompt-injection defenses.
+  The focused excerpt supports PageDown: scrollTop 0 to 216 with its label retained.
+  Screenshot artifacts/v1-conversation-evidence-built.jpg visually inspected.
+- Component fixture at iframe viewport widths 320/390/768 gives root client/scroll
+  widths **305/305, 375/375, 753/753**: the vertical scrollbar consumes 15px and no
+  horizontal overflow appears. Long titles/remediation/observation and missing proof
+  included; screenshot artifacts/v1-conversation-evidence-320.jpg visually reviewed.
+- Wheel matches all 38 current service files; SHA256
+  42720086a232318b858c1a043e8b53c6608fa33595e297a81ee6f52d19f2113c.
+  Installed wheel + final UI review outside checkout passes existing persisted
+  conversation/usage/auth/maintenance/shutdown assertions with target requests zero;
+  artifacts/conversation-evidence-package-review.json valid=true. That installed
+  scenario has a pending task without proof; observation-specific coverage is the
+  backend/owned-UI evidence above. Full v1 remains open, including external-model
+  conversations/intervention and full mobile/accessibility/operational review.

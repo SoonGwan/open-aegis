@@ -1,4 +1,5 @@
 """Recorded, cited summaries. This reader never executes tools or calls a provider."""
+import json
 from .coverage import iter_task_rows
 from .store_util import now
 
@@ -29,13 +30,29 @@ def summarize_task(store, task_id, content):
         for index, finding in enumerate(findings, 1):
             label = f'발견 {index}'
             fields = ('severity', 'asset_name', 'remediation') if remediation else ('severity', 'confidence', 'status')
+            proofs = store.page('evidence', limit=1,
+                                filters={'finding_id':finding['id'], 'task_id':task_id},
+                                connection=db)
+            evidence = None
+            if proofs['items']:
+                proof = proofs['items'][0]
+                if (type(proof.get('observation')) is dict and
+                        all(type(proof.get(key)) is str for key in ('id','task_id','asset_id','check')) and
+                        type(proof.get('created_at')) in (int,float) and
+                        0 <= proof['created_at'] <= 8_640_000_000_000):
+                    excerpt = json.dumps(proof['observation'], ensure_ascii=False, indent=2)
+                    evidence = {key:proof[key] for key in ('id', 'task_id', 'asset_id', 'check', 'created_at')}
+                    evidence.update(label=f'증거 {index}', excerpt=excerpt[:4096],
+                                    truncated=len(excerpt)>4096, matching_count=proofs['total'])
             citations.append({'label':label, 'kind':'finding', 'id':finding['id'],
                               'title':finding['title'],
-                              'snapshot':{key:finding[key] for key in fields}})
+                              'snapshot':{key:finding[key] for key in fields}, 'evidence':evidence})
             if remediation:
                 answer.append(f"[{label}] [{finding['severity'].upper()}] {finding['title']} ({finding['asset_name']}): {finding['remediation']}")
             else:
                 answer.append(f"[{label}] [{finding['severity'].upper()}] {finding['title']} · 판정 유형: {finding['confidence']} · 상태: {finding['status']}")
+            answer.append(f"[증거 {index}] 이 작업의 저장된 관찰 기록을 인용했습니다." if evidence else
+                          f"[{label}] 이 작업과 출처가 일치하는 관찰 증거를 확인할 수 없습니다.")
         if not findings:
             answer.append('이 작업에 연결된 발견 사항이 없습니다. 미실행·검증 실패·미지원 취약점은 별도로 확인해야 합니다.')
         elif findings_page['total'] > len(findings):

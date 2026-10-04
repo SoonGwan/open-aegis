@@ -88,6 +88,13 @@ def test_no_requests_before_approval_and_no_duplicate_execution(client, lab):
     assert handler.requests == ['/']
     assert len(result['coverage']) == 2
     assert any(f['code'] == 'missing-nosniff' for f in result['findings'])
+    reply=client.post('/api/tasks/'+pending['id']+'/messages',json={'content':'검증 요약'}).json()
+    cited=[citation['evidence'] for citation in reply['provenance']['citations'][1:]]
+    assert cited and all(proof is not None and proof['task_id']==pending['id'] for proof in cited)
+    for proof in cited:
+        original=client.app.state.store.get('evidence',proof['id'])
+        assert json.loads(proof['excerpt'])==original['observation']
+    assert handler.requests==['/'], 'Conversation must not make additional target requests'
     observations = client.get('/api/overview').json()['observations']
     assert [o['url'] for o in observations] == [url+'api/account']
 

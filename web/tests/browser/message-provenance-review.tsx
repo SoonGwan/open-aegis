@@ -9,7 +9,12 @@ const provenance: RecordedProvenance = {
     {label:"작업",kind:"task",id:"owned-task",title:"합성 완료 작업",
      snapshot:{status:"completed",assets:2,done:2,completed_checks:12,errors:0}},
     {label:"발견 1",kind:"finding",id:"owned-finding",title:"매우긴합성발견제목".repeat(8),
-     snapshot:{severity:"high",asset_name:"소유한 합성 자산",remediation:"수정 안내 ".repeat(30)}},
+     snapshot:{severity:"high",asset_name:"소유한 합성 자산",remediation:"수정 안내 ".repeat(30)},
+     evidence:{label:"증거 1",id:"owned-proof",task_id:"owned-task",asset_id:"owned-asset",
+       check:"security_headers",created_at:1791068400,matching_count:2,truncated:true,
+       excerpt:'{"synthetic_text":"<script>이것은 실행되지 않는 합성 문자열입니다</script>"}'.repeat(100).slice(0,4096)}},
+    {label:"발견 2",kind:"finding",id:"missing-finding",title:"일치하는 증거가 없는 합성 발견",
+     snapshot:{severity:"low",status:"open"},evidence:null},
   ],
 };
 function Review() {

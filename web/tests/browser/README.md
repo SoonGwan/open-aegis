@@ -226,5 +226,18 @@ details for width review. Its task and finding IDs are synthetic and have no bac
 records. Test Enter to collapse/reopen, inspect task/finding links and the historical
 values, and verify the legacy answer has no fabricated provenance. Open without the
 frame query for real 320/390/768px document widths with long titles/remediation.
+The fixture also displays a capped synthetic observation excerpt (literal script
+text), truncation notice and a finding with missing evidence. Vertical document
+scrollbars reduce the root client width by 15px; compare client/scroll widths.
 Only the owned built-app review can verify actual persisted exchanges and link
 destinations; this component fixture makes no API/provider requests.
+
+For that actual HTTP/UI journey, run `python scripts/review_conversation_ui.py` after
+building the UI. It starts a fresh disposable workspace on loopback 8811, prints its
+synthetic credentials and seeds explicitly synthetic observations, including missing
+proof and a long literal excerpt. Submit a summary question, open its provenance,
+confirm missing/truncated notices, follow the evidence link, and inspect its one-item
+filtered source list and full original. Reopen the task in a fresh document to check
+persisted excerpts. Ctrl+C shuts down and removes the workspace. The launcher does
+not approve tasks or send target/provider requests; synthetic seeded observations
+are not execution evidence. Backend loopback integration verifies actual check output.

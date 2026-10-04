@@ -9,6 +9,10 @@ export type RecordedProvenance = {
     id: string;
     title: string;
     snapshot: Record<string, string | number>;
+    evidence?: {
+      label: string; id: string; task_id: string; asset_id: string; check: string;
+      created_at: number; excerpt: string; truncated: boolean; matching_count: number;
+    } | null;
   }[];
 };
 
@@ -35,6 +39,20 @@ export function MessageProvenance({ provenance }: { provenance?: RecordedProvena
         <dl>{Object.entries(citation.snapshot).filter(([key]) => key in labels).map(([key,value]) =>
           <div key={key}><dt>{labels[key]}</dt><dd>{value}</dd></div>
         )}</dl>
+        {citation.kind === "finding" && "evidence" in citation && (
+          citation.evidence ? <div className="message-evidence">
+            <strong>[{citation.evidence.label}] 관찰 증거</strong>
+            <p>증거 ID <code>{citation.evidence.id}</code> · 도구 <code>{citation.evidence.check}</code></p>
+            <p>관찰 시각: <time dateTime={new Date(citation.evidence.created_at * 1000).toISOString()}>
+              {new Date(citation.evidence.created_at * 1000).toLocaleString("ko-KR")}
+            </time> · 일치하는 증거 {citation.evidence.matching_count}개 중 최근 저장 1개</p>
+            <pre tabIndex={0} aria-label={`${citation.evidence.label} 당시 관찰 내용`}>{citation.evidence.excerpt}</pre>
+            {citation.evidence.truncated && <p>관찰 내용이 길어 앞부분 4,096자만 보존했습니다. 현재 증거에서 전체 내용을 확인하세요.</p>}
+            <a href={`?page=findings&detail=finding&detail_id=${encodeURIComponent(citation.id)}&finding_evidence_open=true&finding_evidence_q=${encodeURIComponent(citation.evidence.id)}`}>
+              {citation.evidence.label} · 현재 증거 열기
+            </a>
+          </div> : <p>이 작업과 출처가 일치하는 관찰 증거를 확인할 수 없습니다.</p>
+        )}
       </li>)}
     </ol>
   </details>;

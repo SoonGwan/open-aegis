@@ -147,7 +147,7 @@ class Store:
             'finding_history': ('action', 'reason', 'actor.name', 'actor.username'),
             'notes': ('title', 'content'),
             'schedules': ('task.name', 'task.goal'),
-            'evidence': ('check', 'task_id'),
+            'evidence': ('id', 'check', 'task_id'),
             'retests': ('conclusion', 'state_note', 'task_id'),
             'messages': ('content', 'role'),
             'asset_sources': ('source_key', 'external_id', 'source_url'),
