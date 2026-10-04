@@ -103,7 +103,8 @@
 - [ ] PostgreSQL 저장소와 SQLite 마이그레이션, 지원 구성의 실제 검증.
   - SQLite2 → 새 PostgreSQL 스키마의 원자적 전송·행/감사 검증과 새 SQLite 반환을 구현.
     실제 PostgreSQL16.15의 왕복·덤프/복구·세션 제외·순서 보존·실패 롤백을 검수.
-    서비스 Store/보고서/감사/잠금/설정의 PostgreSQL 연결과 전체 HTTP 운영 검수는
+    PostgreSQL 네이티브 Store의 저장·검색·계정/세션·감사·결과 저장 트랜잭션을 실제 DB에서 검수.
+    HTTP/작업 실행·보고서/감사 읽기·운영 잠금/설정의 PostgreSQL 연결과 전체 HTTP 운영 검수는
     아직 미구현이며 전체 조건은 열려 있음([POSTGRES-STORAGE.md](POSTGRES-STORAGE.md)).
 - [ ] 검토된 확장 도구 계약과 등록·실행·결과 검증.
   - 내장 6개 도구의 계약 버전·코드 지문·계획 스냅샷, 승인/실행/Worker 전 비교,

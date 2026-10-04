@@ -98,7 +98,7 @@ def postgres_manifest(db):
     return result
 
 
-def postgres_audit(db):
+def postgres_audit(db, checkpoint=None):
     class Reader:
         stream=None
         def execute(self,query):
@@ -109,7 +109,7 @@ def postgres_audit(db):
             return db.execute(query)
     reader=Reader()
     try:
-        return verify_chain(reader)
+        return verify_chain(reader,checkpoint)
     finally:
         if reader.stream is not None: reader.stream.close()
 
@@ -125,6 +125,14 @@ def validate_postgres(db):
     maximum=db.execute('SELECT coalesce(max(seq),0) AS seq FROM events').fetchone()['seq']
     if row['event_sequence']<maximum:
         raise TransferError('감사 이벤트 순서 기준이 올바르지 않습니다.')
+    # PostgreSQL identity allocation is not rolled back with a failed write.
+    # Preserve its high water mark, including uncommitted allocations, on return.
+    sequence=db.execute("SELECT n.nspname,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.oid=pg_get_serial_sequence('events','seq')::regclass").fetchone()
+    if not sequence:
+        raise TransferError('감사 이벤트의 순번 할당기가 없습니다.')
+    _,sql,_=driver()
+    allocated=db.execute(sql.SQL('SELECT last_value,is_called FROM {}').format(sql.Identifier(sequence['nspname'],sequence['relname']))).fetchone()
+    row={**row,'event_sequence':max(row['event_sequence'],allocated['last_value'] if allocated['is_called'] else 0)}
     return row,audit
 
 

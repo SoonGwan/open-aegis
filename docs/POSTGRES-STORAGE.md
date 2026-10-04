@@ -1,6 +1,6 @@
-# PostgreSQL 저장소 전송
+# PostgreSQL 저장소와 전송
 
-현재 구현은 **오프라인 데이터 전송과 되돌리기**다. HTTP 서비스의 PostgreSQL 실행
+현재 구현은 **오프라인 전송·되돌리기와 네이티브 Store 계층**이다. HTTP 서비스의 PostgreSQL 실행
 백엔드는 아직 연결하지 않았다. `AEGIS_POSTGRES_DSN`만 설정해도 서비스가 PostgreSQL로
 전환되는 것은 아니다. 전체 v1의 PostgreSQL 조건은 열린 상태다.
 
@@ -86,11 +86,59 @@ python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-transf
 설치 환경, 복구 파일은 정리한다. CI에 선택 의존성/실제 클러스터 검사를 추가했으나
 GitHub hosted 실행 결과는 아직 없다.
 
-남은 v1 조건은 실제 PostgreSQL 서비스 Store/트랜잭션·잠금·쿼리·보고서/감사 읽기,
+남은 v1 조건은 HTTP/작업 실행의 PostgreSQL Store 연결·보고서/감사 읽기,
 서버 선택 설정·업그레이드·백업/복구의 운영 계약과 HTTP/권한/동시성/재시작 전체 검수다.
 현재 전송 형식은 그 기반이며, 이를 PostgreSQL 서비스 지원 완료로 표시하지 않는다.
+
+## 네이티브 Store 계층
+
+`aegis.postgres_store.PostgresStore(dsn, schema)`는 전송으로 생성한 형식의 스키마를
+직접 읽고 쓴다. SQLite SQL 변환이나 SQLite 복제 DB를 사용하지 않는다. 생성자는
+형식/감사 기준을 읽기만 하며 세션 폐기·작업 복구·스키마 변경을 하지 않는다.
+현재 서비스의 Store 선택 설정에는 연결하지 않았으며 공개 HTTP PostgreSQL 지원을 뜻하지 않는다.
+
+각 읽기는 REPEATABLE READ/READ ONLY 트랜잭션이고 쓰기는 READ COMMITTED 트랜잭션에서
+DB/스키마별 트랜잭션 advisory lock을 잡는다. 여러 Store 인스턴스의 감사 기록을 실제
+서버에서 동시에 쓰고 전체 연결을 검증했다. 이 잠금은 같은 계약을 따르는 쓰기만
+직렬화하며 외부 SQL 관리자의 수정을 막는 권한 장치가 아니다. 스키마 전체 쓰기가
+직렬화되는 초기 구현으로, 다중 서버 처리량·긴 쓰기·장기 부하 SLO는 아직 검수하지 않았다.
+연결 풀과 PostgreSQL 전용 검색 인덱스도 아직 없다.
+
+저장/갱신·페이지/문자열 검색·관계 증거 필터·revision별 커버리지·예약/복구 목록,
+계정/해시 세션·권한 변경 시 세션 폐기, 감사 이벤트/체크포인트 검증을 구현했다.
+AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 같은 쓰기 트랜잭션에서
+커밋한다. 쓰기 실패를 주입해 모두 함께 롤백되는 것을 검수했다. 제공자 호출 시작/
+관찰/재시작 복구의 전체 ledger 모듈과 HTTP 실행 경로는 아직 SQLite 전용이다.
+
+레코드는 원문 TEXT로 저장하고 검색/관계 연산만 jsonb로 투영한다. 검색 문자열은
+바인딩하고 `%`와 `_`도 문자 그대로 검색한다. JSON 객체의 원문 바이트 보존을 검증한
+전송과, jsonb 질의의 의미는 별도 계약이다. 중복 JSON 키·PostgreSQL numeric 범위를
+벗어나는 수·잘못된 필드 타입까지 SQLite 질의와 동일하게 동작함을 보장하지 않는다.
+서비스가 생성하는 정상 레코드의 대표 필터/정렬/커버리지는 SQLite와 결과를 비교했다.
+페이지 snapshot은 삽입 순번의 상한이며 과거 편집 내용을 복원하는 기능이 아니다.
+
+감사 순번은 PostgreSQL identity로 할당한다. 롤백으로 번호 공백이 생겨도 해시 연결을
+유지한다. SQLite 반환 시 실제 sequence의 할당 상한도 보존해 마지막 커밋 뒤의 실패한
+할당 번호를 재사용하지 않는다. 순번은 MVCC 스냅샷 대상이 아니므로 동시 쓰기가 있으면
+읽는 행보다 높은 상한을 반환할 수 있다. 이것은 역사적 순번 스냅샷 보장이 아니다.
+쓰기 후 실제 pg_dump/pg_restore 및 SQLite 반환에서 공백 보존도 검수했다.
+
+실제 DB 회귀 검수:
+
+```sh
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py
+```
+
+설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된
+PostgresStore로 읽기/쓰기·권한 변경 세션 폐기를 수행한 다음 실제 덤프/복구와
+SQLite 반환의 행/감사 해시를 비교한다. HTTP PostgreSQL 실행, 운영 서버 재시작,
+운영 백업/복구, 다중 서비스 인스턴스 배제 계약은 후속 필수 작업이다.
 
 구현 시 참고한 기본 계약:
 [Psycopg 트랜잭션](https://www.psycopg.org/psycopg3/docs/basic/transactions.html),
 [COPY](https://www.psycopg.org/psycopg3/docs/basic/copy.html),
 [PostgreSQL16 pg_dump](https://www.postgresql.org/docs/16/app-pgdump.html).
+네이티브 계층의 기본 계약은
+[트랜잭션 격리](https://www.postgresql.org/docs/16/transaction-iso.html),
+[advisory lock](https://www.postgresql.org/docs/16/explicit-locking.html#ADVISORY-LOCKS),
+[JSON 함수](https://www.postgresql.org/docs/16/functions-json.html)를 참고했다.

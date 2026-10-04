@@ -52,6 +52,27 @@ s.event(None,'합성 설치본 전송 검수',detail={'amount':'0.00000000000000
 print(json.dumps({'module':aegis.__file__,'audit':s.audit_integrity()}))
 ''',source],'installed source creation'))
             forward=json.loads(run([cli,'sqlite-to-postgres','--source',source,'--schema','owned_transfer'],'installed transfer'))
+            forward_proof=temporary/'forward.json';forward_proof.write_text(json.dumps(forward));forward_proof.chmod(0o600)
+            native=json.loads(run([python,'-I','-c','''
+import json,sys,time,os
+from pathlib import Path
+from aegis.postgres_store import PostgresStore
+from aegis.postgres_transfer import postgres_manifest
+s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
+assert Path(sys.modules[s.__class__.__module__].__file__).is_relative_to(Path(sys.prefix))
+proof=json.loads(Path(sys.argv[1]).read_text())
+with s.transaction() as db:assert postgres_manifest(db)==proof['manifest']
+assert s.audit_integrity()==proof['audit'] and not s.valid_session('owned-old-cookie')
+u=s.user(username='admin');s.session('native-cookie',time.time()+300,u['id'])
+assert s.valid_session('native-cookie')
+s.update_user(u['id'],name='합성 PostgreSQL 관리자');assert s.valid_session('native-cookie')
+s.update_user(u['id'],role='operator');assert not s.valid_session('native-cookie')
+s.put('notes',{'id':'native','title':'설치본 PostgreSQL 저장','amount':'0.000000000000001'})
+s.event(None,'설치본 PostgreSQL 기록',detail={'note_id':'native'})
+assert s.page('notes',search='PostgreSQL')['total']==1
+with s.transaction() as db:manifest=postgres_manifest(db)
+print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity()}))
+''',forward_proof],'installed native PostgreSQL store'))
             dump=temporary/'owned.dump'
             run([binaries['pg_dump'],'--format=custom','--schema','owned_transfer','--file',dump,'postgres'],'real pg_dump');dump.chmod(0o600)
             run([binaries['createdb'],'owned_restore'],'empty restore database')
@@ -59,7 +80,7 @@ print(json.dumps({'module':aegis.__file__,'audit':s.audit_integrity()}))
             environment['AEGIS_POSTGRES_DSN']=f'host={socket} port=55439 dbname=owned_restore'
             output=temporary/'returned'/'aegis.db'
             reverse=json.loads(run([cli,'postgres-to-sqlite','--schema','owned_transfer','--output',output],'installed reverse transfer'))
-            assert forward['manifest']==reverse['manifest'] and forward['audit']==reverse['audit'] and forward['sessions_revoked']==1
+            assert native['manifest']==reverse['manifest'] and native['audit']==reverse['audit'] and forward['sessions_revoked']==1
             run([python,'-I','-c','''
 import sys
 from aegis.store import Store
@@ -68,12 +89,14 @@ s=Store(sys.argv[1]);u=s.user(username='admin')
 assert u['password_hash']==password_hash('owned-installed-transfer-password',u['salt'])
 assert not s.valid_session('owned-old-cookie')
 assert s.get('notes','proof')['amount']=='0.000000000000001'
+assert s.get('notes','native')['amount']=='0.000000000000001'
+assert u['role']=='operator' and u['name']=='합성 PostgreSQL 관리자'
 s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
 ''',output],'installed returned credentials, record and audit continuation')
             print(json.dumps({'valid':True,'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
-                'installed_origin':origin['module'],'manifest':forward['manifest'],'audit':forward['audit'],
-                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','real pg_dump/pg_restore',
+                'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
+                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','real pg_dump/pg_restore',
                           'installed SQLite return','revoked old sessions','preserved password hashes and exact record','audit continuation'],
                 'target_requests':0,'service_postgres_backend_enabled':False}))
         finally:

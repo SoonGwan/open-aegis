@@ -2678,3 +2678,44 @@ on 390×844 has no document overflow.
   assets2/tasks4/traffic3. CI PATH append format was locally executed against a
   disposable file and verified to write an actual newline; this does not establish
   hosted CI completion. No remote publication or real target/provider requests.
+
+### Native PostgreSQL Store foundation (service integration remains open)
+
+- Added `PostgresStore` using native psycopg transactions, bound parameters and
+  PostgreSQL JSON queries. Reads use REPEATABLE READ/READ ONLY; cooperative writes
+  take a database/schema transaction advisory lock. Constructor reads metadata and
+  audit state without recovering tasks or revoking sessions. HTTP/engine/reporting/
+  lifecycle selection is not yet connected; no `AEGIS_POSTGRES_DSN` runtime switch.
+- Actual PostgreSQL16.15 tests compare representative Store pages/search/array
+  proof filters/compact severity order/observation source names/revision coverage
+  and scheduler/recovery records to SQLite. Verified session security revocation,
+  atomic batch refusal, read-only rejection and consistent reads during a separate
+  Store update, thirty concurrent events across two Store instances, checkpoint/
+  tamper rejection, message replay/conflict and planner-attempt/audit rollback.
+- Failed audit transactions consume PostgreSQL identity values. Reverse transfer
+  now reads the actual sequence high water mark as well as metadata. A real native
+  write, injected failure after event/hash/head writes, custom pg_dump/pg_restore
+  and SQLite return preserve the unused allocation: committed seq1 followed by
+  failed seq2 returns with the next event seq3. Audit contains only committed rows.
+  This is controlled transaction failure, not physical power-loss/crash proof.
+- Targeted integration run: **28 passed in3.83s**, comprising17 transfer cases and
+  11 native Store cases (`artifacts/postgres-native-targeted.txt`). An earlier run
+  failed because the test's injected failure remained enabled during its positive
+  continuation control; resetting that injection fixed the fixture, preserving
+  the rollback and sequence assertions. No production workaround/test relaxation.
+- Full opted-in backend suite: **454 passed in121.20s**, one existing Starlette/
+  httpx warning (`artifacts/postgres-native-backend.txt`). UI source/build unchanged.
+- Wheel SHA256 e771b1c319c98edc5615fc35a5df59d9c368a33889502d36d5ccb9c383312471
+  byte-matches all **47** service Python files. Outside-checkout installed native
+  PostgreSQL Store writes/search/session revocation followed by actual dump/restore
+  and SQLite return pass (`artifacts/postgres-native-installed-review.json`,
+  valid=true,target_requests=0,service_postgres_backend_enabled=false). Default
+  installed SQLite HTTP/UI/auth/maintenance/recovery/signed-release checks pass
+  with the same wheel (`artifacts/postgres-native-runtime-review.json`,valid=true,
+  target_requests=0). Successful runners stop/remove disposable clusters/envs.
+- CI PostgreSQL job includes both transfer and native Store tests; hosted execution
+  is not verified. Advisory locking is cooperative, initial writes are serialized,
+  connections are not pooled, and PostgreSQL query indexes/throughput/soak/remote
+  TLS/operational restore and multi-server service ownership are still open. Raw
+  TEXT transfer preservation is distinct from jsonb query parity for malformed,
+  duplicate-key or out-of-range-number records. The full v1 gate stays open.
