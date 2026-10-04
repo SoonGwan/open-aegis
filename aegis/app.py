@@ -320,6 +320,7 @@ def create_app(data_dir=None, allow_private=None):
             task.update(followup_of=source['id'], followup_fingerprint=proposal['fingerprint'],
                         planning_round=proposal['planning_round'],shared_todo_context=proposal['shared_todo_context'])
             task['worker_observation_context']=proposal['worker_observation_context']
+            if proposal.get('goal_plan'):task['goal_plan']=proposal['goal_plan']
         if observation_request:
             source_id, selection = observation_request
             try:

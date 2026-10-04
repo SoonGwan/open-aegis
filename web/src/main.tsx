@@ -2824,7 +2824,7 @@ function App() {
               결과 기반 후속 {selectedTask.planning_round}회차 · <button type="button" disabled={busy}
                 onClick={() => navigation.openDetail({kind:"task",id:selectedTask.followup_of!})}>이전 회차 보기</button>
             </p>}
-            {selectedTask.approved_at && !selectedTask.observation_execution && ["completed","failed","stopped","interrupted"].includes(selectedTask.status) && <NextPlan
+            {selectedTask.approved_at && !selectedTask.observation_execution && !selectedTask.goal_retest && ["completed","failed","stopped","interrupted"].includes(selectedTask.status) && <NextPlan
               key={`next-plan-${selectedTask.id}`} taskId={selectedTask.id} canOperate={canOperate} busy={busy}
               names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))}
               onTask={id=>navigation.openDetail({kind:"task",id})}

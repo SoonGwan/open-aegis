@@ -3,6 +3,7 @@ import { api } from "./api";
 import { PolicySummary, type ExecutionPolicy } from "./runtime";
 import { ToolContracts } from "./ToolContracts";
 import type { ToolManifest } from "./tool-contract-state";
+import { GoalPlanSummary, type GoalPlan } from "./GoalPlan";
 import { WorkerDependencies } from "./WorkerDependencies";
 
 type Cell = {
@@ -215,10 +216,12 @@ type Proposal = {
     revision?: number;
   }[];
   execution_policy: ExecutionPolicy;
+  goal_plan?: GoalPlan | null;
   tool_contracts?: ToolManifest;
   basis: {
     missing_checks: string[];
     retry_checks: string[];
+    todo_outside_goal_checks?: string[];
     todo_requested_checks?: string[];
     coverage: Cell[];
     skipped_cells: string[];
@@ -244,6 +247,8 @@ const reasons: Record<string, string> = {
     "후속 계획 회차 한도에 도달했습니다. 결과와 실패 원인을 검토하세요.",
   history_limit:
     "교체·재실행을 포함한 연결 이력 한도에 도달했습니다. 기존 결과와 실행 범위를 검토하세요.",
+  goal_scope_change_required:"공유 할 일의 요청이 원래 목표의 검사 범위를 벗어납니다. 새 목표 초안을 검토하세요.",
+  no_remaining_goal_checks:"선택한 목표 검사에 추가·재시도 요청이 없습니다. 자연어 목표 달성 판정은 아닙니다.",
   no_remaining_checks:
     "현재 결과에서 제안할 추가·재시도 검증이 없습니다. 자산의 안전성을 보장하는 판정은 아닙니다.",
 };
@@ -497,6 +502,11 @@ export function NextPlan({
                 : "이미 만든 후속 계획 보기"}
             </button>
           )}
+          {proposal.goal_plan && <>
+            <GoalPlanSummary plan={proposal.goal_plan} names={names} assets={proposal.scope_snapshot} />
+            <p>목표 후속 회차는 원래 과제의 전체 선택 조합과 Worker 의존 관계를 유지해 다시 검사합니다. 완료된 검사도 포함되며 아래 반복 근거를 검토한 뒤 새로 승인합니다.</p>
+            {!!proposal.basis.todo_outside_goal_checks?.length && <p role="alert">목표 밖의 요청: {checkNames(proposal.basis.todo_outside_goal_checks)}</p>}
+          </>}
           {proposal.available && proposal.task && (
             <>
               <p>
@@ -580,8 +590,9 @@ export function NextPlan({
                 pending={false}
               />
               <p className="subtle">
-                한 도구를 선택하면 모든 선택 자산에서 수행합니다. 다른 자산의
-                완료 검증도 반복될 수 있습니다.
+                {proposal.goal_plan
+                  ? "원래 과제별 자산·검사 조합에서 수행합니다. 완료된 선택 검사도 반복될 수 있습니다."
+                  : "한 도구를 선택하면 모든 선택 자산에서 수행합니다. 다른 자산의 완료 검증도 반복될 수 있습니다."}
               </p>
               <p>
                 반복될 완료 검증{" "}

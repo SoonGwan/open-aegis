@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--observation-lost-response-flag',type=Path,help='Owned observation-plan POST commit then503 probe')
     parser.add_argument('--goal-planner',action='store_true',help='Owned mock-provider semantic goal draft fixture, no external calls')
     parser.add_argument('--goal-retest-lost-response-flag',type=Path,help='Owned objective retest commit then503 probe')
+    parser.add_argument('--goal-round',action='store_true',help='Seed failed objective cell for goal follow-up review')
     parser.add_argument('--goal-evidence',action='store_true',help='Seed objective proof and retest navigation fixtures without target requests')
     parser.add_argument('--goal-sparse',action='store_true',help='Owned goal objectives select separate asset/check pairs')
     parser.add_argument('--goal-lost-response-flag',type=Path,help='Owned goal draft commit then503 probe')
@@ -48,6 +49,7 @@ def main():
     parser.add_argument('--todo-read-fail-flag',type=Path,help='Owned todo GET failure probe')
     parser.add_argument('--todo-write-hold-flag',type=Path,help='Hold owned todo POST/PATCH for up to15 seconds')
     args=parser.parse_args()
+    if args.goal_round and not args.goal_evidence:parser.error('--goal-round requires --goal-evidence')
     if args.observation_planner and not args.next_plan:parser.error('--observation-planner requires --next-plan')
     if not 1<=args.port<=65535:parser.error('port must be1..65535')
     for key in list(os.environ):
@@ -186,6 +188,9 @@ def main():
             goal_planner.require_task(goal_task)
             store.put('tasks',goal_task)
             for scoped in goal_task['scope_snapshot']:store.put('coverage',slot(goal_task,scoped,'security_headers',status='completed'))
+            if args.goal_round:
+                store.put('coverage',slot(goal_task,asset,'security_headers',status='failed'))
+                store.patch('tasks',goal_task['id'],errors=1)
             for i in range(31):
                 item={'check':'security_headers','code':f'qa-goal-{i:02d}','title':f'목표 근거 검수 {i:02d}',
                       'severity':'low','confidence':'configuration','evidence':{'synthetic':True},'remediation':'합성 검수 항목'}

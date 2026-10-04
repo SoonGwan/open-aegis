@@ -1,0 +1,10 @@
+from tests.test_postgres_transfer import postgres,schema
+from tests.test_postgres_http import configured,client
+from tests.test_validation import lab
+from tests.test_goal_rounds import (
+    test_completed_goal_never_expands_to_unrequested_catalog_checks as test_native_goal_round_no_expansion,
+    test_goal_retry_round_retains_objectives_order_and_result_links as test_native_goal_round,
+    test_goal_todo_requests_require_new_draft_for_extra_checks as test_native_goal_round_todo,
+    test_goal_scope_mutation_invalidates_followup_review as test_native_goal_round_stale,
+)
+from tests.test_goal_rounds import test_sparse_goal_round_preserves_pairs_dependencies_and_discloses_repeated_parent as test_native_goal_round_sparse

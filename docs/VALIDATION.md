@@ -4637,3 +4637,43 @@ on 390×844 has no document overflow.
   (`...ui-pending.txt`). Owned tab closed, flag removed and fixture shut down:
   target requests0, ordinary task/next-plan/observation-plan/goal-draft POSTs0,
   objective retest POSTs2, provider calls0; temporary data removed (`...ui-fixture.txt`).
+
+## Goal-preserving follow-up rounds — 2026-10-05
+
+- Goal follow-ups retain the original objective definitions, selected asset/check
+  combinations and Worker dependencies. They do not add unselected catalog checks.
+  Retry or active in-scope requests propose the entire original selected matrix,
+  including completed cells, for a new approval. Failed-cell-only execution is not
+  implemented. Out-of-goal todo requests require a new reviewed goal draft.
+- Proposal fingerprints and final-write checks include the goal definition; mixed
+  legacy histories without matching goals are refused. Replacement/retry preserve
+  the reference. Single-finding goal retests use their original separate flow.
+- Targeted SQLite/native goal-round and ordinary follow-up suites **32 passed31.83s**
+  (`artifacts/goal-rounds-targeted-final.txt`). Owned sparse cookie/CORS execution
+  checks exact pairs and dependencies, repeated completed evidence, no preapproval
+  requests and only one initial mocked provider call. Scope changes and mutated
+  source goals refuse creation without partial children.
+- Final full SQLite/native regression **927 passed416.36s**, one upstream Starlette
+  deprecation warning (`...full.txt`). Includes the two preceding goal-origin
+  application restart cases. No service Python edits during/after this full run.
+- Final frontend **92 passed415.361791ms** (`...node-final-ui.txt`); TypeScript/Vite
+  build **1.41s** (`...build-final-ui.txt`), JSindex-BwgeXwod.js / CSSindex-Bi_eIbTY.css.
+  Corrected the generic all-assets execution paragraph for sparse goal plans after
+  the first browser inspection; final built screen shows per-objective combinations.
+- Wheel SHA256 **dbfdd035ffe1ab35aff498ba3a20d9df93b535025f494a03c2871fbe5d6054d9**,
+  all72 service Python files byte-match checkout (`...wheel-proof.json`). Installed
+  default runtime with final UI and native PostgreSQL16.15 reviews valid
+  (`...installed-runtime-final-ui.json`, `...installed-postgres.json`). Default target
+  requests0; native owned lab3/source1, external0. Existing installed recovery and
+  backup scenarios do not specifically prove new goal-round backup/restore.
+- Owned built-app synthetic goal fixture shows preserved objectives, repeated
+  completed count1 and two source cells, then creates a pending round1 with both
+  cells unexecuted (`...ui-ready-final.txt`, `...ui-pending.txt`). Browser fixture
+  approval was not granted. Owned tab/process closed: target requests0, next-plan
+  POSTs1, task/observation-plan/goal-retest/goal-draft POSTs0, provider calls0;
+  temporary data removed (`...ui-fixture.txt`). This is DOM interaction evidence,
+  not real execution or screenshot/mobile/screen-reader validation.
+- Preview retains existing data, health ok, anonymous next-plan401 and final
+  built assets confirmed (`...preview-health.json`). Hosted CI, containers,
+  production operation, commercial provider quality, semantic goal verification,
+  failed-cell-only optimization and remaining full v1 gates stay open.
