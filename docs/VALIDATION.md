@@ -2016,3 +2016,40 @@ on 390×844 has no document overflow.
   No backend source changes or full backend rerun claimed. Actual browser before/
   after evidence covers the note form; asset/plan/import share the fieldset in source
   but their full busy-state journeys, mobile/zoom and assistive technology remain open.
+
+## 2026-10-04 — authentication submission is single-flight and recoverable
+
+- Previous actual built app reproduces two real login HTTP requests from one
+  synchronous native form-submission burst. Both wrong-password responses are held;
+  username remains enabled and can be changed while authentication is pending.
+  This establishes duplicate submission and mutable pending credentials, not a
+  demonstrated account takeover or server authorization failure.
+- Auth now checks/sets a ref synchronously before requesting login/setup, disables
+  username/password/setup-token inputs while pending, exposes form aria-busy and a
+  separate progress status, and links the form to its error via useId/aria-describedby.
+  Active-instance guards suppress callbacks after unmount; a stale authentication
+  AbortError is not presented as a current error. Controlled inputs remain across a
+  failed attempt. No credential/cookie inspection or runtime auth contract changes.
+- Final real login fixture burst causes exactly one HTTP request and one held
+  response; username/password native disabled, aria-busy true and progress visible.
+  Release actual server 401: busy false, both inputs enabled, error '비밀번호를
+  확인하세요.' and describedby resolves to the alert. Correct the synthetic password
+  and repeat: cumulative requests two with only one new response pending; release
+  reaches the actual administrator workspace. Product Logout works.
+- Disposable launcher adds --setup for a truly empty workspace. Separate real setup
+  fixture, synthetic username/password and empty local token: burst sends exactly
+  one setup request, all three inputs disable, release reaches administrator controls
+  and product Logout returns Login. Screenshot artifacts/v1-auth-setup-pending.jpg
+  inspected: progress, disabled submit, password masking and existing Neo-brutalism
+  layout remain visible. This is desktop evidence, not mobile/AT or remote token QA.
+- Authentication fixture query hold_auth=1 adds burst/release controls and request
+  counters without storing credentials/cookies or altering server results. Build
+  passes index-ByZ4UnbC.js / index-rJkCwRk2.css. Existing frontend tests 64 pass
+  (artifacts/auth-submission-tests.txt); no native-behavior mirroring tests added.
+  Selected design AA pairs pass. Final built UI plus installed unchanged wheel
+  passes locked-dependency/outside-checkout HTTP/persistence/maintenance/shutdown
+  smoke, target requests zero; wheel SHA
+  48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba.
+  No backend edit or full backend suite rerun claimed. Full v1 gates remain open,
+  including cross-tab behavior, remote setup-token failures, mobile/keyboard/AT
+  review, and all authentication failure/recovery sequences.

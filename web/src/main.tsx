@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -295,12 +295,21 @@ function Auth({
   onSuccess: (user: User) => void;
 }) {
   const [username, setUsername] = useState("admin");
+  const submitting = useRef(false);
+  const active = useRef(true);
+  const errorId = useId();
+  useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
   const [password, setPassword] = useState(""),
     [token, setToken] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setError("");
     try {
@@ -313,11 +322,12 @@ function Auth({
           setup_token: token,
         },
       );
-      onSuccess(result.user);
+      if (active.current) onSuccess(result.user);
     } catch (e) {
-      setError((e as Error).message);
+      if (active.current && (e as Error).name !== "AbortError") setError((e as Error).message);
     } finally {
-      setBusy(false);
+      submitting.current = false;
+      if (active.current) setBusy(false);
     }
   }
   return (
@@ -359,11 +369,13 @@ function Auth({
             ? "관리자 비밀번호를 설정하고 첫 자산을 연결하세요."
             : "계정으로 로그인하면 역할에 맞는 기능을 사용할 수 있습니다."}
         </p>
-        <form onSubmit={submit}>
+        {busy && <p role="status">계정을 확인하고 있습니다. 잠시 기다려 주세요.</p>}
+        <form onSubmit={submit} aria-busy={busy} aria-describedby={error ? errorId : undefined}>
           <label>
             사용자 이름
             <input
               value={username}
+              disabled={busy}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               maxLength={64}
@@ -375,6 +387,7 @@ function Auth({
             비밀번호
             <input
               type="password"
+              disabled={busy}
               minLength={12}
               maxLength={256}
               required
@@ -389,6 +402,7 @@ function Auth({
               설치 토큰 <span className="subtle">원격 설치 시 필요</span>
               <input
                 type="password"
+                disabled={busy}
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 autoComplete="off"
@@ -397,7 +411,7 @@ function Auth({
             </label>
           )}
           {error && (
-            <p className="form-error" role="alert">
+            <p id={errorId} className="form-error" role="alert">
               {error}
             </p>
           )}

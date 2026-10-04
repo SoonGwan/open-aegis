@@ -163,3 +163,25 @@ both values and the error visible, with aria-busy false and inputs enabled. Edit
 resubmit, confirm inputs lock again, then F8 completes the actual successful save.
 The rejected fixture request must not create a note. This is transport fault injection,
 not a real server outage, and does not certify every registration form or mobile state.
+
+## Authentication submission and recovery
+
+Open the disposable launcher at `/?hold_auth=1`. Additional controls submit the
+actual authentication form twice synchronously via native requestSubmit and release
+the oldest authentication response. The wrapper records only request/pending counts,
+never credentials or cookies, and sends real login/setup requests to the local server.
+
+Enter admin and a wrong synthetic password of at least 12 characters. Click the burst
+control: exactly one HTTP request must appear, both inputs disable, form aria-busy is
+true and progress status appears. Release the real 401 response: inputs enable,
+error appears and the form describedby resolves to that error. Correct the password
+and repeat; one additional request should enter. Release to reach the workspace,
+then test product Logout. The synchronous burst checks the latch before React's
+disabled-button update; it is stronger than two sequential clicks on a disabled button.
+
+For first setup, run a separate empty fixture with
+`.venv/bin/python scripts/review_session_ui.py --port 8813 --setup` and open
+`http://localhost:8813/?hold_auth=1`. Enter a synthetic admin/password, leave the local
+setup token blank and burst-submit. One setup request, all three disabled inputs and
+successful administrator workspace after release are expected. This does not test
+remote token configuration/errors, real credential providers or every mobile/AT flow.

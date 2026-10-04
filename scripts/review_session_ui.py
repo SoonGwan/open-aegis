@@ -19,6 +19,7 @@ from aegis.__main__ import AegisServer
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8811)
+    parser.add_argument('--setup', action='store_true', help='Start with no users for first-setup UI review')
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error('port must be 1..65535')
@@ -28,7 +29,7 @@ def main():
     os.environ['AEGIS_WEB_DIR'] = str(ROOT/'web/dist')
     with tempfile.TemporaryDirectory(prefix='aegis-session-ui-') as workspace:
         app = create_app(workspace, allow_private=False)
-        for username, role in [('admin', 'admin'), ('operator', 'operator')]:
+        for username, role in ([] if args.setup else [('admin', 'admin'), ('operator', 'operator')]):
             app.state.store.add_user(new_user(username, 'Owned '+username, role,
                                               'owned-session-ui-password-only'))
 
@@ -49,7 +50,8 @@ def main():
                     headers=headers, media_type='text/html')
             return response
 
-        print('Owned QA users: admin / operator; password: owned-session-ui-password-only', flush=True)
+        print('Owned QA: empty setup workspace' if args.setup else
+              'Owned QA users: admin / operator; password: owned-session-ui-password-only', flush=True)
         AegisServer(app, host='127.0.0.1', port=args.port, access_log=False,
                     timeout_graceful_shutdown=5).run()
 
