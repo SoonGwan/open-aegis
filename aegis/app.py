@@ -191,7 +191,7 @@ def create_app(data_dir=None, allow_private=None):
         with store.lock:
             return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
@@ -207,19 +207,32 @@ def create_app(data_dir=None, allow_private=None):
             if not finding:
                 raise HTTPException(404, '발견 사항이 없습니다.')
             with store.connect() as db:
-                row = db.execute("SELECT data FROM records WHERE kind='tasks' AND json_extract(data,'$.retest_of')=? AND json_extract(data,'$.status') IN ('pending','queued','running','stopping') LIMIT 1", (retest_of,)).fetchone()
+                row = db.execute("SELECT data FROM records WHERE kind='tasks' AND json_extract(data,'$.retest_of')=? AND id!=? AND json_extract(data,'$.status') IN ('pending','queued','running','stopping') LIMIT 1", (retest_of, replacing['id'] if replacing else '')).fetchone()
                 if row:
+                    if replacing:
+                        raise HTTPException(409, '같은 발견의 다른 재검증 계획이 진행 중입니다.')
                     return json.loads(row['data'])
             triage_revision = finding.get('triage_revision', 1)
-        if store.count('tasks', statuses=['pending','queued','running','stopping']) >= engine.policy.pending_limit:
+        if store.count('tasks', statuses=['pending','queued','running','stopping']) - (1 if replacing else 0) >= engine.policy.pending_limit:
             raise HTTPException(409, f'대기·실행 작업 한도({engine.policy.pending_limit}개)를 초과했습니다.')
         task = dict(data.model_dump(), id=identifier(), status='pending', created_at=now(),
                     started_at=None, finished_at=None, approved_at=None, done=0, errors=0,
                     scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id,
                     retest_triage_revision=triage_revision, retry_of=retry_of, execution_policy=engine.policy.public(),
-                    tool_contracts=contracts_for(data.checks))
-        store.put_many([('tasks', task)] + [('coverage', row) for row in planned_slots(task)])
+                    tool_contracts=contracts_for(data.checks), replan_of=replacing['id'] if replacing else None)
+        records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]
+        if replacing:
+            records.append(('tasks', {**replacing, 'status': 'rejected', 'finished_at': now(),
+                                     'replaced_by': task['id'], 'termination_reason': 'replanned'}))
+            records.extend(('coverage', {**row, 'status': 'cancelled', 'updated_at': now(),
+                           'reason': '새 승인 계획으로 대체되어 실행하지 않았습니다.'})
+                           for row in iter_task_rows(store, replacing) if row['status'] not in
+                           ('completed','skipped','failed','cancelled','interrupted','not_recorded'))
+        # Source, replacement and both coverage matrices commit or roll back together.
+        store.put_many(records)
         store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
+        if replacing:
+            store.event(replacing['id'], '현재 범위와 도구의 새 승인 계획으로 대체했습니다.', detail={'replaced_by': task['id']})
         return task
 
     def scheduler():
@@ -610,6 +623,26 @@ def create_app(data_dir=None, allow_private=None):
                 raise HTTPException(409,'실패·중단·중지된 작업만 새 계획으로 다시 실행할 수 있습니다.')
             data=TaskInput(**{**original,'name':('재실행 · '+original['name'])[:120]})
             return create_task_locked(data,retest_of=original.get('retest_of'),retry_of=task_id)
+
+    @app.post('/api/tasks/{task_id}/replan', dependencies=operations)
+    def replan_task(task_id: str):
+        # Same lock order as approval: serialize replacement against engine.start.
+        with engine.lock, store.lock:
+            if engine.closed:
+                raise HTTPException(409, '서버가 종료 중입니다. 다시 시작한 뒤 계획을 만드세요.')
+            original = store.get('tasks', task_id)
+            if not original:
+                raise HTTPException(404, '작업이 없습니다.')
+            if original.get('replaced_by'):
+                replacement = store.get('tasks', original['replaced_by'])
+                if not replacement:
+                    raise HTTPException(409, '연결된 새 계획을 찾을 수 없습니다.')
+                return replacement
+            if original['status'] != 'pending':
+                raise HTTPException(409, '승인 대기 계획만 현재 범위로 다시 만들 수 있습니다.')
+            data = TaskInput(**{**original, 'name': ('새 계획 · ' + original['name'])[:120]})
+            return create_task_locked(data, retest_of=original.get('retest_of'),
+                                      schedule_id=original.get('schedule_id'), replacing=original)
 
     @app.get('/api/runtime', dependencies=auth)
     def runtime():

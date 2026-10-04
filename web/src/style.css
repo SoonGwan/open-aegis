@@ -923,6 +923,7 @@ tr:hover td {
 }
 .approval-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 21px;
 }

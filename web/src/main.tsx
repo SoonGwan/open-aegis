@@ -98,6 +98,8 @@ type Task = {
   plan?: string[];
   retest_of?: string;
   retry_of?: string;
+  replan_of?: string | null;
+  replaced_by?: string;
   execution_policy?: ExecutionPolicy;
   tool_contracts?: ToolManifest;
   termination_reason?: string | null;
@@ -458,6 +460,7 @@ function App() {
     [busy, setBusy] = useState(false),
     [connection, setConnection] = useState(true);
   const [formError, setFormError] = useState("");
+  const [replanError, setReplanError] = useState<{id: string; message: string} | null>(null);
   const actionInFlight = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshSequence = useRef(0);
@@ -555,6 +558,7 @@ function App() {
     method = "POST",
     body?: unknown,
     success = "적용했습니다.",
+    onFailure?: (message: string) => void,
   ) {
     if (busy || actionInFlight.current) return;
     actionInFlight.current = true;
@@ -567,9 +571,22 @@ function App() {
       return result;
     } catch (e) {
       setError((e as Error).message);
+      onFailure?.((e as Error).message);
     } finally {
       actionInFlight.current = false;
       setBusy(false);
+    }
+  }
+  async function replanPending(id: string) {
+    setReplanError(null);
+    const result = await act(
+      "/tasks/" + encodeURIComponent(id) + "/replan", "POST", undefined,
+      "현재 범위로 새 계획을 만들었습니다. 변경된 범위와 도구를 확인하고 승인하세요.",
+      (message) => setReplanError({id, message}),
+    );
+    if (result) {
+      closeTask();
+      navigate("approvals", true);
     }
   }
   const openModal = (value: typeof modal) => {
@@ -1824,6 +1841,9 @@ function App() {
                       <ToolContracts snapshot={t.tool_contracts} current={settings?.tool_contracts}
                         selected={t.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))} pending />
                       <div className="approval-buttons">
+                        <button disabled={busy || !canOperate} onClick={() => void replanPending(t.id)}>
+                          <RefreshCw size={15} />현재 범위로 새 계획
+                        </button>
                         <button
                           disabled={busy || !canOperate}
                           onClick={() =>
@@ -1854,6 +1874,7 @@ function App() {
                           승인하고 실행
                         </button>
                       </div>
+                      {replanError?.id === t.id && <p className="form-error" role="alert">{replanError.message}</p>}
                     </section>
                   ))}
                 </div>
@@ -2641,12 +2662,21 @@ function App() {
             <ToolContracts snapshot={selectedTask.tool_contracts} current={settings?.tool_contracts}
               selected={selectedTask.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))}
               pending={selectedTask.status === "pending"} />
+            {replanError?.id === selectedTask.id && <p className="form-error" role="alert">{replanError.message}</p>}
             {selectedTask.retry_of && (
               <p className="subtle">
                 원본 작업: {selectedTask.retry_of} · 현재 범위로 만든 재실행
                 계획
               </p>
             )}
+            {selectedTask.replan_of && <p className="subtle">
+              현재 범위로 다시 만든 계획 · <button type="button"
+                onClick={() => navigation.openDetail({kind: "task", id: selectedTask.replan_of!})}>원본 계획 보기</button>
+            </p>}
+            {selectedTask.replaced_by && <p className="subtle">
+              새 승인 계획으로 대체된 기록 · <button type="button"
+                onClick={() => navigation.openDetail({kind: "task", id: selectedTask.replaced_by!})}>새 계획 보기</button>
+            </p>}
             <h4 className="detail-heading">승인 범위</h4>
             <div className="scope-list">
               {selectedTask.scope_snapshot.map((a) => (
@@ -2717,17 +2747,22 @@ function App() {
                 </button>
               )}
               {selectedTask.status === "pending" ? (
+                <>
+                <button disabled={busy || !canOperate} onClick={() => void replanPending(selectedTask.id)}>
+                  <RefreshCw size={15} />현재 범위로 새 계획
+                </button>
                 <button
                   className="primary"
                   disabled={busy || !canApprove || !toolContractsMatch(selectedTask.tool_contracts, selectedTask.checks, settings?.tool_contracts)}
                   onClick={async () => {
-                    await act("/tasks/" + selectedTask.id + "/approve");
-                    closeTask();
+                    const result = await act("/tasks/" + selectedTask.id + "/approve");
+                    if (result) closeTask();
                   }}
                 >
                   승인하고 실행
                   <Check size={15} />
                 </button>
+                </>
               ) : ["running", "queued", "stopping"].includes(
                   selectedTask.status,
                 ) ? (

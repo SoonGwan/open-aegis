@@ -18,6 +18,7 @@ export function ToolContracts({
       className="tool-contract-summary"
       aria-label="계획의 검증 도구 계약"
     >
+      {pending && <p className="subtle">‘현재 범위로 새 계획’은 자산 설정을 다시 읽고 원본 승인 요청을 대체합니다. 새 계획은 별도로 승인해야 합니다.</p>}
       {!matches && (
         <p className="subtle">
           {pending

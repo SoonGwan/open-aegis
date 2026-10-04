@@ -1156,3 +1156,37 @@ on 390×844 has no document overflow.
   numeric representation may collapse in JavaScript, while server comparison stays strict.
   Legacy pending tasks require new plans. External tool input/registration/execution
   isolation, extension review, whole mobile/readers/zoom and full v1 remain incomplete.
+
+## Pending-plan refresh and preserved provenance (2026-10-04)
+
+- Administrator/operator `POST /api/tasks/{id}/replan` recreates only pending plans
+  using current asset revisions, execution policy and built-in contracts. Selected
+  assets/checks/goal and retest/schedule links remain; current triage revision is captured.
+  Source retains its snapshots, becomes rejected/replanned and links to the pending
+  replacement. Both tasks and both coverage changes share one SQLite transaction;
+  audit events follow separately. Same-process approval/replan locking prevents both
+  actions succeeding. Repeated/concurrent requests return the existing replacement.
+- Six new backend tests cover legacy snapshots and full pending capacity, current policy/
+  scope/contracts, idempotent concurrency, approval races, injected SQLite rollback,
+  role/anonymous/nonpending/missing/archived rejection, and retest/schedule provenance.
+  Targeted related suites **52 pass**; final full backend **271 pass** in 86.40 seconds
+  with the existing Starlette/httpx deprecation warning. Frontend remains **39 passing
+  tests**; TypeScript/Vite build passes: `index-CoXUoKrd.js` / `index-BZKzfnn-.css`.
+- Actual built desktop UI on isolated synthetic data shows a scoped first-request 503
+  alert, retains the pending source, then manual retry creates exactly one pending plan.
+  The fault is injected before the handler; rollback after database mutation is established
+  by the separate backend trigger test, not this browser fault. Current scope is
+  `https://replan-after.invalid/`, revision 2, while source remains
+  `https://replan-before.invalid/`. Approval remains explicit and approved_at is null.
+  Source/new detail buttons navigate both ways and old coverage displays cancelled while
+  new coverage displays unexecuted. Capture `artifacts/v1-pending-plan-refresh.jpg` is
+  visually inspected. QA submissions are held and target traffic stays **zero**.
+- Fresh wheel SHA-256 `915afb9de59b8aa414dd16a8da61df9b8cbca402a5cdc98f46bb3388c75fd601`.
+  Installed runtime outside checkout passes dependency, CLI, authentication/schema,
+  asset/pending persistence, audit and backup/restore, shutdown and lease checks with
+  zero target requests. This package smoke does not specifically invoke the new endpoint;
+  its behavior is covered by source tests and the built UI review.
+- QA server stops cleanly; main preview restarts cleanly with the new backend. Health is
+  200, assets remain two and traffic remains three. No real target scan is performed.
+  Whole mobile/readers/zoom, navigation during late action responses, multi-instance
+  concurrency, audit/business atomicity and broader v1 release gates remain open.
