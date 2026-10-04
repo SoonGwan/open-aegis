@@ -298,3 +298,14 @@ test("an auth response body finishing after another login cannot complete the ol
   await rejected;
   assert.equal(current(), true);
 });
+
+test('API errors preserve HTTP status so rejected todo validation can be edited while unknown commit stays retryable', async (t) => {
+  const {ApiError}=await import('../src/api.ts');
+  for (const status of [422,409,503]) {
+    t.mock.method(globalThis,'fetch',async()=>json(status));
+    await assert.rejects(api('/tasks/owned/todos','POST',{}),error=>error instanceof ApiError && error.status===status && error.message==='synthetic response');
+    t.mock.restoreAll();
+  }
+  t.mock.method(globalThis,'fetch',async()=>{throw new TypeError('network lost');});
+  await assert.rejects(api('/tasks/owned/todos','POST',{}),error=>error instanceof Error && !(error instanceof ApiError));
+});

@@ -4098,3 +4098,58 @@ on 390×844 has no document overflow.
   QA claimed, no remote publication/container run. Main preview gracefully restarted
   fromPID84481 to53876 preserving data; health/static assets and authenticated todo
   route verified (`...preview-health.json`). Full v1 remains unachieved.
+
+### 2026-10-05 — Shared todo editing and response recovery UI
+
+- Task detail now provides create, description, paged assignee lookup, status/reason
+  editing, paged/searchable decision history and readonly viewing. Added authenticated
+  point GET with the same verified family/record identity guards as updates, allowing
+  an explicit latest-state comparison after409. Both native HTTP and SQLite tests
+  verify current row through follow-up/retry/replacement, viewer read, anonymous
+  rejection and unrelated-family404.
+- Creation persists the frozen payload/nonce before dispatch; storage failure blocks
+  dispatch. Unknown response remains retryable with exactly the same content after
+  same-tab reload. Successful matching response clears only that nonce;422 unlocks
+  rejected input. Explicit API error status distinguishes validation from503/network
+  uncertainty. Session/view guards suppress stale UI completion. Unsaved pre-dispatch
+  drafts and other-device/tab recovery are not provided.
+- Editing keeps an independent baseline/draft through list refresh and409. Latest
+  record is shown before choosing local changed-field rebase or intentional discard.
+  Rebase preserves unrelated concurrent fields and still requires explicit CAS save.
+  New terminal decisions send their reason even if its text matches the old reason.
+- First browser concurrency run exposed duplicate sibling React keys for editor and
+  history: periodic updates accumulated editor forms. Recorded the actual duplicate
+  DOM (`artifacts/shared-todos-ui-duplicate-before.json`), separated their keys, then
+  reran with one editor remaining through refresh and successful writes. This was
+  found and fixed before the final UI build; backend tests do not assert React DOM.
+- Actual disposable built-app desktop: create committed before a deliberately
+  substituted503 response, input froze, same-tab reload restored it, retry returned
+  the existing item with one creation history. Two tabs edited the same record;
+  stale title save409 retained input. Latest comparison/rebase saved only local title
+  while retaining the colleague's description/done reason. Assignment and reopening
+  produced revision5, cleared current reason and retained all five history entries
+  (`...ui-conflict-after.json`).31 total items paged26–31; title search returned1.
+  Final desktop screenshot visually inspected (`...ui-desktop-final.jpg`).
+- Built task-detail documents measured320/320 and390/390 client/scroll widths with
+  the new section rendered (`...ui-widths.json`). Existing intentional table scroll
+  regions and hidden skip link/icon label remain internally wider; no shared-todo
+  overflow was reported.390 frame screenshot inspected (`...ui-390.jpg`) shows the
+  task detail upper section, not a mobile editor interaction. Actual mobile touch,
+  zoom, keyboard journey/SR, viewer UI and todo-specific URL restoration remain open.
+- **84 frontend tests passed471.49ms**; final TypeScript/Vite build1.46s succeeds
+  (`...ui-node.txt`, `...ui-build.txt`). New tests cover persistence isolation,
+  matching-response cleanup, blocked/malformed storage, changed-field rebase,
+  explicit terminal reason and HTTP error statuses. Related native/SQLite tests
+  **18 passed4.25s**. Full suite **755 passed258.02s**, no skips, one existing
+  Starlette/httpx warning (`...ui-api-native.txt`, `...ui-full.txt`).
+- Final wheel SHA256 d09d8b9b9ea7bb24d3344d654f97a6c73aa52d9f96ccfa2a3731d74e9dfe1551;
+  all66 recursive service files exactly match (`...ui-wheel-source-proof.json`).
+  Actual installed native backup/restore/todo/MCP review valid:3 owned target and1
+  owned source requests, external0. Default installed runtime review repeated after
+  final CSS build and valid with0 target requests (`...ui-installed-postgres.json`,
+  `...ui-installed-runtime.json`). New point GET is exercised by HTTP tests; the
+  installed native review continues to exercise the existing todo/history APIs.
+- Preview restarted fromPID53876 to98945 preserving data, final health/static HTML
+  recorded (`...ui-preview-health.json`). Final assets JSindex-CedO0ifR.js and
+  CSSindex-CEJAE7Xo.css. No GitHub publication, container/hosted CI, commercial LLM
+  call, automatic todo-driven Planner or complete v1 claim.

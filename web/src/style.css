@@ -3595,3 +3595,19 @@ pre,
 .worker-history { padding: 20px; }
 .worker-history input { width: 100%; padding: 10px 12px; font: inherit; border: var(--stroke) solid var(--ink); }
 @media (max-width: 640px) { .worker-history { padding: 12px; } }
+
+.shared-todos { margin: 18px 0; padding-top: 16px; border-top: 1px solid var(--border); min-width: 0; }
+.shared-todos label, .todo-form { display: grid; gap: 8px; min-width: 0; }
+.todo-form { margin: 12px 0 18px; }
+.shared-todos input, .shared-todos select, .shared-todos textarea { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.shared-todos textarea { min-height: 84px; resize: vertical; }
+.shared-todos p, .shared-todos dd, .shared-todos h5 { overflow-wrap: anywhere; white-space: pre-wrap; }
+.todo-row { display: grid; gap: 6px; margin: 10px 0; min-width: 0; }
+.todo-row button { text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.todo-row span { color: var(--muted); font-size: 12px; }
+.todo-detail, .todo-conflict { margin-top: 14px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.shared-todos dl { margin: 8px 0; }
+.shared-todos dt { font-weight: 600; }
+.shared-todos dd { margin: 3px 0 10px; }
+.todo-assignee { display: grid; gap: 8px; min-width: 0; }
+.shared-todos button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

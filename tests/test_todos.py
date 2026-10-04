@@ -34,10 +34,12 @@ def test_shared_http_todos_survive_real_retry_replan_and_duplicate_creation(clie
         result=client.get('/api/tasks/'+task['id']+'/todos').json()
         assert result['root_task_id']==root['id'] and result['items'][0]['id']==row['id']
         assert not result['execution_authorized']
+        assert client.get('/api/tasks/'+task['id']+'/todos/'+row['id']).json()==row
     updated=client.patch('/api/tasks/'+replacement['id']+'/todos/'+row['id'],json={
         'expected_revision':1,'status':'done','resolution_note':'Reviewed manually'}).json()
     assert updated['revision']==2 and updated['status']=='done'
     assert client.post(path,json=data).json()==updated
+    assert client.get(path+'/'+row['id']).json()==updated
     assert store.get('tasks',replacement['id'])['status']=='pending'
     assert store.get('tasks',replacement['id'])['approved_at'] is None and store.count('traffic')==0
     assert client.patch(path+'/'+row['id'],json={'expected_revision':1,'title':'Overwrite'}).status_code==409
@@ -60,13 +62,17 @@ def test_todo_http_validation_roles_foreign_families_and_no_execution(client):
         assert client.patch(path+'/'+row['id'],json=data).status_code==422
     foreign={**root,'id':'foreign-root'};foreign.pop('next_plan_id');foreign.pop('next_plan_fingerprint');store.put('tasks',foreign)
     assert client.patch('/api/tasks/foreign-root/todos/'+row['id'],json={'expected_revision':1,'title':'Foreign'}).status_code==404
+    assert client.get('/api/tasks/foreign-root/todos/'+row['id']).status_code==404
+    assert client.get(path+'/missing').status_code==404
     viewer=add(client,'viewer')
     with login(client.app,viewer['username']) as read:
         assert read.get(path).status_code==200
+        assert read.get(path+'/'+row['id']).json()==row
         assert read.post(path,json=payload()).status_code==403
         assert read.patch(path+'/'+row['id'],json={'expected_revision':1,'title':'Denied'}).status_code==403
         assert read.get(path+'/'+row['id']+'/history').status_code==200
     client.post('/api/auth/logout');assert client.get(path).status_code==401
+    assert client.get(path+'/'+row['id']).status_code==401
 
 
 def test_todo_change_and_audit_rollback_together_on_event_failure(client,monkeypatch):

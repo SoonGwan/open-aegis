@@ -1,3 +1,12 @@
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError";
+  }
+}
+
 let sessionRevision = 0;
 
 /** Capture the browser session associated with a request, without reading cookies. */
@@ -55,7 +64,7 @@ export async function api<T>(
       !signal?.aborted
     )
       expireSession(isCurrentSession);
-    throw new Error(text);
+    throw new ApiError(text, response.status);
   }
   const changesSession =
     method.toUpperCase() !== "GET" &&

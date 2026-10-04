@@ -774,6 +774,10 @@ def create_app(data_dir=None, allow_private=None):
     def create_todo(task_id: str, data: todos.TodoCreate, actor=Depends(operator)):
         return todo_response(todos.create,task_id,data.model_dump(),actor)
 
+    @app.get('/api/tasks/{task_id}/todos/{todo_id}', dependencies=auth)
+    def get_todo(task_id: str, todo_id: str):
+        return todo_response(todos.get,task_id,todo_id)
+
     @app.patch('/api/tasks/{task_id}/todos/{todo_id}', dependencies=operations)
     def update_todo(task_id: str, todo_id: str, data: todos.TodoUpdate, actor=Depends(operator)):
         return todo_response(todos.update,task_id,todo_id,data.model_dump(exclude_unset=True),actor)

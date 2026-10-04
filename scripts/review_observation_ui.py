@@ -35,6 +35,8 @@ def main():
     parser.add_argument('--fail-flag',type=Path,help='Owned QA flag: while present, only task observation GET returns503')
     parser.add_argument('--worker-process',action='store_true',help='Seed synthetic isolated Worker events for readonly process UI QA')
     parser.add_argument('--worker-fail-flag',type=Path,help='Owned QA flag: while present, Worker process and collection GET return503')
+    parser.add_argument('--todos',action='store_true',help='Seed30 shared decisions for owned UI QA')
+    parser.add_argument('--todo-lost-response-flag',type=Path,help='Return503 after real committed todo creation')
     args=parser.parse_args()
     if not 1<=args.port<=65535:parser.error('port must be1..65535')
     for key in list(os.environ):
@@ -81,13 +83,16 @@ def main():
             if request.url.path.startswith('/api/tasks/') and request.url.path.endswith('/observations') and args.fail_flag and args.fail_flag.exists():
                 return JSONResponse({'detail':'합성 관찰 조회 실패'},status_code=503)
             response=await call_next(request)
+            if request.method=='POST' and request.url.path.endswith('/todos') and response.status_code==200 and args.todo_lost_response_flag and args.todo_lost_response_flag.exists():
+                return JSONResponse({'detail':'합성 저장 후 응답 유실'},status_code=503)
             if request.query_params.get('qa_frame')=='1':
                 response.headers['X-Frame-Options']='SAMEORIGIN'
                 if 'content-security-policy' in response.headers:
                     response.headers['Content-Security-Policy']=response.headers['Content-Security-Policy'].replace("frame-ancestors 'none'","frame-ancestors 'self'")
             return response
         store=app.state.store
-        store.add_user(new_user('fixture-admin','합성 관찰 관리자','admin','observation-ui-fixture-only'))
+        fixture_actor=new_user('fixture-admin','합성 관찰 관리자','admin','observation-ui-fixture-only')
+        store.add_user(fixture_actor)
         asset={'id':'qa-asset','name':'관찰 QA 자산','url':'https://observation-qa.invalid/app/',
                'type':'web','owner':'Synthetic QA','authorized':True,'revision':1,'archived_at':None,'tags':[]}
         task={'id':'qa-source-task','name':'관찰 출처 QA 작업','status':'completed','goal':'Synthetic UI fixture only',
@@ -110,6 +115,10 @@ def main():
             for check in task['checks']:
                 store.put('coverage',slot(task,parent,check,status='completed'))
         store.put_many([('assets',asset),('tasks',task)])
+        if args.todos:
+            from aegis import todos
+            for i in range(30):
+                todos.create(store,task['id'],{'request_id':f'{i:032x}','title':f'공유 검수 과제 {i:02d}','description':'합성 UI 과제'},fixture_actor)
         if args.worker_process:
             store.event('missing-worker-task','합성 원본 없는 Worker 기록','info',
                         {'asset_id':asset['id'],'worker_id':'missing-worker-task:'+asset['id']})

@@ -65,6 +65,11 @@ def record(store, todo_id, root_id, db):
     return row
 
 
+def get(store, task_id, todo_id):
+    with store.read_transaction() as db:
+        return record(store,todo_id,root(store,task_id,db),db)
+
+
 def assignee(store, assignee_id, db):
     if assignee_id is None:return {'assignee_id':None,'assignee_name':None,'assignee_username':None}
     user=store.user(id=assignee_id,connection=db)
