@@ -190,6 +190,8 @@ def postgres_to_sqlite(dsn,schema,output):
             with connect(dsn) as src, src.transaction():
                 src.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
                 set_schema(src,schema)
+                from .postgres_maintenance import offline_export
+                offline_export(src,schema)
                 # Refuse views/extra tables instead of executing an arbitrary stored view.
                 objects=src.execute('SELECT c.relname,c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=%s AND c.relkind IN (\'r\',\'v\',\'m\',\'f\',\'p\')',(schema,)).fetchall()
                 if {row['relname'] for row in objects}!=set(TABLES)|{'sessions','storage_metadata'} or any(row['relkind']!='r' for row in objects):

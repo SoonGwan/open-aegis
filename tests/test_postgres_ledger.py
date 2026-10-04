@@ -165,6 +165,7 @@ def test_actual_local_provider_draft_has_durable_start_and_native_commit(stores,
     monkeypatch.setenv('AEGIS_LLM_BASE_URL',f'http://127.0.0.1:{server.server_port}/v1')
     monkeypatch.setenv('AEGIS_LLM_PRICES','[]')
     summary={'content':'합성 요약','provenance':{'citations':[{'label':'T1','title':'소유한 합성 작업','snapshot':{'id':'owned'}}]}}
+    owner=pg.acquire_runtime()
     try:
         reply=draft(summary,'합성 질문',store=pg,task_id='owned',actor_id=None,allow_local=True)
         assert reply['assistant_generation']['outcome']=='accepted' and len(seen)==1
@@ -177,3 +178,4 @@ def test_actual_local_provider_draft_has_durable_start_and_native_commit(stores,
         assert 'owned-native-test-key' not in json.dumps(pg.all('llm_calls'))
     finally:
         server.shutdown();server.server_close();thread.join(timeout=2)
+        owner.close()

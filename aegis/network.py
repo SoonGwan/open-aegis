@@ -108,7 +108,7 @@ def public_headers(headers):
 
 class Transport:
     def __init__(self, base, allow_private=False, record=None, cancelled=None, delay=0.25,
-                 *, policy=None, limiter=None, control=None):
+                 *, policy=None, limiter=None, control=None, execution_permit=None):
         self.base = normalize_url(base)
         self.allow_private = allow_private
         self.record = record or (lambda entry: None)
@@ -119,6 +119,7 @@ class Transport:
         self.control = control or TaskControl()
         self.count = 0
         self.max_requests = self.policy.request_budget
+        self.execution_permit=execution_permit or nullcontext
 
     def check(self):
         self.control.check()
@@ -166,6 +167,10 @@ class Transport:
         raise ScopeError('리다이렉트 횟수 제한을 초과했습니다.')
 
     def request(self, url, headers, attempt):
+        with self.execution_permit():
+            return self._request(url,headers,attempt)
+
+    def _request(self, url, headers, attempt):
         p = urlsplit(url)
         port = p.port or (443 if p.scheme == 'https' else 80)
         address = resolve(p.hostname,port,self.allow_private,control=self.control,timeout=self.policy.dns_timeout)[0]

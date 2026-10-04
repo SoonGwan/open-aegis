@@ -4,6 +4,8 @@ import json
 import os
 import threading
 import time
+from contextlib import nullcontext
+from .maintenance import WorkspaceBusy
 from .runtime import ExecutionPolicy, TaskControl, OriginLimiter
 from .dns import resolver
 
@@ -24,7 +26,7 @@ class Engine:
         self.allow_private = allow_private
         self.policy = policy or ExecutionPolicy.from_env()
         self.limiter = OriginLimiter(self.policy)
-        self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=self.policy.concurrent_tasks, thread_name_prefix='aegis-task')
+        self.owner=None;self.pool=None
         self.stops = {}
         self.lock = threading.RLock()
         self.futures = {}
@@ -32,14 +34,21 @@ class Engine:
         self.closed = False
         self.queue_errors = 0
         self.queue_last_error_at = None
-        for task in store.recovery_tasks():
-            if task['status'] in ('running', 'queued', 'stopping'):
-                finish_remaining(store, task, 'interrupted', '서버 재시작으로 실행 결과를 확인할 수 없습니다.')
-                store.patch('tasks', task['id'], status='interrupted', finished_at=now())
-                store.event(task['id'], '서버 재시작으로 작업이 중단되었습니다. 새 승인 작업으로 다시 실행하세요.', 'warning')
-
-        self.queue_thread = threading.Thread(target=self.watch_queue,daemon=True,name='aegis-queue-deadline')
-        self.queue_thread.start()
+        try:
+            if getattr(store,'backend',None)=='postgres':self.owner=store.acquire_runtime()
+            self.pool=concurrent.futures.ThreadPoolExecutor(max_workers=self.policy.concurrent_tasks,thread_name_prefix='aegis-task')
+            if self.owner:call_ledger.recover(store)
+            for task in store.recovery_tasks():
+                if task['status'] in ('running', 'queued', 'stopping'):
+                    finish_remaining(store, task, 'interrupted', '서버 재시작으로 실행 결과를 확인할 수 없습니다.')
+                    store.patch('tasks', task['id'], status='interrupted', finished_at=now())
+                    store.event(task['id'], '서버 재시작으로 작업이 중단되었습니다. 새 승인 작업으로 다시 실행하세요.', 'warning')
+            self.queue_thread = threading.Thread(target=self.watch_queue,daemon=True,name='aegis-queue-deadline')
+            self.queue_thread.start()
+        except BaseException:
+            if self.pool:self.pool.shutdown(wait=True,cancel_futures=True)
+            if self.owner:self.owner.close()
+            raise
 
     def metrics(self):
         recorded=self.store.task_metrics();oldest=recorded['oldest_queued_at']
@@ -62,11 +71,15 @@ class Engine:
                         self.stops.pop(task['id'],None)
                         self.store.patch('tasks',task['id'],status='failed',finished_at=now(),errors=1,termination_reason='queue_timeout')
                         self.store.event(task['id'],'대기열 시간 제한을 초과했습니다. 새 승인 계획으로 다시 실행하세요.','warning')
-            except Exception:
+            except Exception as exc:
                 # Do not expose exception content, SQL values or target data.
                 with self.lock:
                     self.queue_errors += 1
                     self.queue_last_error_at = now()
+                    if isinstance(exc,WorkspaceBusy):
+                        self.closed=True
+                        for stop in self.stops.values():stop.set()
+                        self.queue_stop.set()
 
     def start(self, task_id):
         with self.lock:
@@ -136,7 +149,8 @@ class Engine:
         outcome = 'request_failed'
         proposed = checks
         try:
-            raw = completion(base, key, payload, allow_local=self.allow_private, control=control, timeout=self.policy.request_timeout)
+            with getattr(self.store,'execution_permit',nullcontext)():
+                raw = completion(base, key, payload, allow_local=self.allow_private, control=control, timeout=self.policy.request_timeout)
             outcome = 'invalid_plan'
             usage = token_usage(raw.get('usage') if isinstance(raw, dict) else None)
             text = raw['choices'][0]['message']['content'].strip().removeprefix('```json').removeprefix('```').removesuffix('```').strip()
@@ -247,7 +261,8 @@ class Engine:
             return self.store.put('coverage', {**record, 'status': status, 'updated_at': now(), **details})
         def record(entry):
             self.store.put('traffic', dict(entry, id=identifier(), task_id=task_id, asset_id=asset['id'], created_at=now()))
-        transport = Transport(asset['url'], self.allow_private, record, stop.is_set, policy=self.policy, limiter=self.limiter, control=control)
+        transport = Transport(asset['url'], self.allow_private, record, stop.is_set, policy=self.policy, limiter=self.limiter, control=control,
+                              execution_permit=getattr(self.store,'execution_permit',None))
         self.store.event(task_id, 'Worker 시작: ' + asset['name'], detail={'asset_id': asset['id']})
         try:
             require_contracts(task)
@@ -293,6 +308,16 @@ class Engine:
         return outcome
 
     def shutdown(self):
+        try:
+            self._shutdown()
+        except WorkspaceBusy:
+            pass  # Lost owner cannot write shutdown state; next owner recovers it.
+        finally:
+            with self.lock:
+                self.stops.clear();self.futures.clear()
+            if self.owner:self.owner.close()
+
+    def _shutdown(self):
         with self.lock:self.closed = True
         self.queue_stop.set()
         self.queue_thread.join()

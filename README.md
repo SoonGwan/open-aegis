@@ -289,4 +289,5 @@ origin별 요청 속도·동시 수, DNS/HTTP/작업/대기열 시간 제한, �
 SQLite와 새 PostgreSQL 스키마 사이의 검증된 오프라인 데이터 전송은
 `aegis-transfer-storage`로 수행합니다. 현재 HTTP 서비스는 SQLite로 실행하며
 PostgreSQL 네이티브 Store의 저장·검색·계정/세션·감사 트랜잭션은 구현했지만,
-HTTP/작업 실행과 운영 복구 연결은 개발 중입니다. [저장소·전송 계약](docs/POSTGRES-STORAGE.md)을 확인하세요.
+Engine의 실행 소유권·연결 상실 차단을 구현했고 HTTP 서비스 경로와 운영 복구 연결은 개발 중입니다.
+[저장소·전송 계약](docs/POSTGRES-STORAGE.md)을 확인하세요.

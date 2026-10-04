@@ -66,6 +66,9 @@ from aegis.engine import Engine
 from aegis.runtime import ExecutionPolicy
 from aegis.tool_contracts import contracts_for
 from aegis.coverage import planned_slots
+from aegis.postgres_maintenance import PostgresLease
+from aegis.maintenance import WorkspaceBusy
+from aegis.postgres_transfer import postgres_to_sqlite,connect
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import threading
 s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
@@ -109,6 +112,16 @@ s.put_many([('assets',asset),('tasks',task),*[('coverage',row) for row in planne
 engine=Engine(s,allow_private=True,policy=ExecutionPolicy(request_retries=0))
 try:
     assert not owned_requests
+    try:
+        PostgresLease(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
+        raise AssertionError('Duplicate owner accepted')
+    except WorkspaceBusy:pass
+    blocked=Path(sys.argv[1]).parent/'blocked'/'aegis.db'
+    try:
+        postgres_to_sqlite(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer',blocked)
+        raise AssertionError('Active owner export accepted')
+    except WorkspaceBusy:pass
+    assert not blocked.exists()
     engine.start(task['id']);deadline=time.monotonic()+8
     while s.get('tasks',task['id'])['status'] not in ('completed','failed','stopped'):
         assert time.monotonic()<deadline
@@ -120,6 +133,22 @@ try:
 finally:
     engine.shutdown();server.shutdown();server.server_close();thread.join(timeout=2)
 assert owned_requests==['/']
+retired=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer');lost=retired.acquire_runtime()
+try:
+    with connect(os.environ['AEGIS_POSTGRES_DSN']) as db:
+        identity=db.execute('SELECT backend_start FROM pg_stat_activity WHERE pid=%s',(lost.pid,)).fetchone()
+        assert identity['backend_start']==lost.backend_start
+        assert db.execute('SELECT pg_terminate_backend(%s) AS killed',(lost.pid,)).fetchone()['killed']
+    replacement=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
+    with replacement.acquire_runtime():
+        try:
+            retired.put('notes',{'id':'stale-owner','title':'Must refuse'})
+            raise AssertionError('Stale write accepted')
+        except WorkspaceBusy:pass
+        assert replacement.get('notes','stale-owner') is None
+        replacement.event(None,'설치본 소유권 교체 확인')
+finally:lost.close()
+s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
 with s.transaction() as db:manifest=postgres_manifest(db)
 print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity(),'usage':usage,'owned_lab_requests':len(owned_requests)}))
 ''',forward_proof],'installed native PostgreSQL store'))
@@ -146,7 +175,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
             print(json.dumps({'valid':True,'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
-                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','real pg_dump/pg_restore',
+                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
                           'installed SQLite return','revoked old sessions','preserved password hashes and exact record','audit continuation'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'external_target_requests':0,'service_postgres_backend_enabled':False}))

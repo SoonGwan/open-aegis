@@ -99,8 +99,8 @@ GitHub hosted 실행 결과는 아직 없다.
 Engine의 큐 지표/기한 조회와 발견 관찰·조치·재검증은 저장소별 쿼리와 쓰기 트랜잭션을
 사용한다. 소유한 단독 검수 환경에서 네이티브 PostgreSQL Engine의 승인→로컬 요청→
 증거/커버리지 저장, 재검증 해결 판정, 실행 중 중지·큐 만료·시작 복구를 검수했다.
-이것은 HTTP 서비스의 PostgreSQL 실행이나 다중 서버 운영 소유권 검수가 아니다.
-서비스 시작 잠금/연결 상실 처리와 보고서/그래프/가져오기 경로가 남아 있다.
+이것은 HTTP 서비스의 PostgreSQL 실행 검수가 아니다. 아래 실행 소유권 계약을
+Engine과 요청 경계에 연결했으며, 보고서/그래프/가져오기 및 전체 HTTP 경로가 남아 있다.
 
 발견 관찰·조치·재검증은 같은 쓰기 트랜잭션에서 현재 발견/담당자를 읽고 관련 증거,
 변경 이력과 함께 저장한다. PostgreSQL과 SQLite의 서로 다른 Store 인스턴스에서
@@ -120,8 +120,8 @@ AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 �
 커밋한다. 쓰기 실패를 주입해 모두 함께 롤백되는 것을 검수했다. 제공자 호출 시작/
 관찰/포기/복구의 ledger 모듈도 PostgreSQL 트랜잭션을 사용한다. 복구는 100개씩
 처리하며 실패한 배치만 롤백하고 다시 호출해도 완료한 기록을 덮어쓰지 않는다.
-복구 호출자는 서비스의 독점 시작 권한을 가져야 한다. PostgreSQL 서비스 소유권/
-시작 잠금과 HTTP 실행 경로의 연결은 아직 남아 있다.
+복구 호출자는 서비스의 독점 시작 권한을 가져야 한다. PostgreSQL Engine은 아래
+소유권을 획득한 뒤 독립 호출 이력과 미완료 작업을 복구한다. HTTP 실행 경로의 연결은 남아 있다.
 
 사용량·비용 요약은 같은 읽기 스냅샷에서 필요한 메타데이터만 서버 커서로 200개씩
 받는다. 전체 작업/메시지나 개인 질문/답변을 읽어 목록으로 만들지 않는다. 토큰 합계는
@@ -147,13 +147,55 @@ AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 �
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된
 PostgresStore로 읽기/쓰기·권한 변경 세션 폐기를 수행한 다음 실제 덤프/복구와
 SQLite 반환의 행/감사 해시를 비교한다. HTTP PostgreSQL 실행, 운영 서버 재시작,
-운영 백업/복구, 다중 서비스 인스턴스 배제 계약은 후속 필수 작업이다.
+운영 백업/복구와 전체 서비스의 소유권/종료/오류 응답 검수는 후속 필수 작업이다.
+
+## 실행 소유권과 연결 상실
+
+`PostgresLease`는 DB/스키마별 runtime advisory key를 독점 session lock으로
+획득해야 시작할 수 있다. 같은 연결에서 shared session lock을 먼저 획득한 뒤
+exclusive lock을 해제하므로 소유권에 공백이 없다. 별도 프로세스의 중복 획득은
+즉시 거절된다. 스키마별 소유권은 독립적이다. 이 전용 연결은 재연결하지 않는다.
+직접 libpq 세션 연결을 전제로 하며 transaction pooling 프록시 지원은 검수하지 않았다.
+
+소유자에 연결된 Store의 모든 트랜잭션은 같은 key의 shared transaction lock을
+획득하고, 전용 소유 세션의 PID·backend_start·실제 granted lock을 확인한다.
+이미 허용한 작업은 연결이 끊겨도 transaction gate를 보유하므로 작업이 끝나기 전
+다른 서버가 소유권을 획득하지 못한다. 다음 작업은 이전 소유 세션이 없어 거절된다.
+새 소유자가 생겨도 이전 Store는 그것을 자신의 소유자로 채택하지 않는다.
+정상 종료 후 Store도 종료된 객체로 남으며 새 실행에는 새 Store를 만든다.
+
+Engine은 이 소유권을 획득한 뒤에만 복구/실행하고 종료 시 Worker를 기다린 후 해제한다.
+시작 복구/실행 풀 생성 오류도 소유 연결을 닫는다. 큐 감시자가 소유권 상실을 확인하면
+새 승인을 닫고 stop 신호를 설정한다. 잃은 소유자로 종료 기록을 쓰지 않으며 새 소유자의
+시작 복구가 미완료 상태를 표시한다. 내장 대상 HTTP 요청과 Planner/대화의 제공자 요청은
+shared transaction permit으로 보호한다. 허용한 요청이 진행 중이면 새 소유자의 시작을
+막고, 다음 요청은 소유권을 다시 확인한다. 실제 소유 backend를 종료한 검수에서
+진행 중 대상/제공자 요청의 교체 배제와 다음 요청/쓰기 거절을 확인했다.
+
+소유자에 연결하지 않은 Store 쓰기는 exclusive transaction gate를 사용하므로
+실행 소유자와 겹치지 않는다. 오프라인 반환도 exclusive gate를 즉시 획득해야 한다.
+사용 중이면 결과 파일을 만들지 않는다. 반환 스키마의 빈 세션 조건은 아직 유지하며,
+운영 세션이 있는 실행 DB의 반환/복구 계약은 후속 작업이다. 독립 읽기 클라이언트는
+읽기 스냅샷만 사용할 수 있으며 실행 permit은 소유권이 있어야 발급한다.
+
+일반 DB 계정의 schema/table/sequence 권한으로 동작함을 검수했다. advisory 계약은
+협력하는 애플리케이션 사이의 배제이며 DB 관리자나 raw SQL의 권한을 대체하지 않는다.
+직접 DB 세션 종료·정상 종료·시작 실패·교체를 검수했지만 remote TCP blackhole,
+프록시/HA 전환·네트워크 지연의 종료 시간 SLO·실제 전원 장애는 검수하지 않았다.
+서버의 idle_session_timeout 등으로 소유 연결이 종료돼도 작업은 거절하고 재시작이 필요하다.
+이 구현만으로 PostgreSQL HTTP 서비스 배포 지원 완료를 표시하지 않는다.
+
+잠금/세션 식별의 기반은 PostgreSQL16
+[advisory lock](https://www.postgresql.org/docs/16/explicit-locking.html#ADVISORY-LOCKS),
+[pg_locks](https://www.postgresql.org/docs/16/view-pg-locks.html),
+[pg_stat_activity](https://www.postgresql.org/docs/16/monitoring-stats.html#MONITORING-PG-STAT-ACTIVITY-VIEW)다.
+위 shared gate와 소유 세션 확인은 이 프로젝트가 구현·검수한 계약이다.
 
 구현 시 참고한 기본 계약:
 [Psycopg 트랜잭션](https://www.psycopg.org/psycopg3/docs/basic/transactions.html),

@@ -2814,3 +2814,53 @@ on 390×844 has no document overflow.
   No public PostgreSQL service configuration or remote publication was enabled.
 - Owned preview shut down cleanly before restarting current code on8790
   (PID11671/session65747); HTTP200. Existing preview workspace retained.
+
+### PostgreSQL runtime ownership and operation fencing
+
+- Added database/schema runtime ownership: exclusive session admission, shared
+  ownership acquired on that same session before exclusive unlock, and shared
+  transaction gates for owner-bound Store operations and target/provider requests.
+  Each operation verifies the original dedicated PID/backend_start/granted lock.
+  Already admitted work fences replacement admission until transaction/request end;
+  old Store never adopts a replacement owner or reconnects. Closed Store stays
+  closed. Offline native writes and reverse transfer require exclusive gates.
+- Native Engine acquires ownership before ledger/task recovery, releases on startup
+  recovery/pool-construction failure, and shuts Workers down before normal release.
+  Confirmed ownership loss closes admission, sets stops and halts queue watching.
+  Lost-owner shutdown cannot overwrite replacement recovery. Native conversation
+  provider requests and Planner completion use execution permits; SQLite uses the
+  existing path with null permits. HTTP PostgreSQL selection is still not enabled.
+- Actual dedicated backend termination proves stale writes/next target and provider
+  requests refused, admitted write and held HTTP/provider requests block takeover,
+  old Store rejects a new owner, and replacement recovery preserves unknown usage
+  when a response wasn't durably observed. No inferred zero/reporting of lost usage.
+  Separate Python process holds the lease and excludes parent admission; ordinary
+  non-superuser schema/table/sequence grants work. Two schemas remain independent.
+  Active owner refuses offline writer (existing5-second lock guard) and export
+  without publishing/staging a result. Startup failures release ownership.
+- Foundation native transfer/Store/ledger/Engine tests: **51 passed in10.10s**.
+  Ownership+engine+ledger+SQLite runtime/conversation: **75 passed in28.21s**
+  (`artifacts/postgres-ownership-targeted-final.txt`). Final ownership cases after
+  adding ordinary-role/schema controls: **12 passed in8.61s**
+  (`artifacts/postgres-ownership-roles-final.txt`). Full backend with explicit PG:
+  **489 passed in131.36s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-owner-backend-final.txt`). No UI edits/rebuild.
+- Wheel SHA256cda7641f380095c9b27f7d9cb945cd5b5cde36f2e075445a3cbee04748551acf
+  byte-matches49 service Python files. Outside-checkout installed native Engine
+  refuses duplicate ownership and live export, then performs one owned loopback
+  GET, clean shutdown, actual acquired-backend termination/stale write refusal,
+  replacement audit, real dump/restore and SQLite return
+  (`artifacts/postgres-owner-installed-review.json`,valid=true,target_requests=1,
+  owned_lab_requests=1,external_target_requests=0,service_postgres_backend_enabled=false).
+  Same wheel's installed default SQLite HTTP/auth/UI/maintenance/release checks
+  pass (`artifacts/postgres-owner-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove owned clusters/installations. CI includes ownership
+  tests; hosted execution is still unverified.
+- This proves direct owned DB session termination, not remote TCP blackhole/proxy/
+  HA failover/power loss or latency/connection SLO. Advisory cooperation does not
+  constrain raw administrator SQL. Empty-session export restriction remains;
+  running-service sessions/operational restore contract, HTTP/graph/import/report/
+  bounded audit integration and full service lifecycle QA remain required. Full v1
+  gate stays open. No remote publication or external target/provider requests.
+- Owned preview completed normal shutdown before restarting current code on8790
+  (PID47419/session73026); HTTP200. Existing preview data retained.

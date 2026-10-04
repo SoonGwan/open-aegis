@@ -70,7 +70,7 @@ class PostgresStore:
     backend='postgres'
     def __init__(self,dsn,schema):
         transfer.validate_schema(schema)
-        self._dsn=dsn;self.schema=schema;self.lock=threading.RLock()
+        self._dsn=dsn;self.schema=schema;self.lock=threading.RLock();self.owner=None
         with self.transaction() as db:
             metadata=db.execute('SELECT * FROM storage_metadata WHERE id=1').fetchone()
             if not metadata or metadata['format']!=transfer.FORMAT or metadata['sqlite_schema']!=SCHEMA_VERSION:
@@ -84,10 +84,28 @@ class PostgresStore:
             db.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED' if write else
                        'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
             transfer.set_schema(db,self.schema)
+            if self.owner is not None:self.owner.protect(db,self._dsn,self.schema)
+            elif write:
+                from .postgres_maintenance import offline_write
+                offline_write(db,self.schema)
             if write:
                 # One cooperative write order per database/schema, including other processes.
                 db.execute("SELECT pg_advisory_xact_lock(hashtextextended(current_database()||':'||%s,0))",(self.schema,))
             yield db
+
+    def acquire_runtime(self):
+        from .postgres_maintenance import PostgresLease
+        from .maintenance import WorkspaceBusy
+        with self.lock:
+            if self.owner is not None:raise WorkspaceBusy('이 저장소의 실행 소유권은 이미 사용되었거나 종료되었습니다.')
+            self.owner=PostgresLease(self._dsn,self.schema)
+            return self.owner
+
+    @contextmanager
+    def execution_permit(self):
+        from .maintenance import WorkspaceBusy
+        if self.owner is None:raise WorkspaceBusy('PostgreSQL 요청에는 실행 소유권이 필요합니다.')
+        with self.transaction():yield
 
     def put(self,kind,record):
         self.put_many([(kind,record)]);return record

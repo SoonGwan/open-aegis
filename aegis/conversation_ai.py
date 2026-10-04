@@ -1,6 +1,7 @@
 """Optional provider drafts with bounded, reviewed record citations; never tool execution."""
 import json
 import os
+from contextlib import nullcontext
 from .llm import completion, token_usage
 from .costs import price_snapshot, estimate
 from .store_util import now
@@ -13,6 +14,11 @@ def configured():
 
 
 def draft(summary, question, *, store, task_id, actor_id, allow_local=False, control=None):
+    with getattr(store,'execution_permit',nullcontext)():
+        return _draft(summary,question,store=store,task_id=task_id,actor_id=actor_id,allow_local=allow_local,control=control)
+
+
+def _draft(summary, question, *, store, task_id, actor_id, allow_local=False, control=None):
     sources={}
     for citation in summary['provenance']['citations']:
         sources[citation['label']]={'title':citation['title'],'fields':citation['snapshot']}
