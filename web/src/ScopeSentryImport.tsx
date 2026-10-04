@@ -19,6 +19,13 @@ type Preview = {
   export_sha256: string;
   expires_at: number;
   rows: PreviewRow[];
+  remote?: { connection_id?: string; page?: number; has_more?: boolean };
+};
+type Connection = {
+  id: string;
+  url: string;
+  project: string;
+  configured: boolean;
 };
 type Applied = {
   created: number;
@@ -40,6 +47,10 @@ export function ScopeSentryImport({
   onClose: () => void;
   onApplied: () => void;
 }) {
+  const [mode, setMode] = useState<"file" | "remote">("file");
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connection, setConnection] = useState("");
+  const [connectionError, setConnectionError] = useState("");
   const [source, setSource] = useState("");
   const [text, setText] = useState("");
   const [plan, setPlan] = useState<Preview | null>(null);
@@ -54,8 +65,23 @@ export function ScopeSentryImport({
   const controller = useRef<AbortController | null>(null);
   useEffect(() => {
     active.current = true;
+    const listing = new AbortController();
+    void api<Connection[]>(
+      "/integrations/scopesentry/connections",
+      "GET",
+      undefined,
+      listing.signal,
+    )
+      .then((items) => {
+        if (active.current && !listing.signal.aborted) setConnections(items);
+      })
+      .catch((e) => {
+        if (active.current && !listing.signal.aborted)
+          setConnectionError((e as Error).message);
+      });
     return () => {
       active.current = false;
+      listing.abort();
       controller.current?.abort();
     };
   }, []);
@@ -67,8 +93,8 @@ export function ScopeSentryImport({
     setResult(null);
     setError("");
   }
-  async function preview(e: React.FormEvent) {
-    e.preventDefault();
+  async function preview(e?: React.FormEvent, previous?: string) {
+    e?.preventDefault();
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -76,14 +102,21 @@ export function ScopeSentryImport({
     controller.current = new AbortController();
     try {
       const next = await api<Preview>(
-        "/integrations/scopesentry/preview",
+        mode === "remote"
+          ? "/integrations/scopesentry/remote/preview"
+          : "/integrations/scopesentry/preview",
         "POST",
-        { source_key: source, export: text },
+        mode === "remote"
+          ? {
+              connection_id: connection,
+              ...(previous ? { previous_preview_id: previous } : {}),
+            }
+          : { source_key: source, export: text },
         controller.current.signal,
       );
       if (active.current) {
+        reset();
         setPlan(next);
-        setSelected([]);
       }
     } catch (e) {
       if (active.current) setError((e as Error).message);
@@ -119,63 +152,144 @@ export function ScopeSentryImport({
   return (
     <Modal
       title="ScopeSentry 자산 가져오기"
-      subtitle="파일 검토 → 항목 선택 → 출처와 자산 반영"
+      subtitle="원본 검토 → 항목 선택 → 출처와 자산 반영"
       onClose={onClose}
     >
-      <p className="remediation">
-        ScopeSentry의 asset JSON 내보내기 파일을 붙여 넣으세요. 한 줄에 레코드
-        하나이며 최대 100줄·1 MiB입니다. 파일에 없는 항목은 삭제하지 않습니다.
-        가져온 후에도 검증 작업은 별도로 승인해야 합니다.
-      </p>
-      <form onSubmit={preview}>
-        <fieldset
+      <div className="modal-actions" aria-label="원본 가져오기 방식">
+        <button
           disabled={busy || submitted}
-          className="identity-form-fields"
-          aria-label="ScopeSentry 가져오기 입력"
+          aria-pressed={mode === "file"}
+          onClick={() => {
+            reset();
+            setMode("file");
+          }}
         >
-          <label>
-            원본 인스턴스 식별자
-            <input
-              value={source}
-              maxLength={64}
-              pattern="[A-Za-z0-9_.-]+"
-              required
-              placeholder="예: company-sentry"
-              onChange={(e) => {
-                reset();
-                setSource(e.target.value);
-              }}
-            />
-          </label>
-          <label>
-            내보낸 자산 JSON
-            <textarea
-              value={text}
-              rows={7}
-              maxLength={1048576}
-              required
-              spellCheck={false}
-              placeholder={
-                '{"_id":"000000000000000000000001","type":"http","url":"https://owned.example/"}'
-              }
-              onChange={(e) => {
-                reset();
-                setText(e.target.value);
-              }}
-            />
-          </label>
-          <p className="subtle">
-            같은 ScopeSentry 인스턴스는 항상 같은 식별자를 사용하세요. HTTP
-            자산의 _id·type·url을 읽습니다. 본문·헤더·스크린샷과 외부 접근
-            규칙은 저장하지 않습니다.
+          파일 가져오기
+        </button>
+        <button
+          disabled={busy || submitted}
+          aria-pressed={mode === "remote"}
+          onClick={() => {
+            reset();
+            setMode("remote");
+          }}
+        >
+          원격 원본 조회
+        </button>
+      </div>
+      {mode === "remote" && (
+        <section className="scopesentry-preview" aria-label="원격 원본 연결">
+          <p className="remediation">
+            관리자가 등록한 원본에서 한 번에 최대 50개를 조회합니다. 항목 반영은
+            직접 선택하며 검증 작업 실행에는 별도 승인이 필요합니다.
           </p>
-        </fieldset>
-        {!submitted && (
-          <button type="submit" disabled={busy}>
-            {busy ? "미리보는 중…" : "가져오기 미리보기"}
-          </button>
-        )}
-      </form>
+          {connectionError && (
+            <p role="alert" className="form-error">
+              연결 목록 조회 실패: {connectionError}
+            </p>
+          )}
+          {!connectionError && !connections.length && (
+            <p>
+              등록된 원격 원본이 없습니다. 관리자가 서버 연결과 인증을
+              설정하거나 파일 가져오기를 사용하세요.
+            </p>
+          )}
+          {connections.map((item) => (
+            <label
+              className="checkbox-label scopesentry-connection"
+              key={item.id}
+            >
+              <input
+                type="radio"
+                name="scopesentry-connection"
+                checked={connection === item.id}
+                disabled={busy || submitted || !item.configured}
+                onChange={() => {
+                  reset();
+                  setConnection(item.id);
+                }}
+              />
+              <span>
+                {item.id} · {item.url}
+                {item.project ? ` · ${item.project}` : ""}
+                {!item.configured ? " · 서버 인증 설정 필요" : ""}
+              </span>
+            </label>
+          ))}
+          {!plan && (
+            <button
+              disabled={busy || !connection}
+              onClick={() => void preview()}
+            >
+              {busy ? "원본 조회 중…" : "첫 페이지 조회"}
+            </button>
+          )}
+        </section>
+      )}
+      {mode === "file" && (
+        <>
+          <p className="remediation">
+            ScopeSentry의 asset JSON 내보내기 파일을 붙여 넣으세요. 한 줄에
+            레코드 하나이며 최대 100줄·1 MiB입니다. 파일에 없는 항목은 삭제하지
+            않습니다. 가져온 후에도 검증 작업은 별도로 승인해야 합니다.
+          </p>
+          <form onSubmit={preview}>
+            <fieldset
+              disabled={busy || submitted}
+              className="identity-form-fields"
+              aria-label="ScopeSentry 가져오기 입력"
+            >
+              <label>
+                원본 인스턴스 식별자
+                <input
+                  value={source}
+                  maxLength={64}
+                  pattern="[A-Za-z0-9_.-]+"
+                  required
+                  placeholder="예: company-sentry"
+                  onChange={(e) => {
+                    reset();
+                    setSource(e.target.value);
+                  }}
+                />
+              </label>
+              <label>
+                내보낸 자산 JSON
+                <textarea
+                  value={text}
+                  rows={7}
+                  maxLength={1048576}
+                  required
+                  spellCheck={false}
+                  placeholder={
+                    '{"_id":"000000000000000000000001","type":"http","url":"https://owned.example/"}'
+                  }
+                  onChange={(e) => {
+                    reset();
+                    setText(e.target.value);
+                  }}
+                />
+              </label>
+              <p className="subtle">
+                같은 ScopeSentry 인스턴스는 항상 같은 식별자를 사용하세요. HTTP
+                자산의 _id·type·url을 읽습니다. 본문·헤더·스크린샷과 외부 접근
+                규칙은 저장하지 않습니다.
+              </p>
+            </fieldset>
+            {!submitted && (
+              <button type="submit" disabled={busy}>
+                {busy ? "미리보는 중…" : "가져오기 미리보기"}
+              </button>
+            )}
+          </form>
+        </>
+      )}
+      {plan?.remote?.page && (
+        <p role="status">
+          원본 {plan.source_key} · {plan.remote.page}페이지 · {plan.rows.length}
+          개
+        </p>
+      )}
       {plan && !result && (
         <section className="scopesentry-preview" aria-label="가져오기 검토">
           <p>
@@ -282,6 +396,42 @@ export function ScopeSentryImport({
             ))}
           </ul>
           <button onClick={onClose}>닫기</button>
+        </section>
+      )}
+      {plan?.remote?.page && (
+        <section
+          className="scopesentry-preview"
+          aria-label="원본 페이지 이어받기"
+        >
+          <p className="subtle">
+            원본 목록은 조회 중 바뀔 수 있습니다. 이전 페이지 변경이나 중복 ID가
+            발견되면 처음부터 다시 조회하세요. 누락된 항목을 자동 삭제하지
+            않습니다.
+          </p>
+          {plan.remote.has_more && plan.remote.page < 20 ? (
+            <button
+              disabled={busy || (submitted && !result)}
+              onClick={() => void preview(undefined, plan.id)}
+            >
+              {busy
+                ? "원본 조회 중…"
+                : result
+                  ? "다음 원본 페이지 조회"
+                  : "이 페이지 반영 없이 다음 조회"}
+            </button>
+          ) : (
+            <p>
+              {plan.remote.has_more
+                ? "20페이지 한도입니다. 관리자에게 원본 필터 설정을 확인하세요."
+                : "이 수집의 마지막 페이지입니다."}
+            </p>
+          )}
+          <button
+            disabled={busy || (submitted && !result)}
+            onClick={() => void preview()}
+          >
+            원본 처음부터 다시 조회
+          </button>
         </section>
       )}
       {error && (

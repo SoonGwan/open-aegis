@@ -33,8 +33,10 @@ names or match booleans, never response values. See [API-POLICY.md](API-POLICY.m
 actor-bound preview records, and explicitly applies selected assets/source links. Source
 IDs and URL changes retain separate connection history without altering task snapshots.
 Its business writes and the import audit event share one SQLite write transaction; the
-HTTP request audit remains separate. There is no source network client or automatic
-execution. See [SCOPESENTRY.md](SCOPESENTRY.md).
+HTTP request audit remains separate. `scopesentry_remote.py` adds configured JWT read
+requests with pinned DNS/TLS, bounded pages, previous-boundary checks and atomic cached
+next-preview pointers. Source positional pagination is not a coherent snapshot. No automatic
+execution is performed. See [SCOPESENTRY.md](SCOPESENTRY.md).
 
 ## Task states
 

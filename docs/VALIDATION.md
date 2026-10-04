@@ -1311,3 +1311,54 @@ on 390×844 has no document overflow.
   296 cases and is not described as a full 296-case rerun. Python service code is unchanged
   after its full run and wheel build. Main final health is 200, assets two, traffic three,
   and the served document references the final frontend bundle.
+
+
+## 2026-10-04 — configured ScopeSentry JWT remote review and page recovery
+
+- Independently reads the pinned ordinary REST JWT auth/search/asset-list contract; MCP
+  API keys are distinct. New configured-only adapter requests `/api/assets/asset` with
+  type/project filters and 50-row positional pages. HTTPS is default; explicit loopback
+  HTTP/private flags exist solely for owned synthetic fixtures. Browser input cannot set
+  source URLs, credentials, arbitrary tool names or write/scan endpoints.
+- Twenty new native loopback cases validate exact endpoint/Bearer/filter/page contract,
+  read-only collection and zero target traffic, private-field/token exclusion, actor-bound
+  continuation, cached same-parent next-page response, empty terminal page, changed previous
+  boundary, duplicate IDs, rotated credentials, provider 401/403/302/500 recovery, malformed/
+  oversized responses, missing IDs, deadline/admission/role/config rejection, and rollback
+  of next pointer plus preview when a SQLite trigger rejects the child. Targeted **20 pass**
+  in 11.25 s; prior file tests **25 pass**. Full backend **316 pass** in 102.18 s, frontend
+  **47 pass**. No Python service edits or frontend rebuild during the full backend run.
+- Real console QA uses a separate loopback REST fixture (8813), QA app (8811), and dedicated
+  synthetic administrator. Page 1 has 50 rows; no rows are preselected. A fixture 401 on
+  continuation visibly retains the console session and page 1. Next successful continuation
+  rechecks page 1 and saves page 2, but the QA middleware returns a synthetic 503 **after
+  commit**. The same visible button restores saved page 2 without another source request.
+  Exactly four source requests occur: first page, failed boundary request, successful
+  boundary request, second page. No real ScopeSentry instance is contacted.
+- Page 2 contains one row. Explicit select-all/authorization/apply produces one new asset
+  and one source link. QA database assets grow 6→7, source links 2→3, tasks remain 18,
+  target traffic remains zero. The fixture body marker and JWT are absent from stored
+  records. Page 1 is intentionally skipped without reflection; this is not a complete
+  import of every remote asset.
+- Final visual review finds generic text-input styling enlarging the radio selector. A
+  scoped 20px radio rule and wrapping source label fix it. Rebuild and fresh-document
+  screenshot are viewed: `artifacts/v1-scopesentry-remote.jpg` shows the selected configured
+  connection, visible focus outline, and enabled first-page button. Final build is
+  `index-OQwQHPR-.js` / `index-B5ysGB7c.css`. Selected token/AA pair checker passes; full
+  mobile, touch, screen reader, zoom, and connection-list error recovery are not claimed.
+- Wheel SHA-256 `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`.
+  Initial no-build-isolation attempt fails because this development environment lacks
+  `bdist_wheel`; normal isolated build succeeds. Outside-checkout locked-runtime rehearsal
+  passes, including remote configuration listing and refusal of an unconfigured connection,
+  existing file review/apply/retry/source reads, CLI/auth/schema/audit/backup/restore,
+  zero target requests, normal shutdown and lease release. It runs again with final CSS/UI.
+  It does not exercise a TLS ScopeSentry source or remote paging inside the installed wheel;
+  native loopback tests and desktop QA supply the remote paging evidence.
+- Provider positional pagination has no snapshot/cursor: previous-boundary checks and ID
+  deduplication cannot guarantee whole-source consistency or eliminate all concurrent-change
+  omissions. First-page requests are not idempotent, and TTL/admission limits remain shared
+  with file previews. Real source deployment/TLS/JWT issuance and expiry, long imports,
+  history retention/load and full accessibility remain open. Overall ScopeSentry/v1 gates
+  stay unchecked.
+- QA app and owned source server stop normally. Main preview restarts with the new
+  backend and final bundle; health is 200, original assets remain two and traffic three.

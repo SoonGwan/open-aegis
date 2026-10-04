@@ -132,6 +132,8 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                 assert task['status'] == 'pending' and task['approved_at'] is None
                 assets = request('/api/assets')
                 assert len(assets) == 1 and assets[0]['id'] == asset['id']
+                assert request('/api/integrations/scopesentry/connections') == []
+                request('/api/integrations/scopesentry/remote/preview', {'connection_id': 'unconfigured'}, expected=404)
                 imported = request('/api/integrations/scopesentry/preview', {
                     'source_key': 'installed-runtime-fixture',
                     'export': json.dumps({'_id': '000000000000000000000001', 'type': 'http',
@@ -173,6 +175,7 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                        'installed server outside checkout', 'separate frontend assets',
                        'authentication and logout', 'administrator schema and disabled public docs',
                        'asset and pending plan persistence', 'ScopeSentry review/apply/retry/provenance',
+                       'ScopeSentry installed remote configuration and unconfigured-source refusal',
                        'login limit metrics', 'read-only audit review', 'clean shutdown and lease release',
                        'installed backup/restore/audit rehearsal']}, ensure_ascii=False))
 

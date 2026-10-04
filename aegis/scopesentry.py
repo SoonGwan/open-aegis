@@ -129,11 +129,16 @@ def inspect(db, item, source_key):
 
 def public_preview(record):
     return {key: record[key] for key in ('id', 'format', 'source_key', 'export_sha256', 'created_at', 'expires_at')} | {
+        'remote': {k:v for k,v in record.get('remote', {}).items() if k in ('connection_id','page','has_more','previous_preview_id')},
         'rows': [{k: v for k, v in item.items() if not k.startswith('expected_')} for item in record['rows']]}
 
 
 def preview(store, data, actor_id):
     rows = parse_export(data.export)
+    return store_preview(store, data.source_key, rows, hashlib.sha256(data.export.encode()).hexdigest(), actor_id)
+
+
+def store_preview(store, source_key, rows, export_hash, actor_id, *, remote=None):
     timestamp = now()
     with store.lock, store.connect() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -141,10 +146,23 @@ def preview(store, data, actor_id):
         count = db.execute("SELECT count(*) FROM records WHERE kind='import_previews'").fetchone()[0]
         if count >= 50:
             raise HTTPException(429, '열린 가져오기 미리보기가 50개입니다. 만료 후 다시 시도하세요.')
-        rows = [inspect(db, row, data.source_key) if row['status'] == 'ready' else row for row in rows]
-        record = {'id': identifier(), 'format': FORMAT, 'source_key': data.source_key, 'actor_id': actor_id,
-                  'export_sha256': hashlib.sha256(data.export.encode()).hexdigest(), 'created_at': timestamp,
+        rows = [inspect(db, row, source_key) if row['status'] == 'ready' else row for row in rows]
+        record = {'id': identifier(), 'format': FORMAT, 'source_key': source_key, 'actor_id': actor_id,
+                  'export_sha256': export_hash, 'created_at': timestamp,
                   'expires_at': timestamp + PREVIEW_TTL, 'rows': rows, 'applied_at': None}
+        if remote:
+            record['remote'] = remote
+            parent = remote.get('previous_preview_id')
+            if parent:
+                previous = read(db, 'import_previews', parent)
+                if not previous or previous['actor_id'] != actor_id or previous['expires_at'] <= timestamp:
+                    raise HTTPException(409, '이전 페이지가 변경되거나 만료됐습니다. 다시 조회하세요.')
+                if previous['remote'].get('next_preview_id'):
+                    existing = read(db, 'import_previews', previous['remote']['next_preview_id'])
+                    if existing and existing['expires_at'] > timestamp:
+                        return public_preview(existing)
+                previous['remote']['next_preview_id'] = record['id']
+                db.execute("UPDATE records SET data=? WHERE kind='import_previews' AND id=?", (json.dumps(previous, ensure_ascii=False), parent))
         db.execute("INSERT INTO records VALUES ('import_previews',?,?)", (record['id'], json.dumps(record, ensure_ascii=False)))
     return public_preview(record)
 

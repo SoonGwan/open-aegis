@@ -3509,3 +3509,6 @@ pre,
 
 .scopesentry-sources { display: grid; gap: 12px; }
 .scopesentry-sources > p, .scopesentry-sources > label, .scopesentry-sources .scopesentry-source { margin: 0; }
+
+.modal .scopesentry-connection input[type="radio"] { width: 20px; height: 20px; min-height: 20px; padding: 0; flex: 0 0 20px; border: 0; }
+.scopesentry-connection span { min-width: 0; overflow-wrap: anywhere; }

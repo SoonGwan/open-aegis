@@ -1,7 +1,8 @@
 # ScopeSentry 자산 가져오기와 출처
 
-현재 제공하는 연동은 ScopeSentry의 **asset JSON 내보내기 파일**을 검토하고 반영하는
-수동 동기화다. 원격 서버 연결·인증·자동 페이지 수집은 아직 구현하지 않았다.
+현재 제공하는 연동은 ScopeSentry의 **asset JSON 내보내기 파일** 또는 서버에 등록한
+**JWT 원격 목록 API**를 검토하고 반영하는 수동 동기화다. 원격 조회는 페이지마다
+명시적으로 요청하며 자동 스케줄이나 전체 원본 스냅샷을 제공하지 않는다.
 파일을 나누어 순차적으로 가져올 수 있으며 반복 반영은 원본 식별자로 중복을 방지한다.
 
 ## 확인한 원본 계약
@@ -26,7 +27,7 @@ JSON 직렬화와 일치한다. 이것은 원본 서비스 전체를 운영하�
 
 ScopeSentry에서 `asset`의 JSON을 내보내고 `url`을 포함해야 한다. 원본의 투영은
 `type`을 포함하고 MongoDB `_id`를 기본 보존한다. `_id`는 24자리 16진수 문자열이며
-소문자로 정규화한다. API 목록의 `id`, MongoDB Extended JSON, 다른 컬렉션,
+소문자로 정규화한다. 파일 입력에 API 목록의 `id`, MongoDB Extended JSON, 다른 컬렉션,
 XLSX·CSV·최상위 배열은 이 계약에 포함하지 않는다. 실제 운영 서버의 버전·내보내기
 설정이 다르면 이 계약과 맞는지 먼저 확인해야 한다.
 
@@ -88,9 +89,54 @@ SQLite `BEGIN IMMEDIATE`와 서비스 잠금 안에서 자산·출처·연결 �
 반환한다. 이미 반영한 선택을 바꾸면 409다. 재시도 보장은 해당 미리보기가 유효하고
 보존되는 동안 적용된다. 만료 후에는 다시 미리보고 현재 상태와 대조한다.
 
+## 원격 원본 설정과 이어받기
+
+일반 REST 인증은 [JWT 미들웨어](https://github.com/Autumn-27/ScopeSentry/blob/8203c4932795f35d741dd54871345b9eca0943a8/internal/api/middleware/auth.go)의
+Bearer JWT 계약을 따른다. MCP API Key와 별개다. 서버 환경에 다음을 설정하고
+서비스를 재시작한다. 예시는 주소와 환경변수 이름뿐이며 토큰은 저장소에 커밋하지 않는다.
+
+```sh
+export AEGIS_SCOPESENTRY_SOURCES='[{"id":"company-sentry","url":"https://sentry.example","token_env":"COMPANY_SENTRY_JWT","project":"owned-project"}]'
+# COMPANY_SENTRY_JWT에는 별도로 발급받은, 자산 조회 권한이 있는 JWT를 설정한다.
+```
+
+설정은 UTF-8 32 KiB/최대 10개이며 알 수 없는 필드·중복 키·중복 ID는 거절한다.
+`project`는 선택적인 원본 필터다. 기본은 공개 주소의 HTTPS/시스템 신뢰 CA이며
+내부 주소는 관리자가 `allow_private:true`를 명시해야 한다. HTTP는 소유한
+loopback 합성 시험에서만 `lab_http:true`와 `allow_private:true`를 함께 허용한다.
+metadata·link-local 등 금지 주소는 내부 허용 설정과 무관하게 거절한다.
+브라우저는 토큰·임의 연결 주소를 입력하거나 원본 쓰기/스캔 API를 호출할 수 없다.
+인증값과 환경변수 이름은 API에서 반환하지 않는다. 실제 토큰 회전을 확인하기 위한
+불투명한 설정/credential SHA-256 계약 지문은 비공개 미리보기에 저장한다.
+
+- `GET /api/integrations/scopesentry/connections`: 관리자·운영자의 등록 연결 목록.
+- `POST /api/integrations/scopesentry/remote/preview`:
+  `{connection_id, previous_preview_id?}`. 첫 페이지는 이전 ID를 생략한다.
+- 조회는 원본 `POST /api/assets/asset`, `index:asset`, `type:http` 필터와
+  50개 페이지를 사용한다. 원본 `id`를 파일 어댑터의 `_id`로 독립 변환한다.
+  같은 검토/선택 반영 계약을 사용하고 대상 요청이나 실행 작업을 만들지 않는다.
+- 요청당 총 12초, 응답 1 MiB, 수집당 최대 20페이지, 워크스페이스 동시 조회 1개다.
+  DNS 주소를 검사해 연결 IP를 고정한다. TLS 호스트 검증을 사용하며 리다이렉트와
+  압축 응답은 거절한다. 원본 401/403은 로컬 502로 표시해 콘솔 세션을 유지한다.
+- 다음 조회는 직전 페이지를 다시 받아 ID/type/URL 목록의 지문을 비교한다.
+  이미 받은 ID가 재등장하거나 연결 설정·JWT가 바뀌면 409로 처음부터 다시 조회한다.
+  실패 시 이전 미리보기/체크포인트를 유지한다. 다음 페이지와 부모의 이어받기 포인터는
+  하나의 SQLite 트랜잭션으로 저장한다. 같은 부모 ID의 재요청은 유효한 저장 결과를
+  반환하므로 **다음 페이지 응답 손실**을 복구한다. 첫 페이지 요청의 중복 방지는 없다.
+- 모든 검토는 기존의 사용자 귀속/15분/50개 제한을 공유한다. 50개 응답이면 다음 페이지를
+  안내하며 정확히 50의 배수인 목록의 끝은 빈 페이지로 확인한다. 화면에서 직접 다음을
+  요청해야 한다. 반영하지 않고 넘기는 버튼도 자동 반영을 수행하지 않는다.
+
+[원본 목록 서비스](https://github.com/Autumn-27/ScopeSentry/blob/8203c4932795f35d741dd54871345b9eca0943a8/internal/services/assets/asset/asset.go)는
+`time` 내림차순의 위치 기반 페이지이고 스냅샷·커서를 제공하지 않는다. 직전 페이지
+비교와 중복 감지는 **전체 수집의 누락 방지/일관성 보장이 아니다**. 더 오래된 페이지의
+변경이나 두 조회 사이 변경으로 누락될 수 있다. 원본 변경 시 재조회하고 이 결과만으로
+삭제를 판단하지 않는다. 저장한 응답 SHA-256은 원본의 서명이나 진위 증명이 아니다.
+
 ## 남은 출시 검증
 
 합성 내보내기·실제 콘솔의 오류 복구·SQLite 충돌/롤백·출처 이력 백업/복구 검증은 [검증 기록](VALIDATION.md)에
-있다. 실제 ScopeSentry 운영 인스턴스, 원격 인증·페이지 중단/재개·원본 동시 변경,
+있다. 합성 원격 REST 인증·페이지 재시도·경계 변경은 추가 검증했다. 실제 ScopeSentry
+운영 인스턴스, 원본 동시 변경에서의 일관성,
 대량 파일 분할 여정·이력 보존 정책·전체 모바일/보조 기술 검증은 남아 있다.
 [출시 기준](V1-READINESS.md)의 ScopeSentry 전체 항목은 계속 미완료다.

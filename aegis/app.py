@@ -39,6 +39,7 @@ from .reproduction import build_manifest, MAX_MANIFEST_BYTES
 from .audit_review import AuditReview, AuditReviewBusy, AuditReviewInput
 from .login_limits import LoginGate, LoginLimited
 from . import scopesentry
+from .scopesentry_remote import Sources, PageInput
 
 
 class Credentials(BaseModel):
@@ -185,6 +186,12 @@ def create_app(data_dir=None, allow_private=None):
     engine = Engine(store, private, policy=policy)
     scheduler_stop = threading.Event()
     shutdown_requested = threading.Event()
+    try:
+        source_connections = Sources.from_env(store, shutdown_requested)
+    except BaseException:
+        engine.shutdown()
+        lease.close()
+        raise
     auth_lock = threading.Lock()
     login_gate = LoginGate()
 
@@ -266,6 +273,7 @@ def create_app(data_dir=None, allow_private=None):
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store, app.state.engine = store, engine
     app.state.exports = exports
+    app.state.source_connections = source_connections
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
         # Pydantic's default error payload includes the invalid input. Never echo
@@ -469,6 +477,14 @@ def create_app(data_dir=None, allow_private=None):
     @app.get('/api/assets', dependencies=auth)
     def assets(response: Response, include_archived: bool = False):
         return legacy_page(response, 'assets', archived=None if include_archived else False)
+
+    @app.get('/api/integrations/scopesentry/connections', dependencies=operations)
+    def scopesentry_connections():
+        return source_connections.public()
+
+    @app.post('/api/integrations/scopesentry/remote/preview')
+    def scopesentry_remote(data: PageInput, actor=Depends(operator)):
+        return source_connections.collect(data, actor['id'])
 
     @app.post('/api/integrations/scopesentry/preview')
     def scopesentry_preview(data: scopesentry.PreviewInput, actor=Depends(operator)):
