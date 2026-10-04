@@ -260,3 +260,41 @@ test("an aborted successful read cannot deliver a body that finished late", asyn
   body.resolve({ ownedBy: "previous-read" });
   await rejected;
 });
+
+test("a previous auth mutation cannot advance or complete against a newer login", async (t) => {
+  const old = deferred<Response>();
+  t.mock.method(globalThis, "fetch", async (url: string) =>
+    url === "/api/auth/password" ? old.promise : json(200),
+  );
+  const rejected = assert.rejects(api("/auth/password", "POST", {}), {
+    name: "AbortError",
+  });
+  await api("/auth/login", "POST", {});
+  const current = captureSession();
+  old.resolve(json(200));
+  await rejected;
+  assert.equal(current(), true);
+});
+
+test("an auth response body finishing after another login cannot complete the old transition", async (t) => {
+  const body = deferred<unknown>();
+  const started = deferred<boolean>();
+  t.mock.method(globalThis, "fetch", async (url: string) => {
+    if (url === "/api/auth/login") return json(200);
+    const response = json(200);
+    response.json = async () => {
+      started.resolve(true);
+      return body.promise;
+    };
+    return response;
+  });
+  const rejected = assert.rejects(api("/auth/password", "POST", {}), {
+    name: "AbortError",
+  });
+  await started.promise;
+  await api("/auth/login", "POST", {});
+  const current = captureSession();
+  body.resolve({ ok: true });
+  await rejected;
+  assert.equal(current(), true);
+});

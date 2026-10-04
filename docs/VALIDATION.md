@@ -1660,3 +1660,49 @@ on 390×844 has no document overflow.
   `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`
   with final UI passes outside-checkout installed runtime/dependency/CLI/auth/schema/
   import/remote-refusal/audit/backup/restore/shutdown/lease rehearsal, target requests zero.
+
+
+## 2026-10-04 — identity callbacks and stale authentication changes
+
+- Native production PasswordPanel with synthetic fetch reproduces a prior password
+  success callback after the panel has unmounted and a new login remounts it: before
+  release, callback count zero on generation two; after old HTTP 200, count one.
+  This callback is what App uses to leave its authenticated screen. The fixture
+  uses synthetic passwords/accounts and no actual cookie or server credential.
+- API controlled-response regression also fails before fix: held password success
+  after a newer login resolves rather than rejecting. Authentication changes now
+  reject stale successful headers before advancing the browser session revision.
+  Current auth changes advance once and capture the completion session; a body
+  finishing after another login cannot complete the older transition. Generic
+  committed mutation acknowledgment behavior remains unchanged.
+- PasswordPanel ignores callbacks/errors after unmount and guards duplicate submit
+  with a ref. UserPanel captures the initiating session, checks mount/session before
+  closing forms/notices/reloading/session callbacks, guards duplicate submits, and
+  guards user-list success/failure/loading by mount/session/request sequence. Current
+  self role/state/password reset invokes guarded shared expiration, invalidating
+  outstanding old reads before its explicit session-change callback.
+- Two added actual API tests cover old auth success headers after login and auth
+  body finishing after newer login; final Node suite **61 passed** (59 prior plus
+  two), frontend build passes. Native fixture
+  `web/tests/browser/identity-session-review.html` uses production identity panels.
+  Click a five-second remount/login reservation before opening/submitting a modal,
+  then release its held response after the reservation: background controls correctly
+  remain inert while the modal is mounted. After fix, previous password completion
+  across new login leaves callback count zero; previous self-reset completion across
+  panel remount also leaves zero. The latter is after-fix evidence, not a separately
+  executed old-build comparison. Busy text is observed before each remount.
+- Current PasswordPanel success still calls onChanged once. A subsequent current
+  synthetic 503 shows its local alert, re-enables new-password input and leaves
+  callback count one. Screenshot `artifacts/v1-identity-session-recovery.jpg` is
+  saved and visually inspected, passwords masked. No actual credential is used.
+  Current self-role/reset callback branches are code evidence here, not native
+  production-server cookie/revocation proof. Cross-tab/Set-Cookie races and whole
+  authentication transition coverage remain open.
+- Final frontend assets `index-dMpWcS3T.js` / `index-B5ysGB7c.css` served by main;
+  health 200, assets two/tasks four/traffic three unchanged. Synthetic identity
+  transport touches no real records or target service. Owned Vite fixture stops;
+  main preview remains live. Python code unchanged, no full backend rerun claimed.
+  Unchanged wheel SHA-256
+  `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`
+  with final UI passes outside-checkout installed runtime/dependency/CLI/auth/schema/
+  import/remote-refusal/audit/backup/restore/shutdown/lease rehearsal, target requests zero.

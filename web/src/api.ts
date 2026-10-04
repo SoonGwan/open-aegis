@@ -57,8 +57,18 @@ export async function api<T>(
       expireSession(isCurrentSession);
     throw new Error(text);
   }
-  if (method !== "GET" && /^\/auth\/(login|setup|logout|password)$/.test(path))
+  const changesSession =
+    method.toUpperCase() !== "GET" &&
+    /^\/auth\/(login|setup|logout|password)$/.test(path);
+  if (changesSession) {
+    if (!isCurrentSession())
+      throw new DOMException(
+        "세션이 변경된 이전 인증 요청입니다.",
+        "AbortError",
+      );
     sessionRevision++;
+  }
+  const completionSession = captureSession();
   const assertCurrentRead = () => {
     if (
       method.toUpperCase() === "GET" &&
@@ -72,5 +82,7 @@ export async function api<T>(
   assertCurrentRead();
   const result = await response.json();
   assertCurrentRead();
+  if (changesSession && !completionSession())
+    throw new DOMException("세션이 변경된 이전 인증 요청입니다.", "AbortError");
   return result;
 }

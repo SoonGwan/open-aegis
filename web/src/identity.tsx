@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { KeyRound, Plus, UsersRound } from "lucide-react";
-import { api } from "./api";
+import { api, captureSession, expireSession } from "./api";
 import Modal from "./components/Modal";
 
 export type User = {
@@ -38,14 +38,31 @@ export function UserPanel({
   const [selected, setSelected] = useState<User | null>(null);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
+  const active = useRef(true);
+  const submitting = useRef(false);
+  const loadSequence = useRef(0);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+      loadSequence.current++;
+    };
+  }, []);
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
+    const isCurrentSession = captureSession();
+    const isCurrent = () =>
+      active.current && isCurrentSession() && sequence === loadSequence.current;
+    setLoading(true);
     try {
-      setUsers(await api<User[]>("/users"));
+      const records = await api<User[]>("/users");
+      if (!isCurrent()) return;
+      setUsers(records);
       setError("");
     } catch (e) {
-      setError((e as Error).message);
+      if (isCurrent()) setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, []);
   useEffect(() => {
@@ -62,7 +79,10 @@ export function UserPanel({
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (submitting.current) return;
+    submitting.current = true;
+    const isCurrentSession = captureSession();
+    const isCurrent = () => active.current && isCurrentSession();
     setBusy(true);
     setFormError("");
     const form = new FormData(event.currentTarget);
@@ -82,10 +102,12 @@ export function UserPanel({
           disabled: form.get("disabled") === "on",
         };
         await api("/users/" + selected.id, "PATCH", body);
+        if (!isCurrent()) return;
         if (
           selected.id === currentUser.id &&
           (body.role !== currentUser.role || body.disabled)
         ) {
+          expireSession(isCurrentSession);
           onSessionChanged();
           return;
         }
@@ -93,18 +115,22 @@ export function UserPanel({
         await api("/users/" + selected.id + "/password", "POST", {
           password: form.get("password"),
         });
+        if (!isCurrent()) return;
         if (selected.id === currentUser.id) {
+          expireSession(isCurrentSession);
           onSessionChanged();
           return;
         }
       }
+      if (!isCurrent()) return;
       setMode(null);
       setNotice("사용자 설정을 적용했습니다.");
       await load();
     } catch (e) {
-      setFormError((e as Error).message);
+      if (isCurrent()) setFormError((e as Error).message);
     } finally {
-      setBusy(false);
+      submitting.current = false;
+      if (active.current) setBusy(false);
     }
   }
   return (
@@ -307,6 +333,14 @@ export function UserPanel({
 }
 
 export function PasswordPanel({ onChanged }: { onChanged: () => void }) {
+  const active = useRef(true);
+  const submitting = useRef(false);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   const [open, setOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -315,24 +349,26 @@ export function PasswordPanel({ onChanged }: { onChanged: () => void }) {
   }, [busy]);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (submitting.current) return;
     const form = new FormData(event.currentTarget);
     if (form.get("new_password") !== form.get("confirm_password")) {
       setError("새 비밀번호가 일치하지 않습니다.");
       return;
     }
     setBusy(true);
+    submitting.current = true;
     setError("");
     try {
       await api("/auth/password", "POST", {
         current_password: form.get("current_password"),
         new_password: form.get("new_password"),
       });
-      onChanged();
+      if (active.current) onChanged();
     } catch (e) {
-      setError((e as Error).message);
+      if (active.current) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      submitting.current = false;
+      if (active.current) setBusy(false);
     }
   }
   return (
