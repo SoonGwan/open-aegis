@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, captureSession } from "./api";
 import { pendingStorage } from "./chat-pending";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { WorkerDependencies } from "./WorkerDependencies";
+import { useRecords, RecordState } from "./records";
+import { readDetail, readTaskGoal, goalCollectionMatches, type TaskGoalState, type FindingCollectionState, type HistoryMode, type ListPosition } from "./navigation-state";
 
 type Objective = {
   id: string;
@@ -328,137 +330,102 @@ export function GoalDraftPanel({
   );
 }
 
-export function GoalProgress({
-  taskId,
-  captureView,
-  onFinding,
-  onTask,
-  actorId, canOperate, busy, onRetest,
-}: {
-  taskId: string;
-  captureView: () => () => boolean;
-  onFinding: (id: string) => void;
-  onTask: (id: string) => void;
+type GoalFinding = {
+  id: string; title: string; asset_name: string; check: string;
+  status: string; evidence_count: number; retests_count: number;
+  latest_retest: { task_id: string; conclusion: string; triage_effect: string } | null;
+};
+const emptyGoalFindingState: FindingCollectionState = {expanded:false,search:"",offset:0,snapshot:null};
+
+export function GoalProgress({taskId,onFinding,onTask,actorId,canOperate,busy,onRetest,state,onChange}: {
+  taskId:string;
+  onFinding:(id:string)=>void; onTask:(id:string)=>void;
   actorId:string; canOperate:boolean; busy:boolean;
   onRetest:(path:string,requestId:string,onFailure:(message:string)=>void)=>Promise<boolean>;
+  state:TaskGoalState; onChange:(changes:Partial<TaskGoalState>,mode?:HistoryMode)=>void;
 }) {
-  const [rows, setRows] = useState<
-    { id: string; title: string; completed: number; expected: number }[] | null
-  >(null);
-  const [error, setError] = useState(""),
-    [loading, setLoading] = useState(false);
-  const active = useRef(true),
-    locked = useRef(false);
-  useEffect(() => {
-    active.current = true;
-    return () => {
-      active.current = false;
-    };
-  }, []);
-  async function load() {
-    if (locked.current) return;
-    locked.current = true;
-    setLoading(true);
-    setError("");
-    const view = captureView(),
-      session = captureSession();
+  const [rows,setRows]=useState<{id:string;title:string;completed:number;expected:number}[]|null>(null);
+  const [error,setError]=useState(""),[loading,setLoading]=useState(false);
+  const controller=useRef<AbortController|null>(null);
+  const change=useCallback((changes:Partial<TaskGoalState>,mode?:HistoryMode)=>{
+    const detail=readDetail(location.search);
+    if(detail?.kind!=="task"||detail.id!==taskId||JSON.stringify(readTaskGoal(location.search))!==JSON.stringify(state))return;
+    onChange(changes,mode);
+  },[taskId,state,onChange]);
+  useEffect(()=>{
+    if(state.expanded)void load();
+    else {setRows(null);setError("");setLoading(false);}
+    return()=>controller.current?.abort();
+  },[taskId,state.expanded]);
+  async function load(){
+    controller.current?.abort();
+    const request=new AbortController();controller.current=request;
+    const session=captureSession();
+    const current=()=>{const detail=readDetail(location.search);return controller.current===request&&!request.signal.aborted&&session()&&detail?.kind==="task"&&detail.id===taskId&&readTaskGoal(location.search).expanded;};
+    setLoading(true);setError("");
     try {
-      const result = await api<{
-        objectives: {
-          id: string;
-          title: string;
-          completed: number;
-          expected: number;
-        }[];
-      }>("/tasks/" + encodeURIComponent(taskId) + "/goal-progress");
-      if (active.current && view() && session()) setRows(result.objectives);
-    } catch (err) {
-      if (active.current && view() && session())
-        setError(err instanceof Error ? err.message : "조회 실패");
-    } finally {
-      locked.current = false;
-      if (active.current) setLoading(false);
-    }
+      const result=await api<{objectives:{id:string;title:string;completed:number;expected:number}[]}>("/tasks/"+encodeURIComponent(taskId)+"/goal-progress","GET",undefined,request.signal);
+      if(current())setRows(result.objectives);
+    }catch(err){if(current())setError(err instanceof Error?err.message:"조회 실패");}
+    finally{if(current())setLoading(false);}
   }
-  return (
-    <section className="next-plan" aria-label="목표 과제의 검사 진행률">
-      <h4>과제별 검사 진행률</h4>
-      <p>
-        연결된 도구·자산의 실행 완료만 집계합니다. 자연어 목표 달성이나 기대
-        근거의 사실성을 판정하지 않습니다.
-      </p>
-      <button type="button" disabled={loading} onClick={() => void load()}>
-        {loading ? "조회 중…" : "과제 검사 결과 확인"}
-      </button>
-      {error && <p role="alert">{error}</p>}
-      {rows?.map((row) => (
-        <article key={row.id}>
-          <p>{row.title} · 검사 완료 {row.completed}/{row.expected}</p>
-          <GoalObjectiveFindings taskId={taskId} objectiveId={row.id} title={row.title}
-            captureView={captureView} onFinding={onFinding} onTask={onTask} actorId={actorId} canOperate={canOperate} busy={busy} onRetest={onRetest} />
-        </article>
-      ))}
-    </section>
-  );
+  return <section className="next-plan" aria-label="목표 과제의 검사 진행률">
+    <h4>과제별 검사 진행률</h4>
+    <p>연결된 도구·자산의 실행 완료만 집계합니다. 자연어 목표 달성이나 기대 근거의 사실성을 판정하지 않습니다.</p>
+    <button type="button" disabled={loading} onClick={()=>state.expanded?void load():change({expanded:true})}>
+      {loading?"조회 중…":"과제 검사 결과 확인"}
+    </button>
+    {error&&<p role="alert">{error}</p>}
+    {rows?.map(row=><article key={row.id}>
+      <p>{row.title} · 검사 완료 {row.completed}/{row.expected}</p>
+      <GoalObjectiveFindings key={row.id} taskId={taskId} objectiveId={row.id} title={row.title}
+        state={state.objectives[row.id]||emptyGoalFindingState}
+        onChange={(changes,mode)=>change({objectives:{[row.id]:{...(state.objectives[row.id]||emptyGoalFindingState),...changes}}},mode)}
+        onFinding={onFinding} onTask={onTask} actorId={actorId} canOperate={canOperate} busy={busy} onRetest={onRetest}/>
+    </article>)}
+  </section>;
 }
 
-type GoalFindingPage = {
-  items: { id: string; title: string; asset_name: string; check: string;
-    status: string; evidence_count: number; retests_count: number;
-    latest_retest: { task_id: string; conclusion: string; triage_effect: string } | null }[];
-  total: number; limit: number; offset: number; snapshot: number; has_more: boolean;
-};
-function GoalObjectiveFindings({taskId,objectiveId,title,captureView,onFinding,onTask,actorId,canOperate,busy,onRetest}: {
-  taskId:string; objectiveId:string; title:string; captureView:()=>()=>boolean;
+function GoalObjectiveFindings({taskId,objectiveId,title,state,onChange,onFinding,onTask,actorId,canOperate,busy,onRetest}: {
+  taskId:string; objectiveId:string; title:string;
+  state:FindingCollectionState; onChange:(changes:Partial<FindingCollectionState>,mode?:HistoryMode)=>void;
   onFinding:(id:string)=>void; onTask:(id:string)=>void;
   actorId:string;canOperate:boolean;busy:boolean;
   onRetest:(path:string,requestId:string,onFailure:(message:string)=>void)=>Promise<boolean>;
 }) {
-  const [page,setPage]=useState<GoalFindingPage|null>(null);
-  const [search,setSearch]=useState("");
-  const [applied,setApplied]=useState("");
-  const [error,setError]=useState("");
-  const [loading,setLoading]=useState(false);
-  const active=useRef(true),locked=useRef(false);
-  useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
-  async function load(offset=0,snapshot?:number,query=search) {
-    if(locked.current)return;
-    locked.current=true;setLoading(true);setError("");
-    const view=captureView(),session=captureSession();
-    try {
-      const params=new URLSearchParams({limit:"25",offset:String(offset),search:query});
-      if(snapshot!==undefined)params.set("snapshot",String(snapshot));
-      const result=await api<GoalFindingPage>("/tasks/"+encodeURIComponent(taskId)+"/goal-objectives/"+encodeURIComponent(objectiveId)+"/findings?"+params);
-      if(active.current&&view()&&session()){setPage(result);setApplied(query);}
-    } catch(err) {
-      if(active.current&&view()&&session())setError(err instanceof Error?err.message:"근거 조회 실패");
-    } finally {locked.current=false;if(active.current)setLoading(false);}
-  }
+  const [search,setSearch]=useState(state.search);
+  useEffect(()=>setSearch(state.search),[state.search]);
+  const changePosition=useCallback((position:ListPosition,mode?:HistoryMode)=>{
+    if(goalCollectionMatches(location.search,taskId,objectiveId,state))onChange(position,mode);
+  },[taskId,objectiveId,state,onChange]);
+  const endpoint="/tasks/"+encodeURIComponent(taskId)+"/goal-objectives/"+encodeURIComponent(objectiveId)+"/findings";
+  const page=useRecords<GoalFinding>(state.expanded?"goal-findings":null,state.search,{}, {...state,onPositionChange:changePosition},endpoint,false);
   return <section className="goal-objective-evidence" aria-label={title+" 근거와 재검증"}>
-    <button type="button" disabled={loading} onClick={()=>void load()}>
-      {loading?"조회 중…":"근거·재검증 확인"}
+    <button type="button" disabled={page.loading} onClick={()=>state.expanded?page.retry():onChange({expanded:true})}>
+      {page.loading?"조회 중…":"근거·재검증 확인"}
     </button>
-    {error&&<p role="alert">{error}</p>}
-    {page&&<>
+    {state.expanded&&<>
       <p>이 작업에서 기록한 증거가 일치하는 발견과 해당 발견의 별도 승인 재검증입니다. 재검증 결과는 원래 목표의 완료율을 변경하지 않습니다.</p>
-      <form aria-label={title+" 발견 검색"} onSubmit={e=>{e.preventDefault();void load();}}>
-        <label>발견 제목 검색<input value={search} maxLength={200} disabled={loading} onChange={e=>setSearch(e.target.value)} /></label>
-        <button type="submit" disabled={loading}>검색</button>
+      <form aria-label={title+" 발견 검색"} onSubmit={e=>{e.preventDefault();if(search!==state.search)onChange({search});else page.reload();}}>
+        <label>발견 제목 검색<input value={search} maxLength={200} disabled={page.loading} onChange={e=>setSearch(e.target.value)} /></label>
+        <button type="submit" disabled={page.loading}>검색</button>
       </form>
-      <p role="status">{page.total?`${page.offset+1}–${page.offset+page.items.length} / 전체 ${page.total}개`:"일치하는 발견이 없습니다. 발견이 없다는 사실만으로 목표 달성을 판정하지 않습니다."}</p>
-      {page.items.map(row=><article key={row.id}>
-        <p><strong>{row.title}</strong> · {row.asset_name} · 원본 증거 {row.evidence_count}개</p>
-        <p>연결된 재검증 {row.retests_count}개{row.latest_retest?" · 최근 결과: "+({resolved:"해결 확인",reproduced:"재현",inconclusive:"판정 불가"} as Record<string,string>)[row.latest_retest.conclusion]:""}</p>
-        {row.latest_retest?.triage_effect==="conflict"&&<p>재검증 조치 충돌 기록을 확인하세요. 자동 조치 상태 변경은 적용하지 않았습니다.</p>}
-        <button type="button" onClick={()=>onFinding(row.id)} aria-label={row.title+" 발견·재검증 이력 열기"}>발견·재검증 이력 열기</button>
-        {canOperate&&<GoalRetestButton actorId={actorId} taskId={taskId} objectiveId={objectiveId} findingId={row.id} busy={busy} onRetest={onRetest} />}
-        {row.latest_retest&&<button type="button" onClick={()=>onTask(row.latest_retest!.task_id)} aria-label={row.title+" 최근 재검증 작업 열기"}>최근 재검증 작업 열기</button>}
-      </article>)}
-      <nav aria-label={title+" 근거 목록 페이지"}>
-        <button type="button" disabled={loading||page.offset===0} onClick={()=>void load(Math.max(0,page.offset-page.limit),page.snapshot,applied)}>이전</button>
-        <button type="button" disabled={loading||!page.has_more} onClick={()=>void load(page.offset+page.limit,page.snapshot,applied)}>다음</button>
-        <button type="button" disabled={loading} onClick={()=>void load(0,undefined,applied)}>최신 목록</button>
-      </nav>
+      {!page.ready||page.error?<RecordState records={{...page,reload:page.retry}}/>:<>
+        <p role="status">{page.total?`${page.offset+1}–${page.offset+page.items.length} / 전체 ${page.total}개`:"일치하는 발견이 없습니다. 발견이 없다는 사실만으로 목표 달성을 판정하지 않습니다."}</p>
+        {page.items.map(row=><article key={row.id}>
+          <p><strong>{row.title}</strong> · {row.asset_name} · 원본 증거 {row.evidence_count}개</p>
+          <p>연결된 재검증 {row.retests_count}개{row.latest_retest?" · 최근 결과: "+({resolved:"해결 확인",reproduced:"재현",inconclusive:"판정 불가"} as Record<string,string>)[row.latest_retest.conclusion]:""}</p>
+          {row.latest_retest?.triage_effect==="conflict"&&<p>재검증 조치 충돌 기록을 확인하세요. 자동 조치 상태 변경은 적용하지 않았습니다.</p>}
+          <button type="button" onClick={()=>onFinding(row.id)} aria-label={row.title+" 발견·재검증 이력 열기"}>발견·재검증 이력 열기</button>
+          {canOperate&&<GoalRetestButton actorId={actorId} taskId={taskId} objectiveId={objectiveId} findingId={row.id} busy={busy} onRetest={onRetest}/>}
+          {row.latest_retest&&<button type="button" onClick={()=>onTask(row.latest_retest!.task_id)} aria-label={row.title+" 최근 재검증 작업 열기"}>최근 재검증 작업 열기</button>}
+        </article>)}
+        <nav aria-label={title+" 근거 목록 페이지"}>
+          <button type="button" disabled={page.loading||page.offset===0} onClick={page.previous}>이전</button>
+          <button type="button" disabled={page.loading||!page.has_more} onClick={page.next}>다음</button>
+          <button type="button" disabled={page.loading} onClick={page.reload}>최신 목록</button>
+        </nav>
+      </>}
     </>}
   </section>;
 }

@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--goal-retest-lost-response-flag',type=Path,help='Owned objective retest commit then503 probe')
     parser.add_argument('--goal-round',action='store_true',help='Seed failed objective cell for goal follow-up review')
     parser.add_argument('--goal-evidence',action='store_true',help='Seed objective proof and retest navigation fixtures without target requests')
+    parser.add_argument('--goal-read-fail-flag',type=Path,help='Owned goal progress/evidence GET failure probe')
     parser.add_argument('--goal-sparse',action='store_true',help='Owned goal objectives select separate asset/check pairs')
     parser.add_argument('--goal-lost-response-flag',type=Path,help='Owned goal draft commit then503 probe')
     parser.add_argument('--next-read-fail-flag',type=Path)
@@ -101,6 +102,8 @@ def main():
         @app.middleware('http')
         async def failure(request,call_next):
             nonlocal task_posts,next_posts,observation_posts,goal_posts,goal_retest_posts
+            if request.method=='GET' and (request.url.path.endswith('/goal-progress') or '/goal-objectives/' in request.url.path) and args.goal_read_fail_flag and args.goal_read_fail_flag.exists():
+                return JSONResponse({'detail':'합성 목표 근거 조회 실패'},status_code=503)
             if request.method=='POST' and '/goal-objectives/' in request.url.path and request.url.path.endswith('/retest'):
                 goal_retest_posts+=1
             if request.method=='POST' and request.url.path.endswith('/goal-plans'):

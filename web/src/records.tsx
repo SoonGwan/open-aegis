@@ -33,6 +33,7 @@ export function useRecords<T>(
     onPositionChange: (position: ListPosition, mode?: HistoryMode) => void;
   },
   endpoint?: string,
+  poll = true,
 ) {
   const key = JSON.stringify([kind, search, filters, endpoint]);
   const [position, setPosition] = useState({
@@ -70,13 +71,13 @@ export function useRecords<T>(
       move({ offset: current.offset, snapshot: null }, "replace");
       update();
     };
-    const timer = setInterval(update, 4000);
+    const timer = poll ? setInterval(update, 4000) : undefined;
     window.addEventListener("aegis-records-changed", mutation);
     return () => {
-      clearInterval(timer);
+      if (timer !== undefined) clearInterval(timer);
       window.removeEventListener("aegis-records-changed", mutation);
     };
-  }, [kind, requestKey, move]);
+  }, [kind, requestKey, move, poll]);
   useEffect(() => {
     const requestSequence = ++sequence.current;
     if (!kind) return;
@@ -151,6 +152,7 @@ export function useRecords<T>(
       move({ offset: 0, snapshot: null });
       setRevision((value) => value + 1);
     },
+    retry: () => setRevision((value) => value + 1),
   };
 }
 

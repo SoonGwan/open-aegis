@@ -89,6 +89,7 @@ export function detailQuery(
     writeTaskChat(query, readTaskChat(query.toString()));
     writeTaskWorker(query, readTaskWorker(query.toString()));
     writeTaskTodos(query, readTaskTodos(query.toString()));
+    writeTaskGoal(query, readTaskGoal(query.toString()));
   } else clearTaskCollections(query);
   return query.toString();
 }
@@ -96,6 +97,7 @@ export const taskCollectionKinds = ["findings", "events", "observations"] as con
 export type TaskCollectionKind = (typeof taskCollectionKinds)[number];
 export type TaskCollectionState = ListPosition & { search: string };
 function clearTaskCollections(query: URLSearchParams) {
+  clearTaskGoal(query);
   clearTaskWorker(query);
   clearTaskTodos(query);
   for (const kind of taskCollectionKinds)
@@ -103,6 +105,62 @@ function clearTaskCollections(query: URLSearchParams) {
       query.delete(`task_${kind}_${field}`);
   for (const field of ["q", "open", "offset", "snapshot"])
     query.delete(`task_chat_${field}`);
+}
+export type TaskGoalState = {
+  expanded: boolean;
+  objectives: Record<string, FindingCollectionState>;
+};
+const goalObjectiveIds = Array.from({length:12}, (_, i) => `g${i+1}`);
+function clearTaskGoal(query: URLSearchParams) {
+  for (const key of [...query.keys()])
+    if (key.startsWith("task_goal_")) query.delete(key);
+}
+export function readTaskGoal(search: string): TaskGoalState {
+  const query = new URLSearchParams(search);
+  const expanded = readDetail(search)?.kind === "task" && query.get("task_goal_open") === "true";
+  const objectives: Record<string, FindingCollectionState> = {};
+  if (expanded) for (const id of goalObjectiveIds) {
+    const prefix = `task_goal_${id}_`;
+    if (query.get(prefix+"open") !== "true") continue;
+    objectives[id] = {expanded:true, search:searchText(query.get(prefix+"q")),
+      offset:Math.floor((integer(query.get(prefix+"offset"),10_000_000)||0)/25)*25,
+      snapshot:integer(query.get(prefix+"snapshot"),Number.MAX_SAFE_INTEGER)};
+  }
+  return {expanded, objectives};
+}
+function writeTaskGoal(query: URLSearchParams, state: TaskGoalState) {
+  clearTaskGoal(query);
+  if (!state.expanded) return;
+  query.set("task_goal_open","true");
+  for (const id of goalObjectiveIds) {
+    const row = state.objectives[id];
+    if (!row?.expanded) continue;
+    const prefix = `task_goal_${id}_`;
+    query.set(prefix+"open","true");
+    if (row.search) query.set(prefix+"q",searchText(row.search));
+    if (row.offset) query.set(prefix+"offset",String(row.offset));
+    if (row.snapshot !== null) query.set(prefix+"snapshot",String(row.snapshot));
+  }
+}
+export function updateTaskGoalQuery(search: string, changes: Partial<TaskGoalState>): string {
+  const detail = readDetail(search);
+  if (detail?.kind !== "task") return detailQuery(search,detail);
+  const query = new URLSearchParams(search), previous = readTaskGoal(search);
+  const next = {...previous, ...changes, objectives:{...previous.objectives,...changes.objectives}};
+  for (const id of goalObjectiveIds) {
+    const row = next.objectives[id];
+    if (row && row.search !== (previous.objectives[id]?.search || ""))
+      next.objectives[id] = {...row,offset:0,snapshot:null};
+  }
+  writeTaskGoal(query,next);
+  return detailQuery(query.toString(),detail);
+}
+export function goalCollectionMatches(search: string, taskId: string, objectiveId: string,
+                                      expected: FindingCollectionState): boolean {
+  const detail=readDetail(search), current=readTaskGoal(search).objectives[objectiveId];
+  return detail?.kind === "task" && detail.id === taskId &&
+    Boolean(current) && current.expanded === expected.expanded &&
+    current.search === expected.search && current.offset === expected.offset && current.snapshot === expected.snapshot;
 }
 export type TaskTodoState = {
   list: TaskCollectionState;

@@ -4677,3 +4677,51 @@ on 390×844 has no document overflow.
   built assets confirmed (`...preview-health.json`). Hosted CI, containers,
   production operation, commercial provider quality, semantic goal verification,
   failed-cell-only optimization and remaining full v1 gates stay open.
+
+## Goal evidence navigation recovery — 2026-10-05
+
+- Task detail now stores goal progress expansion and independently applied objective
+  searches, page positions and pagination snapshots in its URL. Reload and Back from
+  findings restore the selected collection. Draft search input is not bookmarked.
+  Only g1..g12 are parsed; only objectives returned for the actual task are rendered
+  and queried. Normalization bounds search/offset/snapshot and removes unsupported
+  fields. Leaving/closing/changing task removes the goal bookmark from the new route.
+- Late position updates require matching task/objective/search/offset/snapshot.
+  Progress requests abort on unmount and require current session/task expansion.
+  Objective collections reuse the existing cancellable pager, with explicit refresh
+  rather than periodic polling. Error retry preserves position; Latest resets to
+  the first page/new snapshot with the same applied search. Refresh failures remain
+  visible instead of displaying an old successful list as the current result.
+- Frontend **97 passed431.995041ms** (`artifacts/goal-navigation-node-verified.txt`),
+  including five new independent-bookmark, normalization, route-exit and stale-position
+  cases. Final TypeScript/Vite build **1.43s** (`...build-verified.txt`),
+  JSindex-KKOOlw2R.js / CSSindex-Bi_eIbTY.css.
+- Existing source SQLite/native objective proof suites **32 passed33.67s**, one
+  upstream deprecation warning (`...api-native.txt`). Initial run without PostgreSQL
+  opt-in was **16 passed/16 skipped** (`...api.txt`); the explicit native run corrected
+  that verification gap. No service Python changed; the previous927-test full run
+  remains source-service evidence, not a new full run for this frontend change.
+- Owned built-app synthetic31-proof fixture: second-page26–31, URL reload, finding
+  detail and app Back, search for 검수30 and filtered reload were inspected
+  (`...ui-page-two.txt`, `...ui-restored.txt`, `...ui-back.txt`, `...ui-search-restored.txt`).
+  Final build also restored page26–31, handled explicit evidence503/retry at unchanged
+  URL and progress503 during document restore, then restored its stored evidence page
+  (`...ui-final-restored.txt`, `...ui-query-failure-final.txt`, `...ui-query-retry.txt`,
+  `...ui-progress-failure.txt`, `...ui-progress-retry.txt`, `...ui-back-final.txt`).
+  Final filtered document restore is also recorded (`...ui-search-restored-final.txt`).
+  An earlier automatic poll recovered between flag removal and a retry click; that
+  timed-out click is not claimed as retry evidence. Explicit collection refresh now
+  preserves the original manual-query behavior and the final retry was executed.
+- Installed wheel with final separately built UI review valid, target requests0
+  (`...installed-runtime-verified.json`). Service bytes unchanged from wheel SHA256
+  **dbfdd035ffe1ab35aff498ba3a20d9df93b535025f494a03c2871fbe5d6054d9**.
+  All72 service files were byte-compared again (`...wheel-proof.json`).
+  Installed smoke does not prove browser navigation; owned browser checks above do.
+- Preview retains existing data, health ok, anonymous goal-progress401 and final
+  assets confirmed (`...preview-health.json`). Browser evidence is synthetic DOM
+  interaction, not target execution, production data or full mobile/screen-reader,
+  multi-objective browser race, role journey or semantic-goal verification.
+- Both owned fixture processes and tabs closed; each fixture logged target requests0,
+  task/next-plan/observation-plan/goal-retest/goal-draft POSTs0, provider calls0 and
+  temporary data removed (`...ui-fixture.txt`, `...ui-failure-fixture.txt`).
+  Owned failure flag removed. Full v1 readiness gates remain open.

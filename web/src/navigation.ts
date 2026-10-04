@@ -5,6 +5,9 @@ import {
 } from "./call-navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  readTaskGoal,
+  updateTaskGoalQuery,
+  type TaskGoalState,
   readTaskTodos,
   updateTaskTodosQuery,
   type TaskTodoState,
@@ -72,6 +75,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     taskChat: readTaskChat(location.search),
     taskWorker: readTaskWorker(location.search),
     taskTodos: readTaskTodos(location.search),
+    taskGoal: readTaskGoal(location.search),
     taskCollections: {
       findings: readTaskCollection(location.search, "findings"),
       events: readTaskCollection(location.search, "events"),
@@ -114,6 +118,7 @@ export function useNavigation(allowedPages: readonly string[]) {
         taskChat: readTaskChat(location.search),
         taskWorker: readTaskWorker(location.search),
         taskTodos: readTaskTodos(location.search),
+        taskGoal: readTaskGoal(location.search),
         taskCollections: {
           findings: readTaskCollection(location.search, "findings"),
           events: readTaskCollection(location.search, "events"),
@@ -207,6 +212,11 @@ export function useNavigation(allowedPages: readonly string[]) {
       commit(updateTaskWorkerQuery(location.search, changes), mode);
     }, [],
   );
+  const updateTaskGoal = useCallback(
+    (changes: Partial<TaskGoalState>, mode: HistoryMode = "push") => {
+      commit(updateTaskGoalQuery(location.search, changes), mode);
+    }, [],
+  );
   const updateCallList = useCallback(
     (changes: Partial<CallListState>, mode: HistoryMode = "push") => {
       commit(updateCallListQuery(location.search, changes), mode);
@@ -221,6 +231,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     updateTaskChat,
     updateTaskWorker,
     updateTaskTodos,
+    updateTaskGoal,
     updateTaskCollection,
     updateFindingCollection,
     updateList,
