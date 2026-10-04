@@ -67,6 +67,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     taskCollections: {
       findings: readTaskCollection(location.search, "findings"),
       events: readTaskCollection(location.search, "events"),
+      observations: readTaskCollection(location.search, "observations"),
     },
     findingCollections: {
       evidence: readFindingCollection(location.search, "evidence"),
@@ -106,6 +107,7 @@ export function useNavigation(allowedPages: readonly string[]) {
         taskCollections: {
           findings: readTaskCollection(location.search, "findings"),
           events: readTaskCollection(location.search, "events"),
+          observations: readTaskCollection(location.search, "observations"),
         },
         findingCollections: {
           evidence: readFindingCollection(location.search, "evidence"),

@@ -1,0 +1,80 @@
+"""Disposable built-app observation UI fixture; synthetic metadata, no target execution."""
+import argparse
+import os
+from pathlib import Path
+import sys
+import tempfile
+import time
+import html
+import shutil
+from contextlib import asynccontextmanager
+from starlette.routing import Route
+from starlette.responses import HTMLResponse, JSONResponse
+
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT))
+from aegis.app import create_app
+from aegis.auth import new_user
+from aegis.__main__ import AegisServer
+from aegis.tool_contracts import contracts_for
+from aegis.worker_observations import record_link
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--port',type=int,default=8815)
+    parser.add_argument('--fail-flag',type=Path,help='Owned QA flag: while present, only task observation GET returns503')
+    args=parser.parse_args()
+    if not 1<=args.port<=65535:parser.error('port must be1..65535')
+    for key in list(os.environ):
+        if key.startswith('AEGIS_'):del os.environ[key]
+    os.environ['AEGIS_WEB_DIR']=str(ROOT/'web/dist')
+    with tempfile.TemporaryDirectory(prefix='aegis-observation-ui-') as temporary:
+        app=create_app(Path(temporary),allow_private=False)
+        async def frame(request):
+            width=request.query_params.get('width','390')
+            source=request.query_params.get('source','?page=observations')
+            if width not in ('320','390','768') or not source.startswith('?'):
+                return JSONResponse({'detail':'Invalid QA frame'},status_code=400)
+            return HTMLResponse('<!doctype html><html><body style="margin:0"><iframe title="Responsive observation QA" style="border:0;width:'+width+'px;height:844px" src="/'+html.escape(source+'&qa_frame=1',quote=True)+'"></iframe></body></html>')
+        app.router.routes.insert(0,Route('/qa-frame',frame))
+        @app.middleware('http')
+        async def failure(request,call_next):
+            if request.url.path.startswith('/api/tasks/') and request.url.path.endswith('/observations') and args.fail_flag and args.fail_flag.exists():
+                return JSONResponse({'detail':'합성 관찰 조회 실패'},status_code=503)
+            response=await call_next(request)
+            if request.query_params.get('qa_frame')=='1':
+                response.headers['X-Frame-Options']='SAMEORIGIN'
+                if 'content-security-policy' in response.headers:
+                    response.headers['Content-Security-Policy']=response.headers['Content-Security-Policy'].replace("frame-ancestors 'none'","frame-ancestors 'self'")
+            return response
+        store=app.state.store
+        store.add_user(new_user('fixture-admin','합성 관찰 관리자','admin','observation-ui-fixture-only'))
+        asset={'id':'qa-asset','name':'관찰 QA 자산','url':'https://observation-qa.invalid/app/',
+               'type':'web','owner':'Synthetic QA','authorized':True,'revision':1,'archived_at':None,'tags':[]}
+        task={'id':'qa-source-task','name':'관찰 출처 QA 작업','status':'completed','goal':'Synthetic UI fixture only',
+              'created_at':time.time(),'started_at':1.,'finished_at':2.,'approved_at':1.,'done':1,'errors':0,
+              'asset_ids':[asset['id']],'scope_snapshot':[asset],'checks':['endpoint_inventory'],
+              'tool_contracts':contracts_for(['endpoint_inventory']),'workers':1,'planner':'rules'}
+        store.put_many([('assets',asset),('tasks',task)])
+        for i in range(60):
+            record_link(store,task,asset,'endpoint_inventory',asset['url']+f'owned-link-{i:02d}')
+        store.put('observations',{'id':'qa-legacy','task_id':task['id'],'asset_id':asset['id'],
+                                 'url':asset['url']+'legacy-link','created_at':time.time()})
+        store.put('observations',{'id':'qa-missing','task_id':'missing-task','asset_id':asset['id'],
+                                 'url':asset['url']+'missing-source','created_at':time.time()})
+        original_lifespan=app.router.lifespan_context
+        @asynccontextmanager
+        async def reviewed_lifespan(application):
+            async with original_lifespan(application):yield
+            assert store.count('traffic')==0
+            assert store.get('tasks',task['id'])['status']=='completed'
+            shutil.rmtree(temporary)
+            print('Fixture lifespan completed; target requests0; temporary data removed',flush=True)
+        app.router.lifespan_context=reviewed_lifespan
+        print('Owned observation UI fixture at http://127.0.0.1:'+str(args.port),flush=True)
+        AegisServer(app,host='127.0.0.1',port=args.port,log_level='warning',timeout_graceful_shutdown=5).run()
+
+
+if __name__=='__main__':
+    main()

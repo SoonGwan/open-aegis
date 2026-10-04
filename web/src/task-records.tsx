@@ -16,6 +16,20 @@ type Finding = {
   severity: string;
   status: string;
 };
+type Observation = {
+  id: string;
+  url: string;
+  asset_id: string;
+  asset_name?: string | null;
+  worker_id?: string;
+  check?: string;
+  tool_version?: number;
+  scope_revision?: number;
+  scope_url?: string;
+  package_sha256?: string;
+  created_at?: number;
+  provenance?: { status: string; reason: string };
+};
 type Event = {
   seq: number;
   ts: number;
@@ -62,6 +76,13 @@ export function TaskRecords({
       />
       <TaskCollection
         taskId={taskId}
+        kind="observations"
+        onFinding={onFinding}
+        state={collections.observations}
+        onChange={onChange}
+      />
+      <TaskCollection
+        taskId={taskId}
         kind="events"
         onFinding={onFinding}
         state={collections.events}
@@ -78,7 +99,7 @@ function TaskCollection({
   onChange,
 }: {
   taskId: string;
-  kind: "findings" | "events";
+  kind: TaskCollectionKind;
   onFinding: (id: string) => void;
   state: TaskCollectionState;
   onChange: (
@@ -102,21 +123,28 @@ function TaskCollection({
     },
     [taskId, kind, state, onChange],
   );
-  const records = useRecords<Finding | Event>(
+  const records = useRecords<Finding | Event | Observation>(
     kind,
     search,
     {},
     { ...state, onPositionChange: changePosition },
     `/tasks/${encodeURIComponent(taskId)}/${kind}`,
   );
-  const name = kind === "findings" ? "작업의 발견 사항" : "작업 실행 기록";
+  const name =
+    kind === "findings"
+      ? "작업의 발견 사항"
+      : kind === "observations"
+        ? "Worker 관찰 링크"
+        : "작업 실행 기록";
   return (
     <section className="finding-collection" aria-label={name}>
       <h4 className="detail-heading">{name}</h4>
       <label className="task-record-search">
         {kind === "findings"
           ? "발견 제목·자산·심각도·상태로 검색"
-          : "메시지·수준으로 검색"}
+          : kind === "observations"
+            ? "링크·자산·작업으로 검색"
+            : "메시지·수준으로 검색"}
         <input
           aria-label={`${name} 검색`}
           maxLength={200}
@@ -126,6 +154,12 @@ function TaskCollection({
           }
         />
       </label>
+      {kind === "observations" && (
+        <p className="subtle">
+          HTML의 범위 내 링크 관찰입니다. 링크를 방문하거나 실행을 승인하지
+          않습니다. 출처 일치는 저장된 메타데이터 비교입니다.
+        </p>
+      )}
       <Pagination records={records} />
       {!records.ready ? (
         <RecordState records={records} />
@@ -148,6 +182,11 @@ function TaskCollection({
                   (record as Finding).status}
               </p>
             </article>
+          ) : kind === "observations" ? (
+            <ObservationRecord
+              key={(record as Observation).id}
+              record={record as Observation}
+            />
           ) : (
             <article
               className={`finding-record execution-entry task-event-record ${(record as Event).level}`}
@@ -173,5 +212,44 @@ function TaskCollection({
         </p>
       )}
     </section>
+  );
+}
+
+function ObservationRecord({ record }: { record: Observation }) {
+  const matched = record.provenance?.status === "matched";
+  return (
+    <article className="finding-record">
+      <code className="observation-url">{record.url}</code>
+      <p>
+        {record.asset_name || "자산 기록 없음"} ·{" "}
+        {matched ? "출처 메타데이터 일치" : "출처 미확인"}
+      </p>
+      <small>
+        {typeof record.created_at === "number"
+          ? new Date(record.created_at * 1000).toLocaleString("ko-KR")
+          : "관찰 시각 미확인"}
+      </small>
+      <p className="subtle">
+        {record.provenance?.reason || "관찰 출처를 확인할 수 없습니다."}
+      </p>
+      <details>
+        <summary>관찰 출처 상세</summary>
+        <pre>
+          {JSON.stringify(
+            {
+              asset_id: record.asset_id,
+              worker_id: record.worker_id ?? null,
+              check: record.check ?? null,
+              tool_version: record.tool_version ?? null,
+              scope_revision: record.scope_revision ?? null,
+              scope_url: record.scope_url ?? null,
+              package_sha256: record.package_sha256 ?? null,
+            },
+            null,
+            2,
+          )}
+        </pre>
+      </details>
+    </article>
   );
 }

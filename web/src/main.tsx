@@ -1654,7 +1654,15 @@ function App() {
                               <small>{observation.asset_id}</small>
                             </td>
                             <td className="observation-source">
-                              {observation.task_name || "작업 기록 없음"}
+                              <button
+                                type="button"
+                                className="text-button"
+                                disabled={!observation.task_name}
+                                aria-label={observation.task_name ? `${observation.task_name} 출처 작업 열기` : "출처 작업 기록 없음"}
+                                onClick={() => navigation.openDetail({ kind: "task", id: observation.task_id })}
+                              >
+                                {observation.task_name || "작업 기록 없음"}
+                              </button>
                               <small>{observation.task_id}</small>
                             </td>
                             <td>{date(observation.created_at)}</td>

@@ -3603,3 +3603,37 @@ on 390×844 has no document overflow.
   owned PostgreSQL cluster; stderr files empty. CI native test list includes new
   Worker tests; hosted execution remains unverified. Repeated planning/dependency
   steps, automatic Worker consumption, dedicated detail UI and whole v1 remain open.
+
+## Worker observation detail UI — 2026-10-04
+
+- Observation list source-task buttons open detail while retaining list search/page;
+  missing source task disables the button. Task detail has independent observation
+  search/25-item pagination/bookmark state, matched/unconfirmed metadata, timestamps
+  and native keyboard-expandable provenance. Observed URLs remain text values.
+- Frontend68passed480.47ms; production build1.44s, JSindex-CcUhf-wd and
+  CSSindex-DniDnrrf (`artifacts/observation-ui-tests.txt`, `...ui-build.txt`). Added
+  URL isolation/close/task-change test. Service Python files unchanged; historical
+  backend644 result above was not rerun or relabeled for this frontend-only change.
+- Owned synthetic fixture60 current links plus legacy/missing-source records:
+  keyboard Enter source open; page2/search preserved; new-tab bookmark restored;
+  Escape closed and returned focus to source button. Actual iframe documents390px
+  (scroll390/dialog366) and320px (scroll320/dialog296), including native keyboard
+  metadata expansion with no document overflow. Viewport emulation returned success
+  but document remained1810px, so these are same-origin fixture iframe checks,
+  not actual-device/touch/zoom/screen-reader verification. Production frame policy
+  unchanged. Final rebuilt390 screenshot retaken after fresh fixture/login.
+- Synthetic503 shows error and distinguishes retained stale data. New-search failure
+  presents retry; manual retry after flag removal restored10 matching records. A
+  first retry attempt found no button after automatic polling recovered, and another
+  stale-data state correctly used the existing latest-list control. Only the final
+  explicit new-search retry counts as manual-success evidence.
+- Artifacts: `observation-ui-review.json`, `observation-ui-http-smoke.json`,
+  `observation-ui-desktop.jpg`, `observation-ui-320.jpg`, `observation-ui-390.jpg`.
+  Initial fixture startup used an invalid Store method, corrected before QA. Two
+  earlier SIGTERM runs exposed temporary cleanup outside Uvicorn's lifespan; their
+  synthetic DB/task/zero-traffic identity was checked before removal. Final fixture
+  shutdown now checks zero target requests and cleans data inside lifespan. Default
+  no-failure-flag mode also serves the frame with correct same-origin child headers.
+  Real preview8790 remains healthy and serves final bundle with DENY framing.
+- This completes the dedicated observation panel subset, not repeated Planner,
+  Worker dependency/consumption, full accessibility/mobile QA or the full v1 gate.

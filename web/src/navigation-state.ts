@@ -89,7 +89,7 @@ export function detailQuery(
   } else clearTaskCollections(query);
   return query.toString();
 }
-export const taskCollectionKinds = ["findings", "events"] as const;
+export const taskCollectionKinds = ["findings", "events", "observations"] as const;
 export type TaskCollectionKind = (typeof taskCollectionKinds)[number];
 export type TaskCollectionState = ListPosition & { search: string };
 function clearTaskCollections(query: URLSearchParams) {

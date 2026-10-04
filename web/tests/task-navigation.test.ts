@@ -98,3 +98,35 @@ test("invalid bookmark positions normalize before requests and search preserves 
   assert.equal(readTaskCollection(bounded, "events").snapshot, null);
   assert.equal(readTaskCollection(bounded, "events").offset, 0);
 });
+
+test("observation source keeps its list and independent task pages in URL", () => {
+  let query = detailQuery(
+    "page=observations&observations_q=source&observations_offset=25",
+    { kind: "task", id: "source-task" },
+  );
+  query = updateTaskCollectionQuery(query, "observations", {
+    search: "owned & ?",
+  });
+  query = updateTaskCollectionQuery(query, "observations", {
+    offset: 25,
+    snapshot: 987,
+  });
+  query = updateTaskCollectionQuery(query, "events", { search: "events" });
+  assert.deepEqual(readTaskCollection(query, "observations"), {
+    search: "owned & ?",
+    offset: 25,
+    snapshot: 987,
+  });
+  assert.equal(readTaskCollection(query, "events").search, "events");
+  assert.equal(new URLSearchParams(query).get("observations_offset"), "25");
+  const closed = detailQuery(query, null);
+  assert.equal(new URLSearchParams(closed).get("observations_q"), "source");
+  assert.equal(new URLSearchParams(closed).has("task_observations_q"), false);
+  assert.equal(
+    readTaskCollection(
+      detailQuery(query, { kind: "task", id: "other" }),
+      "observations",
+    ).offset,
+    0,
+  );
+});
