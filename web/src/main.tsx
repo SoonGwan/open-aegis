@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import "./style.css";
 import { api } from "./api";
+import { runViewAction, ViewScope } from "./view-action";
 import { FindingTriage, type TriageFinding } from "./triage";
 import { RuntimePanel, PolicySummary, type ExecutionPolicy } from "./runtime";
 import { EvidenceGraph } from "./graph";
@@ -432,11 +433,20 @@ function App() {
   const setFilter = (value: string) => navigation.updateList({ filter: value });
   const setShowArchived = (value: boolean) =>
     navigation.updateList({ archived: value });
-  const [modal, setModal] = useState<
+  const localActionScope = useRef(new ViewScope());
+  const [modal, setModalState] = useState<
     "asset" | "task" | "import" | "note" | null
   >(null);
+  const setModal = useCallback((value: typeof modal) => {
+    localActionScope.current.invalidate();
+    setModalState(value);
+  }, []);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
-  const [archivingAsset, setArchivingAsset] = useState<Asset | null>(null);
+  const [archivingAsset, setArchivingAssetState] = useState<Asset | null>(null);
+  const setArchivingAsset = useCallback((value: Asset | null) => {
+    localActionScope.current.invalidate();
+    setArchivingAssetState(value);
+  }, []);
   const [taskAssetId, setTaskAssetId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null),
     [taskDetail, setTaskDetail] = useState<{
@@ -501,6 +511,7 @@ function App() {
       .then(setAuth)
       .catch((e) => setError(e.message));
     const expired = () => {
+      navigation.invalidateActionView();
       setAuth({ authenticated: false, setup_required: false });
       setOverviewLoaded(false);
       refreshSequence.current++;
@@ -553,6 +564,11 @@ function App() {
     };
   }, [auth?.authenticated, refresh]);
 
+  function captureActionView() {
+    const routeCurrent = navigation.captureActionView();
+    const localCurrent = localActionScope.current.capture();
+    return () => routeCurrent() && localCurrent();
+  }
   async function act(
     path: string,
     method = "POST",
@@ -563,15 +579,25 @@ function App() {
     if (busy || actionInFlight.current) return;
     actionInFlight.current = true;
     setBusy(true);
+    const isCurrent = captureActionView();
     try {
-      const result = await api(path, method, body);
-      await refresh();
-      window.dispatchEvent(new Event("aegis-records-changed"));
-      message(success);
-      return result;
-    } catch (e) {
-      setError((e as Error).message);
-      onFailure?.((e as Error).message);
+      return await runViewAction({
+        execute: () => api(path, method, body),
+        reconcile: async () => {
+          await refresh();
+          window.dispatchEvent(new Event("aegis-records-changed"));
+        },
+        isCurrent,
+        success: (_result, current) =>
+          message(current ? success : "이전 화면 요청 완료 · " + success),
+        failure: (e, current) => {
+          const errorMessage = (e as Error).message;
+          if (current) {
+            setError(errorMessage);
+            onFailure?.(errorMessage);
+          } else message("이전 화면 요청 실패 · " + errorMessage);
+        },
+      });
     } finally {
       actionInFlight.current = false;
       setBusy(false);
@@ -789,10 +815,14 @@ function App() {
   }
   async function submitForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || actionInFlight.current) return;
+    actionInFlight.current = true;
     setBusy(true);
     setFormError("");
     const data = new FormData(e.currentTarget);
+    const isCurrent = captureActionView();
+    let destination: string | null = null;
+    let successMessage = "저장했습니다.";
     try {
       if (modal === "asset") {
         const rules = String(data.get("rules") || "").trim();
@@ -812,18 +842,16 @@ function App() {
             authorized: data.get("authorized") === "on",
           },
         );
-        message(
-          editingAsset
-            ? "자산을 수정했습니다. 기존 승인 대기 계획은 다시 만들어야 합니다."
-            : "자산을 등록했습니다.",
-        );
+        successMessage = editingAsset
+          ? "자산을 수정했습니다. 기존 승인 대기 계획은 다시 만들어야 합니다."
+          : "자산을 등록했습니다.";
       } else if (modal === "import") {
         await api(
           "/assets/import",
           "POST",
           JSON.parse(String(data.get("json"))),
         );
-        message("자산을 가져왔습니다.");
+        successMessage = "자산을 가져왔습니다.";
       } else if (modal === "task") {
         const body = {
           name: data.get("name"),
@@ -839,30 +867,36 @@ function App() {
           "POST",
           interval ? { ...body, interval_hours: interval } : body,
         );
-        navigate(interval ? "schedules" : "approvals", true);
-        message(
-          interval
-            ? "예약을 만들었습니다. 생성된 작업은 승인이 필요합니다."
-            : "계획을 만들었습니다. 실행 범위를 확인하고 승인하세요.",
-        );
+        destination = interval ? "schedules" : "approvals";
+        successMessage = interval
+          ? "예약을 만들었습니다. 생성된 작업은 승인이 필요합니다."
+          : "계획을 만들었습니다. 실행 범위를 확인하고 승인하세요.";
       } else if (modal === "note") {
         await api("/notes", "POST", {
           title: data.get("title"),
           content: data.get("content"),
         });
-        navigate("notes", true);
-        message("노트를 저장했습니다.");
+        destination = "notes";
+        successMessage = "노트를 저장했습니다.";
       }
       await refresh();
       window.dispatchEvent(new Event("aegis-records-changed"));
-      setModal(null);
-    } catch (e) {
-      setFormError(
-        e instanceof SyntaxError
-          ? "JSON 형식을 확인하세요."
-          : (e as Error).message,
+      const current = isCurrent();
+      message(
+        current ? successMessage : "이전 화면 요청 완료 · " + successMessage,
       );
+      if (current) {
+        setModal(null);
+        if (destination) navigate(destination, true);
+      }
+    } catch (e) {
+      const errorMessage = e instanceof SyntaxError
+        ? "JSON 형식을 확인하세요."
+        : (e as Error).message;
+      if (isCurrent()) setFormError(errorMessage);
+      else message("이전 화면 요청 실패 · " + errorMessage);
     } finally {
+      actionInFlight.current = false;
       setBusy(false);
     }
   }
@@ -968,9 +1002,10 @@ function App() {
           </span>
           <button
             className="nav-item"
+            disabled={busy}
             onClick={async () => {
-              await act("/auth/logout");
-              setAuth({ setup_required: false, authenticated: false });
+              const result = await act("/auth/logout");
+              if (result) setAuth({ setup_required: false, authenticated: false });
             }}
           >
             <LogOut size={17} />

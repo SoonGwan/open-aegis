@@ -1190,3 +1190,52 @@ on 390×844 has no document overflow.
   200, assets remain two and traffic remains three. No real target scan is performed.
   Whole mobile/readers/zoom, navigation during late action responses, multi-instance
   concurrency, audit/business atomicity and broader v1 release gates remain open.
+
+## Late mutation responses and local modal ownership (2026-10-04)
+
+- Previous turn made authoritative progress: pending-plan refresh, backend/UI evidence,
+  package smoke and commit `2d5850b`. This turn reproduces two actual built-console faults:
+  a delayed replan success redirects from the user's newer workspace view to approvals;
+  a delayed note save closes a freshly opened note modal at the identical URL, discarding
+  its unsaved draft. The fixture commits the owned mutation then explicitly holds the
+  response; failure cases return controlled 503 before the handler. Each hold has a
+  50-second deadline and a file-based release, with no production data or target execution.
+- Navigation now maintains an in-memory visit revision, invalidated synchronously on
+  route changes, Back/Forward and session-expiry events. Main local form/archive modal
+  changes invalidate a separate scope. Returning to the identical URL or reopening the
+  same modal cannot restore an older response's ownership. The common action runner
+  reconciles successful persisted mutations regardless of current view, but returns no
+  navigation result to a stale caller. Previous-view failure does not alter the current
+  inline error/recovery state. Completion is still communicated through the existing
+  status toast. Main forms capture the same scopes, defer navigation until reconciliation,
+  preserve newer modals, and share the synchronous action-in-flight submission gate.
+- Eight new native tests use controlled request/refresh promises and assert current
+  success/error, late success/error, navigation during reconciliation, Back to identical
+  URL and local modal replacement. Full frontend **47 tests pass** (269.26 ms); bounded
+  command is `npm --prefix web test`. TypeScript/Vite build passes via
+  `npm --prefix web run build`: `index-CDxDl58J.js` / unchanged `index-BZKzfnn-.css`.
+  No Python or stylesheet changes; backend full-suite evidence remains the previous
+  turn's 271 passes and is not reported as rerun here.
+- Actual built desktop console asserts: late success retains a different task detail;
+  late failure leaves its URL/detail and zero inline alerts; Back to the identical task
+  retains that detail when the old success arrives; unmodified-view replan still navigates
+  to approvals. At identical note URL, both delayed success and failure retain the new
+  modal's title/content; failure adds no inline error to it. Normal note save closes its
+  own modal and displays its stored note. Current-modal failure keeps original input and
+  displays the controlled error. Synthetic successful notes each store once; failure
+  stores none; target traffic remains zero. Parallel old/new mutation completions are
+  inapplicable to this main runner because the shared submission gate serializes requests.
+- Captures `artifacts/v1-late-action-navigation.jpg` and
+  `artifacts/v1-new-draft-late-response.jpg` are visually inspected. They precede the final
+  logout-button guard, which does not alter these modal layouts. These cases establish
+  main-console visit ownership, not universal async safety across every separate component.
+  Other component mutations, draft editing inside the same submitted modal, whole mobile/
+  assistive technology, long-lived sessions and broader release criteria remain open.
+- Final built-console save is held while Enter is pressed again in the title input.
+  SQLite verifies exactly one note. After closing the saving modal, logout is observed
+  disabled; after response release it is asserted enabled again. Logout now waits for
+  a successful action result before changing local identity, and is disabled during a
+  shared main action. No actual logout, session-expiry race or logout-failure browser
+  sequence is performed here. QA stops normally and leaves no held request. Main preview
+  stays healthy (200), assets two and target traffic three; the new UI is served without
+  restarting the unchanged Python process.

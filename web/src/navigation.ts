@@ -20,6 +20,7 @@ import {
   type ListState,
   type HistoryMode,
 } from "./navigation-state";
+import { ViewScope } from "./view-action";
 const changed = "aegis-navigation-changed";
 function metadata() {
   const previous =
@@ -52,6 +53,7 @@ function commit(query: string, mode: HistoryMode) {
 }
 export function useNavigation(allowedPages: readonly string[]) {
   const allowedKey = JSON.stringify(allowedPages);
+  const actionScope = useRef(new ViewScope());
   const [state, setState] = useState(() => ({
     ...readNavigation(location.search, allowedPages),
     detail: readDetail(location.search),
@@ -73,6 +75,7 @@ export function useNavigation(allowedPages: readonly string[]) {
   const maximum = useRef(position.maximum);
   useEffect(() => {
     const sync = (event: Event) => {
+      actionScope.current.invalidate();
       const current = metadata();
       maximum.current =
         event.type === changed
@@ -171,6 +174,8 @@ export function useNavigation(allowedPages: readonly string[]) {
   );
   return {
     ...state,
+    captureActionView: () => actionScope.current.capture(),
+    invalidateActionView: () => actionScope.current.invalidate(),
     updateTaskChat,
     updateTaskCollection,
     updateFindingCollection,
