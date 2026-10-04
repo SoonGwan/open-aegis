@@ -84,12 +84,18 @@ def main():
     parser.add_argument('--duration', type=bounded_int(1, 3600), default=60)
     parser.add_argument('--clients', type=bounded_int(1, 32), default=4)
     parser.add_argument('--sse-clients', type=bounded_int(0, 32), default=0)
-    parser.add_argument('--revoke-stream-session', action='store_true')
+    revocations = parser.add_mutually_exclusive_group()
+    revocations.add_argument('--revoke-stream-session', action='store_const',
+                             const='logout', dest='stream_revocation', help='legacy alias for logout')
+    revocations.add_argument('--stream-revocation', choices=('logout', 'password', 'role', 'disable'))
     parser.add_argument('--assets', type=bounded_int(25, 20000), default=1000)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    if args.revoke_stream_session and (not args.sse_clients or args.duration < 2):
+    revoke_requested = args.stream_revocation is not None
+    if revoke_requested and (not args.sse_clients or args.duration < 2):
         parser.error('stream revocation requires sse-clients > 0 and duration >= 2')
+    if args.stream_revocation in ('password', 'role', 'disable') and args.sse_clients < 2:
+        parser.error('account revocation requires at least two SSE clients for independent sessions')
     fingerprint = hashlib.sha256()
     for path in sorted((ROOT/'aegis').rglob('*.py')):
         fingerprint.update(str(path.relative_to(ROOT)).encode())
@@ -117,7 +123,7 @@ def main():
         stream_workers = []
         shutdown_sent = threading.Event()
         revocation_sent = threading.Event()
-        revocation = {'requested':args.revoke_stream_session, 'performed':False}
+        revocation = {'requested':revoke_requested, 'action':args.stream_revocation, 'performed':False}
         streams = {'opened':0, 'active':0, 'natural_reconnections':0,
                    'shutdown_eof':0, 'revoked_eof':0, 'data_messages':0, 'heartbeats':0, 'errors':0}
         try:
@@ -138,13 +144,29 @@ def main():
                 setup.raise_for_status()
                 assert authenticated.get('/api/auth/status').json()['authenticated']
                 cookie = dict(authenticated.cookies)
-                stream_cookie = cookie
-                if args.revoke_stream_session:
-                    stream_control = stack.enter_context(httpx.Client(base_url=base, trust_env=False, timeout=10))
-                    stream_login = stream_control.post('/api/auth/login', json={
-                        'username':'admin','password':'owned-load-fixture-password-only'})
-                    stream_login.raise_for_status()
-                    stream_cookie = dict(stream_control.cookies)
+                stream_cookies = [cookie]
+                stream_controls = []
+                stream_username = 'admin'
+                stream_password = 'owned-load-fixture-password-only'
+                if revoke_requested:
+                    login_count = 1
+                    if args.stream_revocation != 'logout':
+                        stream_username = 'owned-stream-operator'
+                        created = authenticated.post('/api/users', json={
+                            'username':stream_username, 'name':'Owned synthetic operator',
+                            'role':'operator', 'password':stream_password})
+                        created.raise_for_status()
+                        stream_user = created.json()
+                        login_count = 2
+                    stream_cookies = []
+                    for _ in range(login_count):
+                        control = stack.enter_context(httpx.Client(base_url=base, trust_env=False, timeout=10))
+                        control.post('/api/auth/login', json={
+                            'username':stream_username,'password':stream_password}).raise_for_status()
+                        stream_controls.append(control)
+                        stream_cookies.append(dict(control.cookies))
+                    assert len({item['aegis_session'] for item in stream_cookies}) == login_count
+                    revocation['sessions_tested'] = login_count
                 first = authenticated.get('/api/records/assets', params={'limit':25}).json()
                 assert first['total'] == args.assets and len(first['items']) == 25
                 ready_streams = [threading.Event() for _ in range(args.sse_clients)]
@@ -152,7 +174,7 @@ def main():
                 def stream_worker(index):
                     cursor = 0
                     try:
-                        with httpx.Client(base_url=base, cookies=stream_cookie, trust_env=False,
+                        with httpx.Client(base_url=base, cookies=stream_cookies[index % len(stream_cookies)], trust_env=False,
                                           timeout=httpx.Timeout(10, read=None)) as client:
                             while not shutdown_sent.is_set():
                                 with client.stream('GET', '/api/events/stream', params={'after':cursor}) as response:
@@ -264,32 +286,71 @@ def main():
                 while time.monotonic() < deadline:
                     if process.poll() is not None:
                         raise RuntimeError('Owned server exited during load')
-                    if args.revoke_stream_session and not revocation['performed'] and time.monotonic() >= revoke_at:
-                        revocation['open_before_logout'] = wait_for_streams(args.sse_clients)
+                    if revoke_requested and not revocation['performed'] and time.monotonic() >= revoke_at:
+                        revocation['open_before_revocation'] = wait_for_streams(args.sse_clients)
                         revoke_started = time.monotonic()
                         revocation_sent.set()
-                        logout = stream_control.post('/api/auth/logout')
-                        logout.raise_for_status()
+                        if args.stream_revocation == 'logout':
+                            changed = stream_controls[0].post('/api/auth/logout')
+                        elif args.stream_revocation == 'password':
+                            changed = stream_controls[0].post('/api/auth/password', json={
+                                'current_password':stream_password,
+                                'new_password':'owned-load-new-password-only'})
+                        else:
+                            changes = {'expected_updated_at':stream_user['updated_at']}
+                            changes.update({'role':'viewer'} if args.stream_revocation == 'role' else {'disabled':True})
+                            changed = authenticated.patch(f"/api/users/{stream_user['id']}", json=changes)
+                        changed.raise_for_status()
                         for thread in stream_workers:
                             thread.join(5)
                             if thread.is_alive():
-                                raise RuntimeError('Owned event stream remained open after logout')
+                                raise RuntimeError('Owned event stream remained open after revocation')
                         assert streams['revoked_eof'] == args.sse_clients and streams['errors'] == 0
-                        with httpx.Client(base_url=base, cookies=stream_cookie, trust_env=False, timeout=10) as revoked_probe:
-                            with revoked_probe.stream('GET', '/api/events/stream') as denied:
-                                assert denied.status_code == 401
-                                revocation['reconnect_status'] = denied.status_code
-                            assert not revoked_probe.get('/api/auth/status').json()['authenticated']
+                        revocation['closed_seconds'] = round(time.monotonic()-revoke_started,3)
+                        reconnect_statuses = []
+                        for old_cookie in stream_cookies:
+                            with httpx.Client(base_url=base, cookies=old_cookie, trust_env=False, timeout=10) as revoked_probe:
+                                with revoked_probe.stream('GET', '/api/events/stream') as denied:
+                                    assert denied.status_code == 401
+                                    reconnect_statuses.append(denied.status_code)
+                                assert not revoked_probe.get('/api/auth/status').json()['authenticated']
+                        revocation['reconnect_statuses'] = reconnect_statuses
                         assert authenticated.get('/api/auth/status').json()['authenticated']
-                        revocation.update(performed=True, closed_seconds=round(time.monotonic()-revoke_started,3),
-                                          unaffected_session_authenticated=True)
+                        if args.stream_revocation != 'logout':
+                            with httpx.Client(base_url=base, trust_env=False, timeout=10) as fresh:
+                                login = fresh.post('/api/auth/login', json={
+                                    'username':stream_username,'password':stream_password})
+                                revocation['original_password_login_status'] = login.status_code
+                                if args.stream_revocation in ('password', 'disable'):
+                                    assert login.status_code == 401
+                                else:
+                                    login.raise_for_status()
+                                    identity = fresh.get('/api/auth/status').json()
+                                    assert identity['authenticated'] and identity['user']['role'] == 'viewer'
+                                    assert fresh.post('/api/assets', json={
+                                        'name':'Must not be created', 'url':'https://denied-owned.invalid/',
+                                        'authorized':True}).status_code == 403
+                                    revocation['fresh_role'] = 'viewer'
+                                    revocation['fresh_write_status'] = 403
+                                if args.stream_revocation == 'password':
+                                    fresh.post('/api/auth/login', json={
+                                        'username':stream_username,'password':'owned-load-new-password-only'}).raise_for_status()
+                                    identity = fresh.get('/api/auth/status').json()
+                                    assert identity['authenticated'] and identity['user']['role'] == 'operator'
+                                    revocation['new_password_authenticated'] = True
+                                if args.stream_revocation == 'disable':
+                                    users = authenticated.get('/api/users')
+                                    users.raise_for_status()
+                                    assert any(user['id'] == stream_user['id'] and user['disabled'] for user in users.json())
+                                    revocation['disabled_account_verified'] = True
+                        revocation.update(performed=True, unaffected_session_authenticated=True)
                         with lock:
                             completed_at_revocation = sum(counts.values())
                     sample = {'elapsed_seconds':round(time.monotonic()-started, 3), **process_sample(process.pid)}
                     samples.append(sample)
                     peak = max(peak, sample['rss_kib'])
                     pause = min(2, max(0, deadline-time.monotonic()))
-                    if args.revoke_stream_session and not revocation['performed']:
+                    if revoke_requested and not revocation['performed']:
                         pause = min(pause, max(0, revoke_at-time.monotonic()))
                     stopped.wait(pause)
                 stopped.set()
@@ -305,11 +366,11 @@ def main():
                 assert not runtime['tasks']
                 elapsed = time.monotonic()-started
                 # A natural 30-second stream rollover can briefly reconnect.
-                open_at_shutdown = wait_for_streams(0 if args.revoke_stream_session else args.sse_clients)
-                if args.revoke_stream_session:
+                open_at_shutdown = wait_for_streams(0 if revoke_requested else args.sse_clients)
+                if revoke_requested:
                     assert revocation['performed']
-                    revocation['responses_after_logout'] = sum(counts.values())-completed_at_revocation
-                    assert revocation['responses_after_logout'] > 0
+                    revocation['responses_after_revocation'] = sum(counts.values())-completed_at_revocation
+                    assert revocation['responses_after_revocation'] > 0
             shutdown_started = time.monotonic()
             shutdown_sent.set()
             process.send_signal(signal.SIGTERM)
@@ -321,7 +382,7 @@ def main():
                 thread.join(5)
                 if thread.is_alive():
                     raise RuntimeError('Owned event stream did not close after shutdown')
-            assert streams['shutdown_eof'] == (0 if args.revoke_stream_session else args.sse_clients)
+            assert streams['shutdown_eof'] == (0 if revoke_requested else args.sse_clients)
             assert streams['errors'] == 0
             shutdown_elapsed = time.monotonic()-shutdown_started
             with WorkspaceLease(workspace):

@@ -1887,3 +1887,52 @@ on 390×844 has no document overflow.
   network partitions or cancellation of an already authorized batch. Full v1 gate
   remains open. Main health 200, assets two/tasks four/traffic three unchanged;
   owned servers stop and main preview stays live.
+
+## 2026-10-04 — account changes revoke independent live sessions during read load
+
+- The owned HTTP resource harness adds mutually exclusive
+  `--stream-revocation logout|password|role|disable`; the existing
+  `--revoke-stream-session` remains a logout alias. Account-change modes require
+  at least two SSE readers and create a separate synthetic operator with two
+  distinct login tokens. Readers alternate tokens; administrator read/export
+  workers keep their original session. No production runtime source changes.
+- Three sequential eight-second scenarios, each with 25 assets/25 findings, two
+  read workers and four consuming streams, pass. Before each change all four
+  connections are open; afterward four normal revoked EOFs, zero stream errors,
+  zero natural rollovers, and both old tokens return stream HTTP 401 and auth
+  false. The separate administrator remains authenticated and completes positive
+  read/export responses after the revocation verification checkpoint.
+
+  | Change | Regular HTTP 200 replies | Replies after checkpoint | Request-to-stream-close seconds | Additional checks |
+  |---|---:|---:|---:|---|
+  | Own password | 348 | 142 | 0.559 | Old password 401; new password authenticates operator |
+  | Operator to viewer | 354 | 170 | 0.031 | Fresh login reports viewer; asset creation 403 |
+  | Account disabled | 343 | 162 | 0.047 | Login 401; administrator directory shows disabled |
+
+- Evidence: `artifacts/resource-account-password.json`,
+  `artifacts/resource-account-role.json`, `artifacts/resource-account-disable.json`.
+  All have zero target requests/unexpected failures; assets/findings each remain
+  25 and tasks/traffic zero. Lifespan markers, process exit and workspace lease
+  reacquisition pass. Shutdown durations respectively 0.247/0.190/0.198 seconds.
+  These are observed times, not universal deadlines or resource SLOs. The current
+  `closed_seconds` excludes subsequent credential/reconnect probes, unlike the
+  previous logout result format. Shared result keys now use revocation rather
+  than logout; documentation records the change.
+- Legacy logout alias regression: three seconds, 25 assets/findings, one worker,
+  two streams sharing a distinct administrator token; 62 HTTP 200 replies, two
+  revoked EOFs, old-token 401, original session retained, 19 replies after
+  checkpoint. Normal non-revocation regression: three seconds, one worker/two
+  streams, 64 HTTP 200 replies, two open at SIGTERM/two shutdown EOFs, zero revoked
+  EOFs. Both preserve counts, target requests zero and shutdown/lease checks.
+  Evidence `artifacts/resource-logout-alias-regression.json` and
+  `artifacts/resource-normal-account-regression.json`. These two regression runs
+  overlap briefly; their timing is not an isolated comparative benchmark.
+- Four invalid CLI configurations exit 2 without creating output: account change
+  with one SSE reader, one-second duration, zero readers, and simultaneous alias/
+  explicit modes. Compilation and diff checks pass. Source fingerprint remains
+  `65487a3e60dddcfd238ba87d6d8a9d91d2331684c403915d250946f0736cf8d8`.
+  No full backend/frontend suite or installed-wheel rerun is claimed for this
+  scripts/docs-only change. Actual browser/cross-tab recovery, tenant isolation,
+  admin password-reset path, time expiry, already-authorized batch cancellation,
+  slow consumers and prolonged soak remain outside these scenarios. v1 gates
+  stay open. Main preview health remains HTTP 200; owned children terminate.

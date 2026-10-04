@@ -52,9 +52,32 @@ false, 다른 로그인 세션의 인증 유지와 로그아웃 이후 응답이
   --revoke-stream-session --output artifacts/resource-stream-revocation-20s.json
 ```
 
+`--stream-revocation logout`은 위의 기존 옵션과 동일하다. 두 옵션은 함께 지정할 수 없다.
+`password`, `role`, `disable`은 별도의 합성 operator 계정을 만들고 서로 다른 두
+로그인 세션으로 스트림을 분배한다. 이 세 모드는 SSE 클라이언트가 2개 이상이어야 한다.
+다음 명령의 모드를 바꿔 각 시나리오를 독립적으로 실행한다.
+
+```bash
+.venv/bin/python scripts/review_resource_load.py \
+  --duration 8 --assets 25 --clients 2 --sse-clients 4 \
+  --stream-revocation password --output artifacts/resource-account-password.json
+```
+
+비밀번호 모드는 본인의 실제 비밀번호 변경 API, 역할·비활성화 모드는 관리자의
+사용자 수정 API를 호출한다. 두 이전 세션의 스트림 EOF·재접속 401·인증 false와
+별도 관리자의 인증·이후 조회 완료를 확인한다. 비밀번호 변경 후 이전 비밀번호
+거절/새 비밀번호 로그인, viewer 변경 후 재로그인 역할/자산 등록 403, 비활성화 후
+로그인 거절/사용자 목록의 비활성 상태도 검사한다. 데이터는 모두 임시 서버에만 있다.
+
 폐기 옵션에서는 종료 직전 스트림이 0개여야 하고 정상 EOF는 shutdown 대신
-revoked로 기록한다. 서버 종료와 lifespan/잠금 검사는 그대로 수행한다. 다른 기기의
-전체 세션 폐기·비밀번호/역할 변경, 시간 만료, 폐기 전에 이미 허가된 응답 배치의
+revoked로 기록한다. 서버 종료와 lifespan/잠금 검사는 그대로 수행한다. 결과의
+`closed_seconds`는 변경 요청부터 스트림 스레드 종료까지의 관측 시간이며 재접속·
+새 로그인 검사는 제외한다. 이전 로그아웃 결과의 이 값은 재접속 검사까지 포함했다.
+현재 공통 필드는 `open_before_revocation`, `responses_after_revocation`,
+`reconnect_statuses`이며 마지막 값은 검사한 이전 세션별 HTTP 상태의 배열이다.
+2초 같은 짧은 duration은 변경·암호 해시·재로그인 검사 중 소진될 수 있으므로
+계정 변경 리허설은 8초 이상을 권장한다. 변경 후 조회 완료가 없으면 실패한다.
+실제 기기·다른 탭의 UI, tenant 격리, 시간 만료, 폐기 전에 이미 허가된 응답 배치의
 소급 취소나 브라우저 로그인 화면 전환은 이 옵션으로 검증하지 않는다.
 
 서버 PID의 RSS(KiB)와 누적 CPU 시간을 약 2초 간격으로 측정한다. 시작·표본 최대·
