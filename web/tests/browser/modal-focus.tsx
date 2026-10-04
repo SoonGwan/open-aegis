@@ -5,15 +5,36 @@ import Modal from "../../src/components/Modal";
 import "../../src/style.css";
 
 function Fixture() {
-  const [open, setOpen] = useState(false);
+  const parameters = new URLSearchParams(location.search);
+  const [open, setOpen] = useState(parameters.get("frame") === "1");
+  const longLabels = parameters.get("long") === "1";
+  const separateForm = parameters.get("forms") === "two";
   const [tick, setTick] = useState(0);
   const [closedAt, setClosedAt] = useState<number | null>(null);
   const regionLast =
     new URLSearchParams(location.search).get("last") === "region";
+  const radioLast =
+    new URLSearchParams(location.search).get("last") === "radio";
+  const radioEmpty =
+    new URLSearchParams(location.search).get("choice") === "none";
   useEffect(() => {
     const timer = setInterval(() => setTick((value) => value + 1), 1000);
     return () => clearInterval(timer);
   }, []);
+  useEffect(() => {
+    if (window.parent === window) return;
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    const box = dialog?.getBoundingClientRect();
+    window.parent.postMessage({
+      type: "modal-width-metrics",
+      viewport: innerWidth,
+      rootClientWidth: document.documentElement.clientWidth,
+      rootScrollWidth: document.documentElement.scrollWidth,
+      dialog: box ? { left: box.left, right: box.right, width: box.width, height: box.height,
+        clientWidth: dialog!.clientWidth, scrollWidth: dialog!.scrollWidth,
+        clientHeight: dialog!.clientHeight, scrollHeight: dialog!.scrollHeight } : null,
+    }, location.origin);
+  }, [tick, open]);
   return (
     <main>
       <h1>모달 키보드 회귀 검수</h1>
@@ -40,6 +61,33 @@ function Fixture() {
             <summary>마지막 펼침</summary>
             <p>펼친 원본을 확인합니다.</p>
           </details>
+          {radioLast && separateForm && <form aria-label="별도 폼 라디오">
+            <fieldset><legend>별도 폼 그룹</legend>
+              {["별도 폼 첫 번째", "별도 폼 두 번째"].map((label, index) =>
+                <label className="checkbox-label scopesentry-connection" key={label}>
+                  <input type="radio" name="fixture-choice" defaultChecked={index === 0} /><span>{label}</span>
+                </label>
+              )}
+            </fieldset>
+          </form>}
+          {radioLast && (
+            <fieldset>
+              <legend>마지막 라디오 그룹</legend>
+              {["첫 번째", "두 번째", "세 번째"].map((label, index) => (
+                <label
+                  className="checkbox-label scopesentry-connection"
+                  key={label}
+                >
+                  <input
+                    type="radio"
+                    name="fixture-choice"
+                    defaultChecked={!radioEmpty && index === 0}
+                  />
+                  <span>{label}{longLabels ? ` · https://owned-fixture.invalid/${"long-source-path-".repeat(35)}` : ""}</span>
+                </label>
+              ))}
+            </fieldset>
+          )}
           {regionLast && (
             <div
               role="region"

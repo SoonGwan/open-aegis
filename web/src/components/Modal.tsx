@@ -1,9 +1,9 @@
 import { X } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useRef, useId } from "react";
 
-function focusable(root: HTMLElement | null): HTMLElement[] {
+function focusable(root: HTMLElement | null, reverse = false): HTMLElement[] {
   if (!root) return [];
-  return Array.from(
+  const ordered = Array.from(
     root.querySelectorAll<HTMLElement>(
       "button,input,textarea,select,a[href],summary,[tabindex],[contenteditable='true']",
     ),
@@ -21,6 +21,25 @@ function focusable(root: HTMLElement | null): HTMLElement[] {
         (a.tabIndex > 0 ? a.tabIndex : Infinity) -
         (b.tabIndex > 0 ? b.tabIndex : Infinity),
     );
+  // Native radio groups have one Tab stop. All members expose tabIndex=0,
+  // so treating each as a boundary can let Tab escape from the checked member.
+  const active = document.activeElement;
+  return ordered.filter((el) => {
+    if (!(el instanceof HTMLInputElement) || el.type !== "radio" || !el.name)
+      return true;
+    const group = ordered.filter(
+      (candidate): candidate is HTMLInputElement =>
+        candidate instanceof HTMLInputElement &&
+        candidate.type === "radio" &&
+        candidate.name === el.name &&
+        candidate.form === el.form &&
+        candidate.getRootNode() === el.getRootNode(),
+    );
+    const current = group.find((member) => member === active);
+    const checked = group.find((member) => member.checked);
+    const entry = reverse ? group[group.length - 1] : group[0];
+    return el === (current || checked || entry);
+  });
 }
 
 export default function Modal({
@@ -68,7 +87,7 @@ export default function Modal({
         close.current();
       }
       if (e.key === "Tab") {
-        const list = focusable(ref.current);
+        const list = focusable(ref.current, e.shiftKey);
         const first = list[0],
           last = list[list.length - 1];
         if (!list.length) {

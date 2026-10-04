@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><title>실제 모달 너비 검수</title></head>
+<body style="font-family:system-ui">
+<h1>실제 모달 · CSS 문서 너비 검수</h1>
+<button data-width="320">320px</button>
+<button data-width="390">390px</button>
+<button data-width="768">768px</button>
+<p>합성 긴 원본 라벨 · 대상 요청 없음 · 실제 기기/터치 에뮬레이션 아님</p>
+<iframe title="모달 너비 검수" src="./modal-focus.html?last=radio&amp;frame=1&amp;long=1" style="display:block;width:390px;height:844px;border:2px solid;margin:20px auto"></iframe>
+<pre id="metrics" style="white-space:pre-wrap"></pre>
+<script type="module" src="./modal-width-review.js"></script>
+</body></html>

@@ -1418,3 +1418,60 @@ on 390×844 has no document overflow.
   assets two/tasks four/traffic three, served document references final bundle. Actual
   source deployment, whole positional-source consistency, larger imports/retention, other
   v1 integration and UX gates remain open.
+
+
+## 2026-10-04 — native radio modal focus boundaries
+
+- Production Modal's last native radio group reproduces a keyboard trap failure in the
+  no-API fixture: with first radio checked, Tab leaves document BODY focused, outside
+  the dialog. Every radio's DOM tabIndex is zero, while the native group has one Tab
+  stop; the old last-element comparison incorrectly selected the trailing unchecked
+  radio as its boundary. This is an actual browser reproduction before service UI edit,
+  not a synthetic DOM assertion or a claim that a current workspace screen ends in radios.
+- Focus candidate filtering now picks the focused/checked member or direction-specific
+  unselected entry within each name/form/tree group. It preserves native arrow-key and
+  checked behavior and the existing disabled/hidden/negative-tabindex filters. The
+  boundary list is recalculated on every Tab. References are the
+  [W3C modal](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/) and
+  [radio group](https://www.w3.org/WAI/ARIA/apg/patterns/radio/) keyboard guidance.
+- Real production-component fixture after reload proves checked first and arrow-selected
+  second each Tab-wrap to Close; reverse Tab returns to the checked member. Unselected
+  reverse entry reaches third without checking it, then Tab wraps. Fresh-document forward
+  entry reaches first; reverse Tab returns to summary. A previously visited unselected
+  group can remember its last member on native entry; containment/selection are asserted
+  without forcing a remembered group back to first. An inspection initially attempted
+  `instanceof HTMLInputElement` in the browser evaluation sandbox, which is unavailable;
+  subsequent read-only DOM inspection of type/checked/labels establishes the reported
+  focus, without altering app state.
+- Same-name groups owned by different forms remain independent: reverse from Close
+  reaches the trailing checked member, another reverse reaches separate form's checked
+  member, and forward returns through trailing member to Close. A disabled fieldset and
+  negative-tabindex control remain skipped on the fresh forward sequence. Existing final
+  scroll region receives reverse Tab, ArrowDown moves scrollTop to 40, and Tab returns
+  to Close.
+- Parent tick advances from 0 to 61 while focus stays on selected second radio. Escape
+  closes with recorded close tick 61/current 61, restores opener, and clears body overflow
+  lock. This proves callback freshness in this fixture; full nesting/assistive technology
+  and every component's asynchronous state are not covered.
+- New fixture wrapper measures actual iframe documents, not CSS scaling/device emulation.
+  Three synthetic long source labels use the production Modal/stylesheet. At 320/390/768,
+  root scrollWidth equals clientWidth (320/390/768); dialog scrollWidth equals clientWidth
+  (277/347/621). Dialog bounds fit each viewport: 12–308, 12–378, 64–704.
+  Vertical content heights 2193/1740/1046 exceed client heights 789/789/756 and show native
+  vertical scrollbar. Viewed `artifacts/v1-modal-radio-320.jpg` confirms narrow wrapping,
+  readable header/close, selected radio and scrollbar. This does not prove touch, zoom,
+  screen reader, bottom-content reachability on actual phones or all product dialogs.
+- Frontend **47 pass**, TypeScript/Vite production build passes: `index-DAehDeWO.js` /
+  `index-B5ysGB7c.css`. The new DOM regression is manual fixture coverage, not part of
+  those 47 Node tests. Selected Montage semantic-token/AA checks pass. No Python service
+  change; no repeat full backend suite is claimed. Browser fixtures stay outside the
+  production Vite entry and make no API or target requests.
+- Installed runtime outside checkout uses the unchanged prior wheel SHA-256
+  `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba` plus newly built UI.
+  Dependency/CLI/auth/schema/file-import/remote-refusal/audit/backup/restore/clean-shutdown
+  checks pass with zero target requests. Main preview health/bundle check follows; full
+  v1 accessibility/visual/remote integration gates remain open.
+- Vite's manual fixture uses page reload when its Fast Refresh export check declines a
+  fixture update; all reported final keyboard checks start from explicit fresh navigation.
+  QA Vite stops, main remains live: health 200, final bundle references match, assets two/
+  tasks four/traffic three unchanged. No production backend restart was required.

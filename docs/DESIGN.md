@@ -43,6 +43,10 @@ Montage의 assistive/disable은 작은 본문에 그대로 사용하면 대비�
   페이지 제목에 포커스를 옮긴다. URL과 탐색 이력은 바꾸지 않는다. 본문 landmark도
   같은 제목으로 이름을 연결한다. 모달을 열면 배경의 건너뛰기 링크도 inert다.
 - focus-visible 3px blue outline, modal focus trap에서 숨겨진 입력은 제외한다.
+  네이티브 라디오 그룹은 선택된 항목 또는 현재 포커스 항목을 하나의 Tab 경계로
+  취급한다. 미선택 그룹의 방향별 진입과 서로 다른 폼 소유자를 구분하고 포커스
+  순환으로 선택값을 변경하지 않는다. [W3C 모달](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)과
+  [라디오 그룹](https://www.w3.org/WAI/ARIA/apg/patterns/radio/)의 키보드 기준을 참고한다.
 - 모바일에서는 장식 그래픽을 숨기고, 표는 표 영역 안에서 가로 스크롤한다.
 
 구조 토큰 `--stroke`, `--radius`, `--shadow-*`는 Open Aegis가 정의했다.

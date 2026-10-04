@@ -21,6 +21,35 @@ Tab from Close to Cancel, wait more than four seconds, and verify focus stays on
 Escape must return to the source Archive button. The old onClose effect dependency moved
 focus back to Close on every background refresh.
 
+## Native radio-group boundaries
+
+Open `modal-focus.html?last=radio`. The final native group initially checks the first
+radio. Tab from that radio must wrap to Close; Shift+Tab from Close must return to it.
+ArrowRight selects the second radio; repeat both directions and check selection is kept.
+Wait through parent tick updates without moving focus, then Escape must return to opener.
+The pre-fix regression left document BODY active when Tab departed the checked first
+radio: every radio exposed tabIndex=0 but the browser uses one group stop.
+
+Repeat at `?last=radio&choice=none`: fresh-document forward entry reaches first radio,
+reverse entry from Close reaches last radio without selecting it. Tab from a focused
+unselected member wraps; Shift+Tab from the first returns to summary. Browsers may remember
+an unselected group's previously focused member, so check containment and preserved
+selection rather than assuming every later forward entry is the first member.
+
+Repeat at `?last=radio&forms=two`: identically named groups with different form owners
+remain independent. Shift+Tab from Close reaches the trailing group's checked radio;
+another Shift+Tab reaches the separate form's checked radio; forward Tab reverses this.
+
+These checks follow [W3C modal keyboard guidance](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+and [native radio-group considerations](https://www.w3.org/WAI/ARIA/apg/patterns/radio/).
+They verify DOM focus and native keys, not real screen-reader output or every browser.
+
+Open `modal-width-review.html` for the same production Modal with synthetic long radio
+labels. Its 320/390/768 controls resize actual iframe documents. The visible metrics report
+root and dialog client/scroll width plus vertical content height. Review wrapping and the
+vertical scrollbar; a narrow document is not real mobile/touch/zoom emulation. The fixture
+makes no API requests and adds no production route/bundle.
+
 This fixture is a manual browser regression, not part of `npm test`. Full mobile, assistive
 technology and all workspace journeys require separate verification.
 
