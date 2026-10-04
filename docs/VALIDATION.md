@@ -4426,3 +4426,62 @@ on 390×844 has no document overflow.
 - [OBSERVATION-EXECUTION.md](OBSERVATION-EXECUTION.md) defines limits. Semantic
   goal/observation reasoning, automatic observed-target selection, selected-plan
   follow-up/shared-todo integration and the broader v1 readiness gates remain open.
+
+## Natural-language goal drafts and approved execution — 2026-10-05
+
+- New [goal planning contract](GOAL-PLANNING.md): optional provider decomposes an
+  operator goal into bounded review objectives, catalog checks, registered asset IDs,
+  proposed criteria/missing inputs and an acyclic Worker dependency graph. Accepting
+  a reviewed draft creates a separate pending task; the original remains. No target
+  request before administrator approval. Runtime uses the approved asset/check union
+  matrix and dependencies; precise per-objective scheduling and semantic goal
+  verification remain open. Progress always reports `goal_verified:false`.
+- SQLite/native PostgreSQL HTTP tests exercise mock semantic decomposition, same
+  request replay without another provider call, conflicting nonce refusal, six invalid
+  provider forms and explicit rules fallback, stale asset/policy/source/draft refusal,
+  role boundaries, current-scope/approved-contract tamper refusal, atomic final-write
+  recheck, provider-result save failure/recovery, actual approved owned target execution,
+  dependency order/replan preservation, token custody and declared progress denominator.
+  These are provider contract tests, not commercial-model quality evaluations.
+- Historical intermediate full run:867 passed before the final scope/denominator guard.
+  A subsequent full run had868 passed/1 failed because a concurrent Vite build briefly
+  removed its output directory during a backup test's server initialization. No test
+  or service workaround was added. After completing and freezing the final build,
+  final full SQLite/native run **869 passed352.30s**, one upstream deprecation warning
+  (`artifacts/goal-planner-full-fixed-build.txt`). No service edits after that run.
+  Native goal tests added to CI configuration; hosted CI remains unrun.
+- Final existing frontend unit suite **92 passed442.513959ms**
+  (`artifacts/goal-planner-node-final.txt`); this suite alone does not establish new
+  goal interaction behavior. Final TypeScript/Vite build1.42s uses
+  JSindex-DKEUHmDY.js / CSSindex-BDvYxa4w.css (`...build-final.txt`).
+- Final wheel SHA256 **7da83162d05eb8a2d528314aa6a14fb939a34e739929029be82a1c7ed992fb4b**,
+  all70 recursive service Python files byte-match checkout
+  (`artifacts/goal-planner-final-wheel-proof.json`). Installed default runtime and
+  native PostgreSQL16.15 reviews both valid (`...installed-runtime-final.json`,
+  `...installed-postgres.json`). Native review creates a rules goal draft and pending
+  task, verifies exact frozen decomposition and same-request draft/accept replay after
+  actual native backup/restore. That installed goal task stays unapproved; actual goal
+  execution is covered by source HTTP tests above. Native owned target requests3 and
+  owned source requests1; external targets/sources0; default target requests0.
+- Built-app fixture uses a local mock provider. A committed draft POST with substituted
+  503 preserves the frozen request; reload restores goal/mode and same-request retry
+  retrieves the ready draft. Review acceptance creates one new pending task. Manual
+  progress displays0/2 for each of two objectives and explicitly distinguishes check
+  completion from goal achievement (`...ui-lost.txt`, `...ui-restored.txt`,
+  `...ui-ready.txt`, `...ui-pending.txt`, inspected `...ui-final.jpg`). Final cosmetic
+  asset-name/dependency/button spacing changes were included before screenshot;
+  subsequent title wrapping was built before final width measurement. Full role,
+  navigation race, keyboard and screen-reader journeys remain unverified.
+- Final pending document measures320/320 and390/390 client/scroll widths, dialog277/277
+  and347/347 (`artifacts/goal-planner-ui-widths.json`). Intentional table overflow,
+  hidden labels and320px internal report-action overflow remain. No actual mobile
+  touch/zoom or screen-reader claim.
+- Owned fixture tabs closed and process stopped: target requests0, ordinary task
+  POSTs0, next-plan POSTs0, observation-plan POSTs0, goal draft POSTs2 and mock provider
+  calls1; temporary data removed (`artifacts/goal-planner-ui-fixture.txt`). Existing
+  preview data preserved on restart; health ok, anonymous goal-draft endpoint401 and
+  final asset names confirmed (`...preview-health.json`).
+- Commercial-provider semantic quality, goal predicate verification, precise objective
+  scheduling, observation-selected URL integration, draft search/retention, complete
+  mobile/accessibility journeys, container deployment and production operations remain
+  open under [v1 readiness](V1-READINESS.md). No remote publication performed.

@@ -4,6 +4,7 @@ import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { validateWorkerDependencies, WorkerDependencyError } from "./worker-dependency-state";
 import { NextPlan, TodoPlanBasis, WorkerObservationBasis, type TodoPlanContext, type ObservationPlanContext } from "./NextPlan";
 import { ObservationExecutionPicker, ObservationExecutionBasis, type ObservationExecution } from "./ObservationExecution";
+import { GoalDraftPanel, GoalPlanSummary, GoalProgress, type GoalPlan } from "./GoalPlan";
 import { WorkerProcess } from "./WorkerProcess";
 import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
@@ -94,6 +95,7 @@ type Asset = {
   archived_at?: number | null;
 };
 type Task = {
+  goal_plan?: GoalPlan;
   observation_execution?: ObservationExecution;
   id: string;
   name: string;
@@ -2875,6 +2877,19 @@ function App() {
             <TodoPlanBasis context={selectedTask.shared_todo_context} planner={selectedTask.planner} names={Object.fromEntries(tools.map(t=>[t.id,t.name]))} />
             <WorkerObservationBasis context={selectedTask.worker_observation_context} />
             <ObservationExecutionBasis execution={selectedTask.observation_execution} />
+            <GoalPlanSummary plan={selectedTask.goal_plan} names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))} assets={selectedTask.scope_snapshot} />
+            {selectedTask.goal_plan && <GoalProgress key={`goal-progress-${selectedTask.id}`} taskId={selectedTask.id} captureView={captureActionView} />}
+            {auth.user && !selectedTask.observation_execution && ["pending","completed","failed","stopped","interrupted"].includes(selectedTask.status) && <GoalDraftPanel
+              key={`goal-draft-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id} actorId={auth.user.id}
+              initialGoal={selectedTask.goal} busy={busy} canOperate={canOperate} captureView={captureActionView}
+              names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))}
+              onAccept={async (draftId,fingerprint,onFailure)=>{
+                const result=await act("/tasks/"+encodeURIComponent(selectedTask.id)+"/goal-plans/"+encodeURIComponent(draftId)+"/accept","POST",{fingerprint},
+                  "목표 초안을 별도의 승인 대기 계획에 반영했습니다.",onFailure) as Task | undefined;
+                if(result)navigation.openDetail({kind:"task",id:result.id});
+                return result;
+              }}
+            />}
             <WorkerProcess key={`worker-process-${selectedTask.id}`} taskId={selectedTask.id}
               assets={selectedTask.scope_snapshot} tools={tools} state={navigation.taskWorker} onChange={navigation.updateTaskWorker} />
             {auth.user && <SharedTodos key={`todos-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id}

@@ -51,6 +51,7 @@ from . import todos
 from .event_planner import EventPlanner
 from . import observation_context
 from . import observation_execution
+from . import goal_planner
 
 
 class Credentials(BaseModel):
@@ -221,6 +222,7 @@ def create_app(data_dir=None, allow_private=None):
             lease = WorkspaceLease(folder)
             store = Store(folder / 'aegis.db')
             call_ledger.recover(store)
+            goal_planner.recover(store)
         engine = Engine(store, private, policy=policy)
     except BaseException as exc:
         if lease:lease.close()
@@ -240,13 +242,14 @@ def create_app(data_dir=None, allow_private=None):
         raise
     auth_lock = threading.Lock()
     chat_lock = threading.Lock()
+    goal_lock = threading.Lock()
     login_gate = LoginGate()
 
     def create_task(data, retest_of=None, schedule_id=None, retry_of=None):
         with store.lock:
             return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
@@ -304,6 +307,7 @@ def create_app(data_dir=None, allow_private=None):
                     tool_contracts=contracts_for(data.checks), replan_of=replacing['id'] if replacing else None)
         if attempt_source:
             task.update(planning_history.metadata(attempt_source))
+            if attempt_source.get('goal_plan'):task['goal_plan']=attempt_source['goal_plan']
             try:task['shared_todo_context']=todos.planning_context(store,attempt_source['id'])
             except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
             try:task['worker_observation_context']=observation_context.snapshot(store,attempt_source['id'])
@@ -322,7 +326,13 @@ def create_app(data_dir=None, allow_private=None):
                 observation_execution.require(task)
             except (planning_history.PlanningConflict, LookupError) as exc:
                 raise HTTPException(409, str(exc)) from exc
+        if goal_draft:
+            task['goal_plan']={key:goal_draft[key] for key in ('basis_fingerprint','goal','decomposition','mode','fingerprint')}
+            task['goal_plan']['draft_id']=goal_draft['id']
+        try:goal_planner.require_task(task)
+        except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]
+        if goal_draft:records.append(('goal_plans',{**goal_draft,'accepted_task_id':task['id']}))
         if followup:
             records.append(('tasks', {**source, 'next_plan_id': task['id'],
                                       'next_plan_fingerprint': proposal['fingerprint']}))
@@ -344,6 +354,16 @@ def create_app(data_dir=None, allow_private=None):
                     raise HTTPException(409,'계획 근거·공유 할 일이 변경되었습니다. 제안을 다시 확인하세요.')
                 store.put_many(records,connection=db)
                 store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.',connection=db)
+        elif goal_draft:
+            with store.write_transaction() as db:
+                try:fresh=goal_planner.snapshot(store,goal_draft['task_id'],engine.policy.public(),connection=db)
+                except (planning_history.PlanningConflict,LookupError) as exc:raise HTTPException(409,str(exc)) from exc
+                persisted=store.get('goal_plans',goal_draft['id'],connection=db)
+                if goal_planner.digest(fresh)!=goal_draft['basis_fingerprint'] or persisted!=goal_draft:
+                    raise HTTPException(409,'목표 초안의 출처·범위·입력·상태가 변경되었습니다. 새 초안을 만드세요.')
+                store.put_many(records,connection=db)
+                store.event(task['id'],'검토한 목표 초안을 승인 대기 계획에 반영했습니다.',
+                    detail={'draft_id':goal_draft['id'],'mode':goal_draft['mode']},connection=db)
         elif observation_request:
             with store.write_transaction() as db:
                 try:
@@ -891,6 +911,50 @@ def create_app(data_dir=None, allow_private=None):
         try:return observation_execution.preview(store, task_id)
         except LookupError as exc:raise HTTPException(404, str(exc)) from exc
         except planning_history.PlanningConflict as exc:raise HTTPException(409, str(exc)) from exc
+
+    @app.post('/api/tasks/{task_id}/goal-plans', dependencies=operations)
+    def goal_plan_draft(task_id: str, data: goal_planner.DraftInput, actor=Depends(operator)):
+        with goal_lock:
+            if engine.closed:raise HTTPException(409,'서버가 종료 중입니다.')
+            try:return goal_planner.generate(store,task_id,data,engine.policy.public(),actor_id=actor['id'],allow_local=private,
+                                           control=TaskControl(stop=shutdown_requested))
+            except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+            except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+
+    @app.get('/api/tasks/{task_id}/goal-plans/{draft_id}', dependencies=auth)
+    def read_goal_plan(task_id: str, draft_id: str):
+        draft=store.get('goal_plans',draft_id)
+        if not draft or draft.get('task_id')!=task_id:raise HTTPException(404,'목표 초안이 없습니다.')
+        return draft
+
+    @app.get('/api/tasks/{task_id}/goal-progress', dependencies=auth)
+    def goal_progress(task_id: str):
+        try:return goal_planner.progress(store,task_id)
+        except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+        except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+
+    @app.post('/api/tasks/{task_id}/goal-plans/{draft_id}/accept', dependencies=operations)
+    def accept_goal_plan(task_id: str, draft_id: str, data: NextPlanInput):
+        with engine.lock, store.lock:
+            if engine.closed:raise HTTPException(409,'서버가 종료 중입니다.')
+            draft=store.get('goal_plans',draft_id)
+            if not draft or draft.get('task_id')!=task_id:raise HTTPException(404,'목표 초안이 없습니다.')
+            if draft.get('state')!='ready' or draft.get('fingerprint')!=data.fingerprint:
+                raise HTTPException(409,'검토한 목표 초안과 반영 요청이 일치하지 않습니다.')
+            if draft.get('accepted_task_id'):
+                existing=store.get('tasks',draft['accepted_task_id'])
+                if not existing:raise HTTPException(409,'반영된 목표 계획의 저장 상태를 확인하세요.')
+                return existing
+            try:
+                ids, checks=goal_planner.validate(draft['decomposition'],[a['id'] for a in draft['basis']['assets']])
+                if goal_planner.digest({key:draft[key] for key in ('basis_fingerprint','goal','decomposition','mode')})!=draft['fingerprint']:
+                    raise planning_history.PlanningConflict('목표 초안 지문이 일치하지 않습니다.')
+            except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+            source=store.get('tasks',task_id)
+            if not source:raise HTTPException(409,'출처 작업이 없습니다.')
+            planned=TaskInput(name=('목표 계획 · '+source['name'])[:120],goal=draft['goal'],asset_ids=ids,checks=checks,
+                workers=source.get('workers',3),planner='rules',worker_dependencies=draft['decomposition']['worker_dependencies'])
+            return create_task_locked(planned,goal_draft=draft)
 
     @app.post('/api/tasks/{task_id}/observation-plan', dependencies=operations)
     def select_observation_plan(task_id: str, selection: observation_execution.Selection):

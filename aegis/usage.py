@@ -39,6 +39,9 @@ def usage_summary(store, days=None, *, source='planner', ledger='persisted'):
         SELECT 'planner' AS source, json_extract(data,'$.llm_usage') AS metadata
         FROM records WHERE kind='tasks' AND json_type(data,'$.llm_usage')='object'
         UNION ALL
+        SELECT 'planner' AS source, json_extract(data,'$.llm_usage') AS metadata
+        FROM records WHERE kind='goal_plans' AND json_type(data,'$.llm_usage')='object'
+        UNION ALL
         SELECT 'conversation' AS source, json_extract(data,'$.assistant_generation') AS metadata
         FROM records WHERE kind='messages' AND json_extract(data,'$.role')='assistant'
           AND json_type(data,'$.assistant_generation')='object'
@@ -89,9 +92,9 @@ def usage_summary(store, days=None, *, source='planner', ledger='persisted'):
             db.execute('BEGIN')
             row = dict(db.execute(query, (source, source, max(0, since), until)).fetchone())
     return {
-        'scope':'recorded_provider_attempts' if ledger == 'attempts' else {'planner':'latest_planner_call_per_task',
+        'scope':'recorded_provider_attempts' if ledger == 'attempts' else {'planner':'latest_task_planner_and_persisted_goal_draft_calls',
                  'conversation':'persisted_assistant_generation_per_message',
-                 'all':'latest_planner_and_persisted_conversation_calls'}[source],
+                 'all':'latest_task_planner_goal_draft_and_persisted_conversation_calls'}[source],
         'ledger':ledger, 'time_basis':clock,
         'attempt_states':{key:row[key] for key in ('started','observed','committed','uncommitted','interrupted')} if ledger == 'attempts' else None,
         'source':source, 'source_counts':{key:row[key] for key in ('planner','conversation')},

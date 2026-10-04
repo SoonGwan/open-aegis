@@ -42,7 +42,7 @@ ARTEX를 실행하거나 전체 코드를 감사한 결과가 아니다. 특정 
 
 | 구현 | 코드·계약 | 현재 경계 |
 |---|---|---|
-| 실행·계획 | [engine.py](../aegis/engine.py), [RUNTIME.md](RUNTIME.md) | 승인된 Worker 의존 실행·완료 근거/관찰 참조 전달; 결과 기반 후속 계획 HTTP 제안·새 승인, LLM은 승인 도구 순서만 결정; 상세 제안 검토/반영 UI 구현; 교체/재실행의 회차 보존·현재 시도 연결 구현; 이벤트 기반 제안 준비·처리 위치 저장/재개 구현; 검증된 관찰의 순서 맥락과 명시적 URL 선택·새 승인 응답 설정 검사([계약](OBSERVATION-EXECUTION.md)); 의미적 목표/관찰 소비는 남아 있음 |
+| 실행·계획 | [engine.py](../aegis/engine.py), [RUNTIME.md](RUNTIME.md) | 승인된 Worker 의존 실행·완료 근거/관찰 참조 전달; 결과 기반 후속 계획 HTTP 제안·새 승인, LLM 도구 순서와 별도 자연어 목표 분해 초안·검토/새 승인([계약](GOAL-PLANNING.md)); 상세 제안 검토/반영 UI 구현; 교체/재실행의 회차 보존·현재 시도 연결 구현; 이벤트 기반 제안 준비·처리 위치 저장/재개 구현; 검증된 관찰의 순서 맥락과 명시적 URL 선택·새 승인 응답 설정 검사([계약](OBSERVATION-EXECUTION.md)); 목표별 검사 진행률은 구현; 상용 모델 계획 품질·실제 목표 달성 판정·자동 관찰 해석은 남아 있음 |
 | 관계·커버리지 | [GRAPH.md](GRAPH.md), [COVERAGE.md](COVERAGE.md) | 실제 저장 기록의 관계; 원본의 이중 그래프와 동등하지 않음 |
 | 요청 관찰 | [network.py](../aegis/network.py) | 범위와 DNS를 검사한 GET; 범용 트래픽 프록시 없음 |
 | 응답 계약 | [API-POLICY.md](API-POLICY.md) | 운영자 정의 스키마·소유권 기대값; 자동 소유권 추론 없음 |

@@ -376,6 +376,12 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert native_http('/api/tasks/'+followup['id']+'/todos')['items'][0]['revision']==2
                     pending=native_http('/api/tasks',{'name':'Installed native HTTP pending','asset_ids':[imported['id']],'checks':['security_headers']})
                     assert pending['status']=='pending'
+                    goal_input={'request_id':'e'*32,'mode':'rules','goal':'Owned installed response configuration review'}
+                    goal_draft=native_http('/api/tasks/native-engine/goal-plans',goal_input)
+                    assert goal_draft['state']=='ready' and goal_draft['mode']=='rules' and goal_draft['llm_usage'] is None
+                    assert native_http('/api/tasks/native-engine/goal-plans',goal_input)['id']==goal_draft['id']
+                    goal_pending=native_http('/api/tasks/native-engine/goal-plans/'+goal_draft['id']+'/accept',{'fingerprint':goal_draft['fingerprint']})
+                    assert goal_pending['status']=='pending' and goal_pending['goal_plan']['decomposition']==goal_draft['decomposition']
                     assert native_http('/api/runtime')['queue_watchdog']['errors']==0
                     assert native_http('/api/runtime')['event_planner']['alive']
                     assert native_http('/api/runtime')['event_planner']['errors']==0
@@ -448,6 +454,9 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                     assert backup_http('/api/tasks/'+first_followup_id)['task']['shared_todo_context']==proposal['shared_todo_context']
                     assert backup_http('/api/tasks/'+first_followup_id)['task']['worker_observation_context']==proposal['worker_observation_context']
                     assert backup_http('/api/tasks/'+observed_pending['id'])['task']['observation_execution']==observed_pending['observation_execution']
+                    assert backup_http('/api/tasks/'+goal_pending['id'])['task']['goal_plan']==goal_pending['goal_plan']
+                    assert backup_http('/api/tasks/native-engine/goal-plans',goal_input)['id']==goal_draft['id']
+                    assert backup_http('/api/tasks/native-engine/goal-plans/'+goal_draft['id']+'/accept',{'fingerprint':goal_draft['fingerprint']})['id']==goal_pending['id']
                     assert backup_http('/api/tasks/native-engine/observation-plan',observation_selection)['id']==observed_pending['id']
                     deadline=time.monotonic()+10
                     while True:

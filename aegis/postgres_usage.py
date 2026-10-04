@@ -14,6 +14,9 @@ def aggregate(store, source, ledger, clock, since, until, fields):
       SELECT 'planner'::text AS source,data::json->'llm_usage' AS metadata FROM records
         WHERE kind='tasks' AND json_typeof(data::json->'llm_usage')='object'
       UNION ALL
+      SELECT 'planner'::text AS source,data::json->'llm_usage' AS metadata FROM records
+        WHERE kind='goal_plans' AND json_typeof(data::json->'llm_usage')='object'
+      UNION ALL
       SELECT 'conversation'::text AS source,data::json->'assistant_generation' AS metadata FROM records
         WHERE kind='messages' AND data::json->>'role'='assistant'
           AND json_typeof(data::json->'assistant_generation')='object'

@@ -88,3 +88,16 @@ TLS 합성 제공자와 저장/보고서 검증은 실제 상용 모델 호출�
 없거나 chunked이면 기존 한도+1바이트 읽기로 실제 크기를 검사한다. 정확히1 MiB의
 유효한 JSON 응답은 수용한다. 기존8초 요청 제한·TLS/주소/리디렉션 검사도 유지한다.
 한도 초과나 응답 실패의 원문은 사용량 기록에 저장하지 않고 미확인으로 처리한다.
+
+## 자연어 목표 분해 호출
+
+[목표 계획](GOAL-PLANNING.md)의 AI 분해는 승인 전에 요청 ID별 한 번 호출하며,
+`goal_plans.llm_usage`와 준비된 초안·감사 이벤트를 원자적으로 저장한다. 독립 호출
+이력의 source는 `planner`, 결과 메타데이터의 phase는 `goal_decomposition`이다.
+초안을 반영한 작업은 규칙 실행 계획을 사용하므로 같은 분해 호출을 재계상하지 않는다.
+규칙 모드는 제공자를 호출하지 않는다. interrupted 초안은 같은 요청으로 자동 재호출하지 않는다.
+
+기간별 persisted 집계의 planner 범위에는 작업의 최신 계획 호출과 저장된 목표 초안 호출이
+포함된다. scope 값은 `latest_task_planner_and_persisted_goal_draft_calls`이며, 전체 범위는
+`latest_task_planner_goal_draft_and_persisted_conversation_calls`이다. 미저장 호출 관찰은
+기존 attempts 원장을 통해 조회한다. 실제 상용 모델 품질·청구 검증은 별도다.

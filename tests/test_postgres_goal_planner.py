@@ -1,0 +1,14 @@
+from tests.test_postgres_transfer import postgres,schema
+from tests.test_postgres_http import configured,client
+from tests.test_validation import lab
+from tests.test_goal_planner import (
+    test_goal_decomposition_is_reviewed_before_target_execution_and_usage_is_preserved as test_native_goal,
+    test_invalid_provider_decomposition_is_explicit_catalog_fallback as test_native_invalid,
+    test_changed_review_basis_or_draft_refuses_acceptance as test_native_stale,
+    test_rules_mode_and_viewer_never_call_provider_and_missing_configuration_is_refused as test_native_roles,
+    test_goal_plan_execution_tampering_is_refused_before_requests as test_native_tampering,
+    test_provider_result_save_failure_recovery_prevents_repeated_billable_call as test_native_recovery,
+    test_goal_dependencies_execute_declared_worker_order_and_preserve_goal_on_replan as test_native_dependencies,
+    test_final_goal_accept_write_rechecks_source as test_native_final_accept,
+    test_missing_goal_scope_is_not_zero_over_zero_completion as test_native_scope_denominator,
+)

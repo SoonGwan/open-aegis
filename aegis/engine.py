@@ -12,7 +12,7 @@ from .checks import CATALOG, CHECK_IDS, run_check
 from .tool_contracts import require_contracts, validate_result, ToolContractMismatch
 from .network import Transport
 from .costs import price_snapshot, estimate
-from . import call_ledger, todos, observation_context, observation_execution
+from . import call_ledger, todos, observation_context, observation_execution, goal_planner
 from .llm import completion, token_usage
 from .store import identifier, now
 from .coverage import slot, finish_remaining
@@ -38,7 +38,9 @@ class Engine:
         try:
             if getattr(store,'backend',None)=='postgres':self.owner=store.acquire_runtime()
             self.pool=concurrent.futures.ThreadPoolExecutor(max_workers=self.policy.concurrent_tasks,thread_name_prefix='aegis-task')
-            if self.owner:call_ledger.recover(store)
+            if self.owner:
+                call_ledger.recover(store)
+                goal_planner.recover(store)
             for task in store.recovery_tasks():
                 if task['status'] in ('running', 'queued', 'stopping'):
                     finish_remaining(store, task, 'interrupted', '서버 재시작으로 실행 결과를 확인할 수 없습니다.')
@@ -90,6 +92,7 @@ class Engine:
                 raise ValueError('승인 대기 중인 작업만 실행할 수 있습니다.')
             require_contracts(task)
             observation_execution.require(task)
+            goal_planner.require_task(task)
             validate_dependencies(task['asset_ids'], task.get('worker_dependencies', {}))
             if task.get('execution_policy') and task['execution_policy'] != self.policy.public():
                 raise ValueError('서버 실행 정책이 변경되었습니다. 현재 정책으로 새 계획을 만드세요.')
@@ -233,6 +236,7 @@ class Engine:
             require_contracts(task)
             require_dependency_contract(task)
             observation_execution.require(task, approved=True)
+            goal_planner.require_task(task)
             checks = self.plan(task, control)
             control.check()
             self.store.patch('tasks', task_id, plan=checks)

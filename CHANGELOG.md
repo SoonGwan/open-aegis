@@ -1,5 +1,10 @@
 # Changelog
 
+- Goal drafts optionally decompose natural-language requests into reviewed objectives,
+  catalog checks, selected assets and Worker dependencies before a separate approval.
+  Durable request replay, provider usage, rules fallback and per-objective execution
+  counts distinguish tool completion from semantic goal verification.
+
 - Explicit observed-response plans select up to10 verified Worker URLs, require new
   approval, execute bounded GET configuration checks with per-URL proof/failures,
   preserve original-URL retests and recover unknown create outcomes by request ID.
