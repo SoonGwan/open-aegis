@@ -1581,3 +1581,42 @@ on 390×844 has no document overflow.
   refusal/audit/backup/restore/clean shutdown and lease checks; target requests zero.
   Main health is 200, served bundle matches, assets two/tasks four/traffic three
   remain unchanged. Owned QA is stopped normally; main preview stays live.
+
+
+## 2026-10-04 — stale unauthorized replies do not expire a newer session
+
+- Before fix, the real `api()` module starts a deferred overview request, completes
+  synthetic login, then receives the old 401. A controlled-response test fails
+  because it dispatches `aegis-session-expired` against the newer session. The same
+  test passes after adding a browser-document session revision captured at request
+  start. No cookie contents are read. Successful login/setup/logout/password response
+  headers advance the revision, even if parsing the success body fails. Current
+  unauthorized expiration advances it once, so sibling old requests cannot repeat
+  the event. An aborted request does not trigger expiration after a late body.
+- Eight new API/session tests exercise the actual API and download helpers: late
+  401 after login; one expiration for concurrent old requests and another after
+  re-login; failed login/status reads do not invalidate current requests; successful
+  logout/password/setup; 401 body decode held across login; late aborted body;
+  held report HTTP error with newer session; malformed successful auth body. Final
+  frontend suite is **55 passed** (47 existing plus eight), with build success.
+  Report component captures the same session at initiation and uses the shared
+  guarded expiration helper; unrelated local errors still return to their callers.
+- Rerunnable native browser fixture `web/tests/browser/api-session-review.html`
+  imports production `api` and `ReportDownload`. Its own fetch stub delays only
+  synthetic responses and performs no real login/cookie or target request. Browser
+  clicks show late API 401 after new login leaves expiration count zero; late report
+  401 after another login also leaves zero, while retaining its visible error/retry
+  control. Current API 401 increments to one; after re-login, current report 401
+  increments to two. Snapshot and screenshot `artifacts/v1-api-session-review.jpg`
+  are inspected. This is real browser event/component evidence with synthetic
+  transport, not real multi-account/cookie races or cross-tab session proof.
+- Final assets are `index-C64hz38T.js` / `index-B5ysGB7c.css`. Unchanged wheel
+  SHA-256 `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`
+  with this UI passes outside-checkout installed runtime/dependency/CLI/auth/schema/
+  import/remote-refusal/audit/backup/restore/shutdown/lease rehearsal, target requests
+  zero. Python service code is unchanged; no full backend suite rerun is claimed.
+  Main health 200, final bundle served, assets two/tasks four/traffic three unchanged.
+  Browser fixture server stops normally and main preview remains live.
+- Revision is document-local response-order protection, not a server permission
+  boundary or cross-tab synchronization. Generic successful replies are not filtered
+  by this change. Full authentication transition/data-isolation UX remains open.

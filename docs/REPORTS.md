@@ -101,7 +101,10 @@ or proof integrity. A cleanly ended but semantically corrupt body is not detecte
 
 Errors appear beside the initiating control. Retry-After seconds or HTTP dates become
 a visible countdown (maximum ten minutes), after which the user can retry; there is
-no automatic retry. A 401 triggers the existing session-expired flow. One control
+no automatic retry. A 401 triggers the existing session-expired flow only while the
+request still belongs to the current browser session. A completed login, setup,
+logout or password change invalidates that association; an older 401 keeps its
+download error without expiring the newer session. One control
 prevents overlapping clicks, while the server's shared admission slots still apply
 to downloads initiated from different controls. Normal success says that the file
 download started, not that the user saved the file. Blob URLs release after one minute.

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
+import { captureSession, expireSession } from "./api";
 import {
   fetchReport,
   fetchPolicy,
@@ -48,6 +49,7 @@ export function ReportDownload({
   async function download() {
     if (controller.current || retryAt > Date.now()) return;
     const request = new AbortController();
+    const isCurrentSession = captureSession();
     controller.current = request;
     setBusy(true);
     setError("");
@@ -73,7 +75,7 @@ export function ReportDownload({
       else {
         const error = e as ReportDownloadError;
         if (error.status === 401)
-          window.dispatchEvent(new Event("aegis-session-expired"));
+          expireSession(isCurrentSession);
         setError(error.message);
         setRetryAt(error.retryAfter ? Date.now() + error.retryAfter * 1000 : 0);
       }

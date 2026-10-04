@@ -1,9 +1,24 @@
+let sessionRevision = 0;
+
+/** Capture the browser session associated with a request, without reading cookies. */
+export function captureSession(): () => boolean {
+  const revision = sessionRevision;
+  return () => revision === sessionRevision;
+}
+
+export function expireSession(isCurrent: () => boolean): void {
+  if (!isCurrent()) return;
+  sessionRevision++;
+  window.dispatchEvent(new Event("aegis-session-expired"));
+}
+
 export async function api<T>(
   path: string,
   method = "GET",
   body?: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
+  const isCurrentSession = captureSession();
   let response: Response;
   try {
     response = await fetch("/api" + path, {
@@ -34,9 +49,15 @@ export async function api<T>(
     } catch {
       /* response may be non-JSON */
     }
-    if (response.status === 401 && !path.startsWith("/auth/"))
-      window.dispatchEvent(new Event("aegis-session-expired"));
+    if (
+      response.status === 401 &&
+      !path.startsWith("/auth/") &&
+      !signal?.aborted
+    )
+      expireSession(isCurrentSession);
     throw new Error(text);
   }
+  if (method !== "GET" && /^\/auth\/(login|setup|logout|password)$/.test(path))
+    sessionRevision++;
   return response.json();
 }
