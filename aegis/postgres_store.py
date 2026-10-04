@@ -17,6 +17,8 @@ FIELDS = {
     'observations':('url','title','asset_id','task_id'),
     'finding_history':('action','reason','actor.name','actor.username'),
     'notes':('title','content'), 'schedules':('task.name','task.goal'),
+    'todos':('title','description','status','assignee_name'),
+    'todo_history':('action','reason','actor.name','actor.username'),
     'evidence':('id','check','task_id'), 'retests':('conclusion','state_note','task_id'),
     'messages':('content','role'), 'llm_calls':('id','model','source','state','task_id'),
     'asset_sources':('source_key','external_id','source_url'),
@@ -183,7 +185,8 @@ class PostgresStore:
         if kind not in FIELDS or not 1<=limit<=1000 or offset<0 or (snapshot is not None and snapshot<0):raise ValueError('Invalid record query')
         if priority and kind!='findings':raise ValueError('Priority order is only valid for findings')
         filters=filters or {}
-        if not filters.keys()<={'status','severity','asset_id','task_id','check','finding_id','enabled','source','state'}:raise ValueError('Unknown record filter')
+        if not filters.keys()<={'status','severity','asset_id','task_id','check','finding_id','enabled','source','state','todo_id'}:raise ValueError('Unknown record filter')
+        if 'todo_id' in filters and kind!='todo_history':raise ValueError('Todo filter requires todo history')
         if ('source' in filters or 'state' in filters) and kind!='llm_calls':raise ValueError('Call filters require provider attempts')
         if 'enabled' in filters and kind!='schedules':raise ValueError('Enabled filter is only valid for schedules')
         if archived is not None and kind!='assets':raise ValueError('Archive filter is only valid for assets')
@@ -227,8 +230,8 @@ class PostgresStore:
                 for item in items:item.update(completed_check_count=counts.get(item['id'],0),coverage_summary=latest.get(item['id']))
         return {'items':items,'total':total,'limit':limit,'offset':offset,'snapshot':snapshot,'has_more':offset+len(rows)<total}
 
-    def event(self,task_id,message,level='info',detail=None):
-        with self.transaction(write=True) as db:append_event(db,(now(),task_id,level,message,json.dumps(detail or {},ensure_ascii=False,allow_nan=False)))
+    def event(self,task_id,message,level='info',detail=None,*,connection=None):
+        with (nullcontext(connection) if connection is not None else self.transaction(write=True)) as db:append_event(db,(now(),task_id,level,message,json.dumps(detail or {},ensure_ascii=False,allow_nan=False)))
 
     def audit_integrity(self,checkpoint=None):
         with self.transaction() as db:return transfer.postgres_audit(db,checkpoint)

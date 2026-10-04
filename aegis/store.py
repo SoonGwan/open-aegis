@@ -165,6 +165,8 @@ class Store:
             'observations': ('url', 'title', 'asset_id', 'task_id'),
             'finding_history': ('action', 'reason', 'actor.name', 'actor.username'),
             'notes': ('title', 'content'),
+            'todos': ('title', 'description', 'status', 'assignee_name'),
+            'todo_history': ('action', 'reason', 'actor.name', 'actor.username'),
             'schedules': ('task.name', 'task.goal'),
             'evidence': ('id', 'check', 'task_id'),
             'retests': ('conclusion', 'state_note', 'task_id'),
@@ -178,8 +180,9 @@ class Store:
         if priority and kind != 'findings':
             raise ValueError('Priority order is only valid for findings')
         filters = filters or {}
-        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id', 'enabled', 'source', 'state'}:
+        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id', 'enabled', 'source', 'state', 'todo_id'}:
             raise ValueError('Unknown record filter')
+        if 'todo_id' in filters and kind != 'todo_history':raise ValueError('Todo filter requires todo history')
         if ('source' in filters or 'state' in filters) and kind != 'llm_calls':
             raise ValueError('Call filters require provider attempts')
         if 'enabled' in filters and kind != 'schedules':
@@ -271,8 +274,8 @@ class Store:
             record.update(changes)
             return self.put(kind, record)
 
-    def event(self, task_id, message, level='info', detail=None):
-        with self.lock, self.connect() as db:
+    def event(self, task_id, message, level='info', detail=None, *, connection=None):
+        with self.lock, (nullcontext(connection) if connection is not None else self.connect()) as db:
             append_event(db, (now(), task_id, level, message, json.dumps(detail or {}, ensure_ascii=False)))
 
     def record_planner_call(self, task_id, detail, message, level):

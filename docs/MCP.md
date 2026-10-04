@@ -16,6 +16,8 @@
 | `list_finding_retests` | `id`로 선택한 발견의 재검증 페이지 |
 | `list_task_observations` | `id`로 선택한 작업의 Worker 링크/승인 메타데이터 일치 상태 페이지 |
 | `get_worker` | `id`(작업)·`asset_id`의 Worker 범위·커버리지·최신 이벤트/관찰 각각 25개 |
+| `list_task_todos` | id로 접근한 계획 회차와 공유하는 할 일 검색/페이지; 완료는 실행 승인·검증 성공이 아님 |
+| `list_todo_history` | id와 todo_id로 선택한 공유 결정의 행위자·변경·버전 이력 검색/페이지 |
 | `search_worker_events` | 여러 작업의 Worker 이벤트 검색/페이지; task_id·asset_id 필터, 원본 유무와 저장 메타데이터 일치 상태 |
 | `list_worker_events` | 해당 Worker 이벤트 검색·페이지·저장된 Worker 메타데이터 일치 상태 |
 | `list_worker_observations` | 해당 Worker 관찰 검색·페이지·승인 메타데이터 일치 상태 |

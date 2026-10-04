@@ -320,6 +320,10 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     history=native_http('/api/worker-events?task_id=native-engine&asset_id=owned-lab&search=Worker')
                     assert history['total']==2 and all(row['worker_source']['available'] and row['worker_provenance']['status']=='matched' for row in history['items'])
                     assert not history['execution_authorized']
+                    shared_payload={'request_id':'e'*32,'title':'Installed shared review','description':'Owned manual decision'}
+                    shared_todo=native_http('/api/tasks/native-engine/todos',shared_payload)
+                    assert shared_todo['revision']==1 and shared_todo['status']=='open'
+                    assert native_http('/api/tasks/native-engine/todos',shared_payload)==shared_todo
                     report=native_http('/api/reports/export?format=json&task_id=native-engine')
                     assert report['coverage'][0]['status']=='completed' and report['evidence']
                     proposal=native_http('/api/tasks/native-engine/next-plan')
@@ -327,6 +331,7 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert set(proposal['task']['checks']).isdisjoint({'security_headers','endpoint_inventory'})
                     followup=native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})
                     assert followup['status']=='pending' and followup['approved_at'] is None
+                    assert native_http('/api/tasks/'+followup['id']+'/todos')['items'][0]['id']==shared_todo['id']
                     assert followup['followup_of']=='native-engine' and followup['planning_round']==1
                     assert native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})['id']==followup['id']
                     assert native_http('/api/tasks/native-engine/next-plan')['reason']=='already_accepted'
@@ -344,6 +349,10 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert message['provenance']['citations']
                     assets=native_http('/api/records/assets')['items']
                     imported=next(item for item in assets if item['url']=='https://owned-import-changed.invalid/')
+                    shared_todo=native_http('/api/tasks/native-engine/todos/'+shared_todo['id'],
+                        {'expected_revision':1,'status':'done','resolution_note':'Owned manual review'},method='PATCH')
+                    assert shared_todo['revision']==2 and shared_todo['status']=='done'
+                    assert native_http('/api/tasks/'+followup['id']+'/todos')['items'][0]['revision']==2
                     pending=native_http('/api/tasks',{'name':'Installed native HTTP pending','asset_ids':[imported['id']],'checks':['security_headers']})
                     assert pending['status']=='pending'
                     assert native_http('/api/runtime')['queue_watchdog']['errors']==0
@@ -411,6 +420,8 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                     backup_http('/api/auth/login',{'username':'admin','password':'owned-installed-transfer-password'})
                     assert backup_http('/api/settings')['storage']=='postgres'
                     assert backup_http('/api/tasks/'+pending['id'])['task']['status']=='pending'
+                    assert backup_http('/api/tasks/native-engine/todos')['items'][0]['status']=='done'
+                    assert backup_http('/api/tasks/native-engine/todos/'+shared_todo['id']+'/history')['total']==2
                     assert backup_http('/api/reports/export?format=json&task_id=native-engine')['evidence']
                     assert backup_http('/api/graph?asset_id=owned-lab&task_id=native-engine')['edges']
                 finally:
@@ -428,6 +439,8 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                       {'jsonrpc':'2.0','id':4,'method':'tools/call','params':{'name':'list_task_observations','arguments':{'id':'native-engine'}}},
                       *[{'jsonrpc':'2.0','id':i,'method':'tools/call','params':{'name':name,'arguments':{'id':'native-engine','asset_id':'owned-lab'}}} for i,name in enumerate(('get_worker','list_worker_events','list_worker_observations'),5)]]
             requests.append({'jsonrpc':'2.0','id':8,'method':'tools/call','params':{'name':'search_worker_events','arguments':{'task_id':'native-engine','asset_id':'owned-lab','search':'Worker'}}})
+            requests.append({'jsonrpc':'2.0','id':9,'method':'tools/call','params':{'name':'list_task_todos','arguments':{'id':'native-engine'}}})
+            requests.append({'jsonrpc':'2.0','id':10,'method':'tools/call','params':{'name':'list_todo_history','arguments':{'id':'native-engine','todo_id':shared_todo['id']}}})
             replies=[json.loads(line) for line in run([python,'-I','-m','aegis.mcp'],'installed native MCP stdio',env=reader_env,
                       input='\n'.join(json.dumps(item) for item in requests)+'\n').splitlines()]
             assert replies[0]['result']['protocolVersion']=='2025-03-26'
@@ -444,6 +457,8 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
             history=json.loads(replies[7]['result']['content'][0]['text'])
             assert history['total']==2 and all(row['worker_source']['available'] and row['worker_provenance']['status']=='matched' for row in history['items'])
             assert not history['execution_authorized']
+            assert json.loads(replies[8]['result']['content'][0]['text'])['items'][0]['status']=='done'
+            assert json.loads(replies[9]['result']['content'][0]['text'])['total']==2
             checkpoint=temporary/'native-checkpoint.json'
             verified=json.loads(run([python,'-I','-m','aegis.cli.audit','--output',checkpoint],'installed native audit CLI',env=reader_env))
             assert verified==native['audit'] and checkpoint.stat().st_mode & 0o777==0o600

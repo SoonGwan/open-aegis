@@ -47,6 +47,7 @@ from .scopesentry_remote import Sources, PageInput
 from .http_queries import SQLiteHTTP,PostgresHTTP
 from .worker_observations import task_page as observation_page
 from . import worker_process, worker_dependencies, next_plan, planning_history
+from . import todos
 
 
 class Credentials(BaseModel):
@@ -754,6 +755,35 @@ def create_app(data_dir=None, allow_private=None):
                        asset_id: str | None = Query(None, min_length=1, max_length=80)):
         return worker_process.search_events(store, limit=limit, offset=offset, snapshot=snapshot,
                                             search=search, task_id=task_id, asset_id=asset_id)
+
+    def todo_response(function, *args, **kwargs):
+        try:return function(store,*args,**kwargs)
+        except (todos.TodoConflict, planning_history.PlanningConflict) as exc:
+            raise HTTPException(409,str(exc)) from exc
+        except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+        except ValueError as exc:raise HTTPException(422,str(exc)) from exc
+
+    @app.get('/api/tasks/{task_id}/todos', dependencies=auth)
+    def task_todos(task_id: str, limit: int = Query(25,ge=1,le=100),
+                   offset: int = Query(0,ge=0,le=10_000_000),
+                   snapshot: int | None = Query(None,ge=0,le=9_223_372_036_854_775_807),
+                   search: str = Query('',max_length=200)):
+        return todo_response(todos.page,task_id,limit=limit,offset=offset,snapshot=snapshot,search=search)
+
+    @app.post('/api/tasks/{task_id}/todos', dependencies=operations)
+    def create_todo(task_id: str, data: todos.TodoCreate, actor=Depends(operator)):
+        return todo_response(todos.create,task_id,data.model_dump(),actor)
+
+    @app.patch('/api/tasks/{task_id}/todos/{todo_id}', dependencies=operations)
+    def update_todo(task_id: str, todo_id: str, data: todos.TodoUpdate, actor=Depends(operator)):
+        return todo_response(todos.update,task_id,todo_id,data.model_dump(exclude_unset=True),actor)
+
+    @app.get('/api/tasks/{task_id}/todos/{todo_id}/history', dependencies=auth)
+    def todo_history(task_id: str, todo_id: str, limit: int = Query(25,ge=1,le=100),
+                     offset: int = Query(0,ge=0,le=10_000_000),
+                     snapshot: int | None = Query(None,ge=0,le=9_223_372_036_854_775_807),
+                     search: str = Query('',max_length=200)):
+        return todo_response(todos.page,task_id,todo_id=todo_id,limit=limit,offset=offset,snapshot=snapshot,search=search)
 
     @app.get('/api/tasks/{task_id}/workers', dependencies=auth)
     def workers(task_id: str):

@@ -119,6 +119,12 @@ def test_native_reader_ordinary_select_role_cannot_write_or_read_users(stores,po
     source,asset,_=seed(pg,1)
     history=reader.call('search_worker_events',{'task_id':source['id'],'asset_id':asset['id']})
     assert history['total']==1 and history['items'][0]['worker_provenance']['status']=='matched'
+    from tests.test_todos import seed as todo_seed,payload,ACTOR
+    from aegis import todos
+    root,_=todo_seed(pg)
+    shared=todos.create(pg,root['id'],payload(),ACTOR)
+    assert reader.call('list_task_todos',{'id':root['id']})['items'][0]['id']==shared['id']
+    assert reader.call('list_todo_history',{'id':root['id'],'todo_id':shared['id']})['total']==1
     assert PostgresStore(dsn,pg.schema).audit_integrity()['valid']
     with reader.connect() as db:
         with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):db.execute('DELETE FROM records')

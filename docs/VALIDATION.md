@@ -4042,3 +4042,59 @@ on 390×844 has no document overflow.
 - Worker event search supersedes the earlier whole-workspace event-search gap;
   semantic goal/observation consumption, automatic/event-driven Planner, shared
   to-do and all remaining V1-READINESS gates stay open. This is not full v1 completion.
+
+
+### 2026-10-05 — Shared planning-family todo persistence/API
+
+- Added todos/todo_history records, verified planning-family root resolution and
+  authenticated HTTP create/update/list/history. Follow-up/retry/replacement reads
+  share the original family; unrelated families cannot mutate/read a todo history.
+  Actor/root/request-ID-derived creation deduplicates retries even after edits or
+  completion, with content mismatch409. Strict expected_revision CAS rejects stale
+  updates, terminal decisions require a reason, active admin/operator assignment
+  snapshots public names and no-op writes do not increment revision.
+- Todo/history and event/hash/head commit in one write transaction. Store.event now
+  accepts an owned connection to participate in that existing transaction. SQLite
+  BEGIN IMMEDIATE/native schema advisory locking serialize distinct Store instances.
+  No change creates task approval or marks findings/coverage successful. Reopening
+  clears current completion reason while historical decisions remain.
+- Readonly MCP list_task_todos/list_todo_history bring catalog to14 tools. Existing
+  page bounds/output cap apply. Actual native ordinary SELECT role reads both without
+  users/sessions access and remains unable to write/read users. CI native selection
+  includes todo parity and native HTTP tests; hosted CI not executed.
+- First targeted20/21: duplicate HTTP creation returned identical row and unchanged
+  decision history, but the assertion incorrectly expected no generic API request
+  audit. Changed it to assert decision deduplication; HTTP requests remain audited.
+  A later39-case run failed in the native rollback fixture before creating its
+  probe because unqualified DDL resolved to pg_catalog. Qualified owned schema DDL.
+  Both failure outputs retained (`artifacts/shared-todos-targeted-first.txt`,
+  `...targeted-second.txt`). Initial complete run751 passed254.75s was before the
+  later terminal-note guard and assignment/identity cases (`...backend-first.txt`).
+- Additional regression reproduced clearing a completed decision's reason in both
+  stores: two failing tests (`...terminal-note-before.txt`). Added guard requiring
+  nonempty reason throughout terminal state, including explicit new reason on a
+  terminal state change. Final related50 passed12.22s (`...targeted.txt`).
+  Final full **755 passed255.92s**, no skips, one existing Starlette/httpx warning
+  (`...backend-full.txt`). Tests cover real retry/replan HTTP sharing, role/input
+  bounds, foreign family, active/disabled/viewer assignment, corrupt todo key/payload
+  identity, independent-writer concurrent create/CAS and readonly snapshot pages.
+- Actual late audit-head database triggers fail after todo/history and event/hash
+  inserts: all records/hash/head rollback in SQLite/native PostgreSQL. Native
+  nontransactional sequence proves the intended failing head-update branch ran.
+  Earlier Python event-failure probes separately verify rollback after record writes.
+- Final wheel SHA256
+  0beb241dcb26841a99e8ff1b647757ab1e5f5b9785d93d969db613bcecaa5e4f;
+  all66 service files match (`...final-wheel-source-proof.json`). Installed native
+  review valid: creates/deduplicates todo, reads through actual pending follow-up and
+  replacement, updates manually, restores done decision and two history entries
+  through real backup/restore, and queries both via MCP stdio. Existing owned target
+  requests3, owned source1, external0; no new target execution caused by todos.
+  Default installed review valid with0 target requests (`...installed-postgres.json`,
+  `...installed-runtime.json`). First wheel0521995b... and its successful reviews
+  precede terminal-note guard and are retained as historical evidence only.
+- Frontend unchanged: prior78 tests/build are historical, not rerun or claimed to
+  exercise a todo editor. Shared todo editing/UI/URL/mobile/SR and automatic Planner
+  consumption are explicitly open in SHARED-TODOS and V1-READINESS. No browser todo
+  QA claimed, no remote publication/container run. Main preview gracefully restarted
+  fromPID84481 to53876 preserving data; health/static assets and authenticated todo
+  route verified (`...preview-health.json`). Full v1 remains unachieved.
