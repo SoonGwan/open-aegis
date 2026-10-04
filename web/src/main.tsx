@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
+import { UsageSummary } from "./UsageSummary";
 import {
   Activity,
   ArrowDownToLine,
@@ -2409,6 +2410,7 @@ function App() {
                   </p>
                 </div>
               </section>
+              <UsageSummary />
             </>
           )}
           <footer className="page-footer">

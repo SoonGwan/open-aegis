@@ -39,6 +39,7 @@ from .reproduction import build_manifest, MAX_MANIFEST_BYTES
 from .audit_review import AuditReview, AuditReviewBusy, AuditReviewInput
 from .login_limits import LoginGate, LoginLimited
 from . import scopesentry
+from .usage import planner_summary
 from .scopesentry_remote import Sources, PageInput
 
 
@@ -458,6 +459,10 @@ def create_app(data_dir=None, allow_private=None):
                           'findings': store.count('findings', statuses=['open']),
                           'covered_assets': summary['covered_assets'],
                           'requests': store.count('traffic'), 'observations': store.count('observations')}}
+
+    @app.get('/api/llm/usage', dependencies=auth)
+    def llm_usage(days: Literal['7', '30'] | None = None):
+        return planner_summary(store, int(days) if days else None)
 
     @app.get('/api/records/{kind}', dependencies=auth)
     def records(kind: Literal['assets', 'tasks', 'findings', 'traffic', 'notes', 'schedules', 'observations'],

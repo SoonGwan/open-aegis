@@ -2639,6 +2639,10 @@ legend,
 .planner-usage dl { display: flex; flex-wrap: wrap; gap: 24px; margin: 12px 0; }
 .planner-usage dt { font-size: 12px; color: var(--montage-label-neutral); }
 .planner-usage dd { margin: 4px 0 0; font-weight: 800; }
+.usage-summary .panel-head, .usage-summary .setting-row { flex-wrap: wrap; gap: 12px; }
+.usage-summary .setting-row strong { max-width: 100%; overflow-wrap: anywhere; }
+.usage-summary > p { margin: 12px 18px; }
+.usage-summary > button { margin: 0 18px 18px; }
 .checkbox-label input,
 .selection input {
   width: 20px;

@@ -2098,3 +2098,48 @@ on 390×844 has no document overflow.
   stopped. Provider-reported counters are not invoice verification; conversation
   citations/intervention, pricing provenance/costs, iterative calls, aggregate usage,
   live commercial models and full mobile/AT validation remain open v1 gates.
+
+## 2026-10-04 — authenticated exact planner-usage aggregate
+
+- Adds GET /api/llm/usage and a system-settings summary card. All/7-day/30-day
+  windows aggregate the latest recorded planner call per task from one SQLite read
+  snapshot. Counts distinguish reported/partial/missing/invalid usage and accepted/
+  rejected/failed/unknown outcomes. Only consistent bounded integer reported values
+  contribute; rejected plans with valid usage still contribute. No verified reports
+  returns null totals; a real zero report returns decimal string "0".
+- SQLite custom aggregate uses arbitrary-precision integer accumulation and decimal
+  strings, avoiding SQLite SUM overflow and JavaScript number rounding. SQL computes
+  projections/counts without Store.all/full-record Python materialization. Endpoint
+  returns no model, task body, credentials or IDs and writes no audit event. Metadata-
+  free, invalid-time and future records are outside this recorded-call window.
+- Five new tests cover empty/missing versus true zero, mixed states and corrupt
+  claimed-reported values, exact accumulation of 2,100 maximum-safe reports (sum
+  18,915,118,434,956,081,100), old/future records, readonly/auth/admin/operator/viewer
+  access and period validation. Initial integer-Literal query annotation rejected
+  string HTTP days=7; explicit string Literal parsing fixes both supported windows.
+  Targeted five pass, full backend **343 passed in 106.71s**, one existing Starlette
+  httpx deprecation warning. Evidence artifacts/usage-summary-backend-tests.txt.
+- Production summary component uses abort/session/active guards and explicit loading,
+  error, retry and period state. Synthetic browser fixture verifies exact large-total
+  display, pending refresh status/disabled refresh, 503 error and successful manual
+  retry. Final actual iframe client/scroll widths 320/320, 390/390, 768/768. Screenshot
+  artifacts/v1-usage-summary-320.jpg inspected; explanation/button horizontal margins
+  improved after initial review. Native select keyboard attempts did not change the
+  fixture's selection, so actual picker/period-change and delayed prior-period response
+  interactions are **not verified** by this browser sequence. API period behavior is
+  separately verified; no speculative browser/runtime cause claimed.
+- Existing frontend 64 tests pass (artifacts/usage-summary-frontend-tests.txt).
+  Final TypeScript/Vite build index-YDHBRw0g.js / index-B0bfSZoV.css and selected
+  color AA pairs pass. New wheel SHA
+  637a43d09402616cb323f2e6c6ef6eadba8edd05fbca04d2a85dfe78b3d7ebc9 matches
+  current service source. Final installed locked-runtime wheel + UI review additionally
+  checks empty usage, both supported periods, invalid period 422 and post-logout 401,
+  alongside existing HTTP/persistence/maintenance/shutdown/lease checks; target requests
+  zero. Evidence artifacts/usage-summary-package-review.json. Smoke was repeated
+  after final CSS and these new endpoint assertions; backend source was unchanged.
+- Main preview restarted gracefully with new backend; health 200, assets two/tasks
+  four/traffic three preserved. Owned Vite stopped. This is a recorded single-call
+  task aggregate, not all-provider billing, multi-round call ledger or model cost
+  analysis. Historical events are not retroactively imported. Large-query resource
+  limits/soak, full native/mobile/AT picker recovery, citations/intervention and
+  commercial models remain open v1 requirements.

@@ -195,3 +195,14 @@ Select 320/390/768, then Measure: root client/scroll width should match the requ
 actual iframe document. Check labels, unknown counts and total mismatch remain
 readable and wrapped. This is component/manual document QA, not real mobile/AT or a
 complete backend/task-detail user journey. The fixture is outside production entry.
+
+## Usage aggregate recovery and widths
+
+Open `/tests/browser/usage-summary-review.html?frame=1` on Vite 8812 for the production
+UsageSummary with synthetic fetch only. Default total 18,915,118,434,956,081,100 must
+retain all digits. Arm Next delay, Refresh and inspect loading/disabled refresh;
+Release restores data. Arm Next error, Refresh, then Retry must recover. Native period
+picker interaction still requires separate verification. The fixture includes empty
+7-day and missing-only 30-day responses, but their presence is not execution evidence.
+Open without frame query to measure actual 320/390/768 documents. No API/provider
+requests occur and the fixture is outside the production entry.

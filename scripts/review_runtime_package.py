@@ -147,11 +147,17 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                 assert sources['total'] == 1 and sources['items'][0]['external_id'] == selection['selected'][0]
                 assert 'discarded-installed-fixture' not in json.dumps(sources)
                 runtime = request('/api/runtime')
+                usage = request('/api/llm/usage')
+                assert usage['calls'] == 0 and usage['reported_tokens']['total_tokens'] is None
+                assert request('/api/llm/usage?days=7')['days'] == 7
+                assert request('/api/llm/usage?days=30')['days'] == 30
+                request('/api/llm/usage?days=365', expected=422)
                 assert runtime['requests']['requests'] == 0
                 assert runtime['authentication']['parallel'] == 4
                 assert request('/api/audit/verify', {})['status'] == 'verified'
                 request('/api/auth/logout', {})
                 request('/api/assets', expected=401)
+                request('/api/llm/usage', expected=401)
             finally:
                 process.terminate()
                 try:
