@@ -63,6 +63,12 @@ def main():
         checkpoint = root / 'checkpoint.json'
         audit = command('verify-audit', '--source', source, '--output', checkpoint)
         assert audit['events'] == 1
+        archive = root / 'independent checkpoints'
+        captured = command('checkpoint', '--backend', 'sqlite', '--source', source, '--destination', archive)
+        assert captured['created'] and captured['checkpoint'] == audit['checkpoint']
+        assert command('checkpoint', '--backend', 'sqlite', '--source', source, '--destination', archive)['created'] is False
+        assert len(list(archive.glob('checkpoint-*.json'))) == 1
+        assert Path(captured['archive_file']).stat().st_mode & 0o777 == 0o600
         restored = root / 'restored' / 'aegis.db'
         assert command('restore', '--source', backup, '--destination', restored)['sessions_revoked']
         assert command('verify-audit', '--source', restored, '--checkpoint', checkpoint)['events'] == 1
@@ -86,11 +92,14 @@ def main():
         command('restore', '--source', backup, '--destination', rejected, expected=2)
         assert not rejected.exists()
         command('verify-audit', '--source', backup, expected=2)
+        command('checkpoint', '--backend', 'sqlite', '--source', backup, '--destination', archive, expected=2)
+        assert len(list(archive.glob('checkpoint-*.json'))) == 1
         print(json.dumps({'valid': True, 'wheel': wheel.name,
                           'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
                           'installed_origin': origin['module'], 'schema': metadata['schema_version'],
                           'checks': ['installed commands outside checkout', 'backup 0600',
                                      'overwrite rejected', 'backup check-only', 'audit checkpoint',
+                                     'append-only archive, idempotent capture and tamper refusal',
                                      'restore data and revoke sessions', 'restored checkpoint matches',
                                      'busy workspace refused', 'previous data preserved for rollback',
                                      'tampered backup refused before replacement']}, ensure_ascii=False))

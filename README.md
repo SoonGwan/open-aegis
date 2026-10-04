@@ -72,7 +72,8 @@ http://127.0.0.1:8787 에 접속하고 관리자 비밀번호 및 설치 토큰�
 Docker가 없어 검증하지 못했습니다. 로컬 Python 실행 및 프런트엔드 빌드는 검증했습니다.
 
 설치 패키지에는 `aegis-backup`, `aegis-restore`, `aegis-verify-audit` 유지보수
-명령이 포함됩니다. PostgreSQL 새 설치는 `aegis-init-postgres`로 SQLite 없이
+명령이 포함됩니다. `aegis-checkpoint`로 최신 보관 기준과 비교한 체크포인트를
+덮어쓰기 없이 추가할 수 있습니다([주기 보관](docs/AUDIT.md)). PostgreSQL 새 설치는 `aegis-init-postgres`로 SQLite 없이
 시작할 수 있습니다. [저장소 설치](docs/POSTGRES-STORAGE.md)와
 [백업·복구 운영 절차](docs/OPERATIONS.md)를 따르세요.
 

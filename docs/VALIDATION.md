@@ -3483,3 +3483,47 @@ on 390×844 has no document overflow.
   This tests receive admission only, not total memory/connections/downstream work
   limits or a default30s/long soak. No Docker/Colima/Podman executable was found;
   actual container verification and other v1 gates remain open.
+
+## Append-only audit checkpoint archive (2026-10-04)
+
+- Added `aegis-checkpoint` (eighth CLI) for scheduler-driven captures to an
+  operator-specified independent directory. Each capture validates the whole
+  read-only SQLite/native PostgreSQL snapshot against the latest archived head
+  before publication. Same head is a successful no-op; new0600 files use canonical
+  chain/seq/hash names, fsynced stage and non-overwriting hardlink publication.
+  A process-level flock rejects concurrent captures; dirfd/no-follow operations,
+  bounded checkpoint reads, one-chain/seq conflict checks and10000file limit
+  protect the local archive contract. No existing checkpoint is pruned or repaired.
+- Final archive/audit/native targeted suite:41passed1.85s
+  (`artifacts/checkpoint-archive-tests-final.txt`). Tests cover actual CLI repeated
+  captures, payload non-disclosure, valid complete rewrite/truncation detection
+  against the prior external head, corruption/symlink/branch refusal, concurrent
+  capture and retry, file-sync/link/verification failures, stage collision preservation,
+  capacity without pruning, and the complete-file outcome of post-link dirsync failure.
+- Candidate wheel SHA2563d959b998a158e4935e5f044a339215ff0c72dd268e8e2e2ce9b4e32dd3ad7
+  contains all59 service Python files matching current source
+  (`artifacts/checkpoint-archive-source-proof.json`). Outside-checkout installed
+  runtime/UI/auth/eight CLI/backup/restore/audit/release checks pass, including actual
+  installed SQLite capture/idempotent repeat/tampered DB refusal
+  (`artifacts/checkpoint-archive-installed-review.json`,valid=true,target_requests=0).
+- Installed native reviewer also verifies actual PostgreSQL checkpoint creation,
+  repeat no-op0600 and unchanged audit snapshot along with existing native workflows
+  (`artifacts/checkpoint-archive-installed-postgres.json`,valid=true,
+  owned_lab_requests=1,owned_source_requests=1,external_target_requests=0,
+  external_source_requests=0). Temporary environments/owned clusters stop and clean;
+  both review stderr files are empty. Neither reviewer contacts external targets.
+- First concurrent full run had620passed/1failed: the package contract cached the
+  source fingerprint while this implementation was still being edited; its direct
+  recomputation correctly saw changed source. Stable-source single failing test
+  passed immediately. Final complete native-enabled suite is rerun after source freeze;
+  that first failed run is not treated as passing evidence.
+- This command enables repetition by an operator's scheduler, not an installed
+  automatic job or proof of independent immutable custody. Documentation includes
+  a cron example; no user's OS job or remote mount/account was created. Actual
+  independent storage/scheduling, signing/WORM, alerts/continuous UI status,
+  network filesystem and power-loss durability, whole v1 gates remain open.
+- Stable final source: complete SQLite+native PostgreSQL backend suite622passed
+  175.78s (`artifacts/checkpoint-archive-backend-final.txt`), no skips; one existing
+  Starlette/httpx warning. Final editable package reinstall completed and the new
+  `aegis-checkpoint --help` entry point succeeds. Preview's prior PID44273 completed
+  normal lifespan shutdown before restarting with the existing data directory.

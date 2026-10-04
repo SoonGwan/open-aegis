@@ -53,7 +53,7 @@ def main():
             'import aegis,json,sys; from pathlib import Path; '
             'assert Path(aegis.__file__).is_relative_to(Path(sys.prefix)); '
             'print(json.dumps({"module":aegis.__file__}))'], 'installed package origin'))
-        for command in ('backup', 'restore', 'verify-audit', 'replay-policy', 'release', 'transfer-storage', 'init-postgres'):
+        for command in ('backup', 'restore', 'verify-audit', 'checkpoint', 'replay-policy', 'release', 'transfer-storage', 'init-postgres'):
             run([installation / 'bin' / ('aegis-' + command), '--help'], command + ' entry point')
 
         environment['AEGIS_WEB_DIR'] = str(web)
@@ -266,7 +266,7 @@ asyncio.run(review())
         print(json.dumps({'valid': True, 'wheel': wheel.name,
             'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
             'installed_origin': origin['module'], 'target_requests': 0,
-            'checks': ['locked runtime dependencies', 'pip check', 'seven CLI entry points',
+            'checks': ['locked runtime dependencies', 'pip check', 'eight CLI entry points',
                        'installed server outside checkout', 'separate frontend assets',
                        'authentication and logout', 'administrator schema and disabled public docs',
                        'asset and pending plan persistence', 'ScopeSentry review/apply/retry/provenance',

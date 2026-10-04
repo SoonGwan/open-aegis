@@ -92,7 +92,7 @@ DB에 쓰기 권한이 있는 공격자는 모든 이벤트와 해시·기준을
 별도 경로에서 검증한다. 로그 삭제/재봉인을 수리 절차로 사용하지 않는다. 스키마 2
 백업·복구는 이 연결을 검사하며, 외부 체크포인트와의 비교는 별도 명령으로 수행한다.
 읽기 검증은 서비스를 실행 중에도 가능하지만 긴 읽기 스냅샷은 WAL 체크포인트에
-영향을 줄 수 있다. PostgreSQL 지원·대규모 부하·자동화된 외부 보관은 후속 작업이다.
+영향을 줄 수 있다. PostgreSQL 읽기 검증은 지원한다. 대규모 부하·실제 독립 저장소와 운영 스케줄러의 보관 검증은 후속 작업이다.
 
 
 감사 CLI는 기본 HTTP 저장소 선택 환경을 따른다. PostgreSQL은
@@ -100,3 +100,45 @@ DB에 쓰기 권한이 있는 공격자는 모든 이벤트와 해시·기준을
 `aegis-verify-audit --backend postgres --schema aegis_workspace`로도 선택할 수 있다.
 이 모드의 `--source`는 거절한다. 기존 체크포인트 입력·새0600 파일 출력·덮어쓰기
 거절·실패 종료 코드2는 유지한다. [네이티브 읽기 계약](POSTGRES-STORAGE.md)을 따른다.
+
+## 주기적인 체크포인트 보관 명령
+
+`aegis-checkpoint`는 운영자가 지정한 디렉터리에서 마지막 체크포인트를 읽고,
+전체 DB 연결을 단일 읽기 스냅샷에서 그 체크포인트와 비교한 뒤 새 기준을 추가한다.
+같은 기준이면 `created:false`로 성공하며 중복 파일을 만들지 않는다. 이전보다
+짧아진 로그·다른 로그 ID·이전 기준과 다른 해시·잘못된 보관 파일은 종료 코드2로
+거절한다. 이벤트 메시지와 detail은 체크포인트에 포함하지 않는다.
+
+```sh
+# 부모 디렉터리는 먼저 준비한다. 새 보관 디렉터리만 자동 생성한다.
+aegis-checkpoint --backend sqlite --source /srv/open-aegis/aegis.db \
+  --destination /mnt/audit-checkpoints/open-aegis
+# PostgreSQL DSN은 환경 변수에서만 읽으며 명령 출력에 포함하지 않는다.
+aegis-checkpoint --backend postgres --schema aegis_workspace \
+  --destination /mnt/audit-checkpoints/open-aegis-postgres
+```
+
+한 디렉터리에는 한 로그만 보관한다. 파일명은 로그 ID·순번·해시로 결정하며
+체크포인트 파일은0600, 새 디렉터리는0700으로 생성한다. 기존 디렉터리의 권한을
+변경하지 않는다. 마지막 경로의 심볼릭 링크와 체크포인트 심볼릭 링크는 거절한다.
+파일·디렉터리 fsync와 덮어쓰기 없는 hardlink 공개를 사용한다. 공개 후 디렉터리
+fsync 실패에는 완전한 파일이 이미 존재할 수 있으므로 실패 후 다시 확인한다.
+부모 디렉터리 durability·전원 차단·네트워크 파일시스템 동작은 검증하지 않았다.
+보관 파일은 자동으로 삭제하지 않으며 파일1만 개에 도달하면 운영자의 독립 보존
+절차를 요구한다. `.checkpoint.lock`은 동시 보관을 거절하는 협력적 flock이다.
+공유 파일시스템이 이 잠금과 hardlink를 지원해야 한다.
+
+운영자의 스케줄러에서 이 명령을 반복 실행할 수 있다. 다음은5분마다 실행하는
+cron 예시이며 이 프로젝트가 사용자의 시스템에 예약을 설치하지는 않는다.
+실제 설치 경로·실행 계정·DB 읽기 권한과 로그 경로를 먼저 확인한다.
+
+```cron
+*/5 * * * * /opt/open-aegis/.venv/bin/aegis-checkpoint --backend sqlite --source /srv/open-aegis/aegis.db --destination /mnt/audit-checkpoints/open-aegis >> /var/log/open-aegis-checkpoints.log 2>&1
+```
+
+독립 저장소에 mount한 디렉터리를 지정할 수 있으나 명령이 경로의 독립성·보관
+불변성·접근 권한을 증명하지는 않는다. DB와 보관 파일을 같은 공격자가 변경하면
+탐지 보장이 없다. 초기 체크포인트는 당시 연결 일치만 확인하며 그 이전 기록의
+진실성을 인증하지 않는다. 정기 실행 실패·마지막 성공 시각은 스케줄러/운영
+감시에서 확인해야 한다. 원격 전송 프로토콜·전자서명·WORM 보존·자동 알림·UI의
+상시 상태는 아직 없다. 실제 독립 저장소·운영 스케줄러의 장기 검증도 남아 있다.

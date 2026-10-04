@@ -374,6 +374,14 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
             verified=json.loads(run([python,'-I','-m','aegis.cli.audit','--output',checkpoint],'installed native audit CLI',env=reader_env))
             assert verified==native['audit'] and checkpoint.stat().st_mode & 0o777==0o600
             assert json.loads(run([python,'-I','-m','aegis.cli.audit','--checkpoint',checkpoint],'installed native audit prefix',env=reader_env))==verified
+            native_archive=temporary/'independent-native-checkpoints'
+            checkpoint_cli=installation/'bin'/'aegis-checkpoint'
+            captured=json.loads(run([checkpoint_cli,'--destination',native_archive],'installed native checkpoint capture',env=reader_env))
+            assert captured['created'] and captured['checkpoint']==verified['checkpoint']
+            repeated=json.loads(run([checkpoint_cli,'--destination',native_archive],'installed native repeated checkpoint capture',env=reader_env))
+            assert repeated['created'] is False and len(list(native_archive.glob('checkpoint-*.json')))==1
+            assert Path(captured['archive_file']).stat().st_mode & 0o777==0o600
+            assert json.loads(run([python,'-I','-m','aegis.cli.audit'],'installed native audit unchanged after capture',env=reader_env))==verified
             signing=temporary/'signing.pem';public=temporary/'trusted.pem'
             run(['openssl','genpkey','-algorithm','ED25519','-out',signing],'ephemeral release signing key');signing.chmod(0o600)
             run(['openssl','pkey','-in',signing,'-pubout','-out',public],'release public key')
@@ -458,7 +466,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
                 'checks':['locked optional dependency','server fsync enabled','installed native initializer under a nonsuperuser role with database CREATE','fresh native HTTP first setup token, authentication, note and audit without SQLite','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
-                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
+                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed native append-only checkpoint archive and unchanged repeat','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,
                 'external_target_requests':0,'service_postgres_backend_enabled':True}))
