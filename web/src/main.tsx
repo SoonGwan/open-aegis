@@ -35,7 +35,7 @@ import {
   Zap,
 } from "lucide-react";
 import "./style.css";
-import { api } from "./api";
+import { api, captureSession } from "./api";
 import { runViewAction, ViewScope } from "./view-action";
 import { FindingTriage, type TriageFinding } from "./triage";
 import { RuntimePanel, PolicySummary, type ExecutionPolicy } from "./runtime";
@@ -482,6 +482,7 @@ function App() {
   };
   const refresh = useCallback(async () => {
     const sequence = ++refreshSequence.current;
+    const isCurrentSession = captureSession();
     try {
       const [data, catalog, config, identity] = await Promise.all([
         api<Overview>("/overview"),
@@ -491,7 +492,7 @@ function App() {
           "/auth/status",
         ),
       ]);
-      if (sequence !== refreshSequence.current) return;
+      if (sequence !== refreshSequence.current || !isCurrentSession()) return;
       setAuth(identity);
       setOverview(data);
       setOverviewLoaded(true);
@@ -500,17 +501,18 @@ function App() {
       setConnection(true);
       setError("");
     } catch (e) {
-      if (sequence !== refreshSequence.current) return;
+      if (sequence !== refreshSequence.current || !isCurrentSession()) return;
       setConnection(false);
       setError((e as Error).message);
     }
   }, []);
   useEffect(() => {
+    const isCurrentSession = captureSession();
     api<{ setup_required: boolean; authenticated: boolean; user?: User }>(
       "/auth/status",
     )
-      .then(setAuth)
-      .catch((e) => setError(e.message));
+      .then((identity) => { if (isCurrentSession()) setAuth(identity); })
+      .catch((e) => { if (isCurrentSession()) setError(e.message); });
     const expired = () => {
       navigation.invalidateActionView();
       setAuth({ authenticated: false, setup_required: false });
@@ -522,10 +524,22 @@ function App() {
   }, []);
   useEffect(() => {
     if (auth && !auth.authenticated) {
+      refreshSequence.current++;
       setOverviewLoaded(false);
+      setOverview(initial);
+      setTools([]);
+      setSettings(null);
       setSelectedTask(null);
+      setTaskDetail(null);
       setSelectedFinding(null);
       setTrafficDetail(null);
+      setEditingAsset(null);
+      setTaskAssetId(null);
+      setError("");
+      setFormError("");
+      setReplanError(null);
+      setToast("");
+      if (toastTimer.current) clearTimeout(toastTimer.current);
       setModal(null);
       setArchivingAsset(null);
     }
@@ -910,12 +924,14 @@ function App() {
           <button
             onClick={() => {
               if (auth?.authenticated) void refresh();
-              else
+              else {
+                const isCurrentSession = captureSession();
                 void api<{ setup_required: boolean; authenticated: boolean }>(
                   "/auth/status",
                 )
-                  .then(setAuth)
-                  .catch((e) => setError(e.message));
+                  .then((identity) => { if (isCurrentSession()) setAuth(identity); })
+                  .catch((e) => { if (isCurrentSession()) setError(e.message); });
+              }
             }}
           >
             다시 연결

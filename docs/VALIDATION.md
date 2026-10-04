@@ -1620,3 +1620,43 @@ on 390×844 has no document overflow.
 - Revision is document-local response-order protection, not a server permission
   boundary or cross-tab synchronization. Generic successful replies are not filtered
   by this change. Full authentication transition/data-isolation UX remains open.
+
+
+## 2026-10-04 — stale successful reads and downloads across session changes
+
+- Two failing-before controlled-response tests show that the actual API returns an
+  old successful overview after another login and returns old identity when its JSON
+  body finishes after login. Both now reject with AbortError. GET success checks the
+  captured session and abort signal before JSON interpretation and after its awaited
+  completion. Successful POST/PATCH acknowledgments retain their existing semantics
+  so a committed action can still be reconciled; this is not blanket mutation-response
+  cancellation. Current reads return normally.
+- Four new tests cover held successful read across login, held identity JSON body,
+  current reads plus old committed POST acknowledgment, and aborted successful body.
+  Final suite **59 passed** (55 prior plus four). Build succeeds. Main overview refresh
+  and initial/retry identity loaders additionally ignore old-session success/error.
+  The unauthenticated transition invalidates refresh sequence and clears summary,
+  tools/settings, task/detail/finding/traffic/edit selections and old error/toast state.
+  These main cleanup branches are source/type-check evidence, not a complete native
+  multi-account UI transition rehearsal.
+- Production ReportDownload now checks the captured session before creating the Blob
+  URL/save anchor and before handling local failures. Extended native browser fixture
+  imports actual API/ReportDownload but stubs synthetic transport. A previous GET 200
+  after new login reports canceled old read, never successful old data. A current read
+  succeeds. A report 200 after new login leaves file-save-path count zero and no saved
+  status; current-session report 200 increments to one and shows download-started.
+  Previous-session report 401 after login leaves no alert/countdown/expiration, with
+  file count unchanged. This supersedes the prior fixture's stale-error display claim.
+  The helper still returns its HTTP error; the component discards the stale local UI.
+- Fixture wraps createObjectURL to count the real component save path and replaces
+  anchor click with a no-op, so no Downloads file is created. Screenshot
+  `artifacts/v1-session-read-isolation.jpg` is inspected. Fixture endpoints/login are
+  synthetic and do not touch real cookies, target services or production records.
+  Cross-tab transitions and full mutation-callback isolation remain open.
+- Final assets `index-hbwyEmNd.js` / `index-B5ysGB7c.css`; main health 200 and exact
+  final assets served, assets two/tasks four/traffic three unchanged. Browser fixture
+  server stops; main preview stays live. No Python source edit/full backend rerun.
+  Unchanged wheel SHA-256
+  `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`
+  with final UI passes outside-checkout installed runtime/dependency/CLI/auth/schema/
+  import/remote-refusal/audit/backup/restore/shutdown/lease rehearsal, target requests zero.

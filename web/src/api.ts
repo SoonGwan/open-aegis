@@ -59,5 +59,18 @@ export async function api<T>(
   }
   if (method !== "GET" && /^\/auth\/(login|setup|logout|password)$/.test(path))
     sessionRevision++;
-  return response.json();
+  const assertCurrentRead = () => {
+    if (
+      method.toUpperCase() === "GET" &&
+      (!isCurrentSession() || signal?.aborted)
+    )
+      throw new DOMException(
+        "세션이 변경되거나 중단된 이전 조회입니다.",
+        "AbortError",
+      );
+  };
+  assertCurrentRead();
+  const result = await response.json();
+  assertCurrentRead();
+  return result;
 }

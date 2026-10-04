@@ -58,7 +58,7 @@ export function ReportDownload({
       const result = await (format === "policy"
         ? fetchPolicy(taskId, request.signal)
         : fetchReport(format, taskId, request.signal));
-      if (!active.current || request.signal.aborted) return;
+      if (!active.current || request.signal.aborted || !isCurrentSession()) return;
       const url = URL.createObjectURL(result.blob);
       const link = document.createElement("a");
       link.href = url;
@@ -70,7 +70,7 @@ export function ReportDownload({
       setRetryAt(0);
       setSaved(true);
     } catch (e) {
-      if (!active.current) return;
+      if (!active.current || !isCurrentSession()) return;
       if (request.signal.aborted) setError("다운로드를 중단했습니다.");
       else {
         const error = e as ReportDownloadError;

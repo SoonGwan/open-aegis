@@ -193,3 +193,70 @@ test("successful auth headers invalidate old requests even if the response body 
   expireSession(current);
   assert.deepEqual(events, []);
 });
+
+test("an earlier successful read cannot restore data after a new login", async (t) => {
+  const old = deferred<Response>();
+  t.mock.method(globalThis, "fetch", async (url: string) =>
+    url === "/api/overview" ? old.promise : json(200),
+  );
+  const request = api("/overview");
+  const rejected = assert.rejects(request, { name: "AbortError" });
+  await api("/auth/login", "POST", {});
+  old.resolve(
+    new Response(JSON.stringify({ ownedBy: "previous-user" }), { status: 200 }),
+  );
+  await rejected;
+});
+
+test("a read body finishing after session replacement cannot return old identity", async (t) => {
+  const body = deferred<{ authenticated: boolean; user: string }>();
+  const started = deferred<boolean>();
+  t.mock.method(globalThis, "fetch", async (url: string) => {
+    if (url === "/api/auth/login") return json(200);
+    const response = json(200);
+    response.json = async () => {
+      started.resolve(true);
+      return body.promise;
+    };
+    return response;
+  });
+  const rejected = assert.rejects(api("/auth/status"), { name: "AbortError" });
+  await started.promise;
+  await api("/auth/login", "POST", {});
+  body.resolve({ authenticated: true, user: "previous-user" });
+  await rejected;
+});
+
+test("current reads return normally and committed mutation acknowledgments remain available", async (t) => {
+  const old = deferred<Response>();
+  t.mock.method(globalThis, "fetch", async (url: string) =>
+    url === "/api/mutation" ? old.promise : json(200),
+  );
+  assert.deepEqual(await api("/overview"), { detail: "synthetic response" });
+  const mutation = api("/mutation", "POST", {});
+  await api("/auth/login", "POST", {});
+  old.resolve(json(200));
+  assert.deepEqual(await mutation, { detail: "synthetic response" });
+});
+
+test("an aborted successful read cannot deliver a body that finished late", async (t) => {
+  const body = deferred<unknown>();
+  const started = deferred<boolean>();
+  t.mock.method(globalThis, "fetch", async () => {
+    const response = json(200);
+    response.json = async () => {
+      started.resolve(true);
+      return body.promise;
+    };
+    return response;
+  });
+  const controller = new AbortController();
+  const rejected = assert.rejects(
+    api("/overview", "GET", undefined, controller.signal),
+    { name: "AbortError" },
+  );
+  await started.promise;
+  controller.abort();
+  body.resolve({ ownedBy: "previous-read" });
+  await rejected;
+});
