@@ -3581,3 +3581,10 @@ pre,
   min-width: 0;
   max-width: 100%;
 }
+
+.next-plan { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.next-plan .observation-url { display: block; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.next-plan button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.next-plan summary { overflow-wrap: anywhere; }
+
+.finding-record .observation-url { min-width: 0; max-width: 100%; }

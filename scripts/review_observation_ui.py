@@ -1,5 +1,6 @@
-"""Disposable built-app observation UI fixture; synthetic metadata, no target execution."""
+"""Disposable built-app observation/dependency/next-plan UI fixtures; synthetic metadata, no target execution."""
 import argparse
+import asyncio
 import os
 from pathlib import Path
 import sys
@@ -9,7 +10,7 @@ import html
 import shutil
 from contextlib import asynccontextmanager
 from starlette.routing import Route
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse, Response
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
@@ -18,6 +19,7 @@ from aegis.auth import new_user
 from aegis.__main__ import AegisServer
 from aegis.tool_contracts import contracts_for
 from aegis.worker_observations import record_link
+from aegis.coverage import slot
 
 
 def main():
@@ -25,6 +27,10 @@ def main():
     parser.add_argument('--port',type=int,default=8815)
     parser.add_argument('--editor',action='store_true',help='Seed30 extra synthetic selectable assets for dependency editor QA')
     parser.add_argument('--task-fail-flag',type=Path,help='Owned QA flag: while present, task creation POST returns503')
+    parser.add_argument('--next-plan',action='store_true',help='Seed synthetic terminal two-Worker proposal evidence; never execute targets')
+    parser.add_argument('--next-read-fail-flag',type=Path)
+    parser.add_argument('--next-write-fail-flag',type=Path)
+    parser.add_argument('--next-write-hold-flag',type=Path)
     parser.add_argument('--dependencies',action='store_true',help='Synthetic pending two-Worker dependency approval fixture')
     parser.add_argument('--fail-flag',type=Path,help='Owned QA flag: while present, only task observation GET returns503')
     args=parser.parse_args()
@@ -39,12 +45,31 @@ def main():
             source=request.query_params.get('source','?page=observations')
             if width not in ('320','390','768') or not source.startswith('?'):
                 return JSONResponse({'detail':'Invalid QA frame'},status_code=400)
-            return HTMLResponse('<!doctype html><html><body style="margin:0"><iframe title="Responsive observation QA" style="border:0;width:'+width+'px;height:844px" src="/'+html.escape(source+'&qa_frame=1',quote=True)+'"></iframe></body></html>')
+            return HTMLResponse('<!doctype html><html><body style="margin:0"><iframe title="Responsive observation QA" style="border:0;width:'+width+'px;height:844px" src="/'+html.escape(source+'&qa_frame=1',quote=True)+'"></iframe><button id="measure">너비 검사</button><output id="dimensions" aria-label="너비 측정 결과"></output><script src="/qa-layout.js"></script></body></html>')
+        async def layout(request):
+            return Response('''document.getElementById('measure').addEventListener('click',()=>{
+                const d=document.querySelector('iframe').contentDocument;
+                const m=e=>e?{client:e.clientWidth,scroll:e.scrollWidth}:null;
+                const overflow=Array.from(d.querySelectorAll('*')).filter(e=>e.clientWidth>0&&e.scrollWidth>e.clientWidth+1).map(e=>({tag:e.tagName,class:e.className,...m(e),minWidth:d.defaultView.getComputedStyle(e).minWidth}));
+                document.getElementById('dimensions').textContent=JSON.stringify({document:m(d.documentElement),dialog:m(d.querySelector('[role="dialog"]')),panel:m(d.querySelector('.next-plan')),overflow});
+            });''',media_type='application/javascript')
+        app.router.routes.insert(0,Route('/qa-layout.js',layout))
         app.router.routes.insert(0,Route('/qa-frame',frame))
         task_posts=0
+        next_posts=0
         @app.middleware('http')
         async def failure(request,call_next):
-            nonlocal task_posts
+            nonlocal task_posts,next_posts
+            if request.url.path.endswith('/next-plan'):
+                if request.method=='GET' and args.next_read_fail_flag and args.next_read_fail_flag.exists():
+                    return JSONResponse({'detail':'합성 제안 조회 실패'},status_code=503)
+                if request.method=='POST':
+                    next_posts+=1
+                    deadline=time.monotonic()+15
+                    while args.next_write_hold_flag and args.next_write_hold_flag.exists() and time.monotonic()<deadline:
+                        await asyncio.sleep(.05)
+                    if args.next_write_fail_flag and args.next_write_fail_flag.exists():
+                        return JSONResponse({'detail':'합성 후속 계획 저장 실패'},status_code=503)
             if request.method=='POST' and request.url.path=='/api/tasks':
                 task_posts+=1
                 if args.task_fail_flag and args.task_fail_flag.exists():
@@ -65,13 +90,21 @@ def main():
               'created_at':time.time(),'started_at':1.,'finished_at':2.,'approved_at':1.,'done':1,'errors':0,
               'asset_ids':[asset['id']],'scope_snapshot':[asset],'checks':['endpoint_inventory'],
               'tool_contracts':contracts_for(['endpoint_inventory']),'workers':1,'planner':'rules'}
-        if args.dependencies:
+        if args.dependencies or args.next_plan:
             parent={**asset,'id':'qa-parent-asset','name':'선행 검수 자산','url':asset['url']+'parent/'}
             asset['name']='후행 검수 자산'
             task.update(status='pending',approved_at=None,started_at=None,finished_at=None,done=0,
                         asset_ids=[asset['id'],parent['id']],scope_snapshot=[asset,parent],
                         worker_dependencies={asset['id']:[parent['id']]})
             store.put('assets',parent)
+        if args.next_plan:
+            task.update(status='completed',approved_at=1.,started_at=1.,finished_at=2.,done=2,errors=1,
+                        checks=['security_headers','endpoint_inventory'],
+                        tool_contracts=contracts_for(['security_headers','endpoint_inventory']))
+            store.put('coverage',slot(task,asset,'security_headers',status='failed'))
+            store.put('coverage',slot(task,asset,'endpoint_inventory',status='skipped'))
+            for check in task['checks']:
+                store.put('coverage',slot(task,parent,check,status='completed'))
         store.put_many([('assets',asset),('tasks',task)])
         for i in range(60):
             record_link(store,task,asset,'endpoint_inventory',asset['url']+f'owned-link-{i:02d}')
@@ -90,7 +123,7 @@ def main():
             assert store.count('traffic')==0
             assert store.get('tasks',task['id'])['status']==task['status']
             shutil.rmtree(temporary)
-            print('Fixture lifespan completed; target requests0; task creation POSTs'+str(task_posts)+'; temporary data removed',flush=True)
+            print('Fixture lifespan completed; target requests0; task creation POSTs'+str(task_posts)+'; next-plan POSTs'+str(next_posts)+'; temporary data removed',flush=True)
         app.router.lifespan_context=reviewed_lifespan
         print('Owned observation UI fixture at http://127.0.0.1:'+str(args.port),flush=True)
         AegisServer(app,host='127.0.0.1',port=args.port,log_level='warning',timeout_graceful_shutdown=5).run()

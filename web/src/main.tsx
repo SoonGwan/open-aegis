@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { validateWorkerDependencies, WorkerDependencyError } from "./worker-dependency-state";
+import { NextPlan } from "./NextPlan";
 import { WorkerDependencies } from "./WorkerDependencies";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
@@ -108,6 +109,8 @@ type Task = {
   retest_of?: string;
   retry_of?: string;
   replan_of?: string | null;
+  followup_of?: string | null;
+  planning_round?: number;
   replaced_by?: string;
   execution_policy?: ExecutionPolicy;
   tool_contracts?: ToolManifest;
@@ -2806,6 +2809,21 @@ function App() {
               pending={selectedTask.status === "pending"} />
             <WorkerDependencies dependencies={selectedTask.worker_dependencies} assets={selectedTask.scope_snapshot} />
             {replanError?.id === selectedTask.id && <p className="form-error" role="alert">{replanError.message}</p>}
+            {selectedTask.followup_of && <p className="subtle">
+              결과 기반 후속 {selectedTask.planning_round}회차 · <button type="button" disabled={busy}
+                onClick={() => navigation.openDetail({kind:"task",id:selectedTask.followup_of!})}>이전 회차 보기</button>
+            </p>}
+            {selectedTask.approved_at && ["completed","failed","stopped","interrupted"].includes(selectedTask.status) && <NextPlan
+              key={`next-plan-${selectedTask.id}`} taskId={selectedTask.id} canOperate={canOperate} busy={busy}
+              names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))}
+              onTask={id=>navigation.openDetail({kind:"task",id})}
+              onAccept={async (fingerprint,onFailure) => {
+                const result = await act("/tasks/"+encodeURIComponent(selectedTask.id)+"/next-plan","POST",{fingerprint},
+                  "후속 승인 대기 계획을 만들었습니다. 범위와 도구를 검토한 뒤 승인하세요.",onFailure) as Task | undefined;
+                if (result) navigation.openDetail({kind:"task",id:result.id});
+                return result;
+              }}
+            />}
             {selectedTask.retry_of && (
               <p className="subtle">
                 원본 작업: {selectedTask.retry_of} · 현재 범위로 만든 재실행

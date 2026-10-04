@@ -3815,3 +3815,55 @@ on 390×844 has no document overflow.
   Dedicated proposal UI, replacement/retry interactions across planning rounds,
   event-driven automatic Planner, semantic goal/observation consumption, shared
   to-do and full v1 remain open.
+
+## Next-plan review and acceptance UI — 2026-10-05
+
+- Added terminal approved task detail panel for explicit proposal lookup/relookup:
+  missing/retry checks, current names/URLs/revisions, pool/planner, Worker edges,
+  policy/contract disclosures, repeated completed cells, skipped cells and latest
+  per-cell source-task links. Acceptance uses the existing view/session action
+  guard and opens the real pending task. Pending detail links to previous round;
+  accepted source offers its existing child. Viewer acceptance is disabled.
+- Query abort/controller identity and unmount guards prevent old read updates.
+  Saving ref and disabled buttons reject repeated actions. Failed acceptance clears
+  the stale proposal and requires reread; query or save failure returns keyboard
+  focus to the enabled lookup button once pending state settles.
+- Final frontend73passed473.157208ms, no failures/skips; build1.43s,
+  JSindex-kxf37mbn/CSSindex-sstsBYgv (`artifacts/next-plan-ui-tests.txt`, `...build.txt`).
+  Existing unit tests are regression checks; the new panel's behavioral evidence
+  comes from real built-app browser interactions below. Service Python unchanged:
+  all64 files still match previous cbd1b6c235ecfecb88b7198edb5b50c5696021346da42f0a7a4383635f92de9d
+  wheel (`...service-unchanged.json`). Previous703 backend tests are historical,
+  not rerun for this frontend change.
+- Owned synthetic terminal evidence verifies503 query/retry, failed acceptance
+  requiring relookup, one alert and focused query button. Held POST disables the
+  submit control; attempted keyboard press is refused as disabled. Escape closes
+  pending detail; same task reopens while logout is still disabled, then releasing
+  the held error does not apply the old error to the new panel. Synthetic completed
+  sources are not claims of real target execution.
+- Keyboard acceptance creates exactly one real pending task with five checks,
+  original two asset IDs and dependency, approved_at=null, planning_round1 and
+  reciprocal source link (`...saved.json`). Source remains completed. Previous-
+  round and existing-child links work; no_remaining_checks explanation displays
+  without security claim; actual viewer login can read and has disabled acceptance.
+  Additional synthetic preview/no-remaining sources and a viewer were seeded solely
+  for readonly UI review. No actual execution approval was clicked.
+- Narrow QA found existing observation cards'240px minimum address width causing
+  article client233/scroll256 and modal277/278. Scoped record address sizing fixes
+  this alongside the new panel. Final320 document320/scroll320, dialog277/277,
+  panel237/237;390 document390/390, dialog347/347, panel307/307. Tables retain their
+  intended internal scroll. Actual widths are measured by a QA-only same-origin
+  page button/external script, not by iframe evaluation's unsupported contentDocument
+  in the browser facade. Root-only measurements were insufficient.
+  Final screenshots visually inspected: `...desktop.jpg`, `...320.jpg`, `...390.jpg`;
+  measured evidence `...widths.json`, compact review `...review.json`. These are
+  CSS-width iframe checks, not physical-device/touch/zoom/screen-reader verification.
+  Round-limit presentation was not separately exercised in UI.
+- Initial fixture shutdown next-plan POSTs1 (failed), final fixture POSTs4 (three
+  failures and one pending creation), task creation /api/tasks POSTs0; both target
+  requests0, original terminal state unchanged, owned tabs/flags cleaned and both
+  temporary directories removed. Preview health/UI200 with final JS/CSS
+  (`...preview-health.json`), service restart unnecessary.
+- Replacement/retry interactions across rounds, automatic event-driven Planner,
+  semantic goal/observation consumption, shared to-do and the full v1 gates remain
+  open. The preceding API-only UI limitation is superseded by this entry.
