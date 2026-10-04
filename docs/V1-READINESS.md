@@ -170,7 +170,9 @@
     ([WORKER-PROCESS.md](WORKER-PROCESS.md)). 전체 과정 검색 UI,
     승인된 비순환 Worker 의존 실행·합류/독립 병렬·완료 근거/관찰 참조 전달·
     실패 차단·중지 처리와 승인/상세 표시 구현([WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md)).
-    생성 화면의 의존 설정, 다음 실행 제안·반복 Planner·도구의 관찰 소비와 전체 모바일/SR 검수는 남아 있음
+    일반 계획/반복 예약의 의존 설정 폼·검색/페이지 선택 보존·순환 차단·오류 재시도 구현.
+    73개 프런트엔드 테스트와 합성 320/390px 폼 내부 너비·키보드·실제 저장 검수.
+    다음 실행 제안·반복 Planner·도구의 관찰 소비와 전체 모바일/SR 검수는 남아 있음
     ([WORKER-OBSERVATIONS.md](WORKER-OBSERVATIONS.md)).
   - 현재 LLM은 승인된 도구 순서만 정한다. 단계별 완료 근거·중복 방지·중단·재시작과
     다른 Worker 관찰의 출처 검증이 필요하다. 원본 기능 및 남은 계약은 [ARTEX 검토](ARTEX-REVIEW.md)를 따른다.

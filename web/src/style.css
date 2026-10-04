@@ -3560,3 +3560,24 @@ pre,
 .call-history-record dl { display:flex; flex-wrap:wrap; gap:16px; }
 .call-history-record dd { margin:4px 0; font-weight:700; }
 .call-history-record button { max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+
+.asset-picker,
+.worker-dependency-editor {
+  min-width: 0;
+  max-width: 100%;
+}
+.asset-picker .selection > div,
+.asset-picker .picker-selected > span,
+.worker-dependency-editor .checkbox-label > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.worker-dependency-editor legend {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.worker-predecessors { margin-top: 12px; }
+.worker-dependency-editor .observation-url {
+  min-width: 0;
+  max-width: 100%;
+}

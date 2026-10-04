@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
+import { validateWorkerDependencies, WorkerDependencyError } from "./worker-dependency-state";
 import { WorkerDependencies } from "./WorkerDependencies";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
@@ -880,7 +881,8 @@ function App() {
     actionInFlight.current = action;
     setBusy(true);
     setFormError("");
-    const data = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const data = new FormData(form);
     const isCurrent = captureActionView();
     const isSessionCurrent = captureSession();
     let destination: string | null = null;
@@ -922,7 +924,9 @@ function App() {
           checks: data.getAll("check"),
           workers: Number(data.get("workers")),
           planner: data.get("planner"),
+          worker_dependencies: JSON.parse(String(data.get("worker_dependencies") || "{}")),
         };
+        validateWorkerDependencies(body.asset_ids, body.worker_dependencies);
         const interval = Number(data.get("interval"));
         await api(
           interval ? "/schedules" : "/tasks",
@@ -958,7 +962,17 @@ function App() {
       const errorMessage = e instanceof SyntaxError
         ? "JSON 형식을 확인하세요."
         : (e as Error).message;
-      if (isCurrent()) setFormError(errorMessage);
+      if (isCurrent()) {
+        setFormError(errorMessage);
+        if (e instanceof WorkerDependencyError) {
+          if (form.querySelector("[data-worker-error]")) setFormError("");
+          const controls = Array.from(form.querySelectorAll<HTMLInputElement>("[data-worker-dependency]"));
+          const target = controls.find(control => control.dataset.workerChild === e.child) || controls.find(control => control.checked) || controls[0];
+          const details = target?.closest("details");
+          if (details) details.open = true;
+          target?.focus();
+        }
+      }
       else message("이전 화면 요청 실패 · " + errorMessage);
     } finally {
       if (actionInFlight.current === action) {
@@ -2561,7 +2575,7 @@ function App() {
                     defaultValue="등록된 자산의 보안 설정과 접근 권한을 검증합니다."
                   />
                 </label>
-                <AssetPicker initialId={taskAssetId} />
+                <AssetPicker initialId={taskAssetId} initialAsset={visibleAssets.find(asset => asset.id === taskAssetId)} onDraftChange={() => setFormError("")} />
                 <fieldset>
                   <legend>검증 도구</legend>
                   <div className="check-grid">

@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { WorkerDependencyEditor } from "./WorkerDependencyEditor";
+import {
+  selectWorkerAsset,
+  type WorkerSelection,
+  type PickerAsset,
+} from "./worker-dependency-state";
 import { api } from "./api";
 import type { ListPosition, HistoryMode } from "./navigation-state";
 
@@ -218,74 +224,99 @@ export function Pagination({
   );
 }
 
-type PickerAsset = { id: string; name: string; url: string };
-export function AssetPicker({ initialId }: { initialId: string | null }) {
+export function AssetPicker({
+  initialId,
+  initialAsset,
+  onDraftChange,
+}: {
+  initialId: string | null;
+  initialAsset?: PickerAsset;
+  onDraftChange?: () => void;
+}) {
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Record<string, string>>(
-    initialId ? { [initialId]: initialId } : {},
-  );
+  const [selection, setSelection] = useState<WorkerSelection>(() => ({
+    selected: initialId
+      ? {
+          [initialId]: initialAsset || {
+            id: initialId,
+            name: initialId,
+            url: "",
+          },
+        }
+      : {},
+    dependencies: {},
+  }));
+  const selected = selection.selected;
   const records = useRecords<PickerAsset>("assets", search, {
     archived: "false",
   });
   const count = Object.keys(selected).length;
   return (
-    <fieldset>
-      <legend>
-        검증 자산 <span>{count} / 최대 20개 선택</span>
-      </legend>
-      <label>
-        자산 검색
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="이름, 주소, 소유자"
-          maxLength={200}
-        />
-      </label>
-      {Object.entries(selected).map(([id, name]) => (
-        <div className="picker-selected" key={id}>
-          <input type="hidden" name="asset" value={id} />
-          <span>{name}</span>
-          <button
-            type="button"
-            onClick={() =>
-              setSelected((current) => {
-                const next = { ...current };
-                delete next[id];
-                return next;
-              })
-            }
-            aria-label={`${name} 선택 해제`}
-          >
-            선택 해제
-          </button>
-        </div>
-      ))}
-      {!records.ready && <RecordState records={records} />}
-      <div className="selection-list">
-        {records.items.map((asset) => (
-          <label className="selection" key={asset.id}>
-            <input
-              type="checkbox"
-              checked={asset.id in selected}
-              disabled={!(asset.id in selected) && count >= 20}
-              onChange={(event) =>
-                setSelected((current) => {
-                  const next = { ...current };
-                  if (event.target.checked) next[asset.id] = asset.name;
-                  else delete next[asset.id];
-                  return next;
-                })
-              }
-            />
-            <div>
-              <strong>{asset.name}</strong>
-              <small>{asset.url}</small>
-            </div>
-          </label>
+    <>
+      <fieldset className="asset-picker">
+        <legend>
+          검증 자산 <span>{count} / 최대 20개 선택</span>
+        </legend>
+        <label>
+          자산 검색
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="이름, 주소, 소유자"
+            maxLength={200}
+          />
+        </label>
+        {Object.entries(selected).map(([id, asset]) => (
+          <div className="picker-selected" key={id}>
+            <input type="hidden" name="asset" value={id} />
+            <span>{asset.name}</span>
+            <button
+              type="button"
+              onClick={() => {
+                onDraftChange?.();
+                setSelection((current) =>
+                  selectWorkerAsset(current, asset, false),
+                );
+              }}
+              aria-label={`${asset.name} 선택 해제`}
+            >
+              선택 해제
+            </button>
+          </div>
         ))}
-      </div>
-      <Pagination records={records} />
-    </fieldset>
+        {!records.ready && <RecordState records={records} />}
+        <div className="selection-list">
+          {records.items.map((asset) => (
+            <label className="selection" key={asset.id}>
+              <input
+                type="checkbox"
+                checked={Object.hasOwn(selected, asset.id)}
+                disabled={!Object.hasOwn(selected, asset.id) && count >= 20}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  onDraftChange?.();
+                  setSelection((current) =>
+                    selectWorkerAsset(current, asset, checked),
+                  );
+                }}
+              />
+              <div>
+                <strong>{asset.name}</strong>
+                <small>{asset.url}</small>
+              </div>
+            </label>
+          ))}
+        </div>
+        <Pagination records={records} />
+      </fieldset>
+      <WorkerDependencyEditor
+        assets={Object.values(selected)}
+        dependencies={selection.dependencies}
+        onChange={(dependencies) => {
+          onDraftChange?.();
+          setSelection((current) => ({ ...current, dependencies }));
+        }}
+      />
+    </>
   );
 }

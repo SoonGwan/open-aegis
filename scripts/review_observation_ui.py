@@ -23,6 +23,8 @@ from aegis.worker_observations import record_link
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8815)
+    parser.add_argument('--editor',action='store_true',help='Seed30 extra synthetic selectable assets for dependency editor QA')
+    parser.add_argument('--task-fail-flag',type=Path,help='Owned QA flag: while present, task creation POST returns503')
     parser.add_argument('--dependencies',action='store_true',help='Synthetic pending two-Worker dependency approval fixture')
     parser.add_argument('--fail-flag',type=Path,help='Owned QA flag: while present, only task observation GET returns503')
     args=parser.parse_args()
@@ -39,8 +41,14 @@ def main():
                 return JSONResponse({'detail':'Invalid QA frame'},status_code=400)
             return HTMLResponse('<!doctype html><html><body style="margin:0"><iframe title="Responsive observation QA" style="border:0;width:'+width+'px;height:844px" src="/'+html.escape(source+'&qa_frame=1',quote=True)+'"></iframe></body></html>')
         app.router.routes.insert(0,Route('/qa-frame',frame))
+        task_posts=0
         @app.middleware('http')
         async def failure(request,call_next):
+            nonlocal task_posts
+            if request.method=='POST' and request.url.path=='/api/tasks':
+                task_posts+=1
+                if args.task_fail_flag and args.task_fail_flag.exists():
+                    return JSONResponse({'detail':'합성 계획 저장 실패'},status_code=503)
             if request.url.path.startswith('/api/tasks/') and request.url.path.endswith('/observations') and args.fail_flag and args.fail_flag.exists():
                 return JSONResponse({'detail':'합성 관찰 조회 실패'},status_code=503)
             response=await call_next(request)
@@ -71,6 +79,10 @@ def main():
                                  'url':asset['url']+'legacy-link','created_at':time.time()})
         store.put('observations',{'id':'qa-missing','task_id':'missing-task','asset_id':asset['id'],
                                  'url':asset['url']+'missing-source','created_at':time.time()})
+        if args.editor:
+            for i in range(30):
+                store.put('assets',{**asset,'id':f'qa-editor-{i:02d}','name':f'편집 검수 {i:02d}',
+                                    'url':asset['url']+f'editor-{i:02d}/'})
         original_lifespan=app.router.lifespan_context
         @asynccontextmanager
         async def reviewed_lifespan(application):
@@ -78,7 +90,7 @@ def main():
             assert store.count('traffic')==0
             assert store.get('tasks',task['id'])['status']==task['status']
             shutil.rmtree(temporary)
-            print('Fixture lifespan completed; target requests0; temporary data removed',flush=True)
+            print('Fixture lifespan completed; target requests0; task creation POSTs'+str(task_posts)+'; temporary data removed',flush=True)
         app.router.lifespan_context=reviewed_lifespan
         print('Owned observation UI fixture at http://127.0.0.1:'+str(args.port),flush=True)
         AegisServer(app,host='127.0.0.1',port=args.port,log_level='warning',timeout_graceful_shutdown=5).run()

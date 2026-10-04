@@ -3730,3 +3730,35 @@ on 390×844 has no document overflow.
   Planner, observed-URL consumption by tools, shared to-do and full v1 remain open.
   Contract [WORKER-DEPENDENCIES.md](WORKER-DEPENDENCIES.md). CI native list includes
   these cases; actual hosted CI/container execution still unverified.
+
+## Worker dependency creation editor — 2026-10-05
+
+- Task and recurring schedule forms now edit predecessor relationships for selected
+  assets. Selection metadata and edges survive search/pagination. Deselection
+  atomically removes related edges; reselect does not restore them. Client validation
+  covers shape, selected scope, self/duplicate edges, cycles,20 assets and40 edges.
+  Invalid submissions focus the relevant checkbox and show one inline alert.
+- Frontend73passed372.648375ms, no skips/failures; production build1.40s. Final
+  JSindex-Jx91yrBi/CSSindex-CHE-GKf8 (`artifacts/worker-dependency-editor-tests.txt`,
+  `...build.txt`). Service Python unchanged; previous681 full backend result is
+  historical, not rerun for this frontend change.
+- Owned synthetic built UI verifies cross-page/search selection, keyboard Space,
+  cycle refusal/focus, deselection/reselection, clear-all and keyboard restoration.
+  A controlled503 retains task title, selections and dependency; successful retry
+  stores one pending plan. Actual24h recurring reservation stores the same editor
+  contract without execution (`...saved.json`, `...schedule-saved.json`).
+- Root scroll width alone initially missed clipped modal content:320px dialog
+  client277/scroll428. Removed nested fieldset sizing and scoped the inherited
+  address minimum width. Final320px document320/scroll320, dialog277/277, form237/237,
+  editor233/233;390px document390/390, dialog347/347, form307/307, editor303/303.
+  Visually inspected final `...320.jpg` and `...390.jpg`; evidence `...ui-review.json`.
+  This is same-origin CSS-width iframe QA, not device/touch/zoom/screen-reader QA;
+  held saving-state interactions were not exercised.
+- Fixture shutdown: target requests0, task creation POSTs2 (one503 and one successful
+  retry; cyclic submissions sent none), original pending task unchanged, owned tabs
+  closed and temporary data removed. Preview remains healthy with final UI bundle
+  (`...preview-health.json`); initial check used nonexistent /health (404), corrected
+  to /api/health (200). Backend process restart was unnecessary.
+- Adaptive repeated Planner, observed URL consumption, shared to-do, full process
+  search UI and remaining v1 gates stay open. Historical API-only editor limitation
+  in the preceding validation entry is superseded by this entry.
