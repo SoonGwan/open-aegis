@@ -2865,12 +2865,17 @@ function App() {
               onReload={() =>
                 void openFinding(selectedFinding.finding.id, true)
               }
-              onUpdated={(value) => {
-                setSelectedFinding((current) =>
-                  current?.finding.id === value.id
-                    ? { ...current, finding: { ...current.finding, ...value } }
-                    : current,
-                );
+              captureView={captureActionView}
+              onUpdated={(value, currentView) => {
+                if (currentView) {
+                  setSelectedFinding((current) =>
+                    current?.finding.id === value.id
+                      ? { ...current, finding: { ...current.finding, ...value } }
+                      : current,
+                  );
+                } else {
+                  message("이전 화면의 조치 기록 저장을 확인했습니다. 작성 중인 내용은 유지했습니다.");
+                }
                 window.dispatchEvent(new Event("aegis-records-changed"));
                 void refresh();
               }}

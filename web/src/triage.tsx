@@ -61,13 +61,15 @@ export function FindingTriage({
   canOperate,
   onUpdated,
   onReload,
+  captureView,
   historyState,
   onHistoryChange,
 }: {
   finding: TriageFinding;
   canOperate: boolean;
-  onUpdated: (value: TriageFinding) => void;
+  onUpdated: (value: TriageFinding, current: boolean) => void;
   onReload: () => void;
+  captureView: () => () => boolean;
   historyState: FindingCollectionState;
   onHistoryChange: (
     kind: FindingCollectionKind,
@@ -88,6 +90,15 @@ export function FindingTriage({
   });
   const [error, setError] = useState("");
   const [directoryError, setDirectoryError] = useState("");
+  const [directoryLoading, setDirectoryLoading] = useState(canOperate);
+  const [directoryReload, setDirectoryReload] = useState(0);
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(
@@ -103,6 +114,7 @@ export function FindingTriage({
     if (!canOperate) return;
     const controller = new AbortController();
     setDirectoryError("");
+    setDirectoryLoading(true);
     const timer = setTimeout(() => {
       api<Page<Person>>(
         `/assignees?${new URLSearchParams({ search, offset: String(ownerOffset), limit: "25" })}`,
@@ -115,17 +127,21 @@ export function FindingTriage({
         })
         .catch((e) => {
           if (!controller.signal.aborted) setDirectoryError(e.message);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setDirectoryLoading(false);
         });
     }, 200);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [search, ownerOffset, canOperate]);
+  }, [search, ownerOffset, canOperate, directoryReload]);
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (submitting.current) return;
     submitting.current = true;
+    const isCurrent = captureView();
     setBusy(true);
     setError("");
     try {
@@ -140,12 +156,12 @@ export function FindingTriage({
           resolution_reason: resolution,
         },
       );
-      onUpdated(value);
+      onUpdated(value, active.current && isCurrent());
     } catch (e) {
-      setError((e as Error).message);
+      if (active.current && isCurrent()) setError((e as Error).message);
     } finally {
       submitting.current = false;
-      setBusy(false);
+      if (active.current) setBusy(false);
     }
   }
   const options =
@@ -188,7 +204,7 @@ export function FindingTriage({
             담당자
             <select
               value={owner}
-              disabled={busy}
+              disabled={busy || directoryLoading || !!directoryError}
               onChange={(e) => {
                 setOwner(e.target.value);
                 setSelectedPerson(
@@ -204,19 +220,43 @@ export function FindingTriage({
               ))}
             </select>
           </label>
-          {directoryError && <p role="alert">{directoryError}</p>}
+          {directoryError && (
+            <div role="alert">
+              <p>담당자 목록 조회 실패: {directoryError}</p>
+              <button
+                type="button"
+                disabled={busy || directoryLoading}
+                onClick={() => setDirectoryReload((value) => value + 1)}
+              >
+                담당자 목록 다시 조회
+              </button>
+            </div>
+          )}
           <div className="triage-paging">
             <button
               type="button"
-              disabled={busy || ownerOffset === 0}
+              disabled={
+                busy ||
+                directoryLoading ||
+                !!directoryError ||
+                ownerOffset === 0
+              }
               onClick={() => setOwnerOffset((v) => Math.max(0, v - 25))}
             >
               담당자 이전
             </button>
-            <span>{people.total}명</span>
+            <span role="status">
+              {directoryLoading
+                ? "담당자 목록 불러오는 중…"
+                : directoryError
+                  ? "담당자 수를 확인하지 못했습니다."
+                  : `${people.total}명`}
+            </span>
             <button
               type="button"
-              disabled={busy || !people.has_more}
+              disabled={
+                busy || directoryLoading || !!directoryError || !people.has_more
+              }
               onClick={() => setOwnerOffset((v) => v + 25)}
             >
               담당자 다음

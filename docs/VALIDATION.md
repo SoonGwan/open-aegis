@@ -1475,3 +1475,62 @@ on 390×844 has no document overflow.
   fixture update; all reported final keyboard checks start from explicit fresh navigation.
   QA Vite stops, main remains live: health 200, final bundle references match, assets two/
   tasks four/traffic three unchanged. No production backend restart was required.
+
+
+## 2026-10-04 — finding triage late replies and assignee recovery
+
+- Code review finds FindingTriage always invoking a parent success callback after unmount;
+  the parent compares finding ID but not screen visit. Reopening the same ID makes the
+  old acknowledgement update its selectedFinding and revision key, remounting the fresh
+  form with old submitted content. Save now captures the existing action-view guard,
+  checks mounted state, and reports current/stale to parent. Both acknowledgements notify
+  global lists/overview; only current acknowledgement updates the local finding. Stale
+  success shows a completion notice; stale failure cannot enter the new form's local alert.
+- Initial rapid UI sequences lack a proven live-node input boundary. One apparent reset
+  happens before releasing the failed request; it cannot be attributed to that response.
+  Exorcist diagnosis adds owned-QA-only visible DOM node/input-event tracing and GET/PATCH
+  start/completion logs. The attempted new input is absent from the live node's input
+  trace; after explicitly observing the new dialog DOM, the input event is recorded on
+  the new node and remains. No cache/React timing cause is inferred, and these unmatched
+  early probes are not the evidence for the fix. `artifacts/triage-live-input-trace.json`
+  records the distinction. The observer reads only synthetic dialog textareas; it is not
+  in product sources or bundle and never reads login inputs.
+- To obtain actual before/after evidence, archive commit 87c1557's web sources into
+  `artifacts/triage-before-code`, reuse current locked node_modules, and build separately.
+  Owned QA server alone uses that directory via AEGIS_WEB_DIR; main preview retains current
+  UI. With PATCH held before persistence, close/reopen same finding, observe fresh DOM,
+  type `verified-before-new`, and confirm that live value before releasing. Original
+  200 response then replaces it with `verified-before-old`. Recorded trace is
+  `artifacts/triage-before-verified-trace.json`.
+- Restart only QA server with final frontend and repeat the same verified live-input
+  sequence. `verified-after-new` remains after old 200 acknowledgement; visible completion
+  notice confirms the original save. `artifacts/triage-after-verified-trace.json` records
+  this. Repeat with held 503: `verified-failure-new` is observed before and after release,
+  new dialog alerts are empty; `artifacts/triage-failure-verified-trace.json`. Synthetic
+  source requests are bounded by the QA's 45-second hold deadline. Engine submissions
+  are held Futures; no validation/target action is created.
+- Current-view stale revision yields existing 409 and keeps new draft. Explicit latest
+  record recovery replaces it with server state, matching the visible warning. A current
+  synthetic 503 leaves inputs enabled and `current-failure-draft` intact; normal retry
+  later saves it. Backend revision advances 2→7 over five deliberately changed successful
+  QA writes (including isolated before/after comparisons); conflicts and failures add
+  no successful write. This is not an automatic draft merge or saved draft across closing.
+- Assignee listing now distinguishes loading/error/total, disables stale selection/page
+  controls and offers same-query retry. Actual 503 on search `remote` preserves search
+  and resolution draft; selection is disabled and count says unconfirmed. Retry returns
+  one matching account while both inputs remain; unrelated save error is not cleared.
+  Final viewed `artifacts/v1-triage-directory-recovery.jpg` has no diagnostic overlay and
+  shows error/retry alongside preserved `directory-recovery-draft`. Selected semantic
+  token/AA checker passes; no full narrow-width/touch/screen-reader directory claim.
+- Frontend **47 pass**, TypeScript/Vite builds pass, final `index-Bo6cqMOR.js` /
+  `index-B5ysGB7c.css`. Native UI comparison supplies component-specific evidence; the
+  Node tests are existing helper/guard coverage. Final formatting-only rebuild follows
+  the 47-case run. No Python service edit or full backend rerun is claimed.
+- Unchanged wheel SHA-256 `48375e478cf2079dfbb129facdb209055248f9497338f07aa06ba79bfb536eba`
+  with final UI passes outside-checkout installed dependency/CLI/auth/schema/import/
+  remote-refusal/audit/backup/restore/shutdown/lease rehearsal, target requests zero.
+  Main and QA health/data checks follow. Chat-specific late navigation and other component
+  asynchronous flows remain part of the open full v1 UX gate.
+- QA stops normally. Main health 200 and final bundle names match; main assets two/tasks
+  four/traffic three remain unchanged. QA assets seven/tasks eighteen/target traffic zero
+  remain unchanged; only explicitly exercised synthetic triage records/user metadata change.
