@@ -41,7 +41,7 @@ from .login_limits import LoginGate, LoginLimited
 from . import scopesentry
 from .usage import usage_summary
 from .conversation import summarize_task
-from . import conversation_ai
+from . import conversation_ai, call_ledger
 from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
 
@@ -189,6 +189,7 @@ def create_app(data_dir=None, allow_private=None):
     lease = WorkspaceLease(folder)
     try:
         store = Store(folder / 'aegis.db')
+        call_ledger.recover(store)
     except BaseException:
         lease.close()
         raise
@@ -473,8 +474,18 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/llm/usage', dependencies=auth)
     def llm_usage(days: Literal['7', '30'] | None = None,
-                  source: Literal['planner', 'conversation', 'all'] = 'planner'):
-        return usage_summary(store, int(days) if days else None, source=source)
+                  source: Literal['planner', 'conversation', 'all'] = 'planner',
+                  ledger: Literal['persisted','attempts'] = 'persisted'):
+        return usage_summary(store, int(days) if days else None, source=source, ledger=ledger)
+
+    @app.get('/api/llm/calls', dependencies=auth)
+    def llm_calls(limit: int = Query(25,ge=1,le=100), offset: int = Query(0,ge=0,le=10_000_000),
+                  snapshot: int | None = Query(None,ge=0,le=9_223_372_036_854_775_807),
+                  search: str = Query('',max_length=200), task_id: str | None = Query(None,max_length=80),
+                  source: Literal['planner','conversation'] | None = None,
+                  state: Literal['started','observed','committed','uncommitted','interrupted'] | None = None):
+        return store.page('llm_calls',limit=limit,offset=offset,snapshot=snapshot,search=search,
+                          filters={key:value for key,value in {'task_id':task_id,'source':source,'state':state}.items() if value is not None})
 
     @app.get('/api/records/{kind}', dependencies=auth)
     def records(kind: Literal['assets', 'tasks', 'findings', 'traffic', 'notes', 'schedules', 'observations'],
@@ -752,6 +763,7 @@ def create_app(data_dir=None, allow_private=None):
             if not chat_lock.acquire(blocking=False):
                 raise HTTPException(429,'다른 AI 대화가 진행 중입니다. 잠시 후 같은 전송 ID로 다시 시도하세요.',
                                     headers={'Retry-After':'2'})
+            call_id=None
             try:
                 # A completed concurrent request may now be replayed without another call.
                 original=store.get('messages','question-'+digest)
@@ -760,10 +772,11 @@ def create_app(data_dir=None, allow_private=None):
                         raise HTTPException(409,'전송 ID의 질문이나 답변 방식이 다릅니다.')
                     return store.get('messages','reply-'+digest)
                 try:
-                    summary=conversation_ai.draft(summary,data.content,allow_local=private,
+                    summary=conversation_ai.draft(summary,data.content,store=store,task_id=task_id,actor_id=actor['id'],allow_local=private,
                                                   control=TaskControl(stop=shutdown_requested))
                 except ValueError as exc:
                     raise HTTPException(413,str(exc)) from exc
+                call_id=summary['assistant_generation']['call_id']
                 # Keep the admission lock until the atomic pair/audit commit below.
                 with auth_lock, store.lock:
                     fresh=operator(authenticated(request))
@@ -777,6 +790,12 @@ def create_app(data_dir=None, allow_private=None):
                             {'id':'reply-'+digest,'task_id':task_id,'role':'assistant',**summary,'created_at':timestamp})
                     except MessageRequestConflict:
                         raise HTTPException(409,'전송 ID의 질문이나 답변 방식이 다릅니다.')
+            except BaseException:
+                try:
+                    call_ledger.abandon(store,call_id)
+                except Exception:
+                    pass  # The durable observation remains visible for startup recovery.
+                raise
             finally:
                 chat_lock.release()
         timestamp = now()

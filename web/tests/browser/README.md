@@ -272,3 +272,23 @@ retaining reported usage; `실패` returns HTTP 503 and must recover with unknow
 Open a fresh task document to inspect all saved replies. This fixture never contacts
 a commercial provider or executes targets. Check the vertically stacked mode,
 notice, question and submit controls in the built UI; whole mobile/AT QA is separate.
+
+
+## Durable AI attempt ledger
+
+Run the disposable launcher with `--ai-fixture --price-fixture --ledger-fixture`.
+Only this temporary workspace/provider is affected: `세션 폐기` in a question revokes
+fixture sessions during a successful synthetic response; log back in and compare
+persisted vs attempt aggregates. `저장 실패` returns provider HTTP200 but fails the
+exchange write. It takes precedence over the generic provider-503 `실패` trigger.
+The original messages must remain absent, while attempts retain observed20/10/30
+and estimated USD0.00005. Synthetic quotes require no commercial provider.
+Unconfirmed AI retry explains that a new call can incur additional cost.
+
+On `usage-summary-review.html?frame=1`, switch 집계 기준 to 호출 시도 기록.
+Hold a persisted request, change the ledger, then release it: stale results must not
+replace the selection. Test 503/retry, and 다음 시도 미지원 응답 + 새로 조회:
+valid source fields with missing ledger/state fields must show compatibility error.
+Retry must recover without changing the selected ledger. Without `frame`, width
+buttons measure the default persisted aggregate with the added selection controls;
+320/390/768px documents are not whole mobile/touch/screen-reader coverage.

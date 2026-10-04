@@ -11,6 +11,7 @@ from .checks import CATALOG, CHECK_IDS, run_check
 from .tool_contracts import require_contracts, validate_result, ToolContractMismatch
 from .network import Transport
 from .costs import price_snapshot, estimate
+from . import call_ledger
 from .llm import completion, token_usage
 from .store import identifier, now
 from .coverage import slot, finish_remaining
@@ -136,6 +137,7 @@ class Engine:
             {'role': 'user', 'content': json.dumps(prompt, ensure_ascii=False)}], 'temperature': 0}
         started_at = now()
         price = price_snapshot(model, base, started_at)
+        call_id=call_ledger.start(self.store,'planner',task['id'],model,base,started_at,price)
         usage = token_usage(None)
         outcome = 'request_failed'
         proposed = checks
@@ -152,13 +154,22 @@ class Engine:
             proposed = checks
         accepted = outcome == 'accepted'
         observed_at = now()
-        self.store.record_planner_call(task['id'], {
+        detail={
             'model':model, 'outcome':outcome, 'observed_at':observed_at, 'started_at':started_at,
             'tokens':usage, 'cost':estimate(usage, price, observed_at),
-            'checks':proposed,
-        }, 'AI가 승인된 검증 도구의 실행 순서를 계획했습니다.' if accepted else
-           'AI 계획을 검증하지 못해 규칙 기반 계획으로 진행합니다.',
-           'info' if accepted else 'warning')
+            'checks':proposed, 'call_id':call_id,
+        }
+        call_ledger.observe(self.store,call_id,detail)
+        try:
+            self.store.record_planner_call(task['id'], detail, 'AI가 승인된 검증 도구의 실행 순서를 계획했습니다.' if accepted else
+               'AI 계획을 검증하지 못해 규칙 기반 계획으로 진행합니다.',
+               'info' if accepted else 'warning')
+        except BaseException:
+            try:
+                call_ledger.abandon(self.store,call_id)
+            except Exception:
+                pass  # Durable observation remains unresolved; startup recovery will flag it.
+            raise
         return proposed
 
     def run(self, task_id):

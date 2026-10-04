@@ -37,7 +37,10 @@ def test_ai_citations_usage_audit_atomicity_and_retry(client,ai):
     assert reply['assistant_generation']['outcome']=='accepted'
     assert reply['assistant_generation']['tokens']['total_tokens']==20
     events=client.app.state.store.events(task_id='chat-task')
-    assert len(events)==1 and events[0]['detail']==reply['assistant_generation']
+    assert len(events)==3
+    assert next(event for event in events if event['message']=='AI 대화 호출 결과')['detail']==reply['assistant_generation']
+    attempt=client.app.state.store.get('llm_calls',reply['assistant_generation']['call_id'])
+    assert attempt['state']=='committed' and attempt['record_id']==reply['id']
     assert 'owned-secret-must-not-persist' not in json.dumps([reply,events])
     client.app.state.store.patch('evidence','owned-proof',observation={'changed':True})
     assert client.post(PATH,json=PAYLOAD).json()==reply and len(calls)==1

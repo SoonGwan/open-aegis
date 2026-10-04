@@ -4,6 +4,7 @@ import os
 from .llm import completion, token_usage
 from .costs import price_snapshot, estimate
 from .store_util import now
+from . import call_ledger
 
 
 def configured():
@@ -11,7 +12,7 @@ def configured():
             bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL')))
 
 
-def draft(summary, question, *, allow_local=False, control=None):
+def draft(summary, question, *, store, task_id, actor_id, allow_local=False, control=None):
     sources={}
     for citation in summary['provenance']['citations']:
         sources[citation['label']]={'title':citation['title'],'fields':citation['snapshot']}
@@ -27,6 +28,8 @@ def draft(summary, question, *, allow_local=False, control=None):
     started_at=now()
     price=price_snapshot(model,base,started_at)
     metadata={'model':model,'outcome':'request_failed','tokens':token_usage(None),'started_at':started_at}
+    call_id=call_ledger.start(store,'conversation',task_id,model,base,started_at,price,actor_id)
+    metadata['call_id']=call_id
     result=summary
     try:
         raw=completion(base,
@@ -67,4 +70,5 @@ def draft(summary, question, *, allow_local=False, control=None):
         result={**summary,'content':'AI 답변을 확인하지 못해 저장된 기록의 규칙 기반 요약으로 복구했습니다.\n\n'+summary['content']}
     metadata['observed_at']=now()
     metadata['cost']=estimate(metadata['tokens'],price,metadata['observed_at'])
+    call_ledger.observe(store,call_id,metadata)
     return {**result,'assistant_generation':metadata}

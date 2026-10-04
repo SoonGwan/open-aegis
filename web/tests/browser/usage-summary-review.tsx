@@ -6,6 +6,7 @@ import "../../src/style.css";
 let failNext = false;
 let holdNext = false;
 let legacyNext = false;
+let noLedgerNext = false;
 const pending: (()=>void)[] = [];
 const pendingLabels: string[] = [];
 const recentRequests: string[] = [];
@@ -19,10 +20,14 @@ window.fetch = async (input,init) => {
   const parameters = new URL(String(input),location.origin).searchParams;
   const days = parameters.get("days");
   const source = parameters.get("source") || "planner";
+  const ledger = parameters.get("ledger") || "persisted";
   const zero = days === "7";
   const missing = days === "30";
   const body = failNext ? {detail:"합성 집계 조회 실패"} : {
-    source:source,
+    source:source,ledger:ledger,
+    attempt_states:ledger === "persisted" ? null : {started:0,observed:0,
+      committed:zero ? 0 : missing ? 0 : source === "all" ? 2101 : source === "planner" ? 2100 : 0,
+      uncommitted:zero ? 0 : missing ? 1 : 1,interrupted:zero || missing || source === "conversation" ? 0 : 1},
     costs:{states:{estimated:zero || missing ? 0 : source === "all" ? 2101 : source === "planner" ? 2100 : 1,
       usage_unavailable:missing ? 1 : 0,unconfigured:0,model_unpriced:0,invalid_configuration:0,
       unrecorded:zero || missing || source === "conversation" ? 0 : 2,invalid_record:0},
@@ -37,8 +42,9 @@ window.fetch = async (input,init) => {
       completion_tokens:zero || missing ? null : source === "planner" ? "0" : "2",total_tokens:zero || missing ? null : source === "conversation" ? "5" : source === "all" ? "18915118434956081105" : "18915118434956081100"},
   };
   if(legacyNext) {legacyNext=false; delete (body as Record<string,unknown>).source; delete (body as Record<string,unknown>).source_counts;}
+  if(noLedgerNext) {noLedgerNext=false; delete (body as Record<string,unknown>).ledger; delete (body as Record<string,unknown>).attempt_states;}
   const response = new Response(JSON.stringify(body),{status:failNext ? 503 : 200,headers:{"Content-Type":"application/json"}});
-  const label=`${source}/${days || 'all'} HTTP ${response.status}`;
+  const label=`${ledger}/${source}/${days || 'all'} HTTP ${response.status}`;
   recentRequests.push(label);
   if(recentRequests.length>6) recentRequests.shift();
   failNext=false;
@@ -56,6 +62,7 @@ function Review() {
     <button onClick={()=>{failNext=true;}}>다음 조회 오류</button>
     <button onClick={()=>{holdNext=true;}}>다음 조회 지연</button>
     <button onClick={()=>{legacyNext=true;}}>다음 이전 서버 응답</button>
+    <button onClick={()=>{noLedgerNext=true;}}>다음 시도 미지원 응답</button>
     <button onClick={()=>{pending.shift()?.();pendingLabels.shift();showRequests();}}>이전 조회 해제</button>
     <p id="summary-fixture-requests" role="status">대기: 없음</p>
     <UsageSummary />

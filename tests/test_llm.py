@@ -51,7 +51,9 @@ def test_planner_keeps_usage_even_when_plan_is_rejected(tmp_path,monkeypatch,out
         assert metadata['outcome'] == outcome
         assert metadata['tokens']['status'] == ('missing' if outcome == 'request_failed' else 'reported')
         events=store.events(task_id=task['id'])
-        assert len(events) == 1 and events[0]['detail'] == metadata
+        assert len(events) == 3
+        assert events[-1]['detail'] == metadata
+        assert store.get('llm_calls',metadata['call_id'])['state']=='committed'
         assert 'synthetic-provider-secret' not in json.dumps([metadata,events])
         assert 'discard-me' not in json.dumps([metadata,events])
     finally:

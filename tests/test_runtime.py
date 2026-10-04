@@ -240,7 +240,7 @@ def test_real_tls_verification_and_provider_plan_with_usage(client,tls_peer,lab,
     plan=client.post('/api/tasks',json={'name':'TLS provider fixture','asset_ids':[asset['id']],'checks':checks,'planner':'ai'}).json()
     client.post('/api/tasks/'+plan['id']+'/approve');result=finish(client,plan['id'])
     assert result['task']['status']=='completed' and result['task']['plan']==list(reversed(checks))
-    usage=next(event['detail']['tokens'] for event in result['events'] if 'tokens' in event['detail'])
+    usage=next(event['detail']['tokens'] for event in result['events'] if event['detail'].get('outcome')=='accepted')
     assert usage['total_tokens']==48 and handler.calls==['/','/v1/chat/completions']
     assert usage['status']=='reported'
     call=result['task']['llm_usage']

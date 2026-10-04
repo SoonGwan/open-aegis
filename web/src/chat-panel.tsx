@@ -266,7 +266,8 @@ export function ChatPanel({
             <div className="chat-recovery">
               <p role="status">
                 응답을 확인하지 못한 질문이 있습니다. 같은 내용으로 다시 보내면
-                기존 답변을 확인합니다. 내용을 바꾸면 새 질문으로 보냅니다.
+                저장된 답변을 확인하고, 없으면 새 답변을 요청합니다. 내용을 바꾸면 새 질문으로 보냅니다.
+                {mode === "ai" && " AI를 다시 호출하면 추가 비용이 발생할 수 있습니다. 호출 시도 기록은 시스템 설정에서 확인하세요."}
               </p>
               <button
                 type="button"

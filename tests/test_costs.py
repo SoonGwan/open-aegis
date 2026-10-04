@@ -125,7 +125,7 @@ def test_planner_price_is_captured_before_provider_response(tmp_path,monkeypatch
         engine.plan(task)
         metadata=store.get('tasks','owned')['llm_usage']
         assert metadata['cost']['amount']=='0.00000875'
-        assert metadata['cost']==store.events(task_id='owned')[0]['detail']['cost']
+        assert metadata['cost']==store.events(task_id='owned')[-1]['detail']['cost']
         assert metadata['started_at']<=metadata['observed_at']
     finally:
         engine.shutdown()

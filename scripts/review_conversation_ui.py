@@ -24,7 +24,10 @@ def main():
     parser.add_argument('--port',type=int,default=8811)
     parser.add_argument('--ai-fixture',action='store_true',help='Use an owned loopback provider for AI draft/recovery QA')
     parser.add_argument('--price-fixture',action='store_true',help='Use synthetic flat text-token prices for owned QA')
+    parser.add_argument('--ledger-fixture',action='store_true',help='Inject owned session revocation/write failure for ledger QA')
     args=parser.parse_args()
+    if args.ledger_fixture and not args.ai_fixture:
+        parser.error('--ledger-fixture requires --ai-fixture')
     if args.price_fixture and not args.ai_fixture:
         parser.error('--price-fixture requires --ai-fixture')
     if not 1<=args.port<=65535:
@@ -42,10 +45,14 @@ def main():
                 label=next((name for name in prompt['sources'] if name.startswith('증거 ')),'작업')
                 if '잘못' in prompt['question']:
                     label='다른 작업의 증거'
+                if args.ledger_fixture and '세션 폐기' in prompt['question']:
+                    with store.lock, store.connect() as db:
+                        db.execute('DELETE FROM sessions')
                 body=json.dumps({'choices':[{'message':{'content':json.dumps({'blocks':[
                     {'text':'합성 AI 초안: 저장된 관찰 기록을 직접 검토하세요.','citations':[label]}]})}}],
                     'usage':{'prompt_tokens':20,'completion_tokens':10,'total_tokens':30}}).encode()
-                self.send_response(503 if '실패' in prompt['question'] else 200)
+                provider_failure = '실패' in prompt['question'] and '저장 실패' not in prompt['question']
+                self.send_response(503 if provider_failure else 200)
                 self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
             def log_message(self,*args):pass
         provider=ThreadingHTTPServer(('127.0.0.1',0),Provider)
@@ -65,6 +72,13 @@ def main():
         store=app.state.store
         store.add_user(new_user('admin','Owned conversation reviewer','admin',
                                 'owned-conversation-password-only'))
+        if args.ledger_fixture:
+            original_exchange=store.put_message_exchange
+            def reviewed_exchange(question,reply):
+                if '저장 실패' in question['content']:
+                    raise RuntimeError('Owned synthetic exchange storage failure')
+                return original_exchange(question,reply)
+            store.put_message_exchange=reviewed_exchange
         timestamp=now()
         asset={'id':'owned-asset','name':'합성 증거 자산','url':'https://owned-evidence.invalid/',
                'type':'web','owner':'','tags':[],'authorized':True,'authorization_rules':[],

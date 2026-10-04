@@ -10,6 +10,7 @@ from pathlib import Path
 from .store_util import now, identifier
 from .migrations import migrate
 from .audit import append_event, verify_chain
+from .call_ledger import commit as commit_call
 
 # Read clients page proofs and retests separately instead of serializing growing ID arrays.
 FINDING_READ_PROJECTION = "json_set(json_remove(data,'$.evidence_ids','$.task_ids'),'$.evidence_reference_count',coalesce(json_array_length(data,'$.evidence_ids'),0),'$.task_count',coalesce(json_array_length(data,'$.task_ids'),0),'$.related_ids_omitted',json('true'))"
@@ -46,6 +47,7 @@ class Store:
             db.execute("CREATE INDEX IF NOT EXISTS records_source_asset ON records(kind,json_extract(data,'$.asset_id')) WHERE kind IN ('asset_sources','asset_source_history')")
             db.execute("CREATE INDEX IF NOT EXISTS records_task_status_approval ON records(json_extract(data,'$.status'),json_extract(data,'$.approved_at')) WHERE kind='tasks'")
             db.execute("CREATE INDEX IF NOT EXISTS records_schedule_due ON records(kind,json_extract(data,'$.next_at')) WHERE kind='schedules' AND json_extract(data,'$.enabled')=1")
+            db.execute("CREATE INDEX IF NOT EXISTS records_calls_state ON records(json_extract(data,'$.state'),json_extract(data,'$.source')) WHERE kind='llm_calls'")
 
     def connect(self):
         db = sqlite3.connect(self.path, timeout=15, factory=ClosingConnection)
@@ -82,6 +84,7 @@ class Store:
                            [(record['id'], json.dumps(record, ensure_ascii=False))
                             for record in (question, reply)])
             if reply.get('assistant_generation'):
+                commit_call(db,reply['assistant_generation'],reply['task_id'],'conversation','messages',reply['id'])
                 append_event(db,(now(),reply['task_id'],'info','AI 대화 호출 결과',
                                  json.dumps(reply['assistant_generation'],ensure_ascii=False)))
         return reply
@@ -154,6 +157,7 @@ class Store:
             'evidence': ('id', 'check', 'task_id'),
             'retests': ('conclusion', 'state_note', 'task_id'),
             'messages': ('content', 'role'),
+            'llm_calls': ('id', 'model', 'source', 'state', 'task_id'),
             'asset_sources': ('source_key', 'external_id', 'source_url'),
             'asset_source_history': ('source_key', 'external_id', 'source_url'),
         }
@@ -162,8 +166,10 @@ class Store:
         if priority and kind != 'findings':
             raise ValueError('Priority order is only valid for findings')
         filters = filters or {}
-        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id', 'enabled'}:
+        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id', 'enabled', 'source', 'state'}:
             raise ValueError('Unknown record filter')
+        if ('source' in filters or 'state' in filters) and kind != 'llm_calls':
+            raise ValueError('Call filters require provider attempts')
         if 'enabled' in filters and kind != 'schedules':
             raise ValueError('Enabled filter is only valid for schedules')
         with (nullcontext(connection) if connection is not None else self.connect()) as db:
@@ -265,6 +271,7 @@ class Store:
             if row is None:
                 raise KeyError(task_id)
             task = json.loads(row['data'])
+            commit_call(db,detail,task_id,'planner','tasks',task_id)
             task['llm_usage'] = detail
             db.execute("UPDATE records SET data=? WHERE kind='tasks' AND id=?",
                        (json.dumps(task, ensure_ascii=False), task_id))

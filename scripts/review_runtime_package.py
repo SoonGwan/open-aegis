@@ -168,6 +168,12 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                 assert combined['source'] == 'all' and combined['calls'] == 0
                 assert combined['costs']['totals'] == []
                 assert all(value == 0 for value in combined['costs']['states'].values())
+                attempts = request('/api/llm/usage?source=all&ledger=attempts')
+                assert attempts['ledger'] == 'attempts' and attempts['calls'] == 0
+                assert attempts['time_basis'] == 'started_at'
+                assert all(value == 0 for value in attempts['attempt_states'].values())
+                assert request('/api/llm/calls')['total'] == 0
+                request('/api/llm/calls?state=unknown', expected=422)
                 assert request('/api/llm/usage?source=conversation&days=7')['days'] == 7
                 request('/api/llm/usage?source=unconfigured', expected=422)
                 request('/api/llm/usage?days=365', expected=422)
@@ -228,6 +234,35 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
              'from aegis.store import Store; import sys; '
              'assert Store(sys.argv[1]).get("notes","failed-update") is None',
              source/'aegis.db'], 'rollback state verification')
+        run([python,'-I','-c', '''
+from aegis.store import Store
+from aegis import call_ledger
+from aegis.store_util import now
+from aegis.llm import token_usage
+from aegis.costs import estimate
+import sys
+s=Store(sys.argv[1]); task_id=s.page('tasks')['items'][0]['id']
+price={'status':'unconfigured','quote':None}; at=now()
+first=call_ledger.start(s,'planner',task_id,'owned-recovery-model','https://provider-fixture.invalid/v1',at,price)
+second=call_ledger.start(s,'planner',task_id,'owned-recovery-model','https://provider-fixture.invalid/v1',at,price)
+tokens=token_usage({'prompt_tokens':3,'completion_tokens':2,'total_tokens':5})
+call_ledger.observe(s,second,{'call_id':second,'model':'owned-recovery-model','started_at':at,
+    'observed_at':now(),'outcome':'accepted','tokens':tokens,'cost':estimate(tokens,price,at)})
+assert Store(sys.argv[1]).get('llm_calls',first)['state']=='started'
+''',source/'aegis.db'], 'installed synthetic unresolved call fixture')
+        run([python,'-I','-c', '''
+import asyncio,sys
+from aegis.app import create_app
+from aegis.usage import usage_summary
+app=create_app(sys.argv[1],allow_private=False)
+async def review():
+    async with app.router.lifespan_context(app):
+        result=usage_summary(app.state.store,source='all',ledger='attempts')
+        assert result['calls']==2 and result['attempt_states']['interrupted']==2
+        assert result['reported_tokens']['total_tokens']=='5' and result['usage_states']['missing']==1
+        assert app.state.store.audit_integrity()['valid']
+asyncio.run(review())
+''',source], 'installed exclusive startup call recovery')
         print(json.dumps({'valid': True, 'wheel': wheel.name,
             'sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
             'installed_origin': origin['module'], 'target_requests': 0,
@@ -240,6 +275,7 @@ AegisServer(app, host='127.0.0.1', port=0, access_log=False, log_level='warning'
                        'ScopeSentry installed remote configuration and unconfigured-source refusal',
                        'login limit metrics', 'read-only audit review', 'clean shutdown and lease release',
                        'installed backup/restore/audit rehearsal',
+                       'attempt aggregate/page validation and installed startup recovery',
                        'ephemeral-key signed release, tamper refusal, preflight and data rollback']}, ensure_ascii=False))
 
 

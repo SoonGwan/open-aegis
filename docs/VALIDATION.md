@@ -2496,3 +2496,57 @@ on 390×844 has no document overflow.
   reconciliation, model-level cost grouping, uncommitted provider attempts and
   repeated planner history remain unimplemented/unverified. Price source authenticity,
   commercial models, full accessibility/mobile and the whole v1 gate stay open.
+
+
+## Independent provider attempt ledger (2026-10-04)
+
+- New `llm_calls` records preserve start/observation independently from result
+  persistence. Start plus audit commits before contacting the provider; observation
+  plus audit commits before final reauthentication/result write. Final result and
+  committed state share one transaction. Failed final writes retain observation and
+  become uncommitted; exclusive app startup recovers pending states as interrupted.
+  Ordinary Store construction never recovers calls. No prompts/questions/response
+  bodies/credentials enter this ledger. Contract: LLM-CALLS.md.
+- Six new backend tests cover session revocation, actual audit-failure transaction
+  rollback, failed-write retry vs successful replay, start-audit refusal before
+  provider contact, restart recovery/idempotence and authenticated filtered pages.
+  Targeted suite: **74 passed**. Full backend: **422 passed in 114.36s**, one existing
+  Starlette/httpx warning (`artifacts/ledger-backend-tests.txt`). Frontend modules:
+  **65 passed in 328.23ms** (`artifacts/ledger-frontend-tests.txt`). Final TypeScript/
+  Vite build passes after the retry-cost notice change; index-Ciak_MNC.js and
+  index-DozFChs7.css. No backend changes after the full pass.
+- Real built UI plus disposable owned provider: session revocation during a valid
+  response yields no saved exchange; after login, attempts show uncommitted1,
+  reported20/10/30 and synthetic USD0.00005 while persisted calls remain0
+  (`artifacts/ledger-live-uncommitted.txt`). A later normal answer commits; provider
+  HTTP503 plus exchange-write failure preserves an additional attempt with unknown
+  usage, rather than inventing zero. Three-call aggregate: committed1/uncommitted2,
+  reported total60, estimated2/unknown1, USD0.0001
+  (`artifacts/ledger-live-final.txt` and visually inspected screenshot).
+- The initial fixture's generic provider-failure substring overlapped its storage
+  failure trigger. Separated those conditions and restarted the disposable fixture:
+  provider HTTP200 followed only by exchange-write failure leaves no messages and
+  persisted calls0, but attempts1/uncommitted1 with reported20/10/30 and USD0.00005.
+  Built UI explains a retried AI call may cost extra. Evidence:
+  `artifacts/ledger-live-write-failure.txt` and visually inspected full-page JPG.
+  These are synthetic local checks, not commercial billing or target requests.
+- Browser component held old persisted responses cannot replace selected attempt
+  results; 503/retry preserves selection. A response retaining source/source_counts
+  but missing ledger/state metadata shows compatibility error; retry recovers.
+  Default persisted aggregate with the new controls fits 320/390/768 documents:
+  client/scroll widths305/305,375/375,753/753. Narrow screenshot visually inspected:
+  `artifacts/ledger-summary-320.jpg`. Whole mobile/touch/AT journeys remain open.
+- Final wheel SHA256 d42baada0833bfbe099799bfeefe316a96f69892e73be81a0ba812f89c28545a
+  byte-matches all **43** service Python files. Installed locked runtime outside
+  checkout validates authenticated empty attempt aggregate/page and bad state422,
+  normal HTTP/UI, maintenance and signed release/preflight/rollback. Additional
+  installed exclusive create_app startup plus actual lifespan marks seeded started
+  and observed records interrupted, retains reported5, keeps missing usage unknown
+  and validates audit integrity. This is controlled startup recovery, not a live
+  process-crash or billing reconciliation test. Final UI included in review:
+  `artifacts/ledger-package-review.json` valid=true,target_requests=0.
+- Preview restarted cleanly on8790 with final UI, HTTP200 and assets2/tasks4/traffic3.
+  Attempt detail UI/export, disk retention, model grouping, actual billing and
+  unobserved-response loss windows remain open. Existing whole v1 release gates,
+  PostgreSQL/migrations, external tool isolation, repeated autonomous planning,
+  long-running resource/accessibility checks and official release work remain open.
