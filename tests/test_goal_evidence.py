@@ -64,7 +64,7 @@ def test_objective_refuses_metadata_only_or_mismatched_evidence(client,lab,monke
     assert result['total']==len(execution['findings'])-1
 
 
-@pytest.mark.parametrize('damage',['unapproved','finding','asset','check','scope','scope_shape','scope_element','conclusion'])
+@pytest.mark.parametrize('damage',['unapproved','finding','asset','check','scope','scope_shape','scope_element','conclusion','approval_false','approval_true','approval_zero','approval_negative','approval_text'])
 def test_objective_ignores_unmatched_retest_history(client,lab,monkeypatch,damage):
     goal,execution,path=executed_goal(client,lab,monkeypatch);store=client.app.state.store
     finding=execution['findings'][0]
@@ -72,6 +72,9 @@ def test_objective_ignores_unmatched_retest_history(client,lab,monkeypatch,damag
     assert client.post('/api/tasks/'+retest['id']+'/approve').status_code==200
     finish(client,retest['id'])
     if damage=='unapproved':store.patch('tasks',retest['id'],approved_at=None)
+    elif damage.startswith('approval_'):
+        approval={'approval_false':False,'approval_true':True,'approval_zero':0,'approval_negative':-1,'approval_text':'1234'}[damage]
+        store.patch('tasks',retest['id'],approved_at=approval)
     elif damage=='finding':store.patch('tasks',retest['id'],retest_of='other-finding')
     elif damage=='asset':store.patch('tasks',retest['id'],asset_ids=['other-asset'])
     elif damage=='check':store.patch('tasks',retest['id'],checks=['other-check'])
@@ -95,3 +98,28 @@ def test_objective_evidence_roles_bounds_and_readonly(client,lab,monkeypatch):
             assert read.get(path,params=params).status_code==422
         assert read.get(path.replace('/g1/','/g12/')).status_code==404
         assert store.count('events')==before and lab[1].requests==requests
+
+
+@pytest.mark.parametrize('approval',[None,False,True,0,-1,'1234','invalid'])
+@pytest.mark.parametrize('action',['evidence','progress','retest','followup'])
+def test_goal_source_requires_numeric_positive_approval(client,lab,monkeypatch,approval,action):
+    goal,execution,path=executed_goal(client,lab,monkeypatch);store=client.app.state.store
+    store.patch('tasks',goal['id'],approved_at=approval)
+    before=store.count('tasks'),store.count('events'),list(lab[1].requests)
+    if action=='evidence':
+        result=client.get(path);assert result.status_code==200,result.text
+        assert result.json()['items']==[] and result.json()['total']==0
+    elif action=='progress':
+        result=client.get('/api/tasks/'+goal['id']+'/goal-progress');assert result.status_code==200,result.text
+        assert result.json()['objectives'][0]['completed']==0
+        assert result.json()['objectives'][0]['cells'][0]['status']=='not_recorded'
+    elif action=='followup':
+        result=client.get('/api/tasks/'+goal['id']+'/next-plan')
+        assert result.status_code==409,result.text
+    else:
+        finding=execution['findings'][0]
+        result=client.post(path+'/'+finding['id']+'/retest',json={'request_id':'d'*32})
+        assert result.status_code==409,result.text
+    assert (store.count('tasks'),store.count('events'),list(lab[1].requests))==before
+    retained=store.get('findings',execution['findings'][0]['id'])
+    assert store.get('evidence',retained['evidence_ids'][0]) is not None

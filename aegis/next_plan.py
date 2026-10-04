@@ -31,6 +31,8 @@ def propose(store, task_id, policy, *, connection=None):
             raise NextPlanConflict('목표 발견 재검증은 원래 과제의 발견에서 새 재검증 계획을 만드세요.')
         goal_planner.require_task(source)
         goal=source.get('goal_plan')
+        if goal and not goal_planner.has_execution_approval(source):
+            raise NextPlanConflict('원래 목표의 실행 승인 기록을 확인하세요.')
         history = read_history(store, task_id, connection=db)
         if goal and any(attempt.get('goal_plan')!=goal for attempt in history):
             raise NextPlanConflict('목표 과제와 다른 후속 이력이 있습니다. 새 목표 초안을 검토하세요.')

@@ -18,6 +18,12 @@ from .store_util import now
 FORMAT = 'aegis-goal-plan-v1'
 
 
+def has_execution_approval(task):
+    """A boolean/string or missing timestamp is not a stored execution approval."""
+    value=task.get('approved_at')
+    return type(value) in (int,float) and 0<value<=1.7976931348623157e308
+
+
 class DraftInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
     request_id: str = Field(pattern=r'^[a-f0-9]{32}$')
@@ -212,12 +218,14 @@ def progress(store, task_id):
         require_task(task)
         if not task.get('goal_plan'):return {'objectives':[],'goal_verified':False}
         rows=task_rows(store,task,get_record=lambda kind,id:store.get(kind,id,connection=db))
+        approved=has_execution_approval(task)
         revisions={a['id']:a.get('revision',1) for a in task['scope_snapshot']}
         result=[]
         for objective in task['goal_plan']['decomposition']['objectives']:
             cells=[{key:r.get(key) for key in ('id','asset_id','check','status','asset_revision')}
                    for r in rows if r['asset_id'] in objective['asset_ids'] and r['check'] in objective['checks']]
             for cell in cells:
+                if not approved and cell['status']!='not_started':cell['status']='not_recorded'
                 if type(cell['asset_revision']) is not int or cell['asset_revision']!=revisions[cell['asset_id']]:cell['status']='not_recorded'
             completed=sum(cell['status']=='completed' for cell in cells)
             expected=len(objective['asset_ids'])*len(objective['checks'])

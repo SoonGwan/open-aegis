@@ -6,4 +6,5 @@ from tests.test_goal_evidence import (
     test_objective_refuses_metadata_only_or_mismatched_evidence as test_native_goal_proof,
     test_objective_ignores_unmatched_retest_history as test_native_goal_retest_mismatch,
     test_objective_evidence_roles_bounds_and_readonly as test_native_goal_readonly,
+    test_goal_source_requires_numeric_positive_approval as test_native_goal_source_approval,
 )

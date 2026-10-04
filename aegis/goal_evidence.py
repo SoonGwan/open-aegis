@@ -1,7 +1,7 @@
 """Bounded objective findings linked by actual source proof, with validated retests."""
 import json
 from contextlib import nullcontext
-from .goal_planner import require_task
+from .goal_planner import require_task, has_execution_approval
 
 
 def page(store, task_id, objective_id, *, limit=25, offset=0, snapshot=None, search='', finding_id=None, connection=None):
@@ -29,6 +29,7 @@ def page(store, task_id, objective_id, *, limit=25, offset=0, snapshot=None, sea
                ' AND '+field('e','fingerprint')+'='+field('f','fingerprint')+' AND '+contains('f','evidence_ids','e.id'))
         where="f.kind='findings' AND f.rowid<="+bind+' AND '+field('f','asset_id')+' IN ('+','.join(bind for _ in objective['asset_ids'])+') AND '+field('f','check')+' IN ('+','.join(bind for _ in objective['checks'])+') AND '+contains('f','task_ids',bind)+' AND EXISTS (SELECT 1 '+proof+')'
         args=[snapshot,*objective['asset_ids'],*objective['checks'],task_id,task_id]
+        if not has_execution_approval(task):where+=' AND 1=0'
         if finding_id is not None:
             where+=' AND f.id='+bind;args.append(finding_id)
         if search:
@@ -43,9 +44,12 @@ def page(store, task_id, objective_id, *, limit=25, offset=0, snapshot=None, sea
         scope_member = ("jsonb_array_elements(CASE WHEN jsonb_typeof(rt.data::jsonb->'scope_snapshot')='array' THEN rt.data::jsonb->'scope_snapshot' ELSE '[]'::jsonb END) scope(value)" if native
                         else "json_each(CASE WHEN json_type(rt.data,'$.scope_snapshot')='array' THEN json_extract(rt.data,'$.scope_snapshot') ELSE '[]' END) scope")
         scope_id = "scope.value->>'id'" if native else "CASE WHEN scope.type='object' THEN json_extract(scope.value,'$.id') END"
+        approved_value=field('rt','approved_at')
+        approved=("CASE WHEN jsonb_typeof(rt.data::jsonb->'approved_at')='number' THEN CAST(("+approved_value+") AS numeric)>0 AND CAST(("+approved_value+") AS numeric)<=1.7976931348623157e308 ELSE false END" if native else
+                  "json_type(rt.data,'$.approved_at') IN ('integer','real') AND "+approved_value+">0 AND "+approved_value+"<=1.7976931348623157e308")
         retests=("FROM records r JOIN records rt ON rt.kind='tasks' AND rt.id="+field('r','task_id')+
                  " WHERE r.kind='retests' AND "+field('r','finding_id')+'=f.id AND '+field('rt','retest_of')+'=f.id AND '+
-                 field('rt','approved_at')+" IS NOT NULL AND "+field('r','conclusion')+" IN ('resolved','reproduced','inconclusive') AND "+
+                 '('+approved+') AND '+field('r','conclusion')+" IN ('resolved','reproduced','inconclusive') AND "+
                  contains('rt','asset_ids',field('f','asset_id'))+' AND '+contains('rt','checks',field('f','check'))+
                  ' AND '+length('rt','asset_ids')+'=1 AND '+length('rt','checks')+'=1 AND '+length('rt','scope_snapshot')+'=1 AND EXISTS (SELECT 1 FROM '+scope_member+' WHERE '+scope_id+'='+field('f','asset_id')+')')
         fields=['f.id']+[field('f',key)+' AS "'+key+'"' for key in ('title','asset_id','asset_name','check','severity','status')]
