@@ -4840,3 +4840,34 @@ on 390×844 has no document overflow.
   `...preview-health.json`). Frontend unchanged, retains index-KKOOlw2R.js; prior
   97-unit/browser evidence is not a fresh run in this backend change. Hosted CI,
   hardware/DB-server crash, sparse recovery and other full v1 gates remain open.
+
+### Installed pending-goal PostgreSQL immediate shutdown recovery (2026-10-05)
+
+- Extended `scripts/review_goal_recovery.py` with `--database-crash`, requiring
+  `--crash` and a native PostgreSQL backend. Only its temporary owned cluster is
+  stopped with `pg_ctl -m immediate` after the pending source service is killed.
+  Startup-log checks require interruption, automatic WAL recovery and readiness;
+  audit verification before/after requires the exact same checkpoint. Existing
+  HTTP checks then prove retained pending plans/request identities, no automatic
+  target GET and fresh approvals before subsequent execution.
+- Current installed wheel SHA256
+  `8e25f7105518290348e594c1f4fd033fbb20cae28540e809a409aed18bd252c2`;
+  all 72 service Python files still byte-match the checkout
+  (`artifacts/goal-database-crash-wheel-proof.json`). Service/frontend unchanged;
+  the previous 993-test run remains the last full-suite evidence.
+- `--backend both --crash --database-crash` passed against SQLite and native
+  PostgreSQL16.15 (`artifacts/goal-database-crash.txt`). Native immediate shutdown
+  logged WAL recovery and preserved the committed audit checkpoint. Each backend
+  made five owned target GETs, three owned service SIGKILLs, zero external target
+  requests and zero preapproval restore requests; audit43→99. SQLite receives no
+  database shutdown. API authorization remains skipped without a policy and
+  semantic goal verification remains false.
+- Normal `--backend both` control passed (`...-control.txt`), three owned GETs
+  per backend, no service/database crash, audit40→76. Invalid SQLite+database-crash
+  and PostgreSQL+database-crash without `--crash` reject with exit2 before setup.
+  Both temporary installations were removed and the retained preview health is
+  ok (`...-cleanup.json`). Native CI now requests this mode; hosted CI was not run.
+- This covers an immediate database-server shutdown while the host/storage remain
+  alive and after committed pending plans. It does not establish hardware power
+  loss, lost/unflushed storage writes, a database crash during active work, PITR,
+  remote-backup restoration or supported-version upgrades. Those gates remain open.

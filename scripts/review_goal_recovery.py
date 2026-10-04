@@ -169,7 +169,7 @@ def execute_restored(python, folder, environment, http_target, pending, origin_k
         return retry
 
 
-def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=False):
+def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=False, database_crash=None):
     folder = root / backend
     folder.mkdir()
     source = folder / 'source'
@@ -239,6 +239,14 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=
             source_task_count = http('/api/records/tasks')['total']
             if crash:
                 crash_owned()
+        database_recovery = None
+        if database_crash is not None:
+            before_database_crash = run([binaries / 'aegis-verify-audit'], source_environment)
+            database_recovery = database_crash()
+            after_database_crash = run([binaries / 'aegis-verify-audit'], source_environment)
+            assert before_database_crash['valid'] and after_database_crash['valid']
+            assert after_database_crash['checkpoint'] == before_database_crash['checkpoint']
+            database_recovery['committed_audit_checkpoint_preserved'] = True
         if crash:
             with service(python, folder, source_environment, 'source-crash-recovered') as (http, _, _):
                 http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
@@ -317,6 +325,7 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=
             assert not (source / 'aegis.db').exists() and not (restored / 'aegis.db').exists()
         return {'backend': backend, 'valid': True, 'owned_target_requests': len(Handler.requests),
                 'process_crash_rehearsed': crash, 'owned_service_sigkills': 3 if crash else 0,
+                'database_crash_recovery': database_recovery,
                 'preapproval_restore_requests': 0, 'external_target_requests': 0,
                 'goal_round': following['id'], 'goal_retest': retest['id'], 'audit_events_before_backup': audit['events'],
                 'source_coverage': source_coverage,
@@ -341,7 +350,10 @@ def main():
     parser.add_argument('--wheel', required=True, type=Path)
     parser.add_argument('--backend', choices=('sqlite', 'postgres', 'both'), default='both')
     parser.add_argument('--crash', action='store_true', help='SIGKILL owned pending and in-flight servers; verify interrupted recovery and newly approved retry')
+    parser.add_argument('--database-crash', action='store_true', help='Immediately stop the owned PostgreSQL cluster and verify WAL recovery of committed pending plans; requires --crash and a PostgreSQL backend')
     args = parser.parse_args()
+    if args.database_crash and (not args.crash or args.backend == 'sqlite'):
+        parser.error('--database-crash requires --crash and --backend postgres or both')
     wheel = args.wheel.resolve(strict=True)
     repository = Path(__file__).resolve().parents[1]
     environment = {key: value for key, value in os.environ.items()
@@ -381,11 +393,25 @@ def main():
             socket_folder.mkdir(mode=0o700)
             run([postgres_binaries['initdb'], '-D', cluster, '--auth=trust', '--no-locale', '--encoding=UTF8'], environment)
             port = free_port()
-            run([postgres_binaries['pg_ctl'], '-D', cluster, '-l', root / 'postgres.log', '-o',
-                 "-c listen_addresses='' -k " + str(socket_folder) + ' -p ' + str(port), '-w', 'start'], environment)
+            postgres_log = root / 'postgres.log'
+            start_command = [postgres_binaries['pg_ctl'], '-D', cluster, '-l', postgres_log, '-o',
+                             "-c listen_addresses='' -k " + str(socket_folder) + ' -p ' + str(port), '-w', 'start']
+            run(start_command, environment)
+            def crash_database():
+                offset = postgres_log.stat().st_size
+                run([postgres_binaries['pg_ctl'], '-D', cluster, '-w', '-m', 'immediate', 'stop'], environment)
+                run(start_command, environment)
+                with postgres_log.open('rb') as log:
+                    log.seek(offset)
+                    recovery_log = log.read().decode('utf-8')
+                assert 'database system was interrupted' in recovery_log
+                assert 'automatic recovery in progress' in recovery_log
+                assert 'database system is ready to accept connections' in recovery_log
+                return {'shutdown_mode': 'immediate', 'wal_recovery_confirmed': True}
             try:
                 dsn = 'host=' + str(socket_folder) + ' port=' + str(port) + ' dbname=postgres'
-                results.append(rehearse('postgres', root, python, binaries, environment, run, dsn, crash=args.crash))
+                results.append(rehearse('postgres', root, python, binaries, environment, run, dsn,
+                                        crash=args.crash, database_crash=crash_database if args.database_crash else None))
             finally:
                 run([postgres_binaries['pg_ctl'], '-D', cluster, '-w', '-m', 'fast', 'stop'], environment)
         print(json.dumps({'valid': True, 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),

@@ -70,6 +70,13 @@ and verifies the resulting audit chain. It tests process death while the databas
 remains available, not a machine power loss or database-server crash. CI uses this
 mode in both storage jobs.
 
+For the native job, add `--database-crash` to `--backend postgres --crash`
+(or `--backend both --crash`). This immediately stops only the temporary owned
+PostgreSQL cluster after pending plans are committed, then requires startup-log
+evidence of WAL recovery, an unchanged audit checkpoint, retained plans and request
+identities, and no automatic target requests. The host and storage remain alive;
+this does not simulate hardware power loss, storage failure or PITR.
+
 The wheel contains the Python backend/CLI, not the frontend bundle. Its UI is supplied
 explicitly via AEGIS_WEB_DIR for this review; Docker packages the separately built UI.
 Build dependencies, runner images and Python/Node patch versions are not fully pinned,
