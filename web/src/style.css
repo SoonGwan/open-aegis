@@ -1964,6 +1964,7 @@ pre {
 .message-provenance dl > div { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .message-provenance dt { font-weight: 700; }
 .message-provenance dd { margin: 0; min-width: 0; }
+.message-generation { overflow-wrap: anywhere; }
 .message-evidence pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1993,7 +1994,8 @@ pre {
   margin: 7px 0;
 }
 .chat-panel form {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: flex-end;
   gap: 10px;
 }

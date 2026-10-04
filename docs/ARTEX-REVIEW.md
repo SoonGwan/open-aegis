@@ -47,7 +47,7 @@ ARTEX를 실행하거나 전체 코드를 감사한 결과가 아니다. 특정 
 | 요청 관찰 | [network.py](../aegis/network.py) | 범위와 DNS를 검사한 GET; 범용 트래픽 프록시 없음 |
 | 응답 계약 | [API-POLICY.md](API-POLICY.md) | 운영자 정의 스키마·소유권 기대값; 자동 소유권 추론 없음 |
 | 발견·조치 | [TRIAGE.md](TRIAGE.md) | 담당자·사유·수정 충돌·상태 보존 |
-| 사람과 대화 | [task-records.tsx](../web/src/task-records.tsx) | 기록 요약과 중복 없는 질문 저장; AI 실행 개입 없음 |
+| 사람과 대화 | [chat-panel.tsx](../web/src/chat-panel.tsx) | 기록/관찰 출처 인용·선택적 AI 초안·잘못된 인용의 규칙 복구·원자적 사용량 저장; AI 실행 개입 없음 |
 | 읽기 연동 | [MCP.md](MCP.md) | 로컬 stdio 조회; 원격 도구 실행 없음 |
 | 무결성 | [AUDIT.md](AUDIT.md), [AuditPanel.tsx](../web/src/AuditPanel.tsx) | 관리자 수동 연결 검증; 독립 보관 자동화 없음 |
 | 설치·복구 | [OPERATIONS.md](OPERATIONS.md) | SQLite·설치 패키지 검증; 실제 컨테이너 실행 미검증 |

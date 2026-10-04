@@ -23,7 +23,7 @@ const labels: Record<string, string> = {
 };
 
 export function MessageProvenance({ provenance }: { provenance?: RecordedProvenance }) {
-  if (!provenance || provenance.version !== 1 || provenance.mode !== "recorded_rules") return null;
+  if (!provenance || provenance.version !== 1 || !["recorded_rules","recorded_ai"].includes(provenance.mode)) return null;
   return <details className="message-provenance">
     <summary>답변 출처 {provenance.citations.length}개 · 당시 기록 확인</summary>
     <p>답변 생성 시 읽은 기록입니다. 아래 링크는 현재 상태를 열며, 당시 상태와 다를 수 있습니다.</p>

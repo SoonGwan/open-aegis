@@ -70,7 +70,8 @@ class Store:
                                   (question['id'],)).fetchone()
             if existing:
                 original = json.loads(existing['data'])
-                if original['content'] != question['content']:
+                if (original['content'] != question['content'] or
+                        original.get('mode','rules') != question.get('mode','rules')):
                     raise MessageRequestConflict('message request content conflict')
                 stored = db.execute("SELECT data FROM records WHERE kind='messages' AND id=?",
                                     (reply['id'],)).fetchone()
@@ -80,6 +81,9 @@ class Store:
             db.executemany("INSERT INTO records VALUES ('messages',?,?)",
                            [(record['id'], json.dumps(record, ensure_ascii=False))
                             for record in (question, reply)])
+            if reply.get('assistant_generation'):
+                append_event(db,(now(),reply['task_id'],'info','AI 대화 호출 결과',
+                                 json.dumps(reply['assistant_generation'],ensure_ascii=False)))
         return reply
 
     def get(self, kind, id, *, compact_findings=False, connection=None):

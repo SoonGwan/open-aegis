@@ -22,6 +22,15 @@ const pending = {
   content: "응답 유실 복구 질문",
   request_id: "0123456789abcdef0123456789abcdef",
 };
+test("AI retry keeps the selected answer mode and rejects invented modes",()=>{
+  const saved=storage();
+  const ai={...pending,mode:"ai" as const};
+  assert.equal(writePending(saved,"actor","task",ai),true);
+  assert.deepEqual(readPending(saved,"actor","task"),ai);
+  const key=[...saved.data.keys()][0];
+  saved.data.set(key,JSON.stringify({version:1,...pending,mode:"execute"}));
+  assert.equal(readPending(saved,"actor","task"),null);
+});
 test("unacknowledged questions survive a new reader and stay scoped to actor and task", () => {
   const saved = storage();
   assert.equal(writePending(saved, "actor", "task", pending), true);

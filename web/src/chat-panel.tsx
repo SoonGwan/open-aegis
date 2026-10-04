@@ -32,6 +32,10 @@ type Message = {
   created_at: number;
   finding_ids?: string[];
   provenance?: RecordedProvenance;
+  assistant_generation?: {
+    model: string; outcome: string;
+    tokens: {status: string; prompt_tokens: number|null; completion_tokens: number|null; total_tokens: number|null};
+  };
 };
 
 export function ChatPanel({
@@ -58,6 +62,9 @@ export function ChatPanel({
   const [storageWarning, setStorageWarning] = useState("");
   const { expanded: open, search } = state;
   const [question, setQuestion] = useState(restored?.content ?? "");
+  const [mode,setMode] = useState<"rules"|"ai">(restored?.mode ?? "rules");
+  const [aiReady,setAiReady] = useState(false);
+  const [aiConfigurationError,setAiConfigurationError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -87,6 +94,14 @@ export function ChatPanel({
     { ...state, onPositionChange: changePosition },
     `/tasks/${encodeURIComponent(taskId)}/messages/page`,
   );
+  useEffect(()=>{
+    if(!open) return;
+    let current=true;
+    api<{llm_chat_configured:boolean}>("/settings").then(value=>{
+      if(current) {setAiReady(value.llm_chat_configured);setAiConfigurationError("");}
+    }).catch(()=>{if(current) {setAiReady(false);setAiConfigurationError("AI 설정을 확인하지 못했습니다. 대화를 접었다 다시 펼쳐 재시도하세요.");}});
+    return ()=>{current=false;};
+  },[open,taskId]);
   useEffect(() => {
     const detail = readDetail(location.search);
     if (restored && detail?.kind === "task" && detail.id === taskId)
@@ -115,9 +130,10 @@ export function ChatPanel({
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (submitting.current || !canOperate || !question.trim()) return;
-    if (!attempt.current || attempt.current.content !== question)
+    if (!attempt.current || attempt.current.content !== question || (attempt.current.mode ?? "rules") !== mode)
       attempt.current = {
         content: question,
+        mode,
         request_id: Array.from(
           crypto.getRandomValues(new Uint8Array(16)),
           (byte) => byte.toString(16).padStart(2, "0"),
@@ -185,7 +201,7 @@ export function ChatPanel({
           onChange({ expanded: !open });
         }}
       >
-        검증 기록에 질문하기 <span>규칙 기반 · 추가 요청 없음</span>
+        검증 기록에 질문하기 <span>{mode === "ai" ? "AI 초안 선택 · 대상 실행 없음" : "규칙 기반 · 추가 요청 없음"}</span>
       </summary>
       {open && (
         <section aria-label="검증 대화 이력">
@@ -224,6 +240,10 @@ export function ChatPanel({
                     </time>
                   </small>
                   <p>{m.content}</p>
+                  {m.assistant_generation && <div className="message-generation">
+                    <p>AI 대화 · {m.assistant_generation.model} · {m.assistant_generation.outcome === "accepted" ? "초안 저장" : "규칙 요약으로 복구"}</p>
+                    <p>사용량: {m.assistant_generation.tokens.status} · 입력 {m.assistant_generation.tokens.prompt_tokens ?? "미확인"} / 출력 {m.assistant_generation.tokens.completion_tokens ?? "미확인"} / 합계 {m.assistant_generation.tokens.total_tokens ?? "미확인"}</p>
+                  </div>}
                   <MessageProvenance provenance={m.provenance} />
                   {!!m.finding_ids?.length && (
                     <small>연결된 발견 사항 {m.finding_ids.length}개</small>
@@ -287,6 +307,15 @@ export function ChatPanel({
             </p>
           )}
           <form onSubmit={submit}>
+            <label>답변 방식
+              <select value={mode} disabled={busy || unconfirmed || !canOperate}
+                onChange={e=>setMode(e.target.value as "rules"|"ai")}>
+                <option value="rules">기록의 규칙 기반 요약</option>
+                <option value="ai" disabled={!aiReady}>AI 초안{aiReady ? "" : " · 서버 설정 필요"}</option>
+              </select>
+            </label>
+            {mode === "ai" && <p className="subtle">질문과 저장된 작업·발견·관찰 발췌를 서버에 설정된 AI 제공자로 보냅니다. 인용 소속을 검사한 초안이며 사실성은 직접 검토하세요. 추가 실행은 하지 않습니다.</p>}
+            {aiConfigurationError && <p role="status">{aiConfigurationError}</p>}
             <label>
               검증 질문
               <input

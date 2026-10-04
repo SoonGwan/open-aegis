@@ -41,6 +41,8 @@ from .login_limits import LoginGate, LoginLimited
 from . import scopesentry
 from .usage import planner_summary
 from .conversation import summarize_task
+from . import conversation_ai
+from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
 
 
@@ -116,6 +118,13 @@ class NoteInput(BaseModel):
 class MessageInput(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
     request_id: str | None = Field(default=None, min_length=16, max_length=80, pattern=r'^[a-zA-Z0-9_-]+$')
+    mode: Literal['rules','ai'] = 'rules'
+
+    @model_validator(mode='after')
+    def ai_request_key(self):
+        if self.mode=='ai' and not self.request_id:
+            raise ValueError('AI 대화는 재시도 전송 ID가 필요합니다.')
+        return self
 
 
 class FindingUpdate(BaseModel):
@@ -195,6 +204,7 @@ def create_app(data_dir=None, allow_private=None):
         lease.close()
         raise
     auth_lock = threading.Lock()
+    chat_lock = threading.Lock()
     login_gate = LoginGate()
 
     def create_task(data, retest_of=None, schedule_id=None, retry_of=None):
@@ -723,17 +733,56 @@ def create_app(data_dir=None, allow_private=None):
                           filters={'task_id':task_id})
 
     @app.post('/api/tasks/{task_id}/messages', dependencies=operations)
-    def ask(task_id: str, data: MessageInput, actor=Depends(operator)):
+    def ask(task_id: str, data: MessageInput, request: Request, actor=Depends(operator)):
+        digest = hashlib.sha256(json.dumps([actor['id'], task_id, data.request_id],
+                                          separators=(',', ':')).encode()).hexdigest() if data.request_id else None
+        if digest:
+            original=store.get('messages','question-'+digest)
+            if original:
+                if original['content']!=data.content or original.get('mode','rules')!=data.mode:
+                    raise HTTPException(409,'같은 전송 ID에 다른 질문이나 답변 방식을 사용할 수 없습니다.')
+                return store.get('messages','reply-'+digest)
+        if data.mode=='ai' and not conversation_ai.configured():
+            raise HTTPException(409,'AI 대화가 서버에 설정되지 않았습니다. 규칙 기반 요약을 사용하세요.')
         summary = summarize_task(store, task_id, data.content)
         if summary is None:
             raise HTTPException(404, '작업이 없습니다.')
+        if data.mode=='ai':
+            if not chat_lock.acquire(blocking=False):
+                raise HTTPException(429,'다른 AI 대화가 진행 중입니다. 잠시 후 같은 전송 ID로 다시 시도하세요.',
+                                    headers={'Retry-After':'2'})
+            try:
+                # A completed concurrent request may now be replayed without another call.
+                original=store.get('messages','question-'+digest)
+                if original:
+                    if original['content']!=data.content or original.get('mode','rules')!=data.mode:
+                        raise HTTPException(409,'전송 ID의 질문이나 답변 방식이 다릅니다.')
+                    return store.get('messages','reply-'+digest)
+                try:
+                    summary=conversation_ai.draft(summary,data.content,allow_local=private,
+                                                  control=TaskControl(stop=shutdown_requested))
+                except ValueError as exc:
+                    raise HTTPException(413,str(exc)) from exc
+                # Keep the admission lock until the atomic pair/audit commit below.
+                with auth_lock, store.lock:
+                    fresh=operator(authenticated(request))
+                    if fresh['id']!=actor['id'] or shutdown_requested.is_set():
+                        raise HTTPException(409,'세션 또는 서버 상태가 변경되었습니다.')
+                    timestamp=now()
+                    try:
+                        return store.put_message_exchange(
+                            {'id':'question-'+digest,'task_id':task_id,'role':'user','content':data.content,
+                             'mode':data.mode,'created_at':timestamp},
+                            {'id':'reply-'+digest,'task_id':task_id,'role':'assistant',**summary,'created_at':timestamp})
+                    except MessageRequestConflict:
+                        raise HTTPException(409,'전송 ID의 질문이나 답변 방식이 다릅니다.')
+            finally:
+                chat_lock.release()
         timestamp = now()
-        question = {'id':identifier(), 'task_id':task_id, 'role':'user', 'content':data.content, 'created_at':timestamp}
+        question = {'id':identifier(), 'task_id':task_id, 'role':'user', 'content':data.content, 'mode':data.mode, 'created_at':timestamp}
         reply = {'id':identifier(), 'task_id':task_id, 'role':'assistant', **summary, 'created_at':timestamp}
         if data.request_id:
             # Separate namespaces from legacy random IDs; the token is scoped to actor/task.
-            digest = hashlib.sha256(json.dumps([actor['id'], task_id, data.request_id],
-                                              separators=(',', ':')).encode()).hexdigest()
             question['id'] = 'question-' + digest
             reply['id'] = 'reply-' + digest
             try:
@@ -843,6 +892,7 @@ def create_app(data_dir=None, allow_private=None):
                 'tool_contracts': contracts_for([item['id'] for item in CATALOG]),
                 'llm_configured': bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL')),
                 'llm_model': os.environ.get('AEGIS_LLM_MODEL', ''), 'request_budget': engine.policy.request_budget, 'max_workers': 4,
+                'llm_chat_configured':conversation_ai.configured(),
                 'execution_policy': engine.policy.public(),
                 'agents': [{'id': 'planner', 'name': 'Planner', 'role': '승인된 도구의 실행 순서를 계획', 'tools': ['catalog']},
                            {'id': 'worker', 'name': 'Worker', 'role': '범위 내 검증과 증거 수집', 'tools': list(CHECK_IDS)},

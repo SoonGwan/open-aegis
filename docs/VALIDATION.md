@@ -2264,3 +2264,54 @@ on 390×844 has no document overflow.
   scenario has a pending task without proof; observation-specific coverage is the
   backend/owned-UI evidence above. Full v1 remains open, including external-model
   conversations/intervention and full mobile/accessibility/operational review.
+
+## 2026-10-04 — opt-in AI conversation drafts with cited-record recovery
+
+- Adds explicit `mode=ai` messages (request ID required) behind server
+  AEGIS_LLM_CHAT_ENABLED=1 plus configured key/model. Default rules requests never
+  call a provider. UI checks configuration and offers a disabled-until-configured
+  AI choice with a question/record/observation transmission notice. Pending-question
+  storage preserves answer mode across retry/new readers and rejects invented modes.
+- Provider prompt uses only the current task snapshot, selected finding fields and
+  matched observation excerpts. UTF-8 JSON budget 64 KiB; response transport retains
+  HTTPS/DNS/redirect/1 MiB guards and an eight-second deadline. Strict output has
+  1–12 text/citation blocks, at most 1,500 text characters per block, and known source
+  labels only. Extra action fields/foreign or absent citations/bad JSON/schema and
+  literal configured-key echoes are rejected. No tool/target execution path is added.
+  This validates citation membership/shape, not semantic entailment or all injections.
+- Accepted replies are marked recorded_ai and visibly called drafts. Invalid output
+  or request failure restores recorded rules and explains recovery. Reported usage
+  survives invalid answers; failed-response usage is unknown. Question/reply/generation
+  metadata and task-specific usage audit are atomic. Provider raw exceptions/rejected
+  text are excluded. Current session/role and shutdown state are checked before commit.
+- Single process admission rejects overlapping AI requests with 429/Retry-After.
+  Committed request IDs replay without another call; same ID with a changed question
+  or answer mode gives 409. A rules write racing an in-flight AI call also gives 409
+  and preserves the committed rules pair. AI request IDs are not provider-side billing
+  keys; crash/failed commit/revocation can leave consumed usage outside saved history.
+- Eighteen new backend cases cover citations/usage/audit/replay, malformed output and
+  key echoes, provider failure/configuration, rollback, concurrent admission, logout/
+  role revocation, context budget, real loopback HTTP completion and a rules/AI race.
+  Initial test harness assertions mistakenly counted a seeded foreign message and
+  used a nonexistent logout method; corrected to task filtering and actual logout.
+  Targeted initial AI/message suite subsequently 21 passed. Broader runs were repeated
+  only after added race/key validation. Final **376 passed in 110.54s**, one existing
+  Starlette/httpx deprecation warning; artifacts/conversation-ai-backend-tests.txt.
+- Frontend **65 passed in 375.69ms** including answer-mode persistence. Final
+  TypeScript/Vite build index-C9LagHtH.js / index-a5815QM7.css; evidence
+  artifacts/conversation-ai-frontend-tests.txt and artifacts/conversation-ai-build.txt.
+- Owned disposable built-UI/HTTP review with --ai-fixture: normal draft accepted with
+  reported 20/10/30; foreign source output rejected with the same reported usage;
+  HTTP 503 restores rules with unknown counters. Fresh task document restores all
+  saved messages and mode selection/transmission notice. Initial screenshot found a
+  flex row compressing the new selector/question/button; changed form to a single
+  grid column. Final measured labels/button widths all 533px and screenshot
+  artifacts/v1-conversation-ai-recovery.jpg visually inspected after rebuilding.
+  Actual commercial providers and full mobile/AT flows were not exercised.
+- New wheel matches all **39** current service files; SHA256
+  58300c24aea7b1d1bddadbb30c13ad272bd489ec7700d0e4e7a1e4dc27211af1.
+  Installed wheel + final UI review outside checkout valid=true, target requests zero;
+  artifacts/conversation-ai-package-review.json. Repeated after final CSS and key guard.
+  That installed scenario uses default rules mode, so provider-specific evidence is
+  the checkout integration/owned UI above. Whole AI intervention, usage dashboard/
+  cost ledger and v1 release gates stay open; docs/CONVERSATION.md defines limits.

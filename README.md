@@ -147,6 +147,7 @@ Compose의 환경변수 전달 항목을 추가해야 합니다.
 AEGIS_LLM_API_KEY=<provider key>
 AEGIS_LLM_MODEL=<model name>
 AEGIS_LLM_BASE_URL=https://your-provider.example/v1
+AEGIS_LLM_CHAT_ENABLED=0
 ```
 
 서버를 재시작하고 작업에서 AI Planner를 선택합니다. 승인된 도구의 실행 순서만
@@ -156,6 +157,11 @@ AEGIS_LLM_BASE_URL=https://your-provider.example/v1
 자동 테스트에 포함됩니다.
 제공자가 보고한 입력·출력·합계 토큰은 작업 상세와 JSON/Markdown 보고서에서
 확인합니다. 누락·잘못된 값은 0이나 비용으로 추정하지 않습니다. [사용량 계약](docs/LLM-USAGE.md)을 참고하세요.
+
+AI 대화 초안을 사용하려면 `AEGIS_LLM_CHAT_ENABLED=1`로 설정하고 작업 대화의
+답변 방식에서 AI를 선택하세요. 질문과 저장된 기록·관찰 발췌가 제공자에게 전달됩니다.
+출처 번호/형식을 검사하며, 오류 시 규칙 요약으로 복구합니다. 내용의 사실성은
+직접 검토해야 합니다. [대화·출처 계약](docs/CONVERSATION.md)을 확인하세요.
 시스템 설정에서 전체·최근 7일·최근 30일의 작업별 마지막 계획 호출과 검증된 토큰
 합계를 조회할 수 있습니다. 여러 회차의 호출 이력이나 청구 비용을 합산하는 기능은 아닙니다.
 

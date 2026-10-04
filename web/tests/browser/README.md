@@ -241,3 +241,12 @@ filtered source list and full original. Reopen the task in a fresh document to c
 persisted excerpts. Ctrl+C shuts down and removes the workspace. The launcher does
 not approve tasks or send target/provider requests; synthetic seeded observations
 are not execution evidence. Backend loopback integration verifies actual check output.
+
+Use `--ai-fixture` to enable an owned loopback Chat Completions provider (lab mode).
+Select AI draft explicitly, inspect the transmission notice, and submit a normal
+question: a cited synthetic draft with reported 20/10/30 usage is saved. Questions
+containing `잘못` return a foreign citation and must recover to recorded rules while
+retaining reported usage; `실패` returns HTTP 503 and must recover with unknown usage.
+Open a fresh task document to inspect all saved replies. This fixture never contacts
+a commercial provider or executes targets. Check the vertically stacked mode,
+notice, question and submit controls in the built UI; whole mobile/AT QA is separate.

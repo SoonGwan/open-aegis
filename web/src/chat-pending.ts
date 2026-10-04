@@ -1,4 +1,4 @@
-export type PendingQuestion = { content: string; request_id: string };
+export type PendingQuestion = { content: string; request_id: string; mode?: "rules" | "ai" };
 type PendingStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const key = (actorId: string, taskId: string) =>
   "aegis:pending-question:" + JSON.stringify([actorId, taskId]);
@@ -6,6 +6,7 @@ function valid(value: unknown): value is PendingQuestion {
   if (!value || typeof value !== "object") return false;
   const pending = value as PendingQuestion;
   return (
+    (pending.mode === undefined || pending.mode === "rules" || pending.mode === "ai") &&
     typeof pending.content === "string" &&
     !!pending.content.trim() &&
     pending.content.length <= 2000 &&
@@ -30,7 +31,7 @@ export function readPending(
     if (!raw || raw.length > 12000) return null;
     const value = JSON.parse(raw);
     return value.version === 1 && valid(value)
-      ? { content: value.content, request_id: value.request_id }
+      ? { content: value.content, request_id: value.request_id, ...(value.mode === undefined ? {} : {mode:value.mode}) }
       : null;
   } catch {
     return null;
