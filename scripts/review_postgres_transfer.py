@@ -62,6 +62,12 @@ from aegis import call_ledger
 from aegis.llm import token_usage
 from aegis.costs import estimate
 from aegis.usage import usage_summary
+from aegis.engine import Engine
+from aegis.runtime import ExecutionPolicy
+from aegis.tool_contracts import contracts_for
+from aegis.coverage import planned_slots
+from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+import threading
 s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
 assert Path(sys.modules[s.__class__.__module__].__file__).is_relative_to(Path(sys.prefix))
 proof=json.loads(Path(sys.argv[1]).read_text())
@@ -87,8 +93,35 @@ usage=usage_summary(s,source='all',ledger='attempts')
 assert usage['calls']==2 and usage['attempt_states']['committed']==1 and usage['attempt_states']['interrupted']==1
 assert usage['reported_tokens']['total_tokens']=='5' and usage['costs']['states']['unconfigured']==2
 assert usage_summary(s,source='all')['calls']==1
+owned_requests=[]
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        owned_requests.append(self.path)
+        self.send_response(200);self.send_header('Content-Length','2');self.end_headers();self.wfile.write(b'OK')
+    def log_message(self,*args):pass
+server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+asset={'id':'owned-lab','name':'Installed owned lab','url':f'http://127.0.0.1:{server.server_port}/','type':'web','revision':1}
+task={'id':'native-engine','name':'Installed approved task','status':'pending','asset_ids':[asset['id']],
+      'scope_snapshot':[asset],'checks':['security_headers'],'tool_contracts':contracts_for(['security_headers']),
+      'created_at':time.time(),'workers':1,'planner':'rules','goal':'Owned validation','done':0,'errors':0}
+s.put_many([('assets',asset),('tasks',task),*[('coverage',row) for row in planned_slots(task)]])
+engine=Engine(s,allow_private=True,policy=ExecutionPolicy(request_retries=0))
+try:
+    assert not owned_requests
+    engine.start(task['id']);deadline=time.monotonic()+8
+    while s.get('tasks',task['id'])['status'] not in ('completed','failed','stopped'):
+        assert time.monotonic()<deadline
+        time.sleep(.02)
+    assert s.get('tasks',task['id'])['status']=='completed'
+    assert s.count('findings')>0 and s.count('evidence')==s.count('findings')
+    assert s.get('coverage','native-engine:owned-lab:security_headers')['status']=='completed'
+    assert engine.metrics()['queue_watchdog']['errors']==0
+finally:
+    engine.shutdown();server.shutdown();server.server_close();thread.join(timeout=2)
+assert owned_requests==['/']
 with s.transaction() as db:manifest=postgres_manifest(db)
-print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity(),'usage':usage}))
+print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity(),'usage':usage,'owned_lab_requests':len(owned_requests)}))
 ''',forward_proof],'installed native PostgreSQL store'))
             dump=temporary/'owned.dump'
             run([binaries['pg_dump'],'--format=custom','--schema','owned_transfer','--file',dump,'postgres'],'real pg_dump');dump.chmod(0o600)
@@ -113,9 +146,10 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
             print(json.dumps({'valid':True,'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
-                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','real pg_dump/pg_restore',
+                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','real pg_dump/pg_restore',
                           'installed SQLite return','revoked old sessions','preserved password hashes and exact record','audit continuation'],
-                'target_requests':0,'service_postgres_backend_enabled':False}))
+                'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
+                'external_target_requests':0,'service_postgres_backend_enabled':False}))
         finally:
             run([binaries['pg_ctl'],'-D',data,'-w','-m','fast','stop'],'owned PostgreSQL stop')
 

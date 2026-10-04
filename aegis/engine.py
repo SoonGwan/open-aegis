@@ -42,24 +42,18 @@ class Engine:
         self.queue_thread.start()
 
     def metrics(self):
-        with self.store.connect() as db:
-            db.execute('BEGIN')
-            counts={row[0]:row[1] for row in db.execute("SELECT json_extract(data,'$.status'),count(*) FROM records WHERE kind='tasks' GROUP BY json_extract(data,'$.status')")}
-            oldest=db.execute("SELECT min(json_extract(data,'$.approved_at')) FROM records WHERE kind='tasks' AND json_extract(data,'$.status')='queued'").fetchone()[0]
-            timeouts=db.execute("SELECT count(*) FROM records WHERE kind='tasks' AND json_extract(data,'$.termination_reason') IN ('timeout','queue_timeout')").fetchone()[0]
-        return {'policy':self.policy.public(),'tasks':counts,'oldest_queue_seconds':max(0,now()-oldest) if oldest else 0,
-                'timeouts':timeouts,'requests':self.limiter.snapshot(),'dns':resolver().snapshot(),
+        recorded=self.store.task_metrics();oldest=recorded['oldest_queued_at']
+        return {'policy':self.policy.public(),'tasks':recorded['tasks'],'oldest_queue_seconds':max(0,now()-oldest) if oldest else 0,
+                'timeouts':recorded['timeouts'],'requests':self.limiter.snapshot(),'dns':resolver().snapshot(),
                 'queue_watchdog':{'alive':self.queue_thread.is_alive(),'errors':self.queue_errors,'last_error_at':self.queue_last_error_at},
                 'generated_at':now(),'counter_scope':'server_process'}
 
     def watch_queue(self):
         while not self.queue_stop.wait(.25):
             try:
-                with self.store.connect() as db:
-                    rows=db.execute("SELECT id FROM records WHERE kind='tasks' AND json_extract(data,'$.status')='queued' AND json_extract(data,'$.approved_at')<? LIMIT 100",(now()-self.policy.queue_timeout,)).fetchall()
-                for row in rows:
+                for id in self.store.overdue_task_ids(now()-self.policy.queue_timeout):
                     with self.lock:
-                        task=self.store.get('tasks',row['id'])
+                        task=self.store.get('tasks',id)
                         if not task or task['status']!='queued':continue
                         future=self.futures.get(task['id'])
                         if future and not future.cancel():continue

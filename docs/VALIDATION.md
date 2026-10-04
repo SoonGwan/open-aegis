@@ -2770,3 +2770,47 @@ on 390×844 has no document overflow.
   **1 passed in1.22s** (`artifacts/postgres-ledger-cost-snapshot.txt`). No service
   Python edits after the full suite or wheel build. Owned preview restarted with
   current code on8790 (PID90617), normal shutdown completed first; HTTP200.
+
+### Native PostgreSQL Engine and atomic finding decisions
+
+- Engine queue metrics and bounded oldest overdue IDs now use reviewed Store
+  methods with SQLite/native PostgreSQL queries. Engine has no direct SQLite SQL
+  connection; approved standalone execution uses the existing scope/tool contracts,
+  Transport/Worker limits and coverage/finding APIs. HTTP backend selection and
+  PostgreSQL service ownership/loss-of-ownership handling are still unimplemented.
+- Observation, human triage and retest read/validate/update within one Store write
+  transaction, including assignee lookup and related evidence/history/retest rows.
+  PostgreSQL uses its advisory write order; SQLite uses BEGIN IMMEDIATE. Two
+  independent Store instances on either backend retain one finding,17 proof/task
+  references and17 histories after16 concurrent repeat observations. Two decisions
+  for revision1 yield one revision2 winner and one conflict; an older retest keeps
+  that decision. Failure after real batch writes rolls back related rows in all
+  three paths. No claim of arbitrary external SQL writers following this protocol.
+- Owned standalone PostgreSQL Engine tests cover approval with no pre-approval
+  request, actual loopback validation/traffic/evidence/observations/coverage, a
+  hardened follow-up retest resolving the selected finding, changed asset revision
+  refusal, pending rejection, startup interruption coverage, queue expiry, and
+  stop during an actual held HTTP request. Queue watchdog stays error-free; audit
+  chains verify. This is an isolated exclusive test process, not multi-server
+  service ownership or production PostgreSQL HTTP execution.
+- Related SQLite triage/runtime/validation: **64 passed in29.02s**
+  (`artifacts/postgres-engine-sqlite.txt`). Final native Engine/Store/ledger subset:
+  **34 passed in6.58s** (`artifacts/postgres-engine-targeted-final.txt`). Full backend
+  with explicit PG opt-in: **477 passed in123.13s**, one existing Starlette/httpx
+  warning (`artifacts/postgres-engine-backend-final.txt`). No UI edits/rebuild.
+- Wheel SHA256998ba3fa16b342353ff73701b56ed7725dce41ac663c7cc33f655750e07af13a
+  byte-matches all48 service Python files. Outside-checkout installed standalone
+  Engine executes one approved GET against its owned loopback server, persists
+  findings/proofs/coverage, then shuts down before manifest/dump/restore/SQLite
+  return verification (`artifacts/postgres-engine-installed-review.json`,valid=true,
+  target_requests=1,owned_lab_requests=1,external_target_requests=0,
+  service_postgres_backend_enabled=false). Default installed SQLite runtime's
+  HTTP/UI/auth/maintenance/attempt recovery/signed release checks pass the same
+  wheel (`artifacts/postgres-engine-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove disposable clusters/installations. CI includes
+  engine tests; GitHub hosted execution remains unverified.
+- Whole v1 PostgreSQL gate stays open: HTTP queries/graph/import/reporting/bounded
+  audit readers, startup ownership and operational backup/restore are required.
+  No public PostgreSQL service configuration or remote publication was enabled.
+- Owned preview shut down cleanly before restarting current code on8790
+  (PID11671/session65747); HTTP200. Existing preview workspace retained.

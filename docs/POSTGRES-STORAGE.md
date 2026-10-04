@@ -96,6 +96,16 @@ GitHub hosted 실행 결과는 아직 없다.
 직접 읽고 쓴다. SQLite SQL 변환이나 SQLite 복제 DB를 사용하지 않는다. 생성자는
 형식/감사 기준을 읽기만 하며 세션 폐기·작업 복구·스키마 변경을 하지 않는다.
 현재 서비스의 Store 선택 설정에는 연결하지 않았으며 공개 HTTP PostgreSQL 지원을 뜻하지 않는다.
+Engine의 큐 지표/기한 조회와 발견 관찰·조치·재검증은 저장소별 쿼리와 쓰기 트랜잭션을
+사용한다. 소유한 단독 검수 환경에서 네이티브 PostgreSQL Engine의 승인→로컬 요청→
+증거/커버리지 저장, 재검증 해결 판정, 실행 중 중지·큐 만료·시작 복구를 검수했다.
+이것은 HTTP 서비스의 PostgreSQL 실행이나 다중 서버 운영 소유권 검수가 아니다.
+서비스 시작 잠금/연결 상실 처리와 보고서/그래프/가져오기 경로가 남아 있다.
+
+발견 관찰·조치·재검증은 같은 쓰기 트랜잭션에서 현재 발견/담당자를 읽고 관련 증거,
+변경 이력과 함께 저장한다. PostgreSQL과 SQLite의 서로 다른 Store 인스턴스에서
+동시에 같은 발견을 관찰해도 증거 참조를 잃지 않고, 같은 expected revision으로
+조치하면 한 변경만 성공한다. 배치 쓰기 뒤 오류를 주입해 관련 기록의 롤백도 검수했다.
 
 각 읽기는 REPEATABLE READ/READ ONLY 트랜잭션이고 쓰기는 READ COMMITTED 트랜잭션에서
 DB/스키마별 트랜잭션 advisory lock을 잡는다. 여러 Store 인스턴스의 감사 기록을 실제
@@ -137,7 +147,7 @@ AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 �
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된

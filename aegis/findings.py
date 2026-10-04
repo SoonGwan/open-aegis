@@ -1,6 +1,5 @@
 """Finding observations and human decisions share one serialized, atomic write path."""
 import hashlib
-import json
 from .store_util import identifier, now
 
 
@@ -29,8 +28,8 @@ def history(finding, action, actor, before, after, reason='', **details):
 
 
 def update_triage(store, finding_id, changes, user):
-    with store.lock:
-        before = store.get('findings', finding_id)
+    with store.lock, store.write_transaction() as db:
+        before = store.get('findings', finding_id,connection=db)
         if before is None:
             raise KeyError(finding_id)
         revision = before.get('triage_revision', 1)
@@ -47,7 +46,7 @@ def update_triage(store, finding_id, changes, user):
         if changes.get('status') == 'resolved' and before['status'] != 'resolved' and not changes.get('resolution_reason'):
             raise ValueError('수동으로 해결 처리하는 사유를 입력하세요. 검증 결과는 재검증으로 확인할 수 있습니다.')
         if 'assignee_id' in changes and changes['assignee_id'] != before.get('assignee_id'):
-            assignee = store.user(id=changes['assignee_id']) if changes['assignee_id'] else None
+            assignee = store.user(id=changes['assignee_id'],connection=db) if changes['assignee_id'] else None
             if changes['assignee_id'] and (not assignee or assignee['disabled'] or assignee['role'] not in ('admin','operator')):
                 raise ValueError('활성 관리자 또는 운영자를 담당자로 선택하세요.')
             after['assignee_name'] = assignee['name'] if assignee else ''
@@ -58,15 +57,14 @@ def update_triage(store, finding_id, changes, user):
         after.update(triage_revision=revision+1, triage_updated_at=now(), updated_at=now())
         reason = after.get('acceptance_reason','') if after['status']=='accepted' else after.get('resolution_reason','') if after['status']=='resolved' else '운영자가 조치 기록을 변경했습니다.'
         entry = history(after,'triage',public_actor(user),before,after,reason)
-        store.put_many([('findings',after),('finding_history',entry)])
+        store.put_many([('findings',after),('finding_history',entry)],connection=db)
         return after
 
 
 def record_observation(store, task, asset, item):
     fingerprint = hashlib.sha256(f"{asset['id']}:{item['check']}:{item['code']}".encode()).hexdigest()
-    with store.lock, store.connect() as db:
-        row = db.execute("SELECT data FROM records WHERE kind='findings' AND json_extract(data,'$.fingerprint')=? LIMIT 1", (fingerprint,)).fetchone()
-        previous = json.loads(row['data']) if row else None
+    with store.lock, store.write_transaction() as db:
+        previous = store.finding_by_fingerprint(fingerprint,connection=db)
         proof = {'id':identifier(),'task_id':task['id'],'asset_id':asset['id'],'check':item['check'],
                  'observation':item['evidence'],'created_at':now(),'fingerprint':fingerprint}
         finding = {**(previous or {}), **item, 'id':previous['id'] if previous else identifier(),
@@ -86,13 +84,13 @@ def record_observation(store, task, asset, item):
                 reason = '작업 승인 이후의 조치 결정을 보존하고 관찰 증거만 추가했습니다.'
         entry = history(finding,action,public_actor(task_id=task['id']),previous or {},finding,reason,
                         task_id=task['id'],evidence_id=proof['id'])
-        store.put_many([('evidence',proof),('findings',finding),('finding_history',entry)])
+        store.put_many([('evidence',proof),('findings',finding),('finding_history',entry)],connection=db)
     return finding, proof, entry
 
 
 def apply_retest(store, task, conclusion):
-    with store.lock:
-        before = store.get('findings', task['retest_of'])
+    with store.lock, store.write_transaction() as db:
+        before = store.get('findings', task['retest_of'],connection=db)
         if before is None:
             raise KeyError(task['retest_of'])
         after = dict(before)
@@ -117,5 +115,5 @@ def apply_retest(store, task, conclusion):
                   'created_at':now(),'triage_effect':effect,'state_note':note}
         entry = history(after,'retest',public_actor(task_id=task['id']),before,after,note,
                         task_id=task['id'],retest_id=retest['id'],conclusion=conclusion,triage_effect=effect)
-        store.put_many([('findings',after),('retests',retest),('finding_history',entry)])
+        store.put_many([('findings',after),('retests',retest),('finding_history',entry)],connection=db)
         return retest

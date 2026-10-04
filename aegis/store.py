@@ -3,7 +3,7 @@ import hashlib
 import json
 import sqlite3
 import threading
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 
@@ -59,8 +59,14 @@ class Store:
         self.put_many([(kind, record)])
         return record
 
-    def put_many(self, records):
+    @contextmanager
+    def write_transaction(self):
         with self.lock, self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            yield db
+
+    def put_many(self, records, *, connection=None):
+        with (nullcontext(connection) if connection is not None else self.write_transaction()) as db:
             db.executemany("INSERT INTO records VALUES (?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data",
                            [(kind, record['id'], json.dumps(record, ensure_ascii=False)) for kind, record in records])
 
@@ -328,11 +334,29 @@ class Store:
     def valid_session(self, token):
         return self.session_user(token) is not None
 
-    def user(self, *, id=None, username=None):
-        with self.connect() as db:
+    def user(self, *, id=None, username=None, connection=None):
+        with (nullcontext(connection) if connection is not None else self.connect()) as db:
             row = db.execute('SELECT * FROM users WHERE ' + ('id=?' if id is not None else 'username=?'),
                              (id if id is not None else username,)).fetchone()
         return dict(row) if row else None
+
+    def finding_by_fingerprint(self, fingerprint, *, connection=None):
+        with (nullcontext(connection) if connection is not None else self.connect()) as db:
+            row=db.execute("SELECT data FROM records WHERE kind='findings' AND json_extract(data,'$.fingerprint')=? ORDER BY rowid LIMIT 1",(fingerprint,)).fetchone()
+            return json.loads(row['data']) if row else None
+
+    def task_metrics(self):
+        with self.connect() as db:
+            db.execute('BEGIN')
+            counts={row[0]:row[1] for row in db.execute("SELECT json_extract(data,'$.status'),count(*) FROM records WHERE kind='tasks' GROUP BY json_extract(data,'$.status')")}
+            oldest=db.execute("SELECT min(json_extract(data,'$.approved_at')) FROM records WHERE kind='tasks' AND json_extract(data,'$.status')='queued'").fetchone()[0]
+            timeouts=db.execute("SELECT count(*) FROM records WHERE kind='tasks' AND json_extract(data,'$.termination_reason') IN ('timeout','queue_timeout')").fetchone()[0]
+            return {'tasks':counts,'oldest_queued_at':oldest,'timeouts':timeouts}
+
+    def overdue_task_ids(self, before, limit=100):
+        if not 1<=limit<=100:raise ValueError('Invalid queue batch size')
+        with self.connect() as db:
+            return [row['id'] for row in db.execute("SELECT id FROM records WHERE kind='tasks' AND json_extract(data,'$.status')='queued' AND json_extract(data,'$.approved_at')<? ORDER BY json_extract(data,'$.approved_at'),rowid LIMIT ?",(before,limit))]
 
     def users(self):
         with self.connect() as db:

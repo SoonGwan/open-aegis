@@ -92,8 +92,11 @@ class PostgresStore:
     def put(self,kind,record):
         self.put_many([(kind,record)]);return record
 
-    def put_many(self,records):
-        with self.transaction(write=True) as db, db.cursor() as cursor:
+    def write_transaction(self):
+        return self.transaction(write=True)
+
+    def put_many(self,records,*,connection=None):
+        with (nullcontext(connection) if connection is not None else self.write_transaction()) as db, db.cursor() as cursor:
             cursor.executemany('INSERT INTO records(kind,id,data) VALUES (%s,%s,%s) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data',
                                [(kind,record['id'],encoded(record)) for kind,record in records])
 
@@ -240,8 +243,25 @@ class PostgresStore:
     def logout(self,token):
         with self.transaction(write=True) as db:db.execute('DELETE FROM sessions WHERE digest=%s',(hashlib.sha256(token.encode()).hexdigest(),))
 
-    def user(self,*,id=None,username=None):
-        with self.transaction() as db:return db.execute('SELECT * FROM users WHERE '+('id=%s' if id is not None else 'username=%s'),(id if id is not None else username,)).fetchone()
+    def user(self,*,id=None,username=None,connection=None):
+        with (nullcontext(connection) if connection is not None else self.transaction()) as db:return db.execute('SELECT * FROM users WHERE '+('id=%s' if id is not None else 'username=%s'),(id if id is not None else username,)).fetchone()
+
+    def finding_by_fingerprint(self,fingerprint,*,connection=None):
+        with (nullcontext(connection) if connection is not None else self.transaction()) as db:
+            row=db.execute("SELECT data FROM records WHERE kind='findings' AND "+text('fingerprint')+'=%s ORDER BY rowid LIMIT 1',(fingerprint,)).fetchone()
+            return json.loads(row['data']) if row else None
+
+    def task_metrics(self):
+        with self.transaction() as db:
+            counts={row['status']:row['count'] for row in db.execute('SELECT '+text('status')+" AS status,count(*) AS count FROM records WHERE kind='tasks' GROUP BY "+text('status'))}
+            oldest=db.execute('SELECT min(('+text('approved_at')+")::double precision) AS oldest FROM records WHERE kind='tasks' AND "+text('status')+"='queued'").fetchone()['oldest']
+            timeouts=db.execute("SELECT count(*) AS count FROM records WHERE kind='tasks' AND "+text('termination_reason')+" IN ('timeout','queue_timeout')").fetchone()['count']
+            return {'tasks':counts,'oldest_queued_at':oldest,'timeouts':timeouts}
+
+    def overdue_task_ids(self,before,limit=100):
+        if not 1<=limit<=100:raise ValueError('Invalid queue batch size')
+        with self.transaction() as db:
+            return [row['id'] for row in db.execute("SELECT id FROM records WHERE kind='tasks' AND "+text('status')+"='queued' AND ("+text('approved_at')+')::double precision<%s ORDER BY ('+text('approved_at')+')::double precision,rowid LIMIT %s',(before,limit))]
 
     def users(self):
         with self.transaction() as db:return db.execute('SELECT * FROM users ORDER BY created_at,id COLLATE "C"').fetchall()
