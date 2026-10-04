@@ -294,13 +294,14 @@ class Engine:
                     pending.clear()
                 for id, asset in list(pending.items()):
                     if control.stop.is_set() or control.expired():break
+                    asset_checks = goal_planner.execution_checks(task, id, checks)
                     parents = dependencies.get(id, [])
                     if not all(parent in outcomes for parent in parents):continue
                     if len(running) >= task['workers']:break
                     try:
                         inputs = evidence_inputs(self.store, task, parents) if parents else []
                     except ValueError:
-                        for check in checks:
+                        for check in asset_checks:
                             self.store.put('coverage', {**slot(task, asset, check), 'status': 'failed',
                                 'reason': '선행 Worker의 검증 완료 근거가 없어 실행하지 않았습니다.',
                                 'error_type': 'WorkerDependencyBlocked', 'finished_at': now()})
@@ -308,7 +309,7 @@ class Engine:
                             {'asset_id': id, 'worker_id': task['id']+':'+id, 'dependencies': parents})
                         finished({'asset_id': id, 'completed_checks': [], 'fingerprints': [], 'errors': ['dependency_blocked']})
                     else:
-                        args = (task, asset, checks, control, inputs) if inputs else (task, asset, checks, control)
+                        args = (task, asset, asset_checks, control, inputs) if inputs else (task, asset, asset_checks, control)
                         running[workers.submit(self.validate_asset, *args)] = id
                     del pending[id]
                 if running:

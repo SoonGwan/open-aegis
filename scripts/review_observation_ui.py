@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--observation-planner',action='store_true',help='Seed completed predecessor API/session observations for frozen planner context')
     parser.add_argument('--observation-lost-response-flag',type=Path,help='Owned observation-plan POST commit then503 probe')
     parser.add_argument('--goal-planner',action='store_true',help='Owned mock-provider semantic goal draft fixture, no external calls')
+    parser.add_argument('--goal-sparse',action='store_true',help='Owned goal objectives select separate asset/check pairs')
     parser.add_argument('--goal-lost-response-flag',type=Path,help='Owned goal draft commit then503 probe')
     parser.add_argument('--next-read-fail-flag',type=Path)
     parser.add_argument('--planner-read-fail-flag',type=Path,help='Owned automatic planner GET failure probe')
@@ -85,6 +86,10 @@ def main():
                     {'id':'g2','title':'교차 출처 정책 검토','rationale':'API 정책 목표를 응답 선언 검사로 연결',
                      'asset_ids':ids,'checks':['cors_policy'],'expected_evidence':'허용 출처의 응답 선언','missing_inputs':['실제 보호 데이터 여부는 별도 확인']}],
                     'worker_dependencies':{}}
+                if args.goal_sparse:
+                    plan['objectives'][0]['asset_ids']=[ids[0]]
+                    plan['objectives'][1]['asset_ids']=[ids[-1]]
+                    if len(ids)>1:plan['worker_dependencies']={ids[-1]:[ids[0]]}
                 return {'choices':[{'message':{'content':json.dumps(plan,ensure_ascii=False)}}],
                     'usage':{'prompt_tokens':30,'completion_tokens':15,'total_tokens':45}}
             goal_planner.completion=goal_provider

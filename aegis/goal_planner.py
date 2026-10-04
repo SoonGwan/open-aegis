@@ -37,6 +37,25 @@ def digest(value):
                                     separators=(',', ':')).encode()).hexdigest()
 
 
+def fingerprint(value):
+    keys = ['basis_fingerprint', 'goal', 'decomposition', 'mode']
+    if 'execution' in value:keys.append('execution')
+    return digest({key:value[key] for key in keys})
+
+
+def execution_checks(task, asset_id, ordered=None):
+    """Legacy plans keep their approved matrix; new plans execute declared pairs."""
+    ordered = task.get('checks', []) if ordered is None else ordered
+    plan = task.get('goal_plan')
+    if not plan or 'execution' not in plan:return list(ordered)
+    if plan['execution'] != 'objective_pairs':raise PlanningConflict('목표 실행 계약을 확인하세요.')
+    validate(plan['decomposition'], task['asset_ids'])
+    if plan['fingerprint'] != fingerprint(plan):raise PlanningConflict('목표 실행 계약이 변경되었습니다.')
+    selected = {check for objective in plan['decomposition']['objectives']
+                if asset_id in objective['asset_ids'] for check in objective['checks']}
+    return [check for check in ordered if check in selected]
+
+
 def snapshot(store, source_id, policy, *, connection=None):
     with (nullcontext(connection) if connection is not None else store.read_transaction()) as db:
         source=store.get('tasks', source_id, connection=db)
@@ -139,8 +158,8 @@ def generate(store, source_id, data, policy, *, actor_id=None, allow_local=False
                 'tokens':usage,'cost':estimate(usage,price,observed),'call_id':call_id,'phase':'goal_decomposition'}
             call_ledger.observe(store,call_id,metadata)
         validate(plan,[a['id'] for a in basis['assets']])
-        ready={**draft,'state':'ready','mode':mode,'goal':data.goal,'decomposition':plan,'llm_usage':metadata}
-        ready['fingerprint']=digest({key:ready[key] for key in ('basis_fingerprint','goal','decomposition','mode')})
+        ready={**draft,'state':'ready','mode':mode,'goal':data.goal,'decomposition':plan,'llm_usage':metadata,'execution':'objective_pairs'}
+        ready['fingerprint']=fingerprint(ready)
         with store.lock, store.write_transaction() as db:
             if metadata:call_ledger.commit(db,metadata,source_id,'planner','goal_plans',draft_id,
                                           postgres=getattr(store,'backend',None)=='postgres')
@@ -173,10 +192,10 @@ def require_task(task):
     plan=task.get('goal_plan')
     if plan is None:return
     try:
-        if type(plan) is not dict or set(plan)!={'draft_id','basis_fingerprint','goal','decomposition','mode','fingerprint'}:
+        if type(plan) is not dict or set(plan) not in ({'draft_id','basis_fingerprint','goal','decomposition','mode','fingerprint'}, {'draft_id','basis_fingerprint','goal','decomposition','mode','fingerprint','execution'}):
             raise ValueError()
         ids, checks=validate(plan['decomposition'],task['asset_ids'])
-        if (plan['fingerprint']!=digest({key:plan[key] for key in ('basis_fingerprint','goal','decomposition','mode')})
+        if (plan['fingerprint']!=fingerprint(plan) or ('execution' in plan and plan['execution']!='objective_pairs')
                 or task['goal']!=plan['goal'] or task['asset_ids']!=ids or task['checks']!=checks
                 or type(task.get('scope_snapshot')) is not list
                 or [a['id'] for a in task['scope_snapshot']]!=ids

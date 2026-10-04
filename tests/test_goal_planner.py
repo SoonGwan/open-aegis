@@ -184,3 +184,82 @@ def test_missing_goal_scope_is_not_zero_over_zero_completion(client,lab,monkeypa
     assert client.get('/api/tasks/'+plan['id']+'/goal-progress').status_code==409
     assert client.post('/api/tasks/'+plan['id']+'/approve').status_code==409
     assert lab[1].requests==[]
+
+
+def test_sparse_objective_pairs_execute_once_and_preserve_other_evidence(client,lab,monkeypatch):
+    from aegis import engine
+    first=register(client,lab[0]);second=register(client,lab[0]+'other/')
+    # Existing evidence must survive a newer goal that doesn't select that pair.
+    prior=task(client,first,['cors_policy'])
+    assert client.post('/api/tasks/'+prior['id']+'/approve').status_code==200
+    finish(client,prior['id']);lab[1].requests.clear()
+    original=client.post('/api/tasks',json={'name':'Sparse objective scope','asset_ids':[first['id'],second['id']],
+        'checks':['security_headers'],'workers':2}).json()
+    def sparse(plan,prompt):
+        plan['objectives'][0]['asset_ids']=[first['id']]
+        plan['objectives'][1]['asset_ids']=[second['id']]
+        duplicate=copy.deepcopy(plan['objectives'][0]);duplicate['id']='g3'
+        plan['objectives'].append(duplicate)
+        plan['worker_dependencies']={second['id']:[first['id']]}
+        return plan
+    provider(monkeypatch,sparse)
+    executed=[];run=engine.run_check
+    def recording(check,asset,*args):
+        executed.append((asset['id'],check))
+        return run(check,asset,*args)
+    monkeypatch.setattr(engine,'run_check',recording)
+    path,_,result=draft(client,original)
+    assert result['execution']=='objective_pairs'
+    response=client.post(path+'/'+result['id']+'/accept',json={'fingerprint':result['fingerprint']})
+    assert response.status_code==200,response.text
+    planned=response.json();id=planned['id']
+    pending=client.get('/api/tasks/'+id).json()
+    expected={(first['id'],'cookie_policy'),(second['id'],'cors_policy')}
+    assert {(r['asset_id'],r['check']) for r in pending['coverage']}==expected
+    assert lab[1].requests==[]
+    assert client.post('/api/tasks/'+id+'/approve').status_code==200
+    execution=finish(client,id)
+    assert executed==[(first['id'],'cookie_policy'),(second['id'],'cors_policy')]
+    assert lab[1].requests==['/','/other/']
+    assert {(r['asset_id'],r['check']) for r in execution['coverage']}==expected
+    assert all(r['status']=='completed' for r in execution['coverage'])
+    rows=client.get('/api/tasks/'+id+'/goal-progress').json()['objectives']
+    assert len(rows)==3 and all(r['completed']==r['expected']==1 for r in rows)
+    overview=client.get('/api/overview').json()['coverage_summary']
+    assert overview['completed']==3 and overview['counts']['not_recorded']==0
+    report=client.get('/api/reports/export',params={'format':'json','task_id':id}).json()
+    assert {(r['asset_id'],r['check']) for r in report['coverage']}==expected
+    from aegis.worker_process import get_process
+    child=get_process(client.app.state.store,id,second['id'])
+    assert [r['check'] for r in child['coverage']]==['cors_policy']
+    handoffs=[row for row in child['events']['items'] if row.get('detail',{}).get('dependency_inputs')]
+    assert handoffs and handoffs[0]['detail']['dependency_inputs'][0]['checks_completed']==['cookie_policy']
+
+
+def test_legacy_goal_draft_preserves_approved_union_matrix(client,lab,monkeypatch):
+    first=register(client,lab[0]);second=register(client,lab[0]+'other/')
+    original=client.post('/api/tasks',json={'name':'Legacy goal review','asset_ids':[first['id'],second['id']],
+        'checks':['security_headers']}).json()
+    def sparse(plan,prompt):
+        plan['objectives'][0]['asset_ids']=[first['id']]
+        plan['objectives'][1]['asset_ids']=[second['id']]
+        return plan
+    provider(monkeypatch,sparse);path,_,result=draft(client,original)
+    del result['execution'];result['fingerprint']=goal_planner.fingerprint(result)
+    client.app.state.store.put('goal_plans',result)
+    accepted=client.post(path+'/'+result['id']+'/accept',json={'fingerprint':result['fingerprint']})
+    assert accepted.status_code==200,accepted.text
+    planned=accepted.json()
+    assert 'execution' not in planned['goal_plan']
+    assert len(client.get('/api/tasks/'+planned['id']).json()['coverage'])==4
+    assert client.post('/api/tasks/'+planned['id']+'/approve').status_code==200
+    assert len(finish(client,planned['id'])['coverage'])==4
+
+
+def test_goal_execution_mode_tamper_is_refused(client,lab,monkeypatch):
+    original=source(client,lab);provider(monkeypatch);path,_,result=draft(client,original)
+    accepted=client.post(path+'/'+result['id']+'/accept',json={'fingerprint':result['fingerprint']}).json()
+    plan=copy.deepcopy(accepted['goal_plan']);del plan['execution']
+    client.app.state.store.patch('tasks',accepted['id'],goal_plan=plan)
+    assert client.post('/api/tasks/'+accepted['id']+'/approve').status_code==409
+    assert lab[1].requests==[]

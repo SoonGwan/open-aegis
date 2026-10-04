@@ -4485,3 +4485,52 @@ on 390×844 has no document overflow.
   scheduling, observation-selected URL integration, draft search/retention, complete
   mobile/accessibility journeys, container deployment and production operations remain
   open under [v1 readiness](V1-READINESS.md). No remote publication performed.
+
+## Exact objective-pair execution — 2026-10-05
+
+- New ready drafts freeze `execution:objective_pairs` into their reviewed fingerprint.
+  Approval and runtime require that contract. Each asset executes only the checks
+  requested for it by at least one objective, preserving planner order and deduplicating
+  shared pairs. Legacy drafts/tasks without this field retain their original full union
+  matrix; removing the field from a new task fails approval. Replan/retry preserve the
+  stored execution contract.
+- Planned/terminal task coverage, Worker process, dependency completion/handoff,
+  report coverage and SQLite/native latest-evidence queries use declared pairs.
+  A newer goal cannot replace earlier proof for a pair it does not select. The catalog
+  denominator remains6 checks per active asset; goal execution counts still do not
+  assert semantic goal verification.
+- Targeted goal cases **40 passed32.38s** (`artifacts/goal-pairs-targeted-final.txt`):
+  sparse two-asset cookie/CORS execution records exactly two `run_check` invocations
+  and two owned GETs; an overlapping third objective shares one invocation/result.
+  Actual dependency handoff carries only the parent's selected check, progress is1/1
+  per objective, task/report cells are exactly selected, and overview preserves older
+  unselected-pair evidence. SQLite/native cases also exercise legacy full-matrix
+  approval/execution and execution-mode tamper refusal. Initial dependency/goal
+  regression **58 passed45.06s** (`...targeted.txt`).
+- Frontend **92 passed455.040791ms** (`...node.txt`); final TypeScript/Vite build1.46s
+  (`...build.txt`), JSindex-C4hIYkEK.js / CSSindex-BDvYxa4w.css. Built-app mock-provider
+  draft shows separate asset/check scopes and the new execution explanation. Accepted
+  pending result table has two cells rather than four; manual progress is0/1 per
+  objective (`...ui-ready.txt`, `...ui-pending.txt`). No approval in this browser fixture.
+- Widths measured320/320 and390/390 document client/scroll, dialog277/277 and347/347
+  (`...ui-widths.json`). Existing intentional table overflow/hidden labels and320px
+  internal report controls remain. Actual mobile touch/zoom, screen reader, full roles
+  and navigation race journeys are unverified. No new visual screenshot claim.
+- Owned fixture tabs closed and process stopped: targets0, ordinary task/next-plan/
+  observation-plan POSTs0, goal draft POSTs1 and mock provider calls1; temporary data
+  removed (`...ui-fixture.txt`).
+- Wheel SHA256 **43d87e21d85bd605f9ce350e18ae5f6ccca3afc52b842b28fcd2ebc8f1b06f2f**,
+  all70 service Python files byte-match checkout (`...wheel-proof.json`). Installed
+  default runtime and native PostgreSQL16.15 reviews valid (`...installed-runtime.json`,
+  `...installed-postgres.json`). Native pending goal's execution contract and frozen
+  decomposition survive actual backup/restore and cached draft/accept replay. Installed
+  pending goal remains unapproved; actual sparse execution is covered by source HTTP
+  tests above. Default target requests0; native owned target3/source1; external0.
+- Commercial-provider quality, semantic criterion verification, observation-selected
+  goal integration, follow-up/retest objective linkage and the remaining v1 gates stay
+  open. No container/production/hosted-CI verification or remote publication claimed.
+- Final full SQLite/native regression **875 passed361.44s**, one upstream deprecation
+  warning (`artifacts/goal-pairs-full.txt`). Final build completed before the run;
+  service source stayed unchanged during/after it. Existing preview data preserved
+  on restart, health ok and anonymous goal-progress401, final JS/CSS confirmed
+  (`...preview-health.json`).

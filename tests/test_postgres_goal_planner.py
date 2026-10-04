@@ -12,3 +12,8 @@ from tests.test_goal_planner import (
     test_final_goal_accept_write_rechecks_source as test_native_final_accept,
     test_missing_goal_scope_is_not_zero_over_zero_completion as test_native_scope_denominator,
 )
+from tests.test_goal_planner import (
+    test_sparse_objective_pairs_execute_once_and_preserve_other_evidence as test_native_sparse,
+    test_legacy_goal_draft_preserves_approved_union_matrix as test_native_legacy_matrix,
+    test_goal_execution_mode_tamper_is_refused as test_native_execution_tamper,
+)

@@ -28,6 +28,11 @@ def latest_summary(db, asset_ids=None):
         LEFT JOIN records c ON c.kind='coverage' AND c.id=t.id||':'||a.id||':'||checks.value
           AND %s=t.id AND %s=a.id AND %s=checks.value
         WHERE t.kind='tasks' AND t.data::jsonb->>'observation_execution' IS NULL
+          AND (t.data::jsonb->'goal_plan'->>'execution' IS NULL OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(t.data::jsonb->'goal_plan'->'decomposition'->'objectives') objective
+              CROSS JOIN jsonb_array_elements_text(objective->'asset_ids') goal_asset
+              CROSS JOIN jsonb_array_elements_text(objective->'checks') goal_check
+              WHERE goal_asset=a.id AND goal_check=checks.value))
           AND (%s IS NOT NULL OR %s IN ('queued','running','stopping','completed','failed','stopped','interrupted'))
       ), cells AS (
         SELECT a.id AS asset_id,CASE WHEN attempts.asset_id IS NULL THEN 'not_started'

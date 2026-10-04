@@ -17,6 +17,7 @@ export type GoalPlan = {
   goal: string;
   mode: string;
   fingerprint: string;
+  execution?: "objective_pairs";
   decomposition: {
     objectives: Objective[];
     worker_dependencies: Record<string, string[]>;
@@ -80,8 +81,9 @@ export function GoalPlanSummary({
         아닙니다.
       </p>
       <p>
-        실행 계획은 선택한 자산 × 선택한 도구의 전체 조합을 검사합니다. 과제별로
-        적힌 조합보다 넓을 수 있으므로 승인 범위와 결과표를 함께 검토하세요.
+        {plan.execution === "objective_pairs"
+          ? "각 과제에 지정한 자산과 검사의 조합만 실행합니다. 여러 과제가 요청한 동일 조합은 한 번 실행하고 결과를 함께 사용합니다."
+          : "이전 계획은 선택한 자산 × 선택한 도구의 전체 조합을 검사합니다. 과제별로 적힌 조합보다 넓을 수 있으므로 승인 범위와 결과표를 함께 검토하세요."}
       </p>
       {plan.decomposition.objectives.map((row) => (
         <article key={row.id}>

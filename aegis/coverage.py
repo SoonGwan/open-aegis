@@ -13,8 +13,9 @@ def slot(task, asset, check, status='not_started', **details):
 
 
 def planned_slots(task):
+    from .goal_planner import execution_checks
     return [slot(task, asset, check, reason='승인 후 실행합니다.')
-            for asset in task['scope_snapshot'] for check in task['checks']]
+            for asset in task['scope_snapshot'] for check in execution_checks(task, asset['id'])]
 
 
 def task_rows(store, task, *, get_record=None):
@@ -23,9 +24,10 @@ def task_rows(store, task, *, get_record=None):
 
 def iter_task_rows(store, task, *, get_record=None):
     """Yield expected cells without materializing a whole task's coverage matrix."""
+    from .goal_planner import execution_checks
     get_record = get_record or store.get
     for asset in task.get('scope_snapshot', []):
-        for check in task.get('checks', []):
+        for check in execution_checks(task, asset['id']):
             template = slot(task, asset, check)
             row = get_record('coverage', template['id'])
             if row is not None and any(row.get(key) != template[key] for key in ('id', 'task_id', 'asset_id', 'check')):
@@ -78,7 +80,12 @@ def latest_summary(db, asset_ids=None):
           AND json_extract(c.data,'$.task_id')=t.id AND json_extract(c.data,'$.asset_id')=a.id
           AND json_extract(c.data,'$.check')=checks.value
         WHERE a.id=json_extract(scope.value,'$.id') AND t.kind='tasks'
-          AND json_extract(t.data,'$.observation_execution') IS NULL AND (json_extract(t.data,'$.approved_at') IS NOT NULL
+          AND json_extract(t.data,'$.observation_execution') IS NULL
+          AND (json_extract(t.data,'$.goal_plan.execution') IS NULL OR
+            EXISTS (SELECT 1 FROM json_each(t.data,'$.goal_plan.decomposition.objectives') objective
+              CROSS JOIN json_each(objective.value,'$.asset_ids') goal_asset
+              CROSS JOIN json_each(objective.value,'$.checks') goal_check
+              WHERE goal_asset.value=a.id AND goal_check.value=checks.value)) AND (json_extract(t.data,'$.approved_at') IS NOT NULL
           OR json_extract(t.data,'$.status') IN ('queued','running','stopping','completed','failed','stopped','interrupted'))
       ), cells AS (
         SELECT a.id AS asset_id, CASE

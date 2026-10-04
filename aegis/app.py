@@ -329,6 +329,7 @@ def create_app(data_dir=None, allow_private=None):
         if goal_draft:
             task['goal_plan']={key:goal_draft[key] for key in ('basis_fingerprint','goal','decomposition','mode','fingerprint')}
             task['goal_plan']['draft_id']=goal_draft['id']
+            if 'execution' in goal_draft:task['goal_plan']['execution']=goal_draft['execution']
         try:goal_planner.require_task(task)
         except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]
@@ -947,7 +948,7 @@ def create_app(data_dir=None, allow_private=None):
                 return existing
             try:
                 ids, checks=goal_planner.validate(draft['decomposition'],[a['id'] for a in draft['basis']['assets']])
-                if goal_planner.digest({key:draft[key] for key in ('basis_fingerprint','goal','decomposition','mode')})!=draft['fingerprint']:
+                if goal_planner.fingerprint(draft)!=draft['fingerprint']:
                     raise planning_history.PlanningConflict('목표 초안 지문이 일치하지 않습니다.')
             except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
             source=store.get('tasks',task_id)

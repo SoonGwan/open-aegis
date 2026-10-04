@@ -382,6 +382,7 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert native_http('/api/tasks/native-engine/goal-plans',goal_input)['id']==goal_draft['id']
                     goal_pending=native_http('/api/tasks/native-engine/goal-plans/'+goal_draft['id']+'/accept',{'fingerprint':goal_draft['fingerprint']})
                     assert goal_pending['status']=='pending' and goal_pending['goal_plan']['decomposition']==goal_draft['decomposition']
+                    assert goal_pending['goal_plan']['execution']==goal_draft['execution']=='objective_pairs'
                     assert native_http('/api/runtime')['queue_watchdog']['errors']==0
                     assert native_http('/api/runtime')['event_planner']['alive']
                     assert native_http('/api/runtime')['event_planner']['errors']==0
