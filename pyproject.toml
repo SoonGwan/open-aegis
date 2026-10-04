@@ -15,8 +15,10 @@ aegis-restore = "aegis.cli.restore:main"
 aegis-verify-audit = "aegis.cli.audit:main"
 aegis-replay-policy = "aegis.cli.replay_policy:main"
 aegis-release = "aegis.cli.release:main"
+aegis-transfer-storage = "aegis.cli.transfer:main"
 
 [project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2,<4"]
 dev = ["httpx>=0.27,<1", "pytest>=8,<10"]
 
 [tool.setuptools.packages.find]

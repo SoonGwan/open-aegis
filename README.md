@@ -285,3 +285,7 @@ origin별 요청 속도·동시 수, DNS/HTTP/작업/대기열 시간 제한, �
 재시작하세요. 한도가 찼을 때는 429와 Retry-After: 5를 반환합니다. 시스템 설정에서
 진행·완료·거절·시간 초과 지표를 확인할 수 있습니다. 스트리밍 계약과 한계는
 [보고서 문서](docs/REPORTS.md)에 정리했습니다.
+
+SQLite와 새 PostgreSQL 스키마 사이의 검증된 오프라인 데이터 전송은
+`aegis-transfer-storage`로 수행합니다. 현재 HTTP 서비스는 SQLite로 실행하며
+PostgreSQL 백엔드 연결은 개발 중입니다. [전송·복구 계약](docs/POSTGRES-STORAGE.md)을 확인하세요.

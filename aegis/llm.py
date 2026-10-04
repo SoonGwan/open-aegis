@@ -49,6 +49,10 @@ def completion(base, key, payload, allow_local=False, *, control=None, timeout=8
             response=connection.getresponse()
             if not 200<=response.status<300:
                 raise HTTPError(base,response.status,'Provider request failed',{},None)
+            # Reject a known oversize response before waiting for or buffering its body.
+            # Chunked/unknown lengths still use the actual-byte limit below.
+            if response.length is not None and response.length>1024*1024:
+                raise ValueError('Provider response exceeds size budget')
             body=response.read(1024*1024+1)
             if len(body)>1024*1024:
                 raise ValueError('Provider response exceeds size budget')

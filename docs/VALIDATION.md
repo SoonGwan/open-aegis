@@ -2606,3 +2606,75 @@ on 390×844 has no document overflow.
 
 - Temporary provider/server/Vite and browser tabs were closed after review. Main
   preview8790 serves the final UI with HTTP200 and retained assets2/tasks4/traffic3.
+
+
+## Offline PostgreSQL transfer and provider bounds (2026-10-04)
+
+- Added optional psycopg[binary] dependency and separate pinned3.3.6 lock, plus
+  installed `aegis-transfer-storage` CLI. SQLite2 → fresh PostgreSQL schema uses
+  read-only source + workspace lease, active-task refusal, atomic DDL/COPY,
+  preserved original TEXT JSON/details/credential hashes/rowids/event seq and
+  timestamp values, per-table framed SHA256 and original audit checkpoint checks.
+  Sessions are omitted from the destination; source sessions remain valid.
+  Existing schemas/output files are refused. Contract: POSTGRES-STORAGE.md.
+- Reverse export validates transfer metadata/table types/audit in REPEATABLE READ,
+  READ ONLY. Server-side cursors bound client-side history collection. A0600 staged
+  SQLite database must pass exact manifests, audit and SQLite validation, then
+  PostgreSQL read transaction/connection termination before no-overwrite hard-link
+  publication + directory fsync. Event sequence high watermark survives the roundtrip.
+  Known unsupported textual NUL input is refused, never silently stripped.
+- Actual owned PostgreSQL16.15 tests cover schema-name refusal/SQL identifier quoting,
+  roundtrip exact data/users/audit and source-session retention vs destination
+  revocation, next SQLite event101 from saved sequence100, duplicate target refusal,
+  busy source/active task/corrupt audit refusal, actual COPY failure and injected
+  final verification failure rolling back the entire new schema, altered PG audit
+  preventing publication, real pg_dump/pg_restore to a new DB then return, private
+  CLI error redaction, stage verification cleanup and a concurrent PG record edit
+  leaving the exported reading snapshot consistent. Final full suite includes all
+  **17** PostgreSQL cases, explicitly opted in with AEGIS_TEST_POSTGRES=1.
+- Publication ordering defect reproduced on the actual transfer/file path with a
+  controlled exception after the real read transaction exits. Before: error raised
+  but output file exists (`artifacts/postgres-publication-before.txt`). After moving
+  publication beyond successful transaction/connection exit: unchanged assertion
+  passes and stage/output remain absent. This is transaction-exit fault injection,
+  not a physical network outage/crash test; no claim of actual network interruption.
+- Initial full run434-pass plus provider-size timeout; isolated original case passes.
+  An intermediate436-pass run was followed by a final439-case run where that same
+  unchanged original size test returned ConnectionResetError during body read.
+  No timeout/test expectation was relaxed. A deterministic owned provider sends
+  declared oversize headers and withholds its body: before code waits then times
+  out (`artifacts/llm-header-bound-before.txt`). Now known oversize is refused before
+  body read; undeclared and chunked responses still enforce actual-byte size, and
+  exactly1 MiB valid JSON remains accepted. Related LLM/runtime/ledger/conversation
+  suite **71 passed in18.34s** before adding the exact-boundary positive control.
+  The observed full-suite body failures do not independently prove why a peer reset
+  or delayed that transfer; the known-oversize dependency on body arrival is proven
+  and removed. Existing8-second guard, TLS/scope/redirect protections remain.
+- Final full backend with all17 real PostgreSQL cases and four new actual HTTP
+  response controls: **443 passed in118.10s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-transfer-backend-final.txt`). No further service Python edits.
+  UI source/build is unchanged from the prior67-pass review; it was not rebuilt.
+- Final wheel SHA256
+  7f847db38ccdcb3961d6f1d2b1502036d7ff7763d4d49d31ebb46a37a9902d19
+  byte-matches all **45** current service Python files. Default installed runtime
+  outside checkout verifies all six entry points, locked dependencies/pip check,
+  real HTTP/UI/authentication, maintenance/attempt recovery and signed release/
+  preflight/rollback (`artifacts/postgres-runtime-review.json` valid=true,
+  target_requests=0). Same final wheel plus locked optional dependency independently
+  passes installed transfer CLI → actual PG COPY → real custom-format dump/restore
+  → installed SQLite return, session revocation, password verification/exact amount
+  and subsequent audit event (`artifacts/postgres-installed-review.json` valid=true,
+  target_requests=0,service_postgres_backend_enabled=false). Owned UNIX-socket
+  PostgreSQL server fsync=on is queried and asserted; this is not power-loss/PITR proof.
+  Disposable clusters/installations are stopped/removed by the successful runners.
+- CI gained an opted-in PostgreSQL16 job with the locked optional dependency, actual
+  cluster tests and installed migration rehearsal. GitHub hosted execution is not
+  yet verified. PostgreSQL service Store/queries/locks/reporting/authentication/
+  lifecycle/operational backup and remote TLS/resource cases remain unimplemented
+  or unverified; the whole v1 PostgreSQL gate stays open. Source is not copied into
+  a live PostgreSQL service merely by setting AEGIS_POSTGRES_DSN.
+
+- Final preview restarted cleanly with current code/UI on8790, HTTP200 and retained
+  assets2/tasks4/traffic3. CI PATH append format was locally executed against a
+  disposable file and verified to write an actual newline; this does not establish
+  hosted CI completion. No remote publication or real target/provider requests.

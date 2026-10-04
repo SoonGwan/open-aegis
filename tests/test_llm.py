@@ -124,3 +124,68 @@ def test_provider_response_size_is_bounded():
             completion(f'http://127.0.0.1:{server.server_port}/v1','fixture-key',{},allow_local=True)
     finally:
         server.shutdown();server.server_close();thread.join(timeout=2)
+
+
+def test_declared_oversize_is_refused_without_waiting_for_body():
+    import threading
+    from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+    release=threading.Event()
+    headers_sent=threading.Event()
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers['Content-Length']))
+            self.send_response(200);self.send_header('Content-Length',str(1024*1024+1));self.end_headers()
+            headers_sent.set();release.wait(2)
+        def log_message(self,*args):pass
+    server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+    thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    try:
+        with pytest.raises(ValueError,match='size budget'):
+            completion(f'http://127.0.0.1:{server.server_port}/v1','owned-fixture-key',{},allow_local=True,timeout=.5)
+        assert headers_sent.is_set()
+    finally:
+        release.set();server.shutdown();server.server_close();thread.join(timeout=2)
+
+
+@pytest.mark.parametrize('framing',['close','chunked'])
+def test_undeclared_or_chunked_oversize_still_checks_actual_bytes(framing):
+    import threading
+    from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers['Content-Length']))
+            self.send_response(200)
+            if framing=='chunked':
+                self.send_header('Transfer-Encoding','chunked')
+                self.send_header('Content-Length','1')  # Must not bypass actual-byte limit.
+            self.end_headers()
+            body=b'x'*(1024*1024+1)
+            try:
+                self.wfile.write((f'{len(body):x}\r\n'.encode()+body+b'\r\n0\r\n\r\n') if framing=='chunked' else body)
+            except (BrokenPipeError,ConnectionResetError):pass  # Client deliberately rejects/ closes.
+        def log_message(self,*args):pass
+    server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+    thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    try:
+        with pytest.raises(ValueError,match='size budget'):
+            completion(f'http://127.0.0.1:{server.server_port}/v1','owned-fixture-key',{},allow_local=True)
+    finally:
+        server.shutdown();server.server_close();thread.join(timeout=2)
+
+
+def test_exact_response_budget_still_accepts_valid_json():
+    import threading
+    from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+    prefix=b'{"owned_boundary_control":true}'
+    body=prefix+b' '*(1024*1024-len(prefix))
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers['Content-Length']))
+            self.send_response(200);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+        def log_message(self,*args):pass
+    server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+    thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    try:
+        assert completion(f'http://127.0.0.1:{server.server_port}/v1','owned-fixture-key',{},allow_local=True)=={'owned_boundary_control':True}
+    finally:
+        server.shutdown();server.server_close();thread.join(timeout=2)
