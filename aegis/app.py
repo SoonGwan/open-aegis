@@ -46,7 +46,7 @@ from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
 from .http_queries import SQLiteHTTP,PostgresHTTP
 from .worker_observations import task_page as observation_page
-from . import worker_process, worker_dependencies, next_plan
+from . import worker_process, worker_dependencies, next_plan, planning_history
 
 
 class Credentials(BaseModel):
@@ -241,13 +241,34 @@ def create_app(data_dir=None, allow_private=None):
         with store.lock:
             return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
         if any(a.get('archived_at') for a in assets):
             raise HTTPException(409, '보관된 자산은 검증할 수 없습니다. 먼저 복원하세요.')
-        if retry_of:
+        attempt_source = replacing or resuming
+        if attempt_source:
+            if replacing and replacing.get('approved_at'):
+                raise HTTPException(409, '승인된 실행을 대기 계획으로 교체할 수 없습니다.')
+            try:
+                history = planning_history.history(store, attempt_source['id'])
+                if resuming:
+                    existing, kind = planning_history.continuation(store, resuming)
+                    if existing:
+                        if kind != 'retry':raise planning_history.PlanningConflict('이미 후속 계획을 만들었습니다. 연결된 계획을 확인하세요.')
+                        return existing
+                    # Adopt the active pre-upgrade retry without creating a parallel branch.
+                    related = queries.active_related_task('retry_of', retry_of)
+                    if related:
+                        planning_history.history(store, related['id'])
+                        store.put('tasks', {**resuming, 'retry_successor': related['id']})
+                        return related
+                if len(history) >= planning_history.MAX_HISTORY:
+                    raise planning_history.PlanningConflict('계획 이력 한도(32개)에 도달했습니다.')
+            except (planning_history.PlanningConflict, LookupError) as exc:
+                raise HTTPException(409, str(exc)) from exc
+        elif retry_of:
             related=queries.active_related_task('retry_of',retry_of)
             if related:return related
         triage_revision = None
@@ -257,7 +278,7 @@ def create_app(data_dir=None, allow_private=None):
                 raise HTTPException(404, '발견 사항이 없습니다.')
             related=queries.active_related_task('retest_of',retest_of,replacing['id'] if replacing else '')
             if related:
-                if replacing:raise HTTPException(409, '같은 발견의 다른 재검증 계획이 진행 중입니다.')
+                if replacing or resuming:raise HTTPException(409, '같은 발견의 다른 재검증 계획이 진행 중입니다.')
                 return related
             triage_revision = finding.get('triage_revision', 1)
         if store.count('tasks', statuses=['pending','queued','running','stopping']) - (1 if replacing else 0) >= engine.policy.pending_limit:
@@ -267,6 +288,8 @@ def create_app(data_dir=None, allow_private=None):
                     scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id,
                     retest_triage_revision=triage_revision, retry_of=retry_of, execution_policy=engine.policy.public(),
                     tool_contracts=contracts_for(data.checks), replan_of=replacing['id'] if replacing else None)
+        if attempt_source:
+            task.update(planning_history.metadata(attempt_source))
         if followup:
             source, proposal = followup
             task.update(followup_of=source['id'], followup_fingerprint=proposal['fingerprint'],
@@ -275,6 +298,8 @@ def create_app(data_dir=None, allow_private=None):
         if followup:
             records.append(('tasks', {**source, 'next_plan_id': task['id'],
                                       'next_plan_fingerprint': proposal['fingerprint']}))
+        if resuming:
+            records.append(('tasks', {**resuming, 'retry_successor': task['id']}))
         if replacing:
             records.append(('tasks', {**replacing, 'status': 'rejected', 'finished_at': now(),
                                      'replaced_by': task['id'], 'termination_reason': 'replanned'}))
@@ -752,13 +777,15 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.post('/api/tasks/{task_id}/retry', dependencies=operations)
     def retry_task(task_id: str):
-        with store.lock:
+        with engine.lock, store.lock:
+            if engine.closed:raise HTTPException(409, '서버가 종료 중입니다.')
             original=store.get('tasks',task_id)
             if not original:raise HTTPException(404,'작업이 없습니다.')
+            if original.get('id') != task_id:raise HTTPException(409, '저장 키와 작업 ID가 일치하지 않습니다.')
             if original['status'] not in ('failed','interrupted','stopped'):
                 raise HTTPException(409,'실패·중단·중지된 작업만 새 계획으로 다시 실행할 수 있습니다.')
             data=TaskInput(**{**original,'name':('재실행 · '+original['name'])[:120]})
-            return create_task_locked(data,retest_of=original.get('retest_of'),retry_of=task_id)
+            return create_task_locked(data,retest_of=original.get('retest_of'),schedule_id=original.get('schedule_id'),retry_of=task_id,resuming=original)
 
     @app.get('/api/tasks/{task_id}/next-plan', dependencies=auth)
     def get_next_plan(task_id: str):
@@ -775,14 +802,12 @@ def create_app(data_dir=None, allow_private=None):
             if not original:raise HTTPException(404, '작업이 없습니다.')
             if original.get('id') != task_id:
                 raise HTTPException(409, '저장 키와 작업 ID가 일치하지 않습니다.')
-            if original.get('next_plan_id'):
-                replacement = store.get('tasks', original['next_plan_id'])
-                if (not replacement or replacement.get('id') != original['next_plan_id']
-                        or replacement.get('followup_of') != task_id
-                        or replacement.get('followup_fingerprint') != data.fingerprint
-                        or original.get('next_plan_fingerprint') != data.fingerprint):
-                    raise HTTPException(409, '이미 반영된 다음 계획과 요청이 일치하지 않습니다.')
-                return replacement
+            try:existing, kind = planning_history.continuation(store, original)
+            except (planning_history.PlanningConflict, LookupError) as exc:raise HTTPException(409, str(exc)) from exc
+            if existing:
+                if kind != 'followup' or original.get('next_plan_fingerprint') != data.fingerprint:
+                    raise HTTPException(409, '이미 연결된 계획과 제안이 일치하지 않습니다.')
+                return existing
             try:proposal = next_plan.propose(store, task_id, engine.policy.public())
             except next_plan.NextPlanConflict as exc:raise HTTPException(409, str(exc)) from exc
             if not proposal['available']:
@@ -800,11 +825,11 @@ def create_app(data_dir=None, allow_private=None):
             original = store.get('tasks', task_id)
             if not original:
                 raise HTTPException(404, '작업이 없습니다.')
+            if original.get('id') != task_id:
+                raise HTTPException(409, '저장 키와 작업 ID가 일치하지 않습니다.')
             if original.get('replaced_by'):
-                replacement = store.get('tasks', original['replaced_by'])
-                if not replacement:
-                    raise HTTPException(409, '연결된 새 계획을 찾을 수 없습니다.')
-                return replacement
+                try:return planning_history.resolve(store, task_id)
+                except (planning_history.PlanningConflict, LookupError) as exc:raise HTTPException(409, str(exc)) from exc
             if original['status'] != 'pending':
                 raise HTTPException(409, '승인 대기 계획만 현재 범위로 다시 만들 수 있습니다.')
             data = TaskInput(**{**original, 'name': ('새 계획 · ' + original['name'])[:120]})

@@ -23,10 +23,13 @@ def test_native_followup_transaction_rolls_back_source_and_child(client, lab, po
     proposal=client.get(path).json()
     name=sql.Identifier(configured[0])
     with psycopg.connect(postgres['dsn']) as db:
-        db.execute(sql.SQL("CREATE FUNCTION {}.reject_followup() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.kind='tasks' AND NEW.data ? 'next_plan_id' THEN RAISE EXCEPTION 'followup rollback'; END IF; RETURN NEW; END $$").format(name))
+        db.execute(sql.SQL('CREATE SEQUENCE {}.followup_failure_probe').format(name))
+        db.execute(sql.SQL("CREATE FUNCTION {}.reject_followup() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.kind='tasks' AND NEW.data::jsonb ? 'next_plan_id' THEN PERFORM nextval((TG_TABLE_SCHEMA || '.followup_failure_probe')::regclass); RAISE EXCEPTION 'followup rollback'; END IF; RETURN NEW; END $$").format(name))
         db.execute(sql.SQL('CREATE TRIGGER reject_followup BEFORE INSERT OR UPDATE ON {}.records FOR EACH ROW EXECUTE FUNCTION {}.reject_followup()').format(name,name))
     # Native DB errors are deliberately translated to503 by the app middleware.
     assert client.post(path,json={'fingerprint':proposal['fingerprint']}).status_code==503
+    with psycopg.connect(postgres['dsn']) as db:
+        assert db.execute(sql.SQL('SELECT last_value,is_called FROM {}.followup_failure_probe').format(name)).fetchone()==(1,True)
     assert store.get('tasks',original['id'])==before
     assert store.count('tasks')==1
 

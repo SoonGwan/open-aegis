@@ -327,6 +327,15 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert followup['followup_of']=='native-engine' and followup['planning_round']==1
                     assert native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})['id']==followup['id']
                     assert native_http('/api/tasks/native-engine/next-plan')['reason']=='already_accepted'
+                    first_followup_id=followup['id']
+                    followup=native_http('/api/tasks/'+first_followup_id+'/replan',method='POST')
+                    assert followup['planning_round']==1 and followup['followup_of']=='native-engine'
+                    assert followup['followup_fingerprint']==proposal['fingerprint']
+                    assert followup['status']=='pending' and followup['approved_at'] is None
+                    assert native_http('/api/tasks/native-engine/next-plan')['accepted_task_id']==followup['id']
+                    assert native_http('/api/tasks/native-engine/next-plan',{'fingerprint':proposal['fingerprint']})['id']==followup['id']
+                    assert native_http('/api/tasks/'+first_followup_id+'/replan',method='POST')['id']==followup['id']
+
                     assert all(row['status']=='not_started' for row in native_http('/api/tasks/'+followup['id'])['coverage'])
                     message=native_http('/api/tasks/native-engine/messages',{'content':'저장된 검증 요약'})
                     assert message['provenance']['citations']
@@ -364,9 +373,11 @@ copy=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_backup')
 assert source.valid_session('owned-native-export-cookie') and not copy.valid_session('owned-native-export-cookie')
 assert not copy.valid_session(sys.argv[1]) and copy.user(username='admin')==source.user(username='admin')
 assert copy.get('tasks',sys.argv[2])['status']=='pending'
-followup_id=source.get('tasks','native-engine')['next_plan_id']
-assert copy.get('tasks',followup_id)==source.get('tasks',followup_id)
-assert copy.get('tasks',followup_id)['approved_at'] is None
+from aegis.planning_history import continuation
+followup,kind=continuation(source,source.get('tasks','native-engine'))
+restored_followup,restored_kind=continuation(copy,copy.get('tasks','native-engine'))
+assert kind==restored_kind=='followup' and followup==restored_followup
+assert followup['status']=='pending' and followup['approved_at'] is None and followup['planning_round']==1
 assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
 ''',backup_cookie,pending['id'],json.dumps(backup['audit']['checkpoint'])],'installed restored native credentials and pending state')
             with socket_module.socket() as listener:
@@ -522,7 +533,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
                 'checks':['locked optional dependency','server fsync enabled','installed native initializer under a nonsuperuser role with database CREATE','fresh native HTTP first setup token, authentication, note and audit without SQLite','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
-                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed native append-only checkpoint archive and unchanged repeat','installed evidence-based follow-up proposal and idempotent pending creation retained by native backup/restore without new target requests','installed approved two-Worker dependency and bounded observation handoff with exact declared request order','installed native Worker observations and process: actual approved execution, HTTP and MCP source/coverage/events checks without link visit','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
+                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed native append-only checkpoint archive and unchanged repeat','installed follow-up replacement retains round/parent/fingerprint, resolves current attempt on original retry, and survives native backup/restore without new target requests','installed approved two-Worker dependency and bounded observation handoff with exact declared request order','installed native Worker observations and process: actual approved execution, HTTP and MCP source/coverage/events checks without link visit','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,
                 'external_target_requests':0,'service_postgres_backend_enabled':True}))

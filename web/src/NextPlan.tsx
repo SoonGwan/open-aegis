@@ -45,11 +45,14 @@ type Proposal = {
     repeated_completed_cells: string[];
   };
   accepted_task_id?: string | null;
+  accepted_kind?: "followup" | "retry" | null;
 };
 const reasons: Record<string, string> = {
-  already_accepted: "이 결과에서 이미 후속 계획을 만들었습니다.",
+  already_accepted: "이 결과에서 이미 연결된 계획을 만들었습니다.",
   round_limit:
     "후속 계획 회차 한도에 도달했습니다. 결과와 실패 원인을 검토하세요.",
+  history_limit:
+    "교체·재실행을 포함한 연결 이력 한도에 도달했습니다. 기존 결과와 실행 범위를 검토하세요.",
   no_remaining_checks:
     "현재 결과에서 제안할 추가·재시도 검증이 없습니다. 자산의 안전성을 보장하는 판정은 아닙니다.",
 };
@@ -212,7 +215,9 @@ export function NextPlan({
               disabled={busy || saving}
               onClick={() => onTask(proposal.accepted_task_id!)}
             >
-              이미 만든 후속 계획 보기
+              {proposal.accepted_kind === "retry"
+                ? "이미 만든 재실행 계획 보기"
+                : "이미 만든 후속 계획 보기"}
             </button>
           )}
           {proposal.available && proposal.task && (

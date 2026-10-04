@@ -673,11 +673,8 @@ function App() {
       "/tasks/" + encodeURIComponent(id) + "/replan", "POST", undefined,
       "현재 범위로 새 계획을 만들었습니다. 변경된 범위와 도구를 확인하고 승인하세요.",
       (message) => setReplanError({id, message}),
-    );
-    if (result) {
-      closeTask();
-      navigate("approvals", true);
-    }
+    ) as Task | undefined;
+    if (result) navigation.openDetail({kind:"task",id:result.id});
   }
   const openModal = (value: typeof modal) => {
     setFormError("");
@@ -2826,8 +2823,8 @@ function App() {
             />}
             {selectedTask.retry_of && (
               <p className="subtle">
-                원본 작업: {selectedTask.retry_of} · 현재 범위로 만든 재실행
-                계획
+                현재 범위로 만든 재실행 계획 · <button type="button" disabled={busy}
+                  onClick={() => navigation.openDetail({kind:"task",id:selectedTask.retry_of!})}>재실행 원본 보기</button>
               </p>
             )}
             {selectedTask.replan_of && <p className="subtle">
@@ -2901,12 +2898,9 @@ function App() {
                       "/tasks/" + selectedTask.id + "/retry",
                       "POST",
                       undefined,
-                      "재실행 계획을 만들었습니다. 현재 범위와 정책을 승인하세요.",
-                    );
-                    if (result) {
-                      closeTask();
-                      navigate("approvals", true);
-                    }
+                      "연결된 재실행 계획을 열었습니다. 현재 상태와 실행 범위를 확인하세요.",
+                    ) as Task | undefined;
+                    if (result) navigation.openDetail({kind:"task",id:result.id});
                   }}
                 >
                   <RefreshCw size={15} />

@@ -3867,3 +3867,52 @@ on 390×844 has no document overflow.
 - Replacement/retry interactions across rounds, automatic event-driven Planner,
   semantic goal/observation consumption, shared to-do and the full v1 gates remain
   open. The preceding API-only UI limitation is superseded by this entry.
+
+
+### 2026-10-05 — Follow-up lineage across replacement and retry
+
+- Reproduced loss of follow-up round metadata before the fix: two failing tests
+  (`artifacts/planning-lineage-before.txt`). Replacement/retry now preserve the
+  round, canonical parent/fingerprint and approved historical results. Current
+  attempt resolution keeps the original forward pointer; combined history is
+  bounded to32 records and follow-up rounds to8. Retry/next-plan races create
+  one continuation. Duplicate retry still resolves the same attempt after finish.
+- Added SQLite/native PostgreSQL lineage, actual owned HTTP failure/recovery,
+  bounded-history, missing/conflicting links and atomic rollback coverage.
+  Initial full run723 passed246.62s. A further corrupted stored key/payload ID
+  case reproduced200 instead of409 in both stores; the first PostgreSQL fixture
+  needed a TEXT-to-jsonb cast before reproducing the same bug. Added the identity
+  guard and final full run: **725 passed249.24s**, no skips, one existing
+  Starlette/httpx deprecation warning (`...backend-final.txt`).
+- Corrected native rollback triggers to cast TEXT data to jsonb. A
+  nontransactional sequence probe confirms the intended source-pointer write
+  branch was reached before failure, rather than an earlier invalid SQL operator.
+  CI native test selection includes the new file; hosted CI was not executed.
+- Frontend **73 passed462.854125ms**, build1.45s; final JS
+  `index-s-TgUUBz.js`, CSS `index-sstsBYgv.css`. Retry/replan opens returned current
+  detail, and retry-origin/accepted-retry navigation is available.
+- Final installed wheel SHA256
+  `ab5bfb494fc70f33aabeb02956b00d97ebdcfabcb8b6236e6f18a0a5de07f119`;
+  all65 service files match (`...final-source-proof.json`). Installed default
+  runtime review valid with0 target requests. Installed native review valid:
+  replacement retains round/parent/fingerprint and current attempt survives
+  real backup/restore;3 owned target requests,1 owned source request,0 external
+  requests. The first reviewer attempt mistakenly used GET for replan; corrected
+  to POST and retained its failure stderr. Final JSON artifacts are
+  `...installed-runtime.json` and `...installed-postgres.json`.
+- Actual built UI created one pending follow-up, replaced it, navigated from
+  original to current replacement, then created a pending retry and navigated
+  through retry origin and accepted-retry buttons. Source completion and failure
+  metadata were explicitly synthetic in a disposable fixture, with no execution
+  approval clicked. Persisted four-task graph preserves round1, original
+  fingerprint, dependencies and immutable first follow-up pointer; retry remains
+  pending/unapproved, traffic0 (`...ui-proof.json`). Desktop screenshot
+  `...ui-desktop.jpg` was visually inspected. This increment did not repeat narrow
+  width/touch/screen-reader QA; prior width evidence is not a physical-device test.
+- Owned tab closed; fixture shutdown confirmed target requests0, task creation
+  POSTs0, next-plan POSTs1 and temporary data removal. Main preview gracefully
+  restarted asPID37464 with preserved preview data on127.0.0.1:8790; health and
+  final JS/CSS verified (`...preview-health.json`). No remote publishing occurred.
+- Basic replacement/retry lineage supersedes the preceding integration limitation.
+  Automatic event-driven planning, semantic observation consumption/shared to-do,
+  full accessibility/mobile journeys and all other V1-READINESS gates remain open.
