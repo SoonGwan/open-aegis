@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
+import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
 import {
   Activity,
@@ -2411,6 +2412,7 @@ function App() {
                 </div>
               </section>
               <UsageSummary />
+              <CallHistory state={navigation.callList} onChange={navigation.updateCallList} onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />
             </>
           )}
           <footer className="page-footer">

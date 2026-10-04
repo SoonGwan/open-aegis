@@ -2550,3 +2550,59 @@ on 390×844 has no document overflow.
   unobserved-response loss windows remain open. Existing whole v1 release gates,
   PostgreSQL/migrations, external tool isolation, repeated autonomous planning,
   long-running resource/accessibility checks and official release work remain open.
+
+
+## Individual call history UI (2026-10-04)
+
+- Added system settings CallHistory using the existing authenticated `/llm/calls`
+  SQL API and25-row useRecords paging. Search, source, storage state and task-ID
+  filters plus offset/watermark persist in `llm_calls_*` URL parameters. Filter
+  changes reset page/watermark; invalid enum/IDs and unbounded/inexact positions
+  normalize before API calls. Two focused navigation tests cover bookmark
+  roundtrip, independent URL fields, filter boundaries and hostile inputs.
+- Per-call native details show sanitized provider origin, actor ID, observation/
+  settlement times, shape outcome separately from storage state, token status/
+  values, operator-quoted cost proof and linked result ID. Missing observations
+  do not fabricate response times or zero usage. Task navigation preserves call
+  filters. Question/response bodies and detailed failure causes are not present
+  in the ledger; the UI explicitly avoids claiming a precise failure cause.
+- Frontend **67 passed in335.05ms** (`artifacts/call-history-frontend-tests.txt`).
+  Existing call-ledger API tests **6 passed in1.20s**, one existing Starlette/httpx
+  warning (`artifacts/call-history-api-tests.txt`). Service Python is unchanged;
+  previous full backend422-pass evidence remains applicable. Final TypeScript/
+  Vite build passes: index-cPS8RbeC.js/index-DniDnrrf.css
+  (`artifacts/call-history-build.txt`). No production changes after this build.
+- Browser production component + synthetic29-row fixture: page26–29 and fresh
+  document restoration verified; changing storage filter returns first page.
+  Back/Forward restores uncommitted/started filters and their matching lists.
+  Enter opens call detail; unknown interrupted record shows missing usage and no
+  fabricated observation. Visible held-request counter confirms a pending prior
+  response; release after selecting started cannot overwrite that selection/list.
+  Persistent503 across refreshes labels last received list and exposes alert;
+  manual recovery retains selected state (`artifacts/call-history-error.txt`).
+- All details/long model and quoted-price source opened in320/390/768 iframe
+  documents; client/scroll widths301/301,371/371,749/749. Width includes the4px
+  frame border plus vertical scrollbar. `artifacts/call-history-320.jpg` visually
+  inspected. This is geometry/native keyboard coverage; complete mobile/touch,
+  zoom, screen-reader and full user journeys remain open.
+- Actual built app with owned synthetic provider: normal20/10/30 answer saved;
+  a second valid20/10/30 response followed by exchange-write failure retains its
+  uncommitted record and USD0.00005. Both calls appear with distinct IDs. Native
+  price proof inspected; uncommitted filter survives fresh document and task
+  navigation/re-entry. `artifacts/call-history-live.txt` and visually inspected
+  full-page JPG. These are actual local HTTP requests with synthetic observations/
+  prices, not commercial billing or target execution evidence.
+- Reused unchanged wheel SHA256
+  d42baada0833bfbe099799bfeefe316a96f69892e73be81a0ba812f89c28545a with final UI.
+  Installed locked runtime outside checkout review remains valid=true,
+  target_requests=0 (`artifacts/call-history-package-review.json`), including
+  authentication, maintenance, attempt recovery and signed release/preflight/
+  rollback rehearsal. The installed script checks HTTP/UI artifact availability;
+  interactive CallHistory coverage above comes from the built-app browser review.
+- Detail expansion/inner scroll bookmarks, dedicated export and direct message-ID
+  navigation remain open. Existing whole v1 PostgreSQL, external tool isolation,
+  repeated planning, long-running/accessibility and official release gates stay
+  open. No whole v1 gate is closed by these component checks.
+
+- Temporary provider/server/Vite and browser tabs were closed after review. Main
+  preview8790 serves the final UI with HTTP200 and retained assets2/tasks4/traffic3.

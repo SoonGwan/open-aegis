@@ -3550,3 +3550,13 @@ pre,
 .call-cost { overflow-wrap: anywhere; }
 .call-cost p { margin: 8px 0; }
 .usage-summary > .detail-heading { margin: 18px; }
+
+.call-history-filters { display:flex; flex-wrap:wrap; gap:16px; padding:20px; }
+.call-history-filters label { display:grid; gap:8px; flex:1 1 180px; min-width:0; }
+.call-history-filters input,.call-history-filters select { width:100%; min-width:0; }
+.call-history-record { padding:20px; border-top:1px solid var(--border); overflow-wrap:anywhere; }
+.call-history-record h4 { margin:0 0 12px; }
+.call-history-record details { margin-top:16px; }
+.call-history-record dl { display:flex; flex-wrap:wrap; gap:16px; }
+.call-history-record dd { margin:4px 0; font-weight:700; }
+.call-history-record button { max-width:100%; white-space:normal; overflow-wrap:anywhere; }

@@ -1,3 +1,8 @@
+import {
+  readCallList,
+  updateCallListQuery,
+  type CallListState,
+} from "./call-navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   readTaskChat,
@@ -56,6 +61,7 @@ export function useNavigation(allowedPages: readonly string[]) {
   const actionScope = useRef(new ViewScope());
   const [state, setState] = useState(() => ({
     ...readNavigation(location.search, allowedPages),
+    callList: readCallList(location.search),
     detail: readDetail(location.search),
     taskChat: readTaskChat(location.search),
     taskCollections: {
@@ -94,6 +100,7 @@ export function useNavigation(allowedPages: readonly string[]) {
       setPosition({ index: current.index, maximum: maximum.current });
       setState({
         ...readNavigation(location.search, allowedPages),
+        callList: readCallList(location.search),
         detail: readDetail(location.search),
         taskChat: readTaskChat(location.search),
         taskCollections: {
@@ -172,8 +179,15 @@ export function useNavigation(allowedPages: readonly string[]) {
     },
     [],
   );
+  const updateCallList = useCallback(
+    (changes: Partial<CallListState>, mode: HistoryMode = "push") => {
+      commit(updateCallListQuery(location.search, changes), mode);
+    },
+    [],
+  );
   return {
     ...state,
+    updateCallList,
     captureActionView: () => actionScope.current.capture(),
     invalidateActionView: () => actionScope.current.invalidate(),
     updateTaskChat,
