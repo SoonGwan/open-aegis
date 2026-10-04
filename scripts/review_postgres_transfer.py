@@ -156,7 +156,8 @@ owned_requests=[];owned_source_requests=[]
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         owned_requests.append(self.path)
-        self.send_response(200);self.send_header('Content-Length','2');self.end_headers();self.wfile.write(b'OK')
+        raw=b'<html><a href="/observed-only">Owned link</a></html>'
+        self.send_response(200);self.send_header('Content-Type','text/html');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
     def do_POST(self):
         query=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
         owned_source_requests.append((self.path,self.headers.get('Authorization'),query))
@@ -167,7 +168,7 @@ server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
 thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
 asset={'id':'owned-lab','name':'Installed owned lab','url':f'http://127.0.0.1:{server.server_port}/','type':'web','revision':1}
 task={'id':'native-engine','name':'Installed approved task','status':'pending','asset_ids':[asset['id']],
-      'scope_snapshot':[asset],'checks':['security_headers'],'tool_contracts':contracts_for(['security_headers']),
+      'scope_snapshot':[asset],'checks':['security_headers','endpoint_inventory'],'tool_contracts':contracts_for(['security_headers','endpoint_inventory']),
       'created_at':time.time(),'workers':1,'planner':'rules','goal':'Owned validation','done':0,'errors':0}
 s.put_many([('assets',asset),('tasks',task),*[('coverage',row) for row in planned_slots(task)]])
 engine=Engine(s,allow_private=True,policy=ExecutionPolicy(request_retries=0))
@@ -190,6 +191,10 @@ try:
     assert s.get('tasks',task['id'])['status']=='completed'
     assert s.count('findings')>0 and s.count('evidence')==s.count('findings')
     assert s.get('coverage','native-engine:owned-lab:security_headers')['status']=='completed'
+    from aegis.worker_observations import task_page
+    observed=task_page(s,'native-engine')
+    assert observed['total']==1 and observed['items'][0]['provenance']['status']=='matched'
+    assert observed['items'][0]['url']==asset['url']+'observed-only' and owned_requests==['/']
     assert engine.metrics()['queue_watchdog']['errors']==0
     graph=build_graph(s,'owned-lab','native-engine')
     assert any(edge['relation']=='evidence' for edge in graph['edges']) and owned_requests==['/']
@@ -282,6 +287,8 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     note=native_http('/api/notes',{'title':'Native HTTP note','content':'Owned server'})
                     native_http('/api/notes/'+note['id'],method='DELETE')
                     assert native_http('/api/graph?asset_id=owned-lab&task_id=native-engine')['edges']
+                    worker_page=native_http('/api/tasks/native-engine/observations')
+                    assert worker_page['total']==1 and worker_page['items'][0]['provenance']['status']=='matched'
                     report=native_http('/api/reports/export?format=json&task_id=native-engine')
                     assert report['coverage'][0]['status']=='completed' and report['evidence']
                     message=native_http('/api/tasks/native-engine/messages',{'content':'저장된 검증 요약'})
@@ -363,13 +370,16 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                         'AEGIS_DATA_DIR':str(temporary/'unused-readers')}
             requests=[{'jsonrpc':'2.0','id':1,'method':'initialize'},
                       {'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':'get_task','arguments':{'id':'native-engine'}}},
-                      {'jsonrpc':'2.0','id':3,'method':'tools/call','params':{'name':'run_command','arguments':{'command':'must refuse'}}}]
+                      {'jsonrpc':'2.0','id':3,'method':'tools/call','params':{'name':'run_command','arguments':{'command':'must refuse'}}},
+                      {'jsonrpc':'2.0','id':4,'method':'tools/call','params':{'name':'list_task_observations','arguments':{'id':'native-engine'}}}]
             replies=[json.loads(line) for line in run([python,'-I','-m','aegis.mcp'],'installed native MCP stdio',env=reader_env,
                       input='\n'.join(json.dumps(item) for item in requests)+'\n').splitlines()]
             assert replies[0]['result']['protocolVersion']=='2025-03-26'
             detail=json.loads(replies[1]['result']['content'][0]['text'])
             assert detail['task']['status']=='completed' and detail['coverage'][0]['status']=='completed'
             assert replies[2]['result']['isError'] and not (temporary/'unused-readers').exists()
+            worker_page=json.loads(replies[3]['result']['content'][0]['text'])
+            assert worker_page['total']==1 and worker_page['items'][0]['provenance']['status']=='matched'
             checkpoint=temporary/'native-checkpoint.json'
             verified=json.loads(run([python,'-I','-m','aegis.cli.audit','--output',checkpoint],'installed native audit CLI',env=reader_env))
             assert verified==native['audit'] and checkpoint.stat().st_mode & 0o777==0o600
@@ -466,7 +476,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
                 'checks':['locked optional dependency','server fsync enabled','installed native initializer under a nonsuperuser role with database CREATE','fresh native HTTP first setup token, authentication, note and audit without SQLite','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
-                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed native append-only checkpoint archive and unchanged repeat','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
+                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed live native backup and no-DB archive check','installed atomic native fresh-schema restore and restored HTTP login, pending plan, reports and graph','installed native MCP stdio and audit checkpoint CLI','installed native append-only checkpoint archive and unchanged repeat','installed native Worker observations: actual approved execution, HTTP and MCP source checks without link visit','installed signed native release compatibility and stopped preflight backup/restore','installed ordinary role preflight after database CREATE revocation','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,
                 'external_target_requests':0,'service_postgres_backend_enabled':True}))

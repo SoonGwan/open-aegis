@@ -75,7 +75,7 @@ def test_stdio_real_process_catalog_pages_bounds_and_no_mutation(tmp_path):
     assert result.returncode==0 and not result.stderr
     output=[json.loads(line) for line in result.stdout.splitlines()]
     assert output[0]['result']['protocolVersion']=='2025-03-26'
-    assert len(output[1]['result']['tools'])==7
+    assert len(output[1]['result']['tools'])==8
     assert json.loads(output[2]['result']['content'][0]['text'])['total']==1
     assert output[3]['error']['code']==-32700
     assert store.path.read_bytes()==before

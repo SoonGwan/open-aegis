@@ -14,6 +14,7 @@
 | `get_finding` | 발견과 최신 증거/재검증 각각 25개, `evidence_page`·`retests_page` |
 | `list_finding_evidence` | `id`로 선택한 발견의 출처를 검증한 증거 페이지 |
 | `list_finding_retests` | `id`로 선택한 발견의 재검증 페이지 |
+| `list_task_observations` | `id`로 선택한 작업의 Worker 링크/승인 메타데이터 일치 상태 페이지 |
 | `list_task_events` | `id`로 선택한 작업의 최신 seq 순 이벤트 페이지 |
 
 페이지 결과는 `items`, `total`, `limit`, `offset`, `snapshot`, `has_more`다.
@@ -49,3 +50,6 @@ SQLite 기본 선택과 명시적 PostgreSQL 선택을 지원한다. PostgreSQL 
 상세·증거·커버리지·이벤트는 같은 읽기 전용 snapshot으로 조회한다. 스키마/접속 오류는
 SQLite로 대체하지 않으며 원문 DSN을 출력하지 않는다. DB SELECT 전용 계정으로
 사용할 수 있고 users/sessions 읽기나 쓰기 권한을 요구하지 않는다.
+
+Worker 관찰은 [WORKER-OBSERVATIONS.md](WORKER-OBSERVATIONS.md)의 출처 일관성 계약을
+따른다. `matched`는 링크 실행·취약점 판정이나 Worker 신원 인증을 뜻하지 않는다.

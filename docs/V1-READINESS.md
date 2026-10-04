@@ -161,6 +161,11 @@
     상용 모델·실제 청구/캐시/구간별 요금·의미적 대화 검증/개입·여러 회차 계획
     호출 집계는 남아 있음([LLM-USAGE.md](LLM-USAGE.md)).
 - [ ] 범위·승인 계약을 유지하는 반복 계획과 의존 단계, Worker 관찰 공유.
+  - 관찰 ID를 작업/Worker/도구별로 분리해 다음 작업의 출처 덮어쓰기를 수정.
+    승인 스냅샷/버전/지문을 대조한 단일 읽기 스냅샷 HTTP·MCP 페이지를 구현.
+    실제 SQLite/PostgreSQL 승인 실행·역사적 범위/페이지/권한/불일치/조회 무실행 검수.
+    다음 실행 제안/의존 단계·반복 Planner·Worker 소비와 전용 상세 UI는 남아 있음
+    ([WORKER-OBSERVATIONS.md](WORKER-OBSERVATIONS.md)).
   - 현재 LLM은 승인된 도구 순서만 정한다. 단계별 완료 근거·중복 방지·중단·재시작과
     다른 Worker 관찰의 출처 검증이 필요하다. 원본 기능 및 남은 계약은 [ARTEX 검토](ARTEX-REVIEW.md)를 따른다.
 

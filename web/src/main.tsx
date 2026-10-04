@@ -1622,7 +1622,7 @@ function App() {
               <div className="info-strip">
                 <Link2 size={18} />
                 <span>
-                  HTML에서 관찰한 범위 내 링크입니다. 관찰은 접근 가능 여부나
+                  HTML에서 관찰한 범위 내 링크를 작업별로 보존합니다. 관찰은 접근 가능 여부나
                   취약점 검증 결과가 아닙니다. 이 화면은 링크에 요청하지
                   않습니다.
                 </span>
@@ -1637,7 +1637,7 @@ function App() {
                         <tr>
                           <th>관찰 링크</th>
                           <th>자산</th>
-                          <th>최근 관찰 작업</th>
+                          <th>관찰 작업</th>
                           <th>관찰 시각</th>
                         </tr>
                       </thead>

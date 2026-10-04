@@ -45,6 +45,7 @@ from . import conversation_ai, call_ledger
 from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
 from .http_queries import SQLiteHTTP,PostgresHTTP
+from .worker_observations import task_page as observation_page
 
 
 class Credentials(BaseModel):
@@ -691,6 +692,16 @@ def create_app(data_dir=None, allow_private=None):
             return store.event_page(task_id, limit=limit, offset=offset, snapshot=snapshot, search=search)
         return store.page('findings', limit=limit, offset=offset, snapshot=snapshot, search=search,
                           filters={'task_id':task_id}, compact_findings=True)
+
+    @app.get('/api/tasks/{task_id}/observations', dependencies=auth)
+    def worker_observations(task_id: str,
+                            limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
+                            snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                            search: str = Query('', max_length=200)):
+        try:
+            return observation_page(store, task_id, limit=limit, offset=offset, snapshot=snapshot, search=search)
+        except LookupError:
+            raise HTTPException(404, '작업이 없습니다.')
 
     @app.post('/api/tasks/{task_id}/approve', dependencies=admins)
     def approve(task_id: str):

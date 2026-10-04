@@ -3563,3 +3563,43 @@ on 390×844 has no document overflow.
   deployment or remote publish/push performed. No whole-backend rerun is claimed
   for these deployment/probe-only changes; affected suites and installed workflow
   are the recorded validation scope.
+
+## Worker link history and provenance pages (2026-10-04)
+
+- Reproduced the overwrite against the unchanged prior implementation using two
+  actually approved owned loopback tasks on the same asset: the first task lost
+  its observation, second retained it (`artifacts/worker-observation-before.txt`,
+  one meaningful failing test). After fixing ID identity to task/asset/check/URL,
+  both retain distinct records for the same link, two base requests only; passed
+  (`artifacts/worker-observation-after.txt`). Existing legacy records are not
+  rewritten and previously overwritten history cannot be recovered automatically.
+- Persisted Worker/task/asset/check/version/scope URL/revision/package metadata;
+  added authenticated task-local HTTP and eighth read-only MCP tool with bounded
+  SQL pages/search and one source/records read snapshot. `matched` checks stored
+  approval metadata consistency, not signed provenance, Worker identity, endpoint
+  access or validation success. Historical approval scope survives current asset
+  changes; legacy/altered metadata remains visible as unconfirmed, other task
+  records excluded. Observation reading grants no execution/approval or target
+  request. UI wording now reflects each record's task instead of “latest task”.
+- Final targeted HTTP/history/native execution/MCP/readers46passed13.52s
+  (`artifacts/worker-observation-mcp-tests.txt`); full native-enabled backend suite
+  644passed183.93s, no skips (`artifacts/worker-observation-backend-final.txt`). One
+  existing Starlette/httpx warning. Frontend67passed420.79ms; production build1.58s
+  (`artifacts/worker-observation-frontend-tests.txt`/`...frontend-build.txt`), final
+  JSindex-D-WjoRbB/CSSindex-DniDnrrf. Wording-only UI change is not full visual/
+  mobile/accessibility journey verification.
+- Wheel SHA25631aa688ee98848270ecff5c6cabe97ebe69017d0e63893ba685506563eb11cde
+  has all61 service Python files matching final source
+  (`artifacts/worker-observation-source-proof.json`). Installed native reviewer now
+  serves owned HTML with a link, runs approved security_headers+endpoint_inventory,
+  and verifies source-matched Worker record through native Store, actual HTTP and
+  MCP stdio. Exactly one owned base GET and one owned source POST, no observed-link
+  visit or external target/source request. Full existing native/backup/restore/
+  audit/signature/preflight/return workflows also pass
+  (`artifacts/worker-observation-installed-postgres.json`,valid=true,external0).
+- Default installed runtime/UI/auth/eight CLI/maintenance/release/probe workflows
+  also pass (`artifacts/worker-observation-installed-runtime.json`,valid=true,
+  target_requests=0). Both runners terminated and cleaned temporary environments/
+  owned PostgreSQL cluster; stderr files empty. CI native test list includes new
+  Worker tests; hosted execution remains unverified. Repeated planning/dependency
+  steps, automatic Worker consumption, dedicated detail UI and whole v1 remain open.

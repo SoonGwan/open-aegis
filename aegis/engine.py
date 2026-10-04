@@ -1,5 +1,4 @@
 import concurrent.futures
-import hashlib
 import json
 import os
 import threading
@@ -18,6 +17,7 @@ from .llm import completion, token_usage
 from .store import identifier, now
 from .coverage import slot, finish_remaining
 from .findings import record_observation, apply_retest
+from .worker_observations import record_link
 
 
 class Engine:
@@ -294,8 +294,7 @@ class Engine:
                     outcome['fingerprints'].append(finding['fingerprint'])
                     self.store.event(task_id, item['title'], 'finding', {'finding_id': finding['id'], 'severity': item['severity'], 'asset_id': asset['id']})
                 for url in observed:
-                    self.store.put('observations', {'id': hashlib.sha256((asset['id'] + url).encode()).hexdigest()[:16],
-                        'asset_id': asset['id'], 'task_id': task_id, 'url': url, 'created_at': now(), 'verified': False})
+                    record_link(self.store, task, asset, check, url)
                 coverage(check, 'completed', reason='승인된 검증을 완료했습니다.', finished_at=now())
                 outcome['completed_checks'].append(check)
             except Exception as exc:
