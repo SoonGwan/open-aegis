@@ -108,7 +108,18 @@ DB/스키마별 트랜잭션 advisory lock을 잡는다. 여러 Store 인스턴�
 계정/해시 세션·권한 변경 시 세션 폐기, 감사 이벤트/체크포인트 검증을 구현했다.
 AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 같은 쓰기 트랜잭션에서
 커밋한다. 쓰기 실패를 주입해 모두 함께 롤백되는 것을 검수했다. 제공자 호출 시작/
-관찰/재시작 복구의 전체 ledger 모듈과 HTTP 실행 경로는 아직 SQLite 전용이다.
+관찰/포기/복구의 ledger 모듈도 PostgreSQL 트랜잭션을 사용한다. 복구는 100개씩
+처리하며 실패한 배치만 롤백하고 다시 호출해도 완료한 기록을 덮어쓰지 않는다.
+복구 호출자는 서비스의 독점 시작 권한을 가져야 한다. PostgreSQL 서비스 소유권/
+시작 잠금과 HTTP 실행 경로의 연결은 아직 남아 있다.
+
+사용량·비용 요약은 같은 읽기 스냅샷에서 필요한 메타데이터만 서버 커서로 200개씩
+받는다. 전체 작업/메시지나 개인 질문/답변을 읽어 목록으로 만들지 않는다. 토큰 합계는
+정수로, 견적은 기존 호출 시점 가격의 검증·통화별 정수 단위 합산으로 계산한다.
+단일 aggregate 응답을 반환하지만 서버→클라이언트의 메타데이터 전송은 호출 수에
+비례한다. 이 초기 경로의 대규모 집계 성능과 개별 메타데이터의 자원 한도는 미검수다.
+실제 로컬 모형 제공자→PostgreSQL 시작 기록→응답 관찰→답변 원자 저장을 검수했다.
+사용량 조회 중 별도 DB 쓰기가 일어나도 토큰·비용은 같은 스냅샷의 값으로 집계했다.
 
 레코드는 원문 TEXT로 저장하고 검색/관계 연산만 jsonb로 투영한다. 검색 문자열은
 바인딩하고 `%`와 `_`도 문자 그대로 검색한다. JSON 객체의 원문 바이트 보존을 검증한
@@ -126,7 +137,7 @@ AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 �
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된

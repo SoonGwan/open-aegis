@@ -262,12 +262,8 @@ class PostgresStore:
             return row
 
     def _commit_call(self,db,detail,task_id,source,record_kind,record_id):
-        if not detail.get('call_id'):return
-        record=self.get('llm_calls',detail['call_id'],connection=db)
-        if (not record or record['state']!='observed' or record['task_id']!=task_id or record['source']!=source or any(record[key]!=detail[key] for key in ('model','outcome','tokens','cost','started_at','observed_at'))):
-            raise RuntimeError('Committed result does not match provider attempt')
-        record.update(state='committed',record_kind=record_kind,record_id=record_id,settled_at=now())
-        db.execute("UPDATE records SET data=%s WHERE kind='llm_calls' AND id=%s",(encoded(record),record['id']))
+        from .call_ledger import commit
+        commit(db,detail,task_id,source,record_kind,record_id,postgres=True)
 
     def put_message_exchange(self,question,reply):
         with self.transaction(write=True) as db:

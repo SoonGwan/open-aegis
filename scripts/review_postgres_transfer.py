@@ -58,6 +58,10 @@ import json,sys,time,os
 from pathlib import Path
 from aegis.postgres_store import PostgresStore
 from aegis.postgres_transfer import postgres_manifest
+from aegis import call_ledger
+from aegis.llm import token_usage
+from aegis.costs import estimate
+from aegis.usage import usage_summary
 s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
 assert Path(sys.modules[s.__class__.__module__].__file__).is_relative_to(Path(sys.prefix))
 proof=json.loads(Path(sys.argv[1]).read_text())
@@ -70,8 +74,21 @@ s.update_user(u['id'],role='operator');assert not s.valid_session('native-cookie
 s.put('notes',{'id':'native','title':'설치본 PostgreSQL 저장','amount':'0.000000000000001'})
 s.event(None,'설치본 PostgreSQL 기록',detail={'note_id':'native'})
 assert s.page('notes',search='PostgreSQL')['total']==1
+at=time.time();price={'status':'unconfigured','quote':None}
+call_id=call_ledger.start(s,'conversation','owned','installed-model','https://owned.invalid/v1',at,price)
+tokens=token_usage({'prompt_tokens':3,'completion_tokens':2,'total_tokens':5})
+detail={'call_id':call_id,'model':'installed-model','started_at':at,'observed_at':time.time(),'outcome':'accepted','tokens':tokens,'cost':estimate(tokens,price,at)}
+call_ledger.observe(s,call_id,detail)
+s.put_message_exchange({'id':'q','task_id':'owned','role':'user','content':'합성 질문'},
+                       {'id':'r','task_id':'owned','role':'assistant','content':'합성 답변','assistant_generation':detail})
+pending=call_ledger.start(s,'planner','owned','installed-model','https://owned.invalid/v1',time.time(),price)
+call_ledger.recover(s);assert s.get('llm_calls',pending)['state']=='interrupted'
+usage=usage_summary(s,source='all',ledger='attempts')
+assert usage['calls']==2 and usage['attempt_states']['committed']==1 and usage['attempt_states']['interrupted']==1
+assert usage['reported_tokens']['total_tokens']=='5' and usage['costs']['states']['unconfigured']==2
+assert usage_summary(s,source='all')['calls']==1
 with s.transaction() as db:manifest=postgres_manifest(db)
-print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity()}))
+print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity(),'usage':usage}))
 ''',forward_proof],'installed native PostgreSQL store'))
             dump=temporary/'owned.dump'
             run([binaries['pg_dump'],'--format=custom','--schema','owned_transfer','--file',dump,'postgres'],'real pg_dump');dump.chmod(0o600)
@@ -96,7 +113,7 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
             print(json.dumps({'valid':True,'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
-                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','real pg_dump/pg_restore',
+                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','real pg_dump/pg_restore',
                           'installed SQLite return','revoked old sessions','preserved password hashes and exact record','audit continuation'],
                 'target_requests':0,'service_postgres_backend_enabled':False}))
         finally:

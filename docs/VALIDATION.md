@@ -2719,3 +2719,54 @@ on 390×844 has no document overflow.
   TLS/operational restore and multi-server service ownership are still open. Raw
   TEXT transfer preservation is distinct from jsonb query parity for malformed,
   duplicate-key or out-of-range-number records. The full v1 gate stays open.
+
+### PostgreSQL attempt lifecycle and usage foundation
+
+- The shared call ledger now persists native PostgreSQL start/observation/abandon/
+  recovery transitions with audit in the same write transaction. Final result
+  commits reuse the shared validation in both stores. Recovery keeps100-record
+  transaction batches and requires caller-owned exclusive startup authority;
+  PostgreSQL service ownership/startup wiring is still open, not enabled here.
+- Actual PG tests prove start/observe/abandon/recover audit failures roll back their
+  transitions, two independent Store instances accept only one concurrent
+  observation, final successful message replay keeps one committed attempt, and
+  a second recovery batch failure preserves the first100 settled records while
+  rolling back the next batch. Retrying recovery completes206 interrupted rows
+  without modifying an already settled row or double-appending completed recovery.
+- Native usage streams only selected metadata with a200-row server cursor in one
+  read-only snapshot. Counts/tokens use exact integers and existing validated cost
+  quotes retain exact per-currency units. Source/window/persisted/attempt results
+  match SQLite; tested boolean/inconsistent/partial/missing usage and huge-plus-tiny
+  costs.2100 maximal valid usages sum beyond int64/JavaScript ranges exactly. A
+  separate actual DB write during cursor iteration does not mix token/cost snapshots.
+  Initial metadata transfer still scales with call count; no claim of aggregate
+  performance/soak SLO or individual-record resource bound.
+- Owned loopback HTTP provider sees its durable started attempt before receiving
+  the synthetic request. Its validated response is observed then committed with
+  the native message pair/audit; usage agrees between attempts and saved messages.
+  Synthetic key is absent from saved attempt data. No external provider/target.
+- Related SQLite ledger/conversation/runtime: **48 passed in15.67s**. Final native
+  ledger/Store plus SQLite usage/cost/ledger subset: **60 passed in5.86s**
+  (`artifacts/postgres-ledger-targeted-final.txt`). Full opted-in backend:
+  **467 passed in121.99s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-ledger-backend-final.txt`). No UI edits/rebuild.
+- Wheel SHA256 a3199d69e6fb811e7f0034b5df4c10a45b931b7c3f712d929e13dcafd13cc55b
+  byte-matches all48 service Python files. Installed native lifecycle/standalone
+  recovery/exact usage, real pg_dump/pg_restore and SQLite return pass outside the
+  checkout (`artifacts/postgres-ledger-installed-review.json`,valid=true,
+  target_requests=0,service_postgres_backend_enabled=false). Same wheel's default
+  installed SQLite HTTP/auth/UI/maintenance/release checks pass
+  (`artifacts/postgres-ledger-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove their owned clusters/installations. CI includes
+  native ledger tests; hosted CI is still unverified.
+- HTTP/engine queries, graph/finding/import transactions, PostgreSQL reporting/
+  bounded audit readers, service startup exclusion and operational restore remain
+  required before enabling the PostgreSQL service backend. The full v1 gate stays
+  open; an optional DSN alone does not change the HTTP backend.
+- After the full suite, strengthened the snapshot control to change both valid
+  reported tokens and a valid USD quote-derived amount during the native read:
+  snapshot retains10 tokens/USD0.0000175; next read sees105/USD0.00013375.
+  That unchanged production path passes the targeted actual PG control
+  **1 passed in1.22s** (`artifacts/postgres-ledger-cost-snapshot.txt`). No service
+  Python edits after the full suite or wheel build. Owned preview restarted with
+  current code on8790 (PID90617), normal shutdown completed first; HTTP200.

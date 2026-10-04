@@ -79,11 +79,15 @@ def usage_summary(store, days=None, *, source='planner', ledger='persisted'):
         {', '.join(f"exact_sum({key}) FILTER (WHERE status='reported') AS {key}" for key in fields)}
       FROM calls
     """
-    with store.connect() as db:
-        db.create_aggregate('exact_sum', 1, ExactSum)
-        db.create_aggregate('cost_summary', 1, CostSummary)
-        db.execute('BEGIN')
-        row = dict(db.execute(query, (source, source, max(0, since), until)).fetchone())
+    if getattr(store,'backend',None)=='postgres':
+        from .postgres_usage import aggregate
+        row=aggregate(store,source,ledger,clock,max(0,since),until,fields)
+    else:
+        with store.connect() as db:
+            db.create_aggregate('exact_sum', 1, ExactSum)
+            db.create_aggregate('cost_summary', 1, CostSummary)
+            db.execute('BEGIN')
+            row = dict(db.execute(query, (source, source, max(0, since), until)).fetchone())
     return {
         'scope':'recorded_provider_attempts' if ledger == 'attempts' else {'planner':'latest_planner_call_per_task',
                  'conversation':'persisted_assistant_generation_per_message',
