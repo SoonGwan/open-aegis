@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { CoverageTable, type Coverage } from "./coverage";
 import { useRecords, Pagination, RecordState } from "./records";
 import { ObservationRecord, type Observation } from "./task-records";
+import { readDetail, readTaskWorker, type TaskWorkerState, type HistoryMode, type ListPosition, type TaskCollectionState } from "./navigation-state";
 
 type Scope = { id: string; name: string; url: string; revision?: number };
 type Process = {
@@ -19,25 +20,34 @@ type WorkerEvent = {
   worker_provenance?: { status: string };
 };
 
-export function WorkerProcess({ taskId, assets, tools }: {
+export function WorkerProcess({ taskId, assets, tools, state, onChange }: {
   taskId: string; assets: Scope[]; tools: { id: string; name: string }[];
+  state: TaskWorkerState; onChange: (changes: Partial<TaskWorkerState>, mode?: HistoryMode) => void;
 }) {
-  const [assetId, setAssetId] = useState("");
+  const { assetId } = state;
+  const validAsset = assets.some(a => a.id === assetId);
+  const change = useCallback((changes: Partial<TaskWorkerState>, mode?: HistoryMode) => {
+    if (readDetail(location.search)?.id !== taskId || JSON.stringify(readTaskWorker(location.search)) !== JSON.stringify(state)) return;
+    onChange(changes, mode);
+  }, [taskId, state, onChange]);
   return <section className="worker-process" aria-label="Worker 실행 과정">
     <h4 className="detail-heading">Worker 실행 과정</h4>
     <p className="subtle">자산별 검증 결과와 실행 기록을 확인하세요. 작업에 저장된 승인 범위로 조회합니다.</p>
     <label className="task-record-search">과정을 확인할 자산
-      <select aria-label="Worker 자산" value={assetId} onChange={e => setAssetId(e.target.value)}>
+      <select aria-label="Worker 자산" value={assetId} onChange={e => change({assetId:e.target.value})}>
         <option value="">자산 선택</option>
+        {assetId && !validAsset && <option value={assetId}>범위에 없는 자산</option>}
         {assets.map(a => <option key={a.id} value={a.id}>{a.name} · revision {a.revision ?? 1}</option>)}
       </select>
     </label>
-    {assetId && <ProcessDetail key={`${taskId}:${assetId}`} taskId={taskId} assetId={assetId} tools={tools} />}
+    {assetId && !validAsset && <p role="alert">저장된 작업 범위에 없는 Worker입니다. 자산을 다시 선택하세요.</p>}
+    {validAsset && <ProcessDetail key={`${taskId}:${assetId}`} taskId={taskId} assetId={assetId} tools={tools} state={state} onChange={change} />}
   </section>;
 }
 
-function ProcessDetail({ taskId, assetId, tools }: {
+function ProcessDetail({ taskId, assetId, tools, state, onChange }: {
   taskId: string; assetId: string; tools: { id: string; name: string }[];
+  state: TaskWorkerState; onChange: (changes: Partial<TaskWorkerState>, mode?: HistoryMode) => void;
 }) {
   const path = `/tasks/${encodeURIComponent(taskId)}/workers/${encodeURIComponent(assetId)}`;
   const [result, setResult] = useState<Process | null>(null);
@@ -54,6 +64,10 @@ function ProcessDetail({ taskId, assetId, tools }: {
   useEffect(() => {
     if (focusError.current && !loading) { focusError.current = false; queryButton.current?.focus(); }
   }, [loading, error]);
+  useEffect(() => {
+    if (state.expanded) void load();
+    else { controller.current?.abort(); setResult(null); setLoading(false); setError(""); }
+  }, [state.expanded]);
   async function load() {
     controller.current?.abort();
     const request = new AbortController(); controller.current = request;
@@ -74,7 +88,7 @@ function ProcessDetail({ taskId, assetId, tools }: {
     }
   }
   return <div aria-busy={loading}>
-    <button type="button" ref={queryButton} disabled={loading} onClick={() => void load()}>
+    <button type="button" ref={queryButton} disabled={loading} onClick={() => state.expanded ? void load() : onChange({expanded:true})}>
       {loading ? "과정 조회 중…" : "Worker 과정 조회"}
     </button>
     {error && <p className="form-error" role="alert">{error}</p>}
@@ -83,20 +97,29 @@ function ProcessDetail({ taskId, assetId, tools }: {
       <code className="observation-url">{result.worker.scope_url}</code>
       <p className="subtle">{result.approved_at ? "실행 승인 기록 있음" : "실행 승인 기록 없음"} · 저장된 출처 메타데이터의 일치이며 실행 성공이나 자산의 안전성을 보장하지 않습니다.</p>
       <CoverageTable rows={result.coverage} assets={[{ id: assetId, name: result.worker.asset_name }]} tools={tools} />
-      <WorkerCollection key={`${path}:events`} path={path} kind="events" />
-      <WorkerCollection key={`${path}:observations`} path={path} kind="observations" />
+      <WorkerCollection key={`${path}:events`} taskId={taskId} path={path} kind="events" state={state.events}
+        onChange={(changes,mode)=>onChange({events:{...state.events,...changes}},mode)} />
+      <WorkerCollection key={`${path}:observations`} taskId={taskId} path={path} kind="observations" state={state.observations}
+        onChange={(changes,mode)=>onChange({observations:{...state.observations,...changes}},mode)} />
     </>}
   </div>;
 }
 
-function WorkerCollection({ path, kind }: { path: string; kind: "events" | "observations" }) {
-  const [search, setSearch] = useState("");
-  const records = useRecords<WorkerEvent | Observation>(kind, search, {}, undefined, `${path}/${kind}`);
+function WorkerCollection({ path, kind, state, onChange, taskId }: {
+  path: string; kind: "events" | "observations"; taskId: string; state: TaskCollectionState;
+  onChange: (changes: Partial<TaskCollectionState>, mode?: HistoryMode) => void;
+}) {
+  const {search} = state;
+  const changePosition = useCallback((position: ListPosition, mode?: HistoryMode) => {
+    if (readDetail(location.search)?.id !== taskId || JSON.stringify(readTaskWorker(location.search)[kind]) !== JSON.stringify(state)) return;
+    onChange(position,mode);
+  }, [taskId,kind,state,onChange]);
+  const records = useRecords<WorkerEvent | Observation>(kind, search, {}, { ...state, onPositionChange:changePosition }, `${path}/${kind}`);
   const name = kind === "events" ? "선택 Worker 실행 기록" : "선택 Worker 관찰";
   return <section className="finding-collection" aria-label={name}>
     <h4 className="detail-heading">{name}</h4>
     <label className="task-record-search">{kind === "events" ? "메시지·수준으로 검색" : "링크·제목으로 검색"}
-      <input aria-label={`${name} 검색`} maxLength={200} value={search} onChange={e => setSearch(e.target.value)} />
+      <input aria-label={`${name} 검색`} maxLength={200} value={search} onChange={e => onChange({search:e.target.value},"replace")} />
     </label>
     {kind === "observations" && <p className="subtle">관찰한 링크를 방문하거나 실행하지 않습니다. 출처 확인은 저장 메타데이터 비교입니다.</p>}
     <Pagination records={records} />

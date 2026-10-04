@@ -3950,3 +3950,40 @@ on 390×844 has no document overflow.
   POSTs0, next-plan POSTs0 and temporary data removed. Main preview backend remains
   unchanged; final separate static assets and health verified on127.0.0.1:8790.
   No hosted CI, container run, remote publishing or full v1 completion is claimed.
+
+
+### 2026-10-05 — Worker navigation bookmarks
+
+- Added bounded task Worker URL state for selected asset, expansion and independent
+  event/observation search, offset and snapshot. Asset switch resets both collections
+  and expansion; search resets only its own positions. Closing/switching detail or
+  workspace page clears Worker URL fields. Invalid IDs/integers normalize before
+  API use; syntactically valid assets outside the historical scope show an error
+  and no process panel. Existing task list/collection positions remain independent.
+- Old collection callbacks verify current task/Worker state before changing the
+  URL. Saved open URLs automatically query the readonly process; existing abort,
+  unmount and session-completion guards apply. Restore failure focuses query, and
+  retry retains the bookmarked searches/pages.
+- Frontend77 passed429.736833ms (`artifacts/worker-navigation-tests.txt`), four new
+  navigation cases cover restoration, independent snapshot domains, resets,
+  removal and malformed bounds. First run76/77: the new fixture incorrectly set
+  a snapshot in the same interaction as changing search, which correctly resets
+  it. Fixed fixture to model separate search/page actions, retained first output
+  (`...tests-first.txt`). Build1.41s, JSindex-5ZXIJQ2h.js, CSSindex-A1Pg18P4.css.
+- Actual built UI, disposable synthetic two-Worker fixture: child event second page
+ 26–32/32 and observation owned-link-59 restore in a newly opened document; parent
+  switch clears fields and child content; parent read returns isolated evidence;
+  dialog Previous twice restores child's page/search. Missing-scope URL refused;
+  saved open URL503 focuses query and retry restores event page. Closing detail
+  removes all Worker fields. Screenshot `...desktop.jpg` visually inspected and
+  compact evidence `...ui-proof.json` saved. An unsupported inputValue facade call
+  was replaced by readonly visible DOM value inspection. A duplicate query argument
+  initially retained the first asset; verified missing-scope case with a replaced
+  URL parameter. These were review-tool issues, not claimed product regressions.
+- Fixture shutdown confirmed target requests0, task creation POSTs0, next-plan
+  POSTs0 and temporary removal; owned tab/flag cleaned. Preview health and final
+  static assets verified at127.0.0.1:8790. Backend unchanged; previous725 full
+  backend and13 Worker API tests are historical, not rerun here. No physical-device,
+  screen-reader, hosted CI or container evidence is added by this increment.
+- Whole-workspace process search, automatic/event-driven planning, shared to-do and
+  all remaining V1-READINESS gates remain open. No remote publication occurred.

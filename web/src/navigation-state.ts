@@ -86,6 +86,7 @@ export function detailQuery(
         readTaskCollection(query.toString(), kind),
       );
     writeTaskChat(query, readTaskChat(query.toString()));
+    writeTaskWorker(query, readTaskWorker(query.toString()));
   } else clearTaskCollections(query);
   return query.toString();
 }
@@ -93,11 +94,64 @@ export const taskCollectionKinds = ["findings", "events", "observations"] as con
 export type TaskCollectionKind = (typeof taskCollectionKinds)[number];
 export type TaskCollectionState = ListPosition & { search: string };
 function clearTaskCollections(query: URLSearchParams) {
+  clearTaskWorker(query);
   for (const kind of taskCollectionKinds)
     for (const field of ["q", "offset", "snapshot"])
       query.delete(`task_${kind}_${field}`);
   for (const field of ["q", "open", "offset", "snapshot"])
     query.delete(`task_chat_${field}`);
+}
+export type TaskWorkerState = {
+  assetId: string;
+  expanded: boolean;
+  events: TaskCollectionState;
+  observations: TaskCollectionState;
+};
+function clearTaskWorker(query: URLSearchParams) {
+  query.delete("task_worker_asset");
+  query.delete("task_worker_open");
+  for (const kind of ["events", "observations"])
+    for (const field of ["q", "offset", "snapshot"])
+      query.delete(`task_worker_${kind}_${field}`);
+}
+export function readTaskWorker(search: string): TaskWorkerState {
+  const query = new URLSearchParams(search);
+  const value = query.get("task_worker_asset") || "";
+  const assetId = readDetail(search)?.kind === "task" && /^[A-Za-z0-9_-]{1,80}$/.test(value) ? value : "";
+  const collection = (kind: string): TaskCollectionState => ({
+    search: assetId ? searchText(query.get(`task_worker_${kind}_q`)) : "",
+    offset: assetId ? Math.floor((integer(query.get(`task_worker_${kind}_offset`), 10_000_000) || 0) / 25) * 25 : 0,
+    snapshot: assetId ? integer(query.get(`task_worker_${kind}_snapshot`), Number.MAX_SAFE_INTEGER) : null,
+  });
+  return { assetId, expanded: Boolean(assetId) && query.get("task_worker_open") === "true",
+    events: collection("events"), observations: collection("observations") };
+}
+function writeTaskWorker(query: URLSearchParams, state: TaskWorkerState) {
+  clearTaskWorker(query);
+  if (!state.assetId) return;
+  query.set("task_worker_asset", state.assetId);
+  if (state.expanded) query.set("task_worker_open", "true");
+  for (const kind of ["events", "observations"] as const) {
+    const row = state[kind], prefix = `task_worker_${kind}_`;
+    if (row.search) query.set(prefix + "q", searchText(row.search));
+    if (row.offset) query.set(prefix + "offset", String(row.offset));
+    if (row.snapshot !== null) query.set(prefix + "snapshot", String(row.snapshot));
+  }
+}
+export function updateTaskWorkerQuery(search: string, changes: Partial<TaskWorkerState>): string {
+  const detail = readDetail(search);
+  if (detail?.kind !== "task") return detailQuery(search, detail);
+  const query = new URLSearchParams(search), previous = readTaskWorker(search);
+  const next = { ...previous, ...changes };
+  if (next.assetId !== previous.assetId) {
+    next.expanded = false;
+    next.events = { search: "", offset: 0, snapshot: null };
+    next.observations = { search: "", offset: 0, snapshot: null };
+  } else for (const kind of ["events", "observations"] as const) {
+    if (next[kind].search !== previous[kind].search) next[kind] = { ...next[kind], offset: 0, snapshot: null };
+  }
+  writeTaskWorker(query, next);
+  return detailQuery(query.toString(), detail);
 }
 export type TaskChatState = TaskCollectionState & { expanded: boolean };
 export function readTaskChat(search: string): TaskChatState {

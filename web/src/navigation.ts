@@ -5,6 +5,9 @@ import {
 } from "./call-navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  readTaskWorker,
+  updateTaskWorkerQuery,
+  type TaskWorkerState,
   readTaskChat,
   updateTaskChatQuery,
   type TaskChatState,
@@ -64,6 +67,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     callList: readCallList(location.search),
     detail: readDetail(location.search),
     taskChat: readTaskChat(location.search),
+    taskWorker: readTaskWorker(location.search),
     taskCollections: {
       findings: readTaskCollection(location.search, "findings"),
       events: readTaskCollection(location.search, "events"),
@@ -104,6 +108,7 @@ export function useNavigation(allowedPages: readonly string[]) {
         callList: readCallList(location.search),
         detail: readDetail(location.search),
         taskChat: readTaskChat(location.search),
+        taskWorker: readTaskWorker(location.search),
         taskCollections: {
           findings: readTaskCollection(location.search, "findings"),
           events: readTaskCollection(location.search, "events"),
@@ -181,6 +186,11 @@ export function useNavigation(allowedPages: readonly string[]) {
     },
     [],
   );
+  const updateTaskWorker = useCallback(
+    (changes: Partial<TaskWorkerState>, mode: HistoryMode = "push") => {
+      commit(updateTaskWorkerQuery(location.search, changes), mode);
+    }, [],
+  );
   const updateCallList = useCallback(
     (changes: Partial<CallListState>, mode: HistoryMode = "push") => {
       commit(updateCallListQuery(location.search, changes), mode);
@@ -193,6 +203,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     captureActionView: () => actionScope.current.capture(),
     invalidateActionView: () => actionScope.current.invalidate(),
     updateTaskChat,
+    updateTaskWorker,
     updateTaskCollection,
     updateFindingCollection,
     updateList,

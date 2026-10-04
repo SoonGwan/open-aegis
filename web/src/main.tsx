@@ -2857,7 +2857,7 @@ function App() {
             )}
             {selectedTask.llm_usage && <PlannerUsage call={selectedTask.llm_usage} />}
             <WorkerProcess key={`worker-process-${selectedTask.id}`} taskId={selectedTask.id}
-              assets={selectedTask.scope_snapshot} tools={tools} />
+              assets={selectedTask.scope_snapshot} tools={tools} state={navigation.taskWorker} onChange={navigation.updateTaskWorker} />
             <TaskRecords
               key={`task-records-${selectedTask.id}`}
               taskId={selectedTask.id}

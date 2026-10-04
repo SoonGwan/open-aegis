@@ -337,3 +337,14 @@ and its visible 너비 검사 button to inspect actual document/dialog dimension
 result tables intentionally scroll internally. Close only owned tabs, stop the fixture
 and verify its zero-target/zero-creation counters and temporary directory cleanup.
 This is manual built UI QA, not coverage provided by npm test or physical-device QA.
+
+
+Worker bookmarks now encode selected asset, process expansion and independent
+search/offset/snapshot fields. Select child, query, advance events to26–32 and
+search observations owned-link-59. Reload the visible URL: process, event page and
+search restore. Select parent: old records disappear and Worker URL collection
+fields clear; query parent then use dialog Previous twice to restore child state.
+Closing the dialog removes Worker fields. Replace task_worker_asset in the saved
+URL with a syntactically valid missing ID: show scope error without process query.
+With the failure flag present, loading a saved open URL shows the503 alert and
+focuses query; remove flag and retry to restore the original searches/pages.
