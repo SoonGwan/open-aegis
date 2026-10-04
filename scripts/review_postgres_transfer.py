@@ -202,6 +202,58 @@ s.session('owned-native-export-cookie',time.time()+300,u['id']);assert s.valid_s
 with s.transaction() as db:manifest=postgres_manifest(db)
 print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity(),'usage':usage,'owned_lab_requests':len(owned_requests),'owned_source_requests':len(owned_source_requests)}))
 ''',forward_proof],'installed native PostgreSQL store'))
+            with socket_module.socket() as listener:
+                listener.bind(('127.0.0.1',0));native_port=listener.getsockname()[1]
+            native_env={**environment,'AEGIS_STORAGE_BACKEND':'postgres','AEGIS_POSTGRES_SCHEMA':'owned_transfer',
+                        'AEGIS_DATA_DIR':str(temporary/'unused-sqlite'),'AEGIS_HOST':'127.0.0.1','AEGIS_PORT':str(native_port)}
+            with (temporary/'native-server.log').open('w') as log:
+                process=subprocess.Popen([str(python),'-I','-m','aegis'],cwd=temporary,env=native_env,stdout=log,stderr=subprocess.STDOUT)
+                base='http://127.0.0.1:'+str(native_port)
+                native_client=build_opener(ProxyHandler({}),HTTPCookieProcessor(CookieJar()))
+                def native_http(path,body=None,expected=200,method=None):
+                    headers={'Content-Type':'application/json'} if body is not None else {}
+                    request=Request(base+path,data=json.dumps(body).encode() if body is not None else None,headers=headers,method=method)
+                    try:response=native_client.open(request,timeout=3)
+                    except HTTPError as error:response=error
+                    with response:
+                        if response.status!=expected:raise RuntimeError('Installed native HTTP validation failed')
+                        assert response.headers['Cache-Control']=='no-store'
+                        return json.loads(response.read())
+                try:
+                    deadline=time.monotonic()+15
+                    while True:
+                        if process.poll() is not None:raise RuntimeError('Installed native service exited')
+                        try:assert native_http('/api/health')['status']=='ok';break
+                        except (URLError,TimeoutError):
+                            if time.monotonic()>=deadline:raise RuntimeError('Installed native startup timed out')
+                            time.sleep(.05)
+                    native_http('/api/assets',expected=401)
+                    assert native_http('/api/auth/login',{'username':'admin','password':'owned-installed-transfer-password'})['user']['role']=='operator'
+                    assert native_http('/api/settings')['storage']=='postgres'
+                    assert native_http('/api/overview')['stats']['covered_assets']==1
+                    native_http('/api/users',expected=403)
+                    assert native_http('/api/assignees')['total']==1
+                    note=native_http('/api/notes',{'title':'Native HTTP note','content':'Owned server'})
+                    native_http('/api/notes/'+note['id'],method='DELETE')
+                    assert native_http('/api/graph?asset_id=owned-lab&task_id=native-engine')['edges']
+                    report=native_http('/api/reports/export?format=json&task_id=native-engine')
+                    assert report['coverage'][0]['status']=='completed' and report['evidence']
+                    message=native_http('/api/tasks/native-engine/messages',{'content':'저장된 검증 요약'})
+                    assert message['provenance']['citations']
+                    assets=native_http('/api/records/assets')['items']
+                    imported=next(item for item in assets if item['url']=='https://owned-import-changed.invalid/')
+                    pending=native_http('/api/tasks',{'name':'Installed native HTTP pending','asset_ids':[imported['id']],'checks':['security_headers']})
+                    assert pending['status']=='pending'
+                    assert native_http('/api/runtime')['queue_watchdog']['errors']==0
+                    native_http('/api/auth/logout',method='POST')
+                    native_http('/api/assets',expected=401)
+                finally:
+                    if process.poll() is None:process.terminate()
+                    try:process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:process.kill();process.wait(timeout=5);raise RuntimeError('Installed native service shutdown timed out')
+                assert process.returncode in (0,-15,143) and not (temporary/'unused-sqlite').exists()
+            final_native=json.loads(run([python,'-I','-c',"import json,os;from aegis.postgres_store import PostgresStore;from aegis.postgres_transfer import postgres_manifest;s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer');\nwith s.transaction() as db: manifest=postgres_manifest(db)\nprint(json.dumps({'manifest':manifest,'audit':s.audit_integrity()}))"],'installed native HTTP persisted snapshot'))
+            native.update(final_native)
             dump=temporary/'owned.dump'
             run([binaries['pg_dump'],'--format=custom','--schema','owned_transfer','--file',dump,'postgres'],'real pg_dump');dump.chmod(0o600)
             run([binaries['createdb'],'owned_restore'],'empty restore database')
@@ -264,10 +316,10 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
                 'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
-                          'installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
+                          'installed native PostgreSQL HTTP lifecycle, auth, queries, reports and pending plan','installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
                 'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,
-                'external_target_requests':0,'service_postgres_backend_enabled':False}))
+                'external_target_requests':0,'service_postgres_backend_enabled':True}))
         finally:
             run([binaries['pg_ctl'],'-D',data,'-w','-m','fast','stop'],'owned PostgreSQL stop')
 

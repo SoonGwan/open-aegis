@@ -1,8 +1,10 @@
 # PostgreSQL 저장소와 전송
 
-현재 구현은 **오프라인 전송·되돌리기와 네이티브 Store 계층**이다. HTTP 서비스의 PostgreSQL 실행
-백엔드는 아직 연결하지 않았다. `AEGIS_POSTGRES_DSN`만 설정해도 서비스가 PostgreSQL로
-전환되는 것은 아니다. 전체 v1의 PostgreSQL 조건은 열린 상태다.
+현재 구현은 **오프라인 전송·되돌리기, 네이티브 Store와 선택 가능한 PostgreSQL HTTP
+백엔드**다. 기본 서버는 SQLite다. `AEGIS_POSTGRES_DSN`만 설정하면 전환되지 않으며
+아래 명시적 backend/schema 설정이 필요하다. 대표 HTTP 인증·승인 실행·재검증·
+보고서·가져오기·재시작을 실제 DB에서 검수했다. 운영 백업/복구·업그레이드·전체
+오류/부하/장시간 검수는 남아 있어 전체 v1의 PostgreSQL 조건은 열린 상태다.
 
 ## 설치와 연결
 
@@ -16,6 +18,34 @@ PostgreSQL16.15와 psycopg3.3.6이다. 서버/클라이언트 도구와 접속 �
 연결 시간 제한5초, SQL120초, 잠금 대기5초를 적용한다. 표준 libpq 환경 설정도 영향을
 줄 수 있으므로 실제 대상 DB/계정/인증 구성을 확인한다. 오류 출력에는 DSN·서버 오류
 본문·비밀번호를 포함하지 않는다.
+
+## HTTP 서버 선택
+
+먼저 아래 전송 CLI로 스키마를 준비한다. 서버 시작은 기존 지원 형식의 스키마를
+읽으며 임의 스키마 생성/SQL 마이그레이션을 수행하지 않는다. 다음 값으로 실행한다.
+DSN에는 실제 접속 계정과 TLS 정책을 환경변수/운영 비밀 관리로 설정한다.
+
+```sh
+export AEGIS_STORAGE_BACKEND=postgres
+export AEGIS_POSTGRES_SCHEMA=aegis_workspace
+python -m aegis
+```
+
+`AEGIS_POSTGRES_DSN`과 선택 의존성도 필요하다. 잘못된 backend/schema/형식/접속
+설정은 시작을 거절하며 SQLite로 대체하지 않는다. PostgreSQL 모드에서
+`AEGIS_DATA_DIR`에 SQLite 파일이나 로컬 워크스페이스 임대를 만들지 않는다. DB/스키마
+실행 소유권을 Engine이 획득한 다음 호출/작업 복구를 수행한다. 같은 스키마의 중복
+서버는 복구 전에 거절된다. 종료는 scheduler와 Engine을 닫고 실행 소유권을 해제한다.
+기존 PostgreSQL 로그인 세션은 정상 재시작 때 유지한다. 미완료 작업/호출은 결과를
+추정하지 않고 중단/사용량 미확인 상태로 복구한다. 익명 API는401, 권한 위반은403,
+기존 사용자명 충돌은409다. 저장소 오류/확인된 소유권 상실은 본문을 숨긴503이며
+캐시를 금지한다. 대화 요약도 같은 네이티브 읽기 스냅샷을 사용한다.
+
+설정 API의 `storage`는 실제 선택을 반환한다. 관리자 초기 설정은 비어 있는 전송
+스키마에서도 기존 설치 토큰/로컬 설치 정책을 따른다. HTTP startup/config 실패의
+연결/스키마 오류는 원문 DSN을 출력하지 않는다. 종료 중 작업/긴 SQL/원격 접속 장애와
+scheduler의 전체 운영 SLO는 아래 남은 검수에 포함한다. 현재 backup/restore/audit 및
+읽기 전용 MCP CLI는 SQLite 파일 경로를 쓰므로 PostgreSQL 운영 경로를 대체하지 않는다.
 
 ## SQLite → PostgreSQL
 
@@ -90,8 +120,8 @@ python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-transf
 설치 환경, 복구 파일은 정리한다. CI에 선택 의존성/실제 클러스터 검사를 추가했으나
 GitHub hosted 실행 결과는 아직 없다.
 
-남은 v1 조건은 HTTP/작업 실행의 PostgreSQL Store 선택과 전체 경로 연결,
-서버 선택 설정·업그레이드·백업/복구의 운영 계약과 HTTP/권한/동시성/재시작 전체 검수다.
+남은 v1 조건은 전체 HTTP/권한/동시성/재시작/부하 검수와 스키마 업그레이드,
+라이브 백업/복구의 운영 계약이다.
 현재 전송 형식은 그 기반이며, 이를 PostgreSQL 서비스 지원 완료로 표시하지 않는다.
 
 ## 네이티브 Store 계층
@@ -99,12 +129,12 @@ GitHub hosted 실행 결과는 아직 없다.
 `aegis.postgres_store.PostgresStore(dsn, schema)`는 전송으로 생성한 형식의 스키마를
 직접 읽고 쓴다. SQLite SQL 변환이나 SQLite 복제 DB를 사용하지 않는다. 생성자는
 형식/감사 기준을 읽기만 하며 세션 폐기·작업 복구·스키마 변경을 하지 않는다.
-현재 서비스의 Store 선택 설정에는 연결하지 않았으며 공개 HTTP PostgreSQL 지원을 뜻하지 않는다.
+HTTP 서비스는 명시적 backend/schema 설정으로 이 Store를 선택한다.
 Engine의 큐 지표/기한 조회와 발견 관찰·조치·재검증은 저장소별 쿼리와 쓰기 트랜잭션을
 사용한다. 소유한 단독 검수 환경에서 네이티브 PostgreSQL Engine의 승인→로컬 요청→
 증거/커버리지 저장, 재검증 해결 판정, 실행 중 중지·큐 만료·시작 복구를 검수했다.
-이것은 HTTP 서비스의 PostgreSQL 실행 검수가 아니다. 아래 실행 소유권 계약을
-Engine과 요청 경계에 연결했으며, 전체 HTTP 경로의 저장소 선택/운영 검수가 남아 있다.
+단독 Engine 검수에 더해 HTTP 승인 실행·재검증도 검수했다. 아래 실행 소유권 계약은
+Engine과 요청 경계에 연결되어 있으며, 전체 운영/장애/장시간 검수가 남아 있다.
 
 발견 관찰·조치·재검증은 같은 쓰기 트랜잭션에서 현재 발견/담당자를 읽고 관련 증거,
 변경 이력과 함께 저장한다. PostgreSQL과 SQLite의 서로 다른 Store 인스턴스에서
@@ -125,7 +155,7 @@ AI 결과의 기존 observed 호출 연결·결과 레코드·감사 기록은 �
 관찰/포기/복구의 ledger 모듈도 PostgreSQL 트랜잭션을 사용한다. 복구는 100개씩
 처리하며 실패한 배치만 롤백하고 다시 호출해도 완료한 기록을 덮어쓰지 않는다.
 복구 호출자는 서비스의 독점 시작 권한을 가져야 한다. PostgreSQL Engine은 아래
-소유권을 획득한 뒤 독립 호출 이력과 미완료 작업을 복구한다. HTTP 실행 경로의 연결은 남아 있다.
+소유권을 획득한 뒤 독립 호출 이력과 미완료 작업을 복구한다. HTTP 서버도 같은 Engine 복구 경로를 사용한다.
 
 사용량·비용 요약은 같은 읽기 스냅샷에서 필요한 메타데이터만 서버 커서로 200개씩
 받는다. 전체 작업/메시지나 개인 질문/답변을 읽어 목록으로 만들지 않는다. 토큰 합계는
@@ -162,7 +192,7 @@ memory2MB 미만을 확인했다. DB 서버의 실행 계획/정렬 메모리, �
 blackhole·프록시·HA 환경의 전체 종료 시간은 미검수다. 활성 보고서의 공유 transaction
 gate는 소유 세션을 종료해도 반환/교체를 막고, 보고서를 닫은 다음 교체할 수 있다.
 조회는 대상에 추가 HTTP 요청을 보내지 않는다. HTTP 앱은 이 저장소 중립 보고서
-경로를 호출하지만 PostgreSQL backend 선택 자체는 아직 활성화하지 않았다.
+경로를 호출하며 PostgreSQL backend 선택에서도 같은 보고서를 사용한다.
 
 관리자 감사 검증의 `AuditReview`는 저장소를 받아 SQLite 또는 네이티브 PostgreSQL의
 읽기 전용 경로를 사용한다. PostgreSQL 검증은 같은 read-only REPEATABLE READ
@@ -181,7 +211,7 @@ pg_sleep 중 취소와 다음 검증 재시도, 동시 감사 추가의 스냅�
 단일 대형 이벤트·외부 체크포인트 수집 자동화의 전체 운영 검증을 뜻하지 않는다.
 검증 응답 자체는 서명/승인 증명이 아니며 신뢰할 외부 체크포인트 보관은 별도다.
 HTTP 앱의 관리자 감사 경로는 이 저장소 중립 검증기를 사용하나 PostgreSQL HTTP
-서비스 선택·전체 인증/운영 검수는 아직 남아 있다. 감사 CLI는 여전히 SQLite 경로다.
+서비스 선택은 구현했고 전체 인증/운영 조합의 검수는 아직 남아 있다. 감사 CLI는 여전히 SQLite 경로다.
 
 ScopeSentry의 파일/설정된 원본 조회 미리보기와 선택 반영도 네이티브 PostgreSQL
 트랜잭션을 사용한다. 저장소별 명시적 질의로 자산 URL 최대2개/출처/미리보기를
@@ -203,7 +233,7 @@ HTTP/JSON parser의 기존100행·UTF-8 1MiB·사용자 소유/권한 확인은 
 JWT 회전/다중 프로세스의 전체 운영 검수는 남아 있다. 미리보기 shape가 서비스가
 생성하는 정상 계약이라는 전제이며 임의 손상 JSON 필드의 SQLite 질의 의미까지
 일치함을 보장하지 않는다. 가져오기 HTTP 경로 자체는 공유 구현을 쓰지만 전체
-PostgreSQL HTTP 저장소 선택/권한/재시작 검수는 아직 활성화하지 않았다.
+PostgreSQL HTTP 저장소 선택/기본 권한/정상 재시작을 검수했으며 전체 운영 검수는 남아 있다.
 
 레코드는 원문 TEXT로 저장하고 검색/관계 연산만 jsonb로 투영한다. 검색 문자열은
 바인딩하고 `%`와 `_`도 문자 그대로 검색한다. JSON 객체의 원문 바이트 보존을 검증한
@@ -221,13 +251,14 @@ PostgreSQL HTTP 저장소 선택/권한/재시작 검수는 아직 활성화하�
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py tests/test_postgres_http.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된
 PostgresStore로 읽기/쓰기·권한 변경 세션 폐기를 수행한 다음 실제 덤프/복구와
-SQLite 반환의 행/감사 해시를 비교한다. HTTP PostgreSQL 실행, 운영 서버 재시작,
-운영 백업/복구와 전체 서비스의 소유권/종료/오류 응답 검수는 후속 필수 작업이다.
+SQLite 반환의 행/감사 해시를 비교한다. 설치된 PostgreSQL HTTP 서버의 인증·질의·
+보고서·대화·승인 대기 계획과 정상 종료도 검수한다. 전체 서비스의 운영 백업/복구·
+장애/종료/오류/부하 응답 조합 검수는 후속 필수 작업이다.
 
 ## 실행 소유권과 연결 상실
 

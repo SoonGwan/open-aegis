@@ -7,8 +7,7 @@ from .store_util import now
 def summarize_task(store, task_id, content):
     # An insertion watermark is insufficient: concurrent updates to existing rows
     # must not mix a task state from one moment with findings from another.
-    with store.connect() as db:
-        db.execute('BEGIN')
+    with store.read_transaction() as db:
         task = store.get('tasks', task_id, connection=db)
         if task is None:
             return None

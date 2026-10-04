@@ -25,10 +25,10 @@ from .engine import Engine
 from .network import in_scope, normalize_url
 from .store import Store, identifier, now, compact_finding, MessageRequestConflict
 from .auth import password_hash, public_user, new_user
-from .maintenance import WorkspaceLease
+from .maintenance import WorkspaceLease, WorkspaceBusy
 from .migrations import SCHEMA_VERSION
 from .http_limits import BodyLimitMiddleware
-from .coverage import planned_slots, task_rows, iter_task_rows, latest_summary
+from .coverage import planned_slots, task_rows, iter_task_rows
 from .graph import build_graph, GraphNotFound
 from .findings import update_triage, TriageConflict
 from .runtime import ExecutionPolicy
@@ -44,6 +44,7 @@ from .conversation import summarize_task
 from . import conversation_ai, call_ledger
 from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
+from .http_queries import SQLiteHTTP,PostgresHTTP
 
 
 class Credentials(BaseModel):
@@ -185,24 +186,40 @@ class PasswordReset(BaseModel):
 def create_app(data_dir=None, allow_private=None):
     policy = ExecutionPolicy.from_env()
     exports = ExportPool(ExportPolicy.from_env())
-    folder = Path(data_dir or os.environ.get('AEGIS_DATA_DIR', 'data'))
-    lease = WorkspaceLease(folder)
-    try:
-        store = Store(folder / 'aegis.db')
-        call_ledger.recover(store)
-    except BaseException:
-        lease.close()
-        raise
+    backend=os.environ.get('AEGIS_STORAGE_BACKEND','sqlite')
+    if backend not in ('sqlite','postgres'):
+        raise ValueError('AEGIS_STORAGE_BACKEND는 sqlite 또는 postgres여야 합니다.')
+    lease=None;engine=None
     private = allow_private if allow_private is not None else os.environ.get('AEGIS_LAB_MODE') == '1'
+    native_errors=(WorkspaceBusy,)
+    user_conflicts=(sqlite3.IntegrityError,)
+    try:
+        if backend=='postgres':
+            from .postgres_store import PostgresStore
+            from .postgres_transfer import driver
+            store=PostgresStore(os.environ.get('AEGIS_POSTGRES_DSN',''),os.environ.get('AEGIS_POSTGRES_SCHEMA',''))
+            native_errors=(WorkspaceBusy,driver()[0].Error)
+            user_conflicts=(driver()[0].IntegrityError,)
+        else:
+            folder = Path(data_dir or os.environ.get('AEGIS_DATA_DIR', 'data'))
+            lease = WorkspaceLease(folder)
+            store = Store(folder / 'aegis.db')
+            call_ledger.recover(store)
+        engine = Engine(store, private, policy=policy)
+    except BaseException as exc:
+        if lease:lease.close()
+        if backend=='postgres' and isinstance(exc,Exception) and not isinstance(exc,WorkspaceBusy):
+            raise RuntimeError('PostgreSQL 저장소를 시작하지 못했습니다. 연결·스키마·형식을 확인하세요.') from None
+        raise
+    queries=PostgresHTTP(store) if backend=='postgres' else SQLiteHTTP(store)
     audit_review = AuditReview(store)
-    engine = Engine(store, private, policy=policy)
     scheduler_stop = threading.Event()
     shutdown_requested = threading.Event()
     try:
         source_connections = Sources.from_env(store, shutdown_requested)
     except BaseException:
         engine.shutdown()
-        lease.close()
+        if lease:lease.close()
         raise
     auth_lock = threading.Lock()
     chat_lock = threading.Lock()
@@ -219,20 +236,17 @@ def create_app(data_dir=None, allow_private=None):
         if any(a.get('archived_at') for a in assets):
             raise HTTPException(409, '보관된 자산은 검증할 수 없습니다. 먼저 복원하세요.')
         if retry_of:
-            with store.connect() as db:
-                row = db.execute("SELECT data FROM records WHERE kind='tasks' AND json_extract(data,'$.retry_of')=? AND json_extract(data,'$.status') IN ('pending','queued','running','stopping') LIMIT 1", (retry_of,)).fetchone()
-                if row:return json.loads(row['data'])
+            related=queries.active_related_task('retry_of',retry_of)
+            if related:return related
         triage_revision = None
         if retest_of:
             finding = store.get('findings', retest_of)
             if not finding:
                 raise HTTPException(404, '발견 사항이 없습니다.')
-            with store.connect() as db:
-                row = db.execute("SELECT data FROM records WHERE kind='tasks' AND json_extract(data,'$.retest_of')=? AND id!=? AND json_extract(data,'$.status') IN ('pending','queued','running','stopping') LIMIT 1", (retest_of, replacing['id'] if replacing else '')).fetchone()
-                if row:
-                    if replacing:
-                        raise HTTPException(409, '같은 발견의 다른 재검증 계획이 진행 중입니다.')
-                    return json.loads(row['data'])
+            related=queries.active_related_task('retest_of',retest_of,replacing['id'] if replacing else '')
+            if related:
+                if replacing:raise HTTPException(409, '같은 발견의 다른 재검증 계획이 진행 중입니다.')
+                return related
             triage_revision = finding.get('triage_revision', 1)
         if store.count('tasks', statuses=['pending','queued','running','stopping']) - (1 if replacing else 0) >= engine.policy.pending_limit:
             raise HTTPException(409, f'대기·실행 작업 한도({engine.policy.pending_limit}개)를 초과했습니다.')
@@ -258,15 +272,22 @@ def create_app(data_dir=None, allow_private=None):
 
     def scheduler():
         while not scheduler_stop.wait(5) and not shutdown_requested.is_set():
-            with store.lock:
-                for schedule in store.due_schedules(now()):
-                    # Scheduled tasks also require explicit approval; never silently widen authorization.
-                    try:
-                        create_task(TaskInput(**schedule['task']), schedule_id=schedule['id'])
-                        store.patch('schedules', schedule['id'], next_at=now() + schedule['interval_hours'] * 3600, last_at=now())
-                    except Exception:
-                        store.patch('schedules', schedule['id'], next_at=now() + 300)
-                        store.event(None, '예약 작업을 생성하지 못했습니다. 5분 후 다시 시도합니다.', 'warning')
+            try:
+                with store.lock:
+                    for schedule in store.due_schedules(now()):
+                        # Scheduled tasks also require explicit approval; never silently widen authorization.
+                        try:
+                            create_task(TaskInput(**schedule['task']), schedule_id=schedule['id'])
+                            store.patch('schedules', schedule['id'], next_at=now() + schedule['interval_hours'] * 3600, last_at=now())
+                        except Exception:
+                            store.patch('schedules', schedule['id'], next_at=now() + 300)
+                            store.event(None, '예약 작업을 생성하지 못했습니다. 5분 후 다시 시도합니다.', 'warning')
+            except WorkspaceBusy:
+                shutdown_requested.set()
+                return
+            except native_errors:
+                # Retry a transient read failure without exposing SQL/credentials.
+                continue
 
     @asynccontextmanager
     async def lifespan(app):
@@ -280,7 +301,7 @@ def create_app(data_dir=None, allow_private=None):
             try:
                 await asyncio.to_thread(engine.shutdown)
             finally:
-                lease.close()
+                if lease:lease.close()
 
     app = FastAPI(title='Open Aegis', version=__version__, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
@@ -308,12 +329,16 @@ def create_app(data_dir=None, allow_private=None):
             source = request.headers.get('origin')
             if source and (urlsplit(source).netloc != request.headers.get('host') or urlsplit(source).scheme != request.url.scheme):
                 return JSONResponse({'detail': '다른 출처의 변경 요청은 허용하지 않습니다.'}, status_code=403)
-        actor = store.session_user(request.cookies.get('aegis_session', ''))
-        response = await call_next(request)
-        # Audit verification is a read-only POST (optional checkpoint body). It must
-        # work on a damaged chain and must not mutate the snapshot it just reviewed.
-        if actor and request.method not in ('GET', 'HEAD', 'OPTIONS') and request.url.path.startswith('/api/') and request.url.path != '/api/audit/verify':
-            store.event(None, '사용자 변경 요청', detail={'actor_id': actor['id'], 'username': actor['username'], 'role': actor['role'], 'method': request.method, 'path': request.url.path, 'status': response.status_code})
+        try:
+            if backend=='postgres' and engine.closed:
+                raise WorkspaceBusy('실행 소유권이 종료되었습니다.')
+            actor = await asyncio.to_thread(store.session_user,request.cookies.get('aegis_session', ''))
+            response = await call_next(request)
+            # Audit verification is readonly and must work on a damaged chain.
+            if actor and request.method not in ('GET', 'HEAD', 'OPTIONS') and request.url.path.startswith('/api/') and request.url.path != '/api/audit/verify':
+                await asyncio.to_thread(store.event,None,'사용자 변경 요청',detail={'actor_id': actor['id'], 'username': actor['username'], 'role': actor['role'], 'method': request.method, 'path': request.url.path, 'status': response.status_code})
+        except native_errors:
+            response=JSONResponse({'detail':'저장소 연결 또는 실행 소유권을 확인할 수 없습니다. 서버 상태를 확인하세요.'},status_code=503)
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'no-referrer'
@@ -425,7 +450,7 @@ def create_app(data_dir=None, allow_private=None):
                 raise HTTPException(409, '사용자 한도(100명)를 초과했습니다.')
             try:
                 return public_user(store.add_user(new_user(data.username.lower(), data.name, data.role, data.password)))
-            except sqlite3.IntegrityError as exc:
+            except user_conflicts as exc:
                 raise HTTPException(409, '이미 등록된 사용자 이름입니다.') from exc
 
     @app.patch('/api/users/{user_id}', dependencies=admins)
@@ -458,9 +483,7 @@ def create_app(data_dir=None, allow_private=None):
         tasks, findings = store.page('tasks', limit=100)['items'], store.page('findings', limit=100, compact_findings=True)['items']
         assets = store.page('assets', archived=False, limit=100)['items']
         coverage = store.page('coverage', limit=100)['items']
-        with store.connect() as db:
-            summary = latest_summary(db)
-            severity_counts = {f'findings_{row[0]}': row[1] for row in db.execute("SELECT json_extract(data,'$.severity'),count(*) FROM records WHERE kind='findings' AND json_extract(data,'$.status')='open' GROUP BY json_extract(data,'$.severity')")}
+        summary,severity_counts=queries.overview_summary()
         return {'assets': assets, 'tasks': tasks, 'findings': findings, 'coverage': coverage,
                 'coverage_summary': {k: v for k, v in summary.items() if k != 'assets'},
                 'observations': store.page('observations', limit=100)['items'], 'events': store.recent_events(),
@@ -819,12 +842,7 @@ def create_app(data_dir=None, allow_private=None):
     @app.get('/api/assignees', dependencies=auth)
     def assignees(search: str = Query('', max_length=100), limit: int = Query(25, ge=1, le=100),
                   offset: int = Query(0, ge=0, le=10_000_000)):
-        with store.connect() as db:
-            db.execute('BEGIN')
-            where = "disabled=0 AND role IN ('admin','operator') AND instr(lower(name||' '||username),lower(?))>0"
-            total = db.execute('SELECT count(*) FROM users WHERE ' + where, (search,)).fetchone()[0]
-            items = [dict(row) for row in db.execute('SELECT id,name,username,role FROM users WHERE ' + where + ' ORDER BY name,id LIMIT ? OFFSET ?', (search, limit, offset))]
-        return {'items': items, 'total': total, 'limit': limit, 'offset': offset, 'has_more': offset + len(items) < total}
+        return queries.assignees(search,limit,offset)
 
     @app.get('/api/findings/{finding_id}/history', dependencies=auth)
     def finding_history(finding_id: str, limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
@@ -908,7 +926,7 @@ def create_app(data_dir=None, allow_private=None):
 
     @app.get('/api/settings', dependencies=auth)
     def settings():
-        return {'version': __version__, 'schema_version': SCHEMA_VERSION, 'storage': 'sqlite', 'lab_mode': private,
+        return {'version': __version__, 'schema_version': SCHEMA_VERSION, 'storage': backend, 'lab_mode': private,
                 'tool_contracts': contracts_for([item['id'] for item in CATALOG]),
                 'llm_configured': bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL')),
                 'llm_model': os.environ.get('AEGIS_LLM_MODEL', ''), 'request_budget': engine.policy.request_budget, 'max_workers': 4,
@@ -930,8 +948,7 @@ def create_app(data_dir=None, allow_private=None):
     def delete_note(note_id: str):
         if not store.get('notes', note_id):
             raise HTTPException(404, '노트가 없습니다.')
-        with store.lock, store.connect() as db:
-            db.execute('DELETE FROM records WHERE kind=? AND id=?', ('notes', note_id))
+        queries.delete_note(note_id)
         return {'ok': True}
 
     @app.get('/api/schedules', dependencies=auth)

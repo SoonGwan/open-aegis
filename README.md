@@ -242,8 +242,9 @@ DNS pinning, 비밀정보 비저장, 수정 전후 재검증, 오류 시 판정 
 Linux/macOS에서 실행하며 Windows는 WSL 또는 컨테이너를 사용하세요.
 [운영·복구 안내](docs/OPERATIONS.md)를 참고하세요.
 
-현재 단일 워크스페이스·단일 프로세스·SQLite 구성입니다. 역할별 권한은 지원하지만
-고객사별 데이터 격리, PostgreSQL, 여러 서버 인스턴스는 아직 지원하지 않습니다.
+현재 단일 워크스페이스·단일 프로세스 구성이며 기본 저장소는 SQLite입니다. 역할별 권한은 지원하지만
+고객사별 데이터 격리와 여러 서버 인스턴스는 아직 지원하지 않습니다. PostgreSQL HTTP 선택 실행은
+구현했으며 운영 복구·업그레이드·전체 부하 검수는 진행 중입니다.
 외부 보안 감사도 수행되지 않았습니다.
 [보안 정책](SECURITY.md), [위협 모델](docs/THREAT-MODEL.md), [아키텍처](docs/ARCHITECTURE.md),
 [기여 가이드](CONTRIBUTING.md)를 참고하세요.
@@ -287,7 +288,8 @@ origin별 요청 속도·동시 수, DNS/HTTP/작업/대기열 시간 제한, �
 [보고서 문서](docs/REPORTS.md)에 정리했습니다.
 
 SQLite와 새 PostgreSQL 스키마 사이의 검증된 오프라인 데이터 전송은
-`aegis-transfer-storage`로 수행합니다. 현재 HTTP 서비스는 SQLite로 실행하며
-PostgreSQL 네이티브 Store의 저장·검색·계정/세션·감사 트랜잭션은 구현했지만,
-Engine의 실행 소유권·연결 상실 차단을 구현했고 HTTP 서비스 경로와 운영 복구 연결은 개발 중입니다.
+`aegis-transfer-storage`로 수행합니다. 기본 HTTP 서비스는 SQLite이며,
+`AEGIS_STORAGE_BACKEND=postgres`와 DSN/schema 설정으로 준비된 PostgreSQL 저장소를 선택합니다.
+네이티브 HTTP 인증·승인 실행·보고서·가져오기·정상 재시작과 실행 소유권/연결 상실 차단을 검수했습니다.
+전체 운영 복구·스키마 업그레이드·장시간 부하 검수는 진행 중입니다.
 [저장소·전송 계약](docs/POSTGRES-STORAGE.md)을 확인하세요.

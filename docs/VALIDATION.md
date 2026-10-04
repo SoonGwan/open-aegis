@@ -3064,3 +3064,66 @@ on 390×844 has no document overflow.
   existing Starlette/httpx warning (`artifacts/postgres-import-backend-final.txt`).
 - Owned preview completed normal shutdown before restarting current code on8790
   (PID33670/session28978); `/api/health` and root HTTP200. Existing workspace retained.
+
+
+### Configured PostgreSQL HTTP app and lifecycle
+
+- HTTP server now selects SQLite by default or explicitly configured PostgreSQL
+  via AEGIS_STORAGE_BACKEND, AEGIS_POSTGRES_DSN and AEGIS_POSTGRES_SCHEMA. Only a
+  prepared supported schema is accepted; invalid backend/config/schema refuses
+  without SQLite fallback or creating a local data directory. Native Engine
+  acquires ownership before recovery. Duplicate app startup cannot recover a live
+  task. Source configuration failure shuts Engine down and releases ownership.
+  Native normal restart preserves sessions and interrupts unfinished task/call
+  records without inventing lost outcomes. SQLite Engine startup failure now also
+  releases its workspace lease.
+- Replaced remaining inline HTTP SQLite operations with explicit named native/
+  SQLite queries: active retry/retest lookup, coverage/severity overview, bounded
+  literal assignee search and note deletion. Existing user-name constraint errors
+  map to409 for either backend. Settings report the selected backend. Conversation
+  summaries use Store read_transaction so task/findings/coverage/proofs share the
+  native snapshot. Middleware database lookups and audit appends run in threadpool;
+  native database/ownership errors return generic no-store503. Scheduler handles
+  ownership refusal without issuing replacement writes or exposing SQL.
+- Actual HTTP PostgreSQL tests cover fresh-schema setup, roles, duplicate users,
+  ASCII-only search parity, notes, imports, audit review, usage, session logout,
+  default policy, approval/no pre-approval target requests, actual owned lab
+  execution, grounded recorded conversation, failing/passing and inconclusive
+  retest, report secret redaction, rejected plans and atomic asset import. Restart
+  retains cookie/note and recovers a running task and started call; duplicate
+  startup is refused before recovery. Actual dedicated backend termination yields
+  no-store503 on health/read/write. Startup config failures release ownership.
+- Initial native HTTP run had3 failures/8 passes: two exposed conversation's old
+  SQLite-only connection, which was replaced with the shared read transaction.
+  The third came from the role fixture starting/stopping the same app lifespan
+  twice; separate clients now share one running lifespan and have separate cookies.
+  Final native HTTP+SQLite conversation subset: **26 passed in10.67s**
+  (`artifacts/postgres-http-targeted-final.txt`). Full backend with PG opt-in:
+  **542 passed in160.14s**, one existing Starlette/httpx warning
+  (`artifacts/postgres-http-backend-final.txt`). No UI changes or rebuild.
+- Wheel SHA256dcd8801f4c21d26f46e25ff854b2cefbd2b17fbc2f81b9a20a53a7590bf488ec
+  byte-matches all54 service Python files. Outside-checkout installed package starts
+  an actual native PostgreSQL HTTP server, checks authentication/operator role
+  denial/settings/overview/assignees/note add-delete/graph/report/conversation/
+  persisted pending plan/runtime/logout, stops cleanly and reads its final native
+  manifest before real dump/restore and session-aware SQLite return. Initial
+  review reached logout but called its POST-only route with GET; the script method
+  fix and fresh full rerun pass using the same wheel
+  (`artifacts/postgres-http-installed-review.json`,valid=true,target_requests=1,
+  owned_lab_requests=1,owned_source_requests=1,external_target_requests=0,
+  external_source_requests=0,service_postgres_backend_enabled=true).
+- Same wheel's default installed SQLite HTTP/auth/UI/import/maintenance/release
+  review passes (`artifacts/postgres-http-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove disposable servers, clusters and installations;
+  the failed review also terminated its server and cluster before retry. CI includes
+  native HTTP cases; hosted execution remains unverified. README/config/architecture/
+  operations/storage/readiness describe actual selection and separate SQLite CLI
+  contracts. Native API success is not native browser/mobile journey verification.
+- Complete v1 remains open: full native HTTP/auth/provider/SSE/scheduler failure and
+  load combinations, schema upgrade, live PostgreSQL backup/operational restore,
+  CLI/MCP native selection and broader product gates remain required. Remote DB
+  network blackhole/proxy/HA/power loss and resource SLO are unverified. No remote
+  publication or external target/provider/source request was performed.
+- Owned default SQLite preview completed normal shutdown before restarting
+  current code on8790 (PID61320/session26793); `/api/health` and root HTTP200.
+  Existing workspace retained; no user workspace migration was performed.

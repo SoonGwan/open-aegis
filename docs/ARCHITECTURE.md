@@ -3,7 +3,7 @@
 ```mermaid
 flowchart LR
   UI[React console] --> API[FastAPI / session auth]
-  API --> DB[(SQLite / WAL)]
+  API --> DB[(SQLite WAL or configured PostgreSQL)]
   API --> Gate[Task approval / scope snapshot]
   Gate --> Planner[Rules or optional LLM ordering]
   Planner --> Workers[1–4 Workers per task]
@@ -32,7 +32,7 @@ names or match booleans, never response values. See [API-POLICY.md](API-POLICY.m
 `aegis/scopesentry.py` independently parses reviewed asset NDJSON exports, stores bounded
 actor-bound preview records, and explicitly applies selected assets/source links. Source
 IDs and URL changes retain separate connection history without altering task snapshots.
-Its business writes and the import audit event share one SQLite write transaction; the
+Its business writes and the import audit event share one storage write transaction; the
 HTTP request audit remains separate. `scopesentry_remote.py` adds configured JWT read
 requests with pinned DNS/TLS, bounded pages, previous-boundary checks and atomic cached
 next-preview pointers. Source positional pagination is not a coherent snapshot. No automatic
@@ -75,7 +75,9 @@ selection and paginated detail views. It is not a complete attack graph; see [GR
 
 ## Operational limits
 
-One server process, shared workspace with admin/operator/viewer roles, SQLite WAL; no distributed scheduling or tenant isolation.
+One server process, shared workspace with admin/operator/viewer roles, SQLite WAL by default and explicit native PostgreSQL selection; no distributed scheduling or tenant isolation.
+PostgreSQL HTTP paths have representative owned DB/HTTP verification; full operational backup/restore,
+schema upgrade and network-fault/load verification remain open. See [storage contract](POSTGRES-STORAGE.md).
 Default task concurrency is 2, workers per task at most 4, target requests per
 asset 24 and HTTP timeout 8 seconds. Runtime policy controls the configurable
 limits; see [RUNTIME.md](RUNTIME.md). Stop is cooperative, not a forced

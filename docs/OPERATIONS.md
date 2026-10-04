@@ -2,9 +2,12 @@
 
 ## 지원 구성
 
-현재 Linux/macOS의 단일 서버 프로세스, 단일 공유 워크스페이스, SQLite WAL을
-사용한다. Windows는 WSL/컨테이너를 사용한다. PostgreSQL, 다중 인스턴스,
-고객사별 데이터 격리는 개발 중이다.
+현재 Linux/macOS의 단일 서버 프로세스, 단일 공유 워크스페이스를 사용한다.
+기본 저장소는 SQLite WAL이며 이 문서의 파일 백업/복구·스키마 업데이트·잠금 절차는
+SQLite용이다. 명시적 PostgreSQL HTTP 선택은 [별도 저장소 계약](POSTGRES-STORAGE.md)을
+따른다. PostgreSQL의 라이브 백업/전체 운영 복구·업그레이드 검수는 진행 중이며 아래
+SQLite CLI 절차가 PostgreSQL DB를 백업/복구하지 않는다. Windows는 WSL/컨테이너를
+사용한다. 다중 인스턴스·테넌트 분리 지원은 남아 있다.
 
 ## 사용자 권한
 
@@ -157,7 +160,8 @@ AEGIS_DATA_DIR=recovery-test AEGIS_PORT=8791 .venv/bin/python -m aegis
 손상/최신 스키마 거절, 한글·공백·물음표 경로, 복구 후 이전 세션 폐기,
 기존 비밀번호 로그인과 기록 복원, 마이그레이션 롤백을 검증한다.
 실습 DB를 백업해 별도 디렉터리로 복구하는 명령도 실행했다.
-PostgreSQL·컨테이너 볼륨·원격 스토리지·전원 차단 리허설은 아직 검증하지 않았다.
+PostgreSQL의 대표 HTTP 시작/종료·덤프 복구 후 SQLite 반환은 검수했다. 전체 PostgreSQL
+운영 복구·컨테이너 볼륨·원격 스토리지·전원 차단 리허설은 아직 검증하지 않았다.
 
 ## 요청 제한
 

@@ -20,7 +20,7 @@ if __name__ == '__main__':
         AegisServer(create_app(), host=os.environ.get('AEGIS_HOST', '127.0.0.1'),
                     port=int(os.environ.get('AEGIS_PORT', '8787')), log_level='info',
                     access_log=False, timeout_graceful_shutdown=5).run()
-    except WorkspaceBusy as exc:
+    except (WorkspaceBusy, RuntimeError, ValueError) as exc:
         raise SystemExit(str(exc))
     except KeyboardInterrupt:
         raise SystemExit(130)

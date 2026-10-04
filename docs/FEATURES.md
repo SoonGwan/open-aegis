@@ -41,7 +41,7 @@ Open Aegis는 독립 구현입니다. 아래의 ‘구현’은 해당 기능의
 | 설정·인증 | 구현 | 관리자·운영자·조회자, 세션 폐기, 사용자·비밀번호 관리, 테스트 인증정보는 환경변수 |
 | Docker·백업 | 구현·실행 일부 미검증 | Docker 파일 제공, SQLite 백업 검증·오프라인 복구·세션 폐기 |
 | 원클릭 업데이트·롤백 | 일부 구현 | Ed25519 릴리스·해시 검증, 오프라인 백업·스키마/실행 상태 점검, SQLite 복구; 독립된 두 0.1.0 설치본의 서비스 전환/시작 실패/이전 프로세스 복구 리허설; 자동 업데이트·다른 스키마/설정 전환 없음 |
-| PostgreSQL·다중 테넌트 | 실행 기반 일부 구현 | HTTP 서비스는 SQLite·단일 공유 워크스페이스; PostgreSQL 네이티브 Store·호출 이력/사용량·Engine/발견 조치·실행 소유권/연결 상실 차단·관계 그래프·보고서 streaming·관리자 감사 검증·ScopeSentry 원자적 가져오기와 SQLite2↔PostgreSQL 오프라인 전송·덤프/복구·세션 제외 반환 검수([계약](POSTGRES-STORAGE.md)); PostgreSQL HTTP 서비스/운영 복구·다중 테넌트는 미구현, RBAC는 구현 |
+| PostgreSQL·다중 테넌트 | 실행 기반 일부 구현 | HTTP 서비스 기본 SQLite·명시적 PostgreSQL 선택·단일 공유 워크스페이스; PostgreSQL 네이티브 Store·호출 이력/사용량·Engine/발견 조치·실행 소유권/연결 상실 차단·관계 그래프·보고서 streaming·관리자 감사 검증·ScopeSentry 원자적 가져오기와 SQLite2↔PostgreSQL 오프라인 전송·덤프/복구·세션 제외 반환 검수([계약](POSTGRES-STORAGE.md)); PostgreSQL 대표 HTTP 실행/인증/재시작 검수, 전체 운영 복구·다중 테넌트는 미구현, RBAC는 구현 |
 | 임의 Bash·자율 취약점 악용 체인 | 범위에서 제외 | 검토된 읽기 전용 검증 도구만 실행 |
 
 ## 다음 개발 우선순위
