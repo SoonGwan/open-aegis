@@ -3762,3 +3762,56 @@ on 390×844 has no document overflow.
 - Adaptive repeated Planner, observed URL consumption, shared to-do, full process
   search UI and remaining v1 gates stay open. Historical API-only editor limitation
   in the preceding validation entry is superseded by this entry.
+
+## Evidence-based next-plan HTTP contract — 2026-10-05
+
+- Added readonly follow-up proposals from approved terminal task coverage, and
+  operator/admin acceptance creating a fresh pending plan. Original assets and
+  Worker dependencies remain declared; current scope/policy/tool contracts are
+  exposed for review. Completed compatible cells are omitted, failed/missing/stale
+  cells and never-selected built-in checks are proposed. Skips remain disclosed.
+  Whole-task tool selection can repeat other assets' completed cells; IDs are
+  explicitly listed. No observed URL or external tool is added.
+- Read snapshot follows at most8 predecessor rounds, verifies reciprocal lineage
+  and takes latest asset/check evidence across rounds. This prevents alternating
+  missing-check proposals. Changed asset revisions or tool contracts make old
+  completion stale. At most8 follow-ups; no candidate after all attempted cells
+  are completed/skipped and no retry candidates. This does not prove security.
+- Acceptance compares source/effective coverage/current assets/contracts/policy
+  fingerprint under engine/store locks. Source pointer, pending task and coverage
+  commit together. Concurrent clicks and later retries return one same task, even
+  after it finishes. Changed proposals refuse409; pending/unapproved/missing/
+  archived/corrupt lineage and insufficient roles refuse without target execution.
+- Owned real HTTP tests run on SQLite and native PostgreSQL: actual approved
+  initial task, pending follow-up with no new requests, approved next round, then
+  no remaining candidate; dependency retention/repeated-cell disclosure, revision/
+  source-contract/policy changes, viewer/operator/administrator boundaries and
+  bounded synthetic eight-round failure loop. Forced SQL trigger failures on both
+  databases preserve source and create no child/coverage. Initial native rollback
+  assertion expected an exception; the app intentionally translates native DB
+  errors to503. Corrected assertion confirms503 and rollback. Preliminary targeted
+  run25passed/1failed is preserved (`artifacts/next-plan-targeted-first.txt`).
+- Initial full native-enabled backend701passed224.72s (`...backend-first.txt`),
+  then added source-tool-contract compatibility and two tests. Final frozen source
+  full backend703passed226.37s, no skips, one existing Starlette/httpx warning
+  (`...backend-final.txt`). Frontend source/assets unchanged this turn: previous
+  73 tests/build/visual review are historical, not rerun UI QA.
+- Final wheel SHA256cbd1b6c235ecfecb88b7198edb5b50c5696021346da42f0a7a4383635f92de9d
+  matches all64 service Python files (`...final-source-proof.json`). Installed
+  native reviewer initially refused the synthetic legacy asset lacking explicit
+  authorized=true; fixed owned fixture rather than weakening the contract.
+  Failure preserved in `...installed-postgres-first.stderr`. Final installed
+  native HTTP verifies proposal, idempotent pending creation, not_started coverage,
+  already_accepted state and backup/restore retaining exact linked pending task.
+  Existing installed maintenance/MCP/audit/source/release/return checks also pass.
+  Total owned target requests remain3 (/, /, /dependency-only), source POST1,
+  external targets/sources0 (`...installed-postgres.json`, valid=true). No added
+  target request for follow-up proposal/acceptance. Default installed runtime also
+  valid with target_requests0 (`...installed-runtime.json`). Both runners terminal0,
+  stderr empty and owned temporary installations/clusters removed.
+- Preview gracefully restarted on final service source; health/UI200 with existing
+  JSindex-Jx91yrBi (`...preview-health.json`). CI native matrix includes new tests;
+  hosted CI/container execution remains unverified. Contract [NEXT-PLAN.md](NEXT-PLAN.md).
+  Dedicated proposal UI, replacement/retry interactions across planning rounds,
+  event-driven automatic Planner, semantic goal/observation consumption, shared
+  to-do and full v1 remain open.

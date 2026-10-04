@@ -46,7 +46,7 @@ from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
 from .http_queries import SQLiteHTTP,PostgresHTTP
 from .worker_observations import task_page as observation_page
-from . import worker_process, worker_dependencies
+from . import worker_process, worker_dependencies, next_plan
 
 
 class Credentials(BaseModel):
@@ -88,6 +88,10 @@ class AssetInput(BaseModel):
             if not in_scope(urljoin(self.url, rule.path), self.url):
                 raise ValueError('권한 규칙이 자산 범위를 벗어났습니다.')
         return self
+
+
+class NextPlanInput(BaseModel):
+    fingerprint: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class TaskInput(BaseModel):
@@ -237,7 +241,7 @@ def create_app(data_dir=None, allow_private=None):
         with store.lock:
             return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
@@ -263,7 +267,14 @@ def create_app(data_dir=None, allow_private=None):
                     scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id,
                     retest_triage_revision=triage_revision, retry_of=retry_of, execution_policy=engine.policy.public(),
                     tool_contracts=contracts_for(data.checks), replan_of=replacing['id'] if replacing else None)
+        if followup:
+            source, proposal = followup
+            task.update(followup_of=source['id'], followup_fingerprint=proposal['fingerprint'],
+                        planning_round=proposal['planning_round'])
         records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]
+        if followup:
+            records.append(('tasks', {**source, 'next_plan_id': task['id'],
+                                      'next_plan_fingerprint': proposal['fingerprint']}))
         if replacing:
             records.append(('tasks', {**replacing, 'status': 'rejected', 'finished_at': now(),
                                      'replaced_by': task['id'], 'termination_reason': 'replanned'}))
@@ -748,6 +759,37 @@ def create_app(data_dir=None, allow_private=None):
                 raise HTTPException(409,'실패·중단·중지된 작업만 새 계획으로 다시 실행할 수 있습니다.')
             data=TaskInput(**{**original,'name':('재실행 · '+original['name'])[:120]})
             return create_task_locked(data,retest_of=original.get('retest_of'),retry_of=task_id)
+
+    @app.get('/api/tasks/{task_id}/next-plan', dependencies=auth)
+    def get_next_plan(task_id: str):
+        try:return next_plan.propose(store, task_id, engine.policy.public())
+        except LookupError as exc:raise HTTPException(404, str(exc)) from exc
+        except next_plan.NextPlanConflict as exc:raise HTTPException(409, str(exc)) from exc
+
+    @app.post('/api/tasks/{task_id}/next-plan', dependencies=operations)
+    def accept_next_plan(task_id: str, data: NextPlanInput):
+        with engine.lock, store.lock:
+            if engine.closed:
+                raise HTTPException(409, '서버가 종료 중입니다.')
+            original = store.get('tasks', task_id)
+            if not original:raise HTTPException(404, '작업이 없습니다.')
+            if original.get('id') != task_id:
+                raise HTTPException(409, '저장 키와 작업 ID가 일치하지 않습니다.')
+            if original.get('next_plan_id'):
+                replacement = store.get('tasks', original['next_plan_id'])
+                if (not replacement or replacement.get('id') != original['next_plan_id']
+                        or replacement.get('followup_of') != task_id
+                        or replacement.get('followup_fingerprint') != data.fingerprint
+                        or original.get('next_plan_fingerprint') != data.fingerprint):
+                    raise HTTPException(409, '이미 반영된 다음 계획과 요청이 일치하지 않습니다.')
+                return replacement
+            try:proposal = next_plan.propose(store, task_id, engine.policy.public())
+            except next_plan.NextPlanConflict as exc:raise HTTPException(409, str(exc)) from exc
+            if not proposal['available']:
+                raise HTTPException(409, '제안할 다음 계획이 없거나 회차 한도에 도달했습니다.')
+            if not hmac.compare_digest(proposal['fingerprint'], data.fingerprint):
+                raise HTTPException(409, '결과·자산·실행 정책이 변경되었습니다. 다음 계획을 다시 확인하세요.')
+            return create_task_locked(TaskInput(**proposal['task']), followup=(original, proposal))
 
     @app.post('/api/tasks/{task_id}/replan', dependencies=operations)
     def replan_task(task_id: str):
