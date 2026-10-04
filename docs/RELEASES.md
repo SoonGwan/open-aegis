@@ -85,5 +85,32 @@ aegis-restore --source before-update/before-update.db --destination data/aegis.d
 백업 시점 이후의 변경이므로 복구 시 사라질 수 있다. 운영 업데이트는 사전 공지·
 중지 구간과 데이터 보존 요구에 맞춰 계획해야 한다.
 
-실제 새/이전 버전 간 설치·서비스 전환, 장애 주입, 컨테이너/볼륨, 공식 키의
-서명 릴리스·공개 배포 리허설은 전체 v1 출시 조건으로 남아 있다.
+## 설치본 전환·시작 실패 리허설
+
+`scripts/review_release_transition.py`는 다른 두 wheel을 체크아웃 밖의 독립된
+가상환경에 설치한다. 각 wheel과 UI·잠금 파일을 임시 키로 서명/검증하고, 이전
+서버에서 만든 합성 자산·승인 대기 작업·노트를 새 서버가 읽는지 실제 HTTP로
+확인한다. 대상 URL에는 요청하지 않는다.
+
+```sh
+.venv/bin/python scripts/review_release_transition.py \
+  --old-wheel artifacts/conversation-ai-wheel/open_aegis-0.1.0-py3-none-any.whl \
+  --new-wheel artifacts/release-wheel/open_aegis-0.1.0-py3-none-any.whl \
+  --web-dir web/dist --runtime-lock requirements.lock \
+  --old-revision 4a0717e58eb250d07588454de9607f59b0835034 \
+  --new-revision 809a88cf95ead0f4307a2bcb9bbee7544ff453a9
+```
+
+새 서버의 정상 시작/기록 후 종료도 확인한다. 그 다음 앱의 원래 startup과 DB
+기록 후, 준비 완료 전에 합성 예외를 주입한다. 실패 프로세스의 종료·HTTP 미제공·
+워크스페이스 잠금 해제를 확인하고 이전 설치본의 복구 CLI로 사전 백업을 복원한다.
+보존된 이전 UI/설정과 프로세스로 재시작하여 이전 쿠키 거절, 비밀번호 재로그인,
+백업 시점 기록 보존, 이후 정상 기록과 실패 시작 기록 제거, 감사 연결과 종료를 검사한다.
+모든 설치·데이터·서명 키는 임시 공간에 있으며 기존 워크스페이스를 변경하지 않는다.
+
+현재 확인한 두 wheel은 서로 다른 코드지만 **모두 버전 0.1.0·스키마 2**이며
+같은 UI 입력·의존성 잠금·공통 설정을 사용한다. 이것은 실제 설치본/프로세스 전환과
+시작 실패의 복구 근거다. 다른 버전/스키마의 마이그레이션, 설정 변경의 호환성,
+UI 기능 변경의 호환성, 자동 서비스 관리자 전환을 검증한 것은 아니다.
+revision 입력과 wheel 소스의 동일성도 이 스크립트가 자동 증명하지 않는다.
+컨테이너/볼륨, 공식 키의 서명 릴리스·공개 배포와 이 나머지 검증은 v1 조건으로 남아 있다.

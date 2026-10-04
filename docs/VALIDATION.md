@@ -2362,3 +2362,36 @@ on 390×844 has no document overflow.
   configuration switching, failure injection across real upgrades, Docker volumes,
   CI/public publication and the whole v1 release gate remain open. No existing main
   workspace was restored or deployed in this review.
+
+## Installed artifact transition and startup-failure recovery — 2026-10-04
+
+- `scripts/review_release_transition.py` installs two distinct real wheels into
+  separate fresh environments outside the checkout with locked dependencies and
+  `pip check`. Old artifact revision 4a0717e58eb250d07588454de9607f59b0835034,
+  SHA256 58300c24aea7b1d1bddadbb30c13ad272bd489ec7700d0e4e7a1e4dc27211af1;
+  new revision 809a88cf95ead0f4307a2bcb9bbee7544ff453a9, SHA256
+  b105c8c3d814ed47ec60ba62076702a097f6ab8c5bb91df31091ac51c3c7a0aa.
+  Each wheel/UI/lock bundle is signed and verified with a separately supplied
+  ephemeral public key. Private signing key is removed before server review.
+- Actual HTTP old startup creates synthetic asset, pending unapproved task and
+  note; offline signed preflight backs up the DB; new installed server reads the
+  original records, serves its separate copied UI, writes a note, verifies audit,
+  then shuts down. Its next startup runs original app startup, writes a distinct
+  note and raises an injected exception before readiness. The child must exit
+  unsuccessfully, stop serving health, and release the workspace lease.
+- Old installed restore CLI restores the backup, revokes sessions and preserves
+  the pre-restore DB. Retained old signed artifacts are verified again. Old runtime
+  and retained UI/configuration restart; actual HTTP rejects the old cookie and
+  permits password login. Original asset/task/note survive, both later notes are
+  absent, audit is verified and target request count remains zero. All successful
+  processes finish original lifespan cleanup and release their leases.
+- Initial and final rehearsals pass. Final machine-readable evidence:
+  `artifacts/release-transition-review.json`, valid=true, target_requests=0,
+  four process-stage outcomes. Only the review script and docs changed; production
+  service/UI remain the previously verified artifacts, so full suites/build were
+  not repeated. `py_compile` and `git diff --check` pass.
+- Both wheels are **0.1.0/schema 2**, sharing UI input, lock and common settings.
+  This proves distinct installed-artifact/process switching and controlled startup
+  failure recovery, not migration across released versions/schemas or configuration
+  and UI changes. Signing authority is rehearsal-only. No automatic service manager,
+  Docker, publication or existing-workspace restore is performed. Whole v1 stays open.
