@@ -1,0 +1,250 @@
+"""Owned loopback read/export load rehearsal; no target execution or real workspace.
+
+Measurements are scenario evidence, not production memory/latency SLO certification.
+Requires the development environment's httpx, Python 3.11+, and POSIX ps/pass_fds.
+"""
+import argparse
+from collections import Counter, deque
+from contextlib import ExitStack
+import hashlib
+from importlib.metadata import version
+import json
+import os
+import platform
+from pathlib import Path
+import signal
+import socket
+import sqlite3
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+
+import httpx
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from aegis.maintenance import WorkspaceLease
+from aegis.store import Store
+
+SERVER = '''
+import socket, sys, time
+from pathlib import Path
+from contextlib import asynccontextmanager
+from aegis.app import create_app
+from aegis.__main__ import AegisServer
+app = create_app(sys.argv[1], allow_private=False)
+app.state.store.put_many([('assets', {
+ 'id':f'load_{i}', 'name':f'Owned synthetic asset {i}',
+ 'url':f'https://owned-{i}.invalid/', 'authorized':True,
+ 'archived':False, 'revision':1, 'created_at':time.time(),
+ 'scope_prefix':'/', 'authorization_rules':[],
+}) for i in range(int(sys.argv[3]))] + [('findings', {
+ 'id':f'finding_{i}', 'asset_id':f'load_{i}', 'asset_name':f'Owned synthetic asset {i}',
+ 'title':f'Owned synthetic finding {i}', 'severity':'info', 'status':'open',
+ 'check':'api_authorization', 'created_at':time.time(), 'task_ids':[], 'evidence_ids':[],
+ 'remediation':'Synthetic read-load fixture; no real target was checked.',
+}) for i in range(int(sys.argv[3]))])
+original = app.router.lifespan_context
+@asynccontextmanager
+async def lifespan(application):
+ async with original(application): yield
+ (Path(sys.argv[1])/'shutdown-complete').write_text('complete')
+app.router.lifespan_context = lifespan
+AegisServer(app, host='127.0.0.1', port=0, access_log=False,
+ log_level='warning', timeout_graceful_shutdown=5).run(
+ sockets=[socket.socket(fileno=int(sys.argv[2]))])
+'''
+
+
+def bounded_int(low, high):
+    def parse(value):
+        number = int(value)
+        if not low <= number <= high:
+            raise argparse.ArgumentTypeError(f'must be {low}..{high}')
+        return number
+    return parse
+
+
+def process_sample(pid):
+    result = subprocess.run(['ps', '-o', 'rss=,time=', '-p', str(pid)],
+                            capture_output=True, text=True, timeout=3, check=True)
+    rss, cpu = result.stdout.split()
+    seconds = 0.0
+    for component in cpu.split(':'):
+        seconds = seconds * 60 + float(component)
+    fd_path = Path(f'/proc/{pid}/fd')
+    return {'rss_kib': int(rss), 'cpu_seconds': seconds,
+            'open_fds': len(list(fd_path.iterdir())) if fd_path.is_dir() else None}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--duration', type=bounded_int(1, 3600), default=60)
+    parser.add_argument('--clients', type=bounded_int(1, 32), default=4)
+    parser.add_argument('--assets', type=bounded_int(25, 20000), default=1000)
+    parser.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+    fingerprint = hashlib.sha256()
+    for path in sorted((ROOT/'aegis').rglob('*.py')):
+        fingerprint.update(str(path.relative_to(ROOT)).encode())
+        fingerprint.update(path.read_bytes())
+    environment = {key:value for key,value in os.environ.items()
+                   if not key.startswith('AEGIS_') and key not in ('PYTHONPATH','PYTHONHOME')}
+    lock = threading.Lock()
+    counts = Counter()
+    errors = []
+    latency = deque(maxlen=2000)
+    samples = deque(maxlen=1000)
+    with tempfile.TemporaryDirectory(prefix='aegis-load-review-') as temporary, ExitStack() as stack:
+        directory = Path(temporary)
+        workspace = directory/'workspace'
+        listener = stack.enter_context(socket.socket())
+        listener.bind(('127.0.0.1', 0))
+        base = f'http://127.0.0.1:{listener.getsockname()[1]}'
+        log = stack.enter_context((directory/'server.log').open('wb'))
+        process = subprocess.Popen([sys.executable, '-c', SERVER, str(workspace),
+                                    str(listener.fileno()), str(args.assets)], cwd=ROOT,
+                                   env=environment, pass_fds=(listener.fileno(),), stdout=log, stderr=log)
+        listener.close()
+        stopped = threading.Event()
+        workers = []
+        try:
+            with httpx.Client(base_url=base, trust_env=False, timeout=10) as authenticated:
+                startup = time.monotonic()+20
+                while True:
+                    if process.poll() is not None:
+                        raise RuntimeError('Owned server exited during startup')
+                    try:
+                        ready = authenticated.get('/api/health')
+                        ready.raise_for_status()
+                        break
+                    except httpx.TransportError:
+                        if time.monotonic() >= startup:
+                            raise RuntimeError('Owned server startup deadline exceeded')
+                        time.sleep(.05)
+                setup = authenticated.post('/api/auth/setup', json={'password':'owned-load-fixture-password-only'})
+                setup.raise_for_status()
+                assert authenticated.get('/api/auth/status').json()['authenticated']
+                cookie = dict(authenticated.cookies)
+                first = authenticated.get('/api/records/assets', params={'limit':25}).json()
+                assert first['total'] == args.assets and len(first['items']) == 25
+                started = time.monotonic()
+                deadline = started+args.duration
+                baseline = process_sample(process.pid)
+                peak = baseline['rss_kib']
+                paths = ['/api/records/assets?limit=25', '/api/overview', '/api/runtime',
+                         '/api/reports/export?format=json']
+
+                def worker(index):
+                    iteration = index
+                    with httpx.Client(base_url=base, cookies=cookie, trust_env=False, timeout=10) as client:
+                        while time.monotonic() < deadline and not stopped.is_set():
+                            path = paths[iteration % len(paths)]
+                            before = time.monotonic()
+                            try:
+                                response = client.get(path)
+                                if response.status_code == 429 and path.startswith('/api/reports/'):
+                                    assert float(response.headers['Retry-After']) > 0
+                                else:
+                                    response.raise_for_status()
+                                    data = response.json()
+                                    if '/records/assets' in path:
+                                        assert len(data['items']) == 25 and data['total'] == args.assets
+                                    elif path == '/api/overview':
+                                        assert len(data['assets']) <= 100 and data['stats']['assets'] == args.assets
+                                    elif path == '/api/runtime':
+                                        assert data['requests']['requests'] == 0
+                                    else:
+                                        assert len(data['findings']) == args.assets
+                                        assert not data['tasks'] and not data['traffic']
+                                with lock:
+                                    counts[f'{path} HTTP {response.status_code}'] += 1
+                                    latency.append((time.monotonic()-before)*1000)
+                            except Exception as error:
+                                with lock:
+                                    counts['failures'] += 1
+                                    if len(errors) < 10:
+                                        errors.append(f'{path}: {type(error).__name__}')
+                            iteration += 1
+                            stopped.wait(.03)
+
+                for index in range(args.clients):
+                    thread = threading.Thread(target=worker, args=(index,), name=f'owned-load-{index}')
+                    workers.append(thread)
+                    thread.start()
+                while time.monotonic() < deadline:
+                    if process.poll() is not None:
+                        raise RuntimeError('Owned server exited during load')
+                    sample = {'elapsed_seconds':round(time.monotonic()-started, 3), **process_sample(process.pid)}
+                    samples.append(sample)
+                    peak = max(peak, sample['rss_kib'])
+                    stopped.wait(min(2, max(0, deadline-time.monotonic())))
+                stopped.set()
+                for thread in workers:
+                    thread.join(15)
+                    if thread.is_alive():
+                        raise RuntimeError('Owned workload did not drain')
+                final = process_sample(process.pid)
+                peak = max(peak, final['rss_kib'])
+                runtime = authenticated.get('/api/runtime').json()
+                assert runtime['requests']['requests'] == 0
+                assert runtime['exports']['active'] == 0
+                assert not runtime['tasks']
+                elapsed = time.monotonic()-started
+            process.send_signal(signal.SIGTERM)
+            process.wait(timeout=10)
+            # Uvicorn can re-raise the requested SIGTERM after finishing lifespan.
+            assert process.returncode in (0, -signal.SIGTERM)
+            assert (workspace/'shutdown-complete').read_text() == 'complete'
+            with WorkspaceLease(workspace):
+                store = Store(workspace/'aegis.db')
+                assert store.count('assets') == args.assets
+                assert store.count('findings') == args.assets
+                assert store.count('tasks') == 0 and store.count('traffic') == 0
+            ordered = sorted(latency)
+            result = {
+                'valid': counts['failures'] == 0 and sum(counts.values()) > 0,
+                'scenario':'owned read/export load; no target execution',
+                'source_sha256':fingerprint.hexdigest(),
+                'platform':sys.platform, 'duration_requested_seconds':args.duration,
+                'elapsed_seconds':round(elapsed,3), 'clients':args.clients, 'assets':args.assets,
+                'synthetic_findings':args.assets,
+                'target_requests':0, 'fixture_record_counts_preserved':True,
+                'record_counts':{'assets':args.assets,'findings':args.assets,'tasks':0,'traffic':0},
+                'environment':{'python':platform.python_version(),'machine':platform.machine(),
+                    'sqlite':sqlite3.sqlite_version,'packages':{name:version(name) for name in
+                    ('fastapi','starlette','uvicorn','anyio','httpx')}},
+                'clean_shutdown':True, 'lease_released':True,
+                'server_exit_code':process.returncode,
+                'requests':dict(counts), 'error_types':errors,
+                'rss_kib':{'baseline':baseline['rss_kib'],'sampled_peak':peak,'final':final['rss_kib']},
+                'cpu_seconds_during_load':round(final['cpu_seconds']-baseline['cpu_seconds'],3),
+                'latency_last_2000_ms':{'samples':len(ordered),
+                    'p50':round(ordered[int((len(ordered)-1)*.5)],3) if ordered else None,
+                    'p95':round(ordered[int((len(ordered)-1)*.95)],3) if ordered else None},
+                'samples_last_1000':list(samples),
+                'runtime':runtime,
+                'limits':'No memory/latency SLO enforced; sampled RSS can miss peaks; parent memory excluded; not a long-duration production soak.',
+            }
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2)+'\n')
+            print(json.dumps({key:value for key,value in result.items() if key not in ('samples_last_1000','runtime')}, ensure_ascii=False), flush=True)
+            if not result['valid']:
+                raise SystemExit(1)
+        finally:
+            stopped.set()
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=5)
+            for thread in workers:
+                thread.join(15)
+
+
+if __name__ == '__main__':
+    main()

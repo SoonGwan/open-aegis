@@ -1746,3 +1746,52 @@ on 390×844 has no document overflow.
   remote-refusal/audit/backup/restore/shutdown/lease rehearsal, target requests zero.
   Main health 200 and final bundle served, assets two/tasks four/traffic three
   unchanged. Owned fixture server stops and main preview remains live.
+
+
+## 2026-10-04 — owned read/export resource-load rehearsal
+
+- New `scripts/review_resource_load.py` creates an isolated temporary workspace,
+  passes a bound loopback socket to the actual AegisServer, seeds 1,000 owned
+  synthetic assets and 1,000 findings, authenticates with a synthetic password and
+  runs four clients over paginated assets, overview, runtime and full JSON reports.
+  AEGIS environment settings are removed. No tasks are created/approved/executed,
+  and target-request counter/traffic count remain zero. Runtime service code is
+  unchanged. This is actual HTTP/SQLite/streamed-export resource evidence, not an
+  installed-wheel run or real target/LLM/authentication-failure load.
+- Initial harness mistakes are corrected before the successful load: Uvicorn can
+  exit -15 after completing lifespan, so both shutdown marker and actual lease
+  reacquisition are required instead of exit 0 alone. JSON report has findings/
+  tasks/evidence/history/coverage/traffic rather than assets; the erroneous assets
+  assertion caused KeyError failures in a diagnostic run. Synthetic findings are
+  added so the export workload verifies a full 1,000-row report instead of an empty
+  report. These were harness faults, not production endpoint failures.
+- Successful five-second smoke precedes the 60-second run. Actual duration 60.028s,
+  **3,289** requests: assets 822 HTTP 200, runtime 822 HTTP 200, overview 823 HTTP
+  200, exports 434 HTTP 200 plus 388 expected slot-limit HTTP 429 with positive
+  Retry-After. Unexpected failures zero. Final server exports started/completed
+  434, rejected 388, active/cancelled/timed-out/failed zero. Assets/findings each
+  1,000 and tasks/traffic zero remain after clean lifespan shutdown/lease reacquisition.
+- On darwin, RSS KiB baseline **62,192**, sampled peak **77,552**, final **62,704**
+  (about 60.73/75.73/61.23 MiB). Thirty two-second resource samples are retained.
+  Child CPU during load 68.66s, which is cumulative across process threads and can
+  exceed elapsed wall time. Last 2,000 successful/expected-admission responses:
+  p50 5.345ms, p95 212.024ms. These are mixed-route local measurements, not per-route
+  or all-request latency percentiles/SLOs. `/proc` FD counts are unavailable on macOS.
+  Raw local evidence: `artifacts/resource-load-60s.json`. Source SHA-256
+  `65487a3e60dddcfd238ba87d6d8a9d91d2331684c403915d250946f0736cf8d8`.
+- After metadata-only output additions, final five-second smoke passes with 280
+  requests, 39 completed exports, 32 expected 429, no unexpected failures, counts
+  preserved and shutdown/lease verified. Final output records Python 3.11.6/arm64,
+  SQLite 3.44.0, FastAPI 0.142.2, Starlette 1.7.0, Uvicorn 0.54.0, AnyIO 4.15.1,
+  httpx 0.28.1. Final fixture-count fields specify exactly assets/findings/tasks/traffic.
+  Sixty-second run predates these metadata-only result-field additions; workload
+  and runtime service code are unchanged. Final smoke evidence is
+  `artifacts/resource-load-final-smoke.json`. Compilation and CLI help succeed.
+- Duration/client/seed bounds and bounded 2,000-latency/1,000-sample buffers keep
+  the harness's reporting history finite. No hard memory/latency budget is enforced;
+  sampling can miss transient peaks and parent client memory is excluded. One-minute
+  rehearsal does not prove leak-free or long-duration/production performance, disk
+  retention, slow consumers, many SSE clients, network failures or actual execution
+  workloads. The full v1 resource/soak gate stays open, with instructions in
+  `docs/RESOURCE-LOAD.md`. No full backend or frontend suite rerun is claimed for
+  this scripts/docs-only change. Main preview health/data verification follows.
