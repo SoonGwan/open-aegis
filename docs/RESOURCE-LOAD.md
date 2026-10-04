@@ -38,6 +38,25 @@ SSE 데이터 JSON/이벤트 ID와 heartbeat를 읽으며 payload는 결과에 �
 전송 오류나 EOF 누락은 검수 실패다. 열림·재연결·heartbeat·EOF·오류 건수와
 서버/클라이언트 종료 정리 시간을 기록한다.
 
+세션 폐기 동작은 `--revoke-stream-session`으로 별도 검수한다. 스트림 수가 1개
+이상이고 duration이 2초 이상이어야 한다. 기본 조회 로그인과 별개의 스트림
+로그인을 생성한 뒤, 부하 시간의 절반 또는 10초 중 먼저 도달한 시점에 스트림
+세션을 로그아웃한다. 정상 약 30초 스트림 수명 종료와 혼동하지 않도록 이른
+시점에 폐기한다. 열린 스트림의 정상 EOF, 이전 쿠키 재접속 401, 이전 인증 상태
+false, 다른 로그인 세션의 인증 유지와 로그아웃 이후 응답이 실제로 완료되는지
+검사한다. 같은 계정의 별개 로그인 세션이며 별도 사용자/tenant 격리 검수는 아니다.
+
+```bash
+.venv/bin/python scripts/review_resource_load.py \
+  --duration 20 --assets 1000 --clients 4 --sse-clients 4 \
+  --revoke-stream-session --output artifacts/resource-stream-revocation-20s.json
+```
+
+폐기 옵션에서는 종료 직전 스트림이 0개여야 하고 정상 EOF는 shutdown 대신
+revoked로 기록한다. 서버 종료와 lifespan/잠금 검사는 그대로 수행한다. 다른 기기의
+전체 세션 폐기·비밀번호/역할 변경, 시간 만료, 폐기 전에 이미 허가된 응답 배치의
+소급 취소나 브라우저 로그인 화면 전환은 이 옵션으로 검증하지 않는다.
+
 서버 PID의 RSS(KiB)와 누적 CPU 시간을 약 2초 간격으로 측정한다. 시작·표본 최대·
 끝 RSS, 부하 구간 CPU 시간, 마지막 최대 2,000개 정상/입장 거절 요청의 p50/p95,
 끝의 운영 지표를 JSON에 기록한다. 표본은 마지막 1,000개까지 보관하되 관측한

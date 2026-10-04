@@ -84,9 +84,12 @@ def main():
     parser.add_argument('--duration', type=bounded_int(1, 3600), default=60)
     parser.add_argument('--clients', type=bounded_int(1, 32), default=4)
     parser.add_argument('--sse-clients', type=bounded_int(0, 32), default=0)
+    parser.add_argument('--revoke-stream-session', action='store_true')
     parser.add_argument('--assets', type=bounded_int(25, 20000), default=1000)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if args.revoke_stream_session and (not args.sse_clients or args.duration < 2):
+        parser.error('stream revocation requires sse-clients > 0 and duration >= 2')
     fingerprint = hashlib.sha256()
     for path in sorted((ROOT/'aegis').rglob('*.py')):
         fingerprint.update(str(path.relative_to(ROOT)).encode())
@@ -113,8 +116,10 @@ def main():
         workers = []
         stream_workers = []
         shutdown_sent = threading.Event()
+        revocation_sent = threading.Event()
+        revocation = {'requested':args.revoke_stream_session, 'performed':False}
         streams = {'opened':0, 'active':0, 'natural_reconnections':0,
-                   'shutdown_eof':0, 'data_messages':0, 'heartbeats':0, 'errors':0}
+                   'shutdown_eof':0, 'revoked_eof':0, 'data_messages':0, 'heartbeats':0, 'errors':0}
         try:
             with httpx.Client(base_url=base, trust_env=False, timeout=10) as authenticated:
                 startup = time.monotonic()+20
@@ -133,6 +138,13 @@ def main():
                 setup.raise_for_status()
                 assert authenticated.get('/api/auth/status').json()['authenticated']
                 cookie = dict(authenticated.cookies)
+                stream_cookie = cookie
+                if args.revoke_stream_session:
+                    stream_control = stack.enter_context(httpx.Client(base_url=base, trust_env=False, timeout=10))
+                    stream_login = stream_control.post('/api/auth/login', json={
+                        'username':'admin','password':'owned-load-fixture-password-only'})
+                    stream_login.raise_for_status()
+                    stream_cookie = dict(stream_control.cookies)
                 first = authenticated.get('/api/records/assets', params={'limit':25}).json()
                 assert first['total'] == args.assets and len(first['items']) == 25
                 ready_streams = [threading.Event() for _ in range(args.sse_clients)]
@@ -140,7 +152,7 @@ def main():
                 def stream_worker(index):
                     cursor = 0
                     try:
-                        with httpx.Client(base_url=base, cookies=cookie, trust_env=False,
+                        with httpx.Client(base_url=base, cookies=stream_cookie, trust_env=False,
                                           timeout=httpx.Timeout(10, read=None)) as client:
                             while not shutdown_sent.is_set():
                                 with client.stream('GET', '/api/events/stream', params={'after':cursor}) as response:
@@ -168,6 +180,10 @@ def main():
                                     with lock:
                                         streams['shutdown_eof'] += 1
                                     return
+                                if revocation_sent.is_set():
+                                    with lock:
+                                        streams['revoked_eof'] += 1
+                                    return
                                 with lock:
                                     streams['natural_reconnections'] += 1
                     except Exception as error:
@@ -183,8 +199,26 @@ def main():
                 for ready in ready_streams:
                     if not ready.wait(10):
                         raise RuntimeError('Owned event stream did not deliver a first frame')
+
+                def wait_for_streams(expected):
+                    stream_deadline = time.monotonic()+5
+                    while True:
+                        with lock:
+                            active_streams = streams['active']
+                            stream_errors = streams['errors']
+                        if stream_errors:
+                            raise RuntimeError('Owned event stream failed during load')
+                        if active_streams == expected:
+                            return active_streams
+                        if time.monotonic() >= stream_deadline:
+                            raise RuntimeError('Owned event streams did not reach the expected active count')
+                        time.sleep(.02)
+
                 started = time.monotonic()
                 deadline = started+args.duration
+                # Revoke before the normal ~30s stream lifetime can end the first
+                # connection by itself, which would weaken the revocation evidence.
+                revoke_at = started+min(args.duration/2, 10)
                 baseline = process_sample(process.pid)
                 peak = baseline['rss_kib']
                 paths = ['/api/records/assets?limit=25', '/api/overview', '/api/runtime',
@@ -230,10 +264,34 @@ def main():
                 while time.monotonic() < deadline:
                     if process.poll() is not None:
                         raise RuntimeError('Owned server exited during load')
+                    if args.revoke_stream_session and not revocation['performed'] and time.monotonic() >= revoke_at:
+                        revocation['open_before_logout'] = wait_for_streams(args.sse_clients)
+                        revoke_started = time.monotonic()
+                        revocation_sent.set()
+                        logout = stream_control.post('/api/auth/logout')
+                        logout.raise_for_status()
+                        for thread in stream_workers:
+                            thread.join(5)
+                            if thread.is_alive():
+                                raise RuntimeError('Owned event stream remained open after logout')
+                        assert streams['revoked_eof'] == args.sse_clients and streams['errors'] == 0
+                        with httpx.Client(base_url=base, cookies=stream_cookie, trust_env=False, timeout=10) as revoked_probe:
+                            with revoked_probe.stream('GET', '/api/events/stream') as denied:
+                                assert denied.status_code == 401
+                                revocation['reconnect_status'] = denied.status_code
+                            assert not revoked_probe.get('/api/auth/status').json()['authenticated']
+                        assert authenticated.get('/api/auth/status').json()['authenticated']
+                        revocation.update(performed=True, closed_seconds=round(time.monotonic()-revoke_started,3),
+                                          unaffected_session_authenticated=True)
+                        with lock:
+                            completed_at_revocation = sum(counts.values())
                     sample = {'elapsed_seconds':round(time.monotonic()-started, 3), **process_sample(process.pid)}
                     samples.append(sample)
                     peak = max(peak, sample['rss_kib'])
-                    stopped.wait(min(2, max(0, deadline-time.monotonic())))
+                    pause = min(2, max(0, deadline-time.monotonic()))
+                    if args.revoke_stream_session and not revocation['performed']:
+                        pause = min(pause, max(0, revoke_at-time.monotonic()))
+                    stopped.wait(pause)
                 stopped.set()
                 for thread in workers:
                     thread.join(15)
@@ -247,18 +305,11 @@ def main():
                 assert not runtime['tasks']
                 elapsed = time.monotonic()-started
                 # A natural 30-second stream rollover can briefly reconnect.
-                stream_deadline = time.monotonic()+5
-                while True:
-                    with lock:
-                        open_at_shutdown = streams['active']
-                        stream_errors = streams['errors']
-                    if stream_errors:
-                        raise RuntimeError('Owned event stream failed during load')
-                    if open_at_shutdown == args.sse_clients:
-                        break
-                    if time.monotonic() >= stream_deadline:
-                        raise RuntimeError('Owned event streams are not open before shutdown')
-                    time.sleep(.02)
+                open_at_shutdown = wait_for_streams(0 if args.revoke_stream_session else args.sse_clients)
+                if args.revoke_stream_session:
+                    assert revocation['performed']
+                    revocation['responses_after_logout'] = sum(counts.values())-completed_at_revocation
+                    assert revocation['responses_after_logout'] > 0
             shutdown_started = time.monotonic()
             shutdown_sent.set()
             process.send_signal(signal.SIGTERM)
@@ -270,7 +321,8 @@ def main():
                 thread.join(5)
                 if thread.is_alive():
                     raise RuntimeError('Owned event stream did not close after shutdown')
-            assert streams['shutdown_eof'] == args.sse_clients and streams['errors'] == 0
+            assert streams['shutdown_eof'] == (0 if args.revoke_stream_session else args.sse_clients)
+            assert streams['errors'] == 0
             shutdown_elapsed = time.monotonic()-shutdown_started
             with WorkspaceLease(workspace):
                 store = Store(workspace/'aegis.db')
@@ -288,6 +340,7 @@ def main():
                 'event_streams':{'clients':args.sse_clients, 'open_before_shutdown':open_at_shutdown,
                     **streams},
                 'shutdown_seconds':round(shutdown_elapsed,3),
+                'stream_session_revocation':revocation,
                 'target_requests':0, 'fixture_record_counts_preserved':True,
                 'record_counts':{'assets':args.assets,'findings':args.assets,'tasks':0,'traffic':0},
                 'environment':{'python':platform.python_version(),'machine':platform.machine(),

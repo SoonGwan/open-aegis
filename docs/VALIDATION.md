@@ -1840,3 +1840,50 @@ on 390×844 has no document overflow.
   recovery, network failure, actual targets/LLM or extended soak. The v1 gate stays
   open. Main health 200 and assets two/tasks four/traffic three remain unchanged;
   owned child servers exit, main preview remains live.
+
+
+## 2026-10-04 — logout revokes live event streams without revoking another login
+
+- Resource harness adds `--revoke-stream-session`, requiring nonzero SSE clients
+  and duration at least two seconds. It creates a separate synthetic login for
+  the stream clients, leaves original-login read/export workers active, and invokes
+  real HTTP logout on the stream session during load. Revocation is scheduled at
+  min(half duration, ten seconds), before the normal approximately thirty-second
+  stream lifetime could otherwise make EOF appear to prove revocation. Normal
+  lifetime rollover and SIGTERM cleanup remain separate scenarios.
+- Five-second initial revocation smoke passes with four streams and four workers:
+  all four open at logout, all reach normal EOF as revoked (not shutdown), old
+  cookie reconnect returns 401, old auth status false, original login auth true.
+  Close/probes complete in 0.513s; 109 worker replies complete after the phase
+  checkpoint. Unexpected failures zero, target requests zero, fixture counts and
+  clean shutdown/lease preserved. Evidence
+  `artifacts/resource-stream-revocation-smoke.json`; this precedes the final early-
+  revocation scheduling/result-field refinement.
+- Final twenty-second run, 1,000 assets/1,000 findings, four workers/four streams:
+  1,123 read/export replies (assets 280, overview 280, runtime 281 HTTP 200;
+  exports 146 HTTP 200/136 expected slot-limit HTTP 429). Unexpected failures
+  zero. Four streams are open at logout and close normally as revoked; zero natural
+  reconnects/stream errors, old reconnect 401, old auth false, original auth true.
+  After the revocation checkpoint, **567** worker replies complete, including
+  expected admission rejections; these are not all successful report payloads.
+  Revocation EOF plus probe checks take 0.039s in this run, not a universal deadline.
+  Final server shutdown cleanup 0.143s, no streams left open. Target requests zero;
+  assets/findings each 1,000, tasks/traffic zero, lifespan and lease checks pass.
+- Twenty-second child RSS KiB baseline 62,464/peak 75,616/final 75,616, CPU
+  22.69s, last 1,123 mixed normal/admission responses p50 5.245ms/p95 211.188ms.
+  Sampled local observations do not establish memory stability or latency SLOs.
+  Raw evidence `artifacts/resource-stream-revocation-20s.json`; service source SHA
+  `65487a3e60dddcfd238ba87d6d8a9d91d2331684c403915d250946f0736cf8d8` unchanged.
+- Final non-revocation regression with two streams, one worker, 25 assets/findings
+  and three seconds also passes: 63 replies, zero errors; two streams remain open
+  until SIGTERM, two shutdown EOF, zero revoked EOF, cleanup 0.199s, lease and
+  counts preserved. Evidence `artifacts/resource-stream-normal-regression.json`.
+  CLI rejects revocation with zero subscribers or one-second duration before output/
+  server creation. Compilation and diff checks pass.
+- No production runtime/frontend edit, full suite rerun or installed-wheel rerun is
+  claimed for this scripts/docs-only change. This verifies one token's logout with
+  a second token for the same account, not multi-user/tenant isolation, all-session
+  password/role revocation, time expiry, UI/cross-tab recovery, slow subscribers,
+  network partitions or cancellation of an already authorized batch. Full v1 gate
+  remains open. Main health 200, assets two/tasks four/traffic three unchanged;
+  owned servers stop and main preview stays live.
