@@ -746,6 +746,15 @@ def create_app(data_dir=None, allow_private=None):
         except LookupError:
             raise HTTPException(404, '작업이 없습니다.')
 
+    @app.get('/api/worker-events', dependencies=auth)
+    def worker_history(limit: int = Query(25, ge=1, le=100), offset: int = Query(0, ge=0, le=10_000_000),
+                       snapshot: int | None = Query(None, ge=0, le=9_223_372_036_854_775_807),
+                       search: str = Query('', max_length=200),
+                       task_id: str | None = Query(None, min_length=1, max_length=80),
+                       asset_id: str | None = Query(None, min_length=1, max_length=80)):
+        return worker_process.search_events(store, limit=limit, offset=offset, snapshot=snapshot,
+                                            search=search, task_id=task_id, asset_id=asset_id)
+
     @app.get('/api/tasks/{task_id}/workers', dependencies=auth)
     def workers(task_id: str):
         try:return worker_process.list_workers(store, task_id)

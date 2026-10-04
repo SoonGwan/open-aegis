@@ -115,6 +115,10 @@ def test_native_reader_ordinary_select_role_cannot_write_or_read_users(stores,po
     dsn=pg._dsn+' user='+role
     reader=mcp.PostgresReader(dsn,pg.schema)
     assert reader.call('list_assets',{})['items'][0]['id']=='owned'
+    from tests.test_worker_process import seed
+    source,asset,_=seed(pg,1)
+    history=reader.call('search_worker_events',{'task_id':source['id'],'asset_id':asset['id']})
+    assert history['total']==1 and history['items'][0]['worker_provenance']['status']=='matched'
     assert PostgresStore(dsn,pg.schema).audit_integrity()['valid']
     with reader.connect() as db:
         with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):db.execute('DELETE FROM records')

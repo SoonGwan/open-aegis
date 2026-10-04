@@ -4,6 +4,7 @@ import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { validateWorkerDependencies, WorkerDependencyError } from "./worker-dependency-state";
 import { NextPlan } from "./NextPlan";
 import { WorkerProcess } from "./WorkerProcess";
+import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
@@ -248,6 +249,7 @@ const pages = [
   { id: "tasks", name: "검증 작업", icon: Workflow },
   { id: "assets", name: "자산", icon: Globe2 },
   { id: "observations", name: "관찰 링크", icon: Link2 },
+  { id: "processes", name: "실행 과정", icon: Terminal },
   { id: "findings", name: "발견 사항", icon: ShieldCheck },
   { id: "graph", name: "탐색 경로", icon: GitBranch },
   {
@@ -1163,6 +1165,7 @@ function App() {
                       overview:
                         "자산의 상태를 확인하고, 근거 있는 검증을 시작하세요.",
                       tasks: "목표를 정하고 실행부터 수정 확인까지 추적하세요.",
+                      processes: "여러 작업의 Worker 실행 기록을 검색하고 출처를 확인하세요.",
                       assets: "검증할 자산과 접근 범위를 한곳에서 관리하세요.",
                       observations:
                         "승인된 검증에서 관찰한 링크와 기록의 출처를 확인하세요.",
@@ -1239,6 +1242,8 @@ function App() {
             </div>
           </div>
 
+          {page === "processes" && <WorkerHistory state={list} onChange={navigation.updateList}
+            pages={pages.map(item=>item.id)} onWorker={navigation.openWorker} />}
           {page === "overview" && (
             <>
               <div className="hero-panel">

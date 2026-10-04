@@ -62,7 +62,7 @@ def main():
         @app.middleware('http')
         async def failure(request,call_next):
             nonlocal task_posts,next_posts
-            if request.method=='GET' and '/workers/' in request.url.path and args.worker_fail_flag and args.worker_fail_flag.exists():
+            if request.method=='GET' and ('/workers/' in request.url.path or request.url.path=='/api/worker-events') and args.worker_fail_flag and args.worker_fail_flag.exists():
                 return JSONResponse({'detail':'합성 Worker 과정 조회 실패'},status_code=503)
             if request.url.path.endswith('/next-plan'):
                 if request.method=='GET' and args.next_read_fail_flag and args.next_read_fail_flag.exists():
@@ -111,6 +111,8 @@ def main():
                 store.put('coverage',slot(task,parent,check,status='completed'))
         store.put_many([('assets',asset),('tasks',task)])
         if args.worker_process:
+            store.event('missing-worker-task','합성 원본 없는 Worker 기록','info',
+                        {'asset_id':asset['id'],'worker_id':'missing-worker-task:'+asset['id']})
             for i in range(31):
                 store.event(task['id'],f'합성 후행 Worker 단계 {i:02d}','info',
                             {'asset_id':asset['id'],'worker_id':task['id']+':'+asset['id']})

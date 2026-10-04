@@ -157,6 +157,12 @@ export function useNavigation(allowedPages: readonly string[]) {
   const openDetail = useCallback((detail: DetailState | null) => {
     commit(detailQuery(location.search, detail), "push");
   }, []);
+  const openWorker = useCallback((taskId: string, assetId: string) => {
+    let query = detailQuery(location.search, {kind:"task",id:taskId});
+    query = updateTaskWorkerQuery(query, {assetId});
+    query = updateTaskWorkerQuery(query, {expanded:true});
+    commit(query, "push");
+  }, []);
   const updateFindingCollection = useCallback(
     (
       kind: FindingCollectionKind,
@@ -209,6 +215,7 @@ export function useNavigation(allowedPages: readonly string[]) {
     updateList,
     navigate,
     openDetail,
+    openWorker,
     canBack: position.index > 0,
     canForward: position.index < position.maximum,
     back: () => {

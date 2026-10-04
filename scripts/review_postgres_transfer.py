@@ -317,6 +317,9 @@ print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifes
                     assert all(row['worker_provenance']['status']=='matched' for row in process_detail['events']['items'])
                     assert native_http('/api/tasks/native-engine/workers/owned-lab/events?search=Worker')['total']==2
                     assert native_http('/api/tasks/native-engine/workers/owned-lab/observations')['total']==1
+                    history=native_http('/api/worker-events?task_id=native-engine&asset_id=owned-lab&search=Worker')
+                    assert history['total']==2 and all(row['worker_source']['available'] and row['worker_provenance']['status']=='matched' for row in history['items'])
+                    assert not history['execution_authorized']
                     report=native_http('/api/reports/export?format=json&task_id=native-engine')
                     assert report['coverage'][0]['status']=='completed' and report['evidence']
                     proposal=native_http('/api/tasks/native-engine/next-plan')
@@ -424,6 +427,7 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
                       {'jsonrpc':'2.0','id':3,'method':'tools/call','params':{'name':'run_command','arguments':{'command':'must refuse'}}},
                       {'jsonrpc':'2.0','id':4,'method':'tools/call','params':{'name':'list_task_observations','arguments':{'id':'native-engine'}}},
                       *[{'jsonrpc':'2.0','id':i,'method':'tools/call','params':{'name':name,'arguments':{'id':'native-engine','asset_id':'owned-lab'}}} for i,name in enumerate(('get_worker','list_worker_events','list_worker_observations'),5)]]
+            requests.append({'jsonrpc':'2.0','id':8,'method':'tools/call','params':{'name':'search_worker_events','arguments':{'task_id':'native-engine','asset_id':'owned-lab','search':'Worker'}}})
             replies=[json.loads(line) for line in run([python,'-I','-m','aegis.mcp'],'installed native MCP stdio',env=reader_env,
                       input='\n'.join(json.dumps(item) for item in requests)+'\n').splitlines()]
             assert replies[0]['result']['protocolVersion']=='2025-03-26'
@@ -437,6 +441,9 @@ assert copy.audit_integrity()['checkpoint']==json.loads(sys.argv[3])
             assert all(row['worker_provenance']['status']=='matched' for row in process_detail['events']['items'])
             assert json.loads(replies[5]['result']['content'][0]['text'])['total']>=4
             assert json.loads(replies[6]['result']['content'][0]['text'])['total']==1
+            history=json.loads(replies[7]['result']['content'][0]['text'])
+            assert history['total']==2 and all(row['worker_source']['available'] and row['worker_provenance']['status']=='matched' for row in history['items'])
+            assert not history['execution_authorized']
             checkpoint=temporary/'native-checkpoint.json'
             verified=json.loads(run([python,'-I','-m','aegis.cli.audit','--output',checkpoint],'installed native audit CLI',env=reader_env))
             assert verified==native['audit'] and checkpoint.stat().st_mode & 0o777==0o600

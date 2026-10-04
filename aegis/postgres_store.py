@@ -255,6 +255,18 @@ class PostgresStore:
             items=[{**row,'detail':json.loads(row['detail'])} for row in db.execute('SELECT * FROM events WHERE '+where+' ORDER BY seq DESC LIMIT %s OFFSET %s',(*args,limit,offset))]
             return {'items':items,'total':total,'limit':limit,'offset':offset,'snapshot':snapshot,'has_more':offset+len(items)<total}
 
+    def worker_event_page(self,*,limit=25,offset=0,snapshot=None,search='',task_id=None,asset_id=None,connection=None):
+        if not 1<=limit<=100 or not 0<=offset<=10_000_000 or len(search)>200 or (snapshot is not None and snapshot<0):raise ValueError('Invalid Worker event query')
+        with (nullcontext(connection) if connection is not None else self.transaction()) as db:
+            if snapshot is None:snapshot=db.execute('SELECT coalesce(max(seq),0) AS snapshot FROM events').fetchone()['snapshot']
+            where="seq<=%s AND jsonb_typeof(detail::jsonb->'asset_id')='string' AND length(detail::jsonb->>'asset_id') BETWEEN 1 AND 80 AND length(task_id) BETWEEN 1 AND 80";args=[snapshot]
+            for field,value in (('task_id',task_id),("detail::jsonb->>'asset_id'",asset_id)):
+                if value is not None:where+=' AND '+field+'=%s';args.append(value)
+            if search:where+=' AND strpos(lower((message||\' \'||level||\' \'||task_id||\' \'||(detail::jsonb->>\'asset_id\')) COLLATE "C"),lower(%s COLLATE "C"))>0';args.append(search)
+            total=db.execute('SELECT count(*) AS count FROM events WHERE '+where,args).fetchone()['count']
+            items=[{**row,'detail':json.loads(row['detail'])} for row in db.execute('SELECT * FROM events WHERE '+where+' ORDER BY seq DESC LIMIT %s OFFSET %s',(*args,limit,offset))]
+            return {'items':items,'total':total,'limit':limit,'offset':offset,'snapshot':snapshot,'has_more':offset+len(items)<total}
+
     def session(self,token,expires,user_id):
         with self.transaction(write=True) as db:
             db.execute('DELETE FROM sessions WHERE expires<%s',(now(),))

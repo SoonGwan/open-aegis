@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { detailQuery, navigateQuery, readTaskWorker, updateTaskWorkerQuery, updateTaskCollectionQuery } from "../src/navigation-state.ts";
+import { detailQuery, navigateQuery, readTaskWorker, updateTaskWorkerQuery, updateTaskCollectionQuery, readNavigation, updateListQuery } from "../src/navigation-state.ts";
 
 const source = "page=tasks&tasks_q=source&tasks_offset=25&detail=task&detail_id=task-one";
 const empty = {search:"",offset:0,snapshot:null};
@@ -48,4 +48,20 @@ test("Malformed bookmark IDs and unsafe integer positions never become API posit
     assert.deepEqual(readTaskWorker(bad),{assetId:"",expanded:false,events:empty,observations:empty});
     assert.equal(new URLSearchParams(bad).has("task_worker_asset"),false);
   }
+});
+
+test("workspace process search position survives opening a Worker source and resets on search", () => {
+  const source="page=processes&processes_q=Owned&processes_offset=25&processes_snapshot=91";
+  let query=detailQuery(source,{kind:"task",id:"one"});
+  query=updateTaskWorkerQuery(query,{assetId:"asset-one"});
+  query=updateTaskWorkerQuery(query,{expanded:true});
+  const closed=detailQuery(query,null);
+  assert.equal(new URLSearchParams(closed).get("processes_offset"),"25");
+  assert.equal(new URLSearchParams(closed).get("processes_snapshot"),"91");
+  assert.equal(new URLSearchParams(closed).get("processes_q"),"Owned");
+  assert.equal(readTaskWorker(query).expanded,true);
+  assert.equal(readTaskWorker(closed).assetId,"");
+  const searched=updateListQuery(closed,["processes"],{search:"new"});
+  assert.equal(readNavigation(searched,["processes"]).list.offset,0);
+  assert.equal(readNavigation(searched,["processes"]).list.snapshot,null);
 });

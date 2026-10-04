@@ -348,3 +348,15 @@ Closing the dialog removes Worker fields. Replace task_worker_asset in the saved
 URL with a syntactically valid missing ID: show scope error without process query.
 With the failure flag present, loading a saved open URL shows the503 alert and
 focuses query; remove flag and retry to restore the original searches/pages.
+
+
+## Workspace Worker event search
+
+With --next-plan --worker-process on the owned built fixture, open ?page=processes:
+34 synthetic Worker events include one orphan source. Last page26–34 shows the
+orphan with disabled Worker source navigation. Save/reopen that page URL to verify
+position restoration. Search 합성 후행 Worker 단계 01 for one result; open Worker
+과정 보기 and confirm child scope/results. Close detail and confirm original search.
+Worker failure flag also applies to the global endpoint: Latest shows a failed-read
+notice alongside the last received list; removing the flag and Latest recovers.
+Review320/390 QA-frame documents, then zero-target shutdown and cleanup as above.

@@ -88,3 +88,26 @@ def get_process(store, task_id, asset_id, *, connection=None):
                 'coverage': rows, 'events': _collection(store, task, asset, 'events', db),
                 'observations': _collection(store, task, asset, 'observations', db),
                 'execution_authorized': False, 'provenance_basis': 'stored_metadata_consistency'}
+
+
+def search_events(store, *, connection=None, **options):
+    """Workspace-wide SQL page with bounded source point reads in the same snapshot."""
+    with (nullcontext(connection) if connection is not None else store.read_transaction()) as db:
+        page = store.worker_event_page(connection=db, **options)
+        cache = {}
+        for row in page['items']:
+            asset_id = row['detail']['asset_id']
+            key = (row['task_id'], asset_id)
+            if key not in cache:
+                try:
+                    task, asset = _worker(store, *key, db)
+                    cache[key] = {'available': True, 'task_id': key[0], 'asset_id': asset_id,
+                                  'task_name': task.get('name'), 'asset_name': asset.get('name'),
+                                  'scope_url': asset.get('url'), 'scope_revision': asset.get('revision', 1)}
+                except (WorkerMissing, ValueError):
+                    cache[key] = {'available': False, 'task_id': key[0], 'asset_id': asset_id}
+            row['worker_source'] = cache[key]
+            matched = cache[key]['available'] and row['detail'].get('worker_id') == key[0]+':'+asset_id
+            row['worker_provenance'] = {'status': 'matched' if matched else 'unconfirmed',
+                                        'basis': 'stored_task_asset_worker_metadata'}
+        return {**page, 'execution_authorized': False}

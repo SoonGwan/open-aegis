@@ -3987,3 +3987,58 @@ on 390×844 has no document overflow.
   screen-reader, hosted CI or container evidence is added by this increment.
 - Whole-workspace process search, automatic/event-driven planning, shared to-do and
   all remaining V1-READINESS gates remain open. No remote publication occurred.
+
+
+### 2026-10-05 — Workspace Worker event search
+
+- Added authenticated GET /api/worker-events and readonly MCP search_worker_events.
+  SQL pages newest Worker-associated events, supports literal message/level/task-ID/
+  asset-ID search and task/asset filters. Valid string asset IDs and bounded task IDs
+  select events; Planner events without asset are excluded. Legacy/orphan events
+  remain unconfirmed. Historical task scope is read through bounded point queries
+  in the same DB snapshot; missing scope/corrupt stored key/payload identity cannot
+  redirect source. SQL count/search workload and record retention still need SLO QA.
+- Added SQLite/native PostgreSQL paging, snapshot insertion exclusion, historical
+  scope, filtering/literal SQL-like search, malformed asset identity, orphan/legacy,
+  concurrent source change and corrupt payload tests. MCP parity/bounds/readonly
+  and HTTP anonymous/viewer/operator checks cover the new route. Extended the actual
+  native ordinary SELECT-role test to call workspace search while writes/users
+  remain denied. Native CI selection includes new history test file; hosted CI not run.
+- Initial targeted25 passed5.66s. First full:736 passed,1 failed252.32s because the
+  MCP stdio catalog assertion still expected11 tools; new catalog has12. Updated
+  explicit expected tool set without removing catalog/no-mutation assertions.
+  Preserved first failure (`artifacts/worker-history-backend-first.txt`). Final full
+  **737 passed251.31s**, no skips, one existing Starlette/httpx deprecation warning
+  (`...backend-full.txt`). Frontend **78 passed1291.162ms** includes source-list
+  position preservation and reset case; final build1.44s, JSindex-cH43G0Gr.js,
+  CSSindex-D51Z87fH.css (`...ui-tests.txt`, `...ui-build.txt`).
+- Installed wheel SHA256
+  2a58587e55fe63ab78fe4a1811720ab583c5514308148d5cfd2263546115ec09;
+  all65 service source files match (`...wheel-source-proof.json`). Installed native
+  review valid: actual owned execution history searched over HTTP and MCP stdio,
+  source available/matched and execution_authorized=false. Existing owned target
+  request count remains3, owned source1, external requests0. Default installed
+  runtime review rerun against final static assets valid with0 target requests
+  (`...installed-postgres.json`, `...installed-runtime-final.json`). Earlier default
+  result before final padding styles is retained separately, not final UI evidence.
+- Built UI now has 실행 과정 page,25-row search/page URL state and source Worker
+  navigation with atomic selected/open detail URL state. Orphan source button is
+  disabled. Actual disposable synthetic fixture:34 total, last page26–34, reopened
+  page URL restores position; message search returns one child event; open source
+  selects child scope/process, closing preserves search. Read503 shows failed-read
+  notice and last received record; Latest after flag removal recovers. Synthetic
+  records are not claimed as actual execution; no approval/target requests occurred.
+- Final desktop/320/390 screenshots (`...ui-desktop.jpg`, `...ui-320.jpg`,
+  `...ui-390.jpg`) visually inspected. Added panel/input padding for readability.
+  QA-only visible measurement button:320 frame document client305/scroll305;
+ 390 frame375/375 (15px vertical scrollbar). No content horizontal overflow;
+  only hidden skip link and collapsed sidebar brand reported. No dialog/next-plan
+  panel in this page. Compact evidence `...ui-proof.json`, `...ui-widths.json`.
+  These are CSS-width frame tests, not physical-device/touch/zoom/SR verification.
+- Owned tabs/flag cleaned; fixture shutdown target requests0, task creation POSTs0,
+  next-plan POSTs0 and temporary removal. Main preview gracefully restartedPID84481
+  on127.0.0.1:8790 preserving data; health/final JS/CSS/authenticated route verified
+  (`...preview-health.json`). No remote publication or container execution occurred.
+- Worker event search supersedes the earlier whole-workspace event-search gap;
+  semantic goal/observation consumption, automatic/event-driven Planner, shared
+  to-do and all remaining V1-READINESS gates stay open. This is not full v1 completion.

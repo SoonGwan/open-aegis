@@ -300,3 +300,14 @@ URL에 반영한다. 원본 증거의 개별 details 펼침·스크롤·미저�
 패널을 펼치되 기존 검색·페이지는 유지한다. 수동 재시도는 기존 전송 ID를 사용한다.
 전송 전 초안·메시지 내부 스크롤은 복원하지 않는다. 검색어는 URL에 남으므로
 인증정보나 민감 원문을 검색어로 사용하지 않는다.
+
+
+## 전체 Worker 실행 기록
+
+`GET /api/worker-events`는 자산 출처가 있는 이벤트를 여러 작업에 걸쳐 검색한다.
+페이지 경계·문자 그대로 검색·원본 부재·출처 일치의 한계는
+[WORKER-PROCESS.md](WORKER-PROCESS.md)를 따른다. 실행 과정 화면은
+`page=processes`, processes_q/offset/snapshot으로 위치를 보존한다. 검색 결과의
+Worker 상세를 열고 닫아도 이 목록 위치는 유지한다. task_worker_asset/open과
+이벤트/관찰별 task_worker_*_q/offset/snapshot은 선택한 Worker의 상세 위치다.
+두 목록의 snapshot은 전체/해당 이벤트 seq와 관찰 삽입 상한을 구분해야 한다.
