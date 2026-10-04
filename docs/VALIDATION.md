@@ -3007,3 +3007,60 @@ on 390×844 has no document overflow.
   existing Starlette/httpx warning (`artifacts/postgres-audit-review-backend-final.txt`).
 - Owned preview completed normal shutdown before restarting current code on8790
   (PID17981/session33460); `/api/health` and root HTTP200. Existing workspace retained.
+
+
+### PostgreSQL atomic ScopeSentry import and source request fencing
+
+- Added explicit SQLite/PostgreSQL import operations. Preview expiry cleanup,
+ 50-preview admission, reviewed asset/source inspection and parent-child page
+  updates use one Store write transaction. Apply validates the entire selected
+  batch before strict asset/history inserts, source upsert, applied retry result
+  and native audit append in the same serialized transaction. No shadow SQLite
+  or SQL translator. Local asset metadata, earlier scope and pending task remain
+  intact when source URL changes. Import never starts an execution task.
+- Native representative results match SQLite with fixed IDs/clock. Tests cover
+  reviewed fields and private-field exclusion, repeated files/two sources/shared
+  URL, old-source history, same-selection retry, changed selection, actor ownership,
+  unknown/duplicate selection, missing/expired previews, stale assets/source,
+  archived/missing links and duplicate existing URL. Two Store instances applying
+  the same review return one committed result; competing reviews yield one commit
+  and one409.49 active previews allow only one of two concurrent new previews;
+  expiry cleanup keeps the50 limit. These are cooperative local Store instances,
+  not arbitrary raw SQL writers or a full multi-process service certification.
+- Actual PostgreSQL trigger failure at audit hash insertion rolls back created
+  assets, source history/current link, applied result and audit together; the raw
+  manifest remains unchanged and the subsequent retry succeeds. Actual next-page
+  preview INSERT failure rolls back its parent pointer too. Owned loopback source
+  retry/resume/cache uses pages1,1,2,1,2 with no target requests or raw body/JWT
+  persistence. Its50 selected assets are imported without creating tasks.
+- Native source reads acquire execution permits before DNS/network handling.
+  Unowned source collection refuses before a request. Actual owner backend
+  termination during a held source POST blocks replacement until the admitted
+  request ends, then refuses preview persistence and all future source/manual
+  imports. No partial records are published. Source connections and local server
+  threads are closed by their owned test fixtures.
+- Native import subset: **12 passed in2.84s**
+  (`artifacts/postgres-import-native-targeted.txt`). Existing SQLite import/remote/
+  TLS subset: **50 passed in18.89s** (`artifacts/postgres-import-sqlite.txt`). One
+  existing Starlette/httpx warning. No UI edits or rebuild.
+- Wheel SHA256ce9fd89c41d039402168991e76741805afd43970b4192b8018746fb28dde2bee
+  byte-matches all53 service Python files. Outside-checkout installed package
+  performs one source POST against its owned synthetic server under runtime
+  ownership, reviewed import, idempotent retry and changed-source history, then
+  native graph/reports/audit/owner-loss/dump/restore/session return and returned
+  HTTP checks (`artifacts/postgres-import-installed-review.json`,valid=true,
+  target_requests=1,owned_lab_requests=1,owned_source_requests=1,
+  external_target_requests=0,external_source_requests=0,service_postgres_backend_enabled=false).
+  Same wheel's default installed HTTP/auth/UI/import/maintenance/release review
+  passes (`artifacts/postgres-import-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove disposable clusters and installations. CI now
+  includes native import tests; hosted execution remains unverified.
+- Native HTTP Store selection, full authentication/concurrent API/startup lifecycle,
+  schema configuration/upgrade and operational backup/restore remain required.
+  Actual external ScopeSentry operational source, database network fault timings,
+  malformed record parity and long-term resource SLO remain unverified. Complete
+  v1 stays open. No remote publication or external target/provider/source request.
+- Final full backend with explicit PG opt-in: **531 passed in149.86s**, one
+  existing Starlette/httpx warning (`artifacts/postgres-import-backend-final.txt`).
+- Owned preview completed normal shutdown before restarting current code on8790
+  (PID33670/session28978); `/api/health` and root HTTP200. Existing workspace retained.

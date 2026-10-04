@@ -90,7 +90,7 @@ python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-transf
 설치 환경, 복구 파일은 정리한다. CI에 선택 의존성/실제 클러스터 검사를 추가했으나
 GitHub hosted 실행 결과는 아직 없다.
 
-남은 v1 조건은 HTTP/작업 실행의 PostgreSQL Store 선택·가져오기와 전체 경로 연결,
+남은 v1 조건은 HTTP/작업 실행의 PostgreSQL Store 선택과 전체 경로 연결,
 서버 선택 설정·업그레이드·백업/복구의 운영 계약과 HTTP/권한/동시성/재시작 전체 검수다.
 현재 전송 형식은 그 기반이며, 이를 PostgreSQL 서비스 지원 완료로 표시하지 않는다.
 
@@ -104,7 +104,7 @@ Engine의 큐 지표/기한 조회와 발견 관찰·조치·재검증은 저장
 사용한다. 소유한 단독 검수 환경에서 네이티브 PostgreSQL Engine의 승인→로컬 요청→
 증거/커버리지 저장, 재검증 해결 판정, 실행 중 중지·큐 만료·시작 복구를 검수했다.
 이것은 HTTP 서비스의 PostgreSQL 실행 검수가 아니다. 아래 실행 소유권 계약을
-Engine과 요청 경계에 연결했으며, 가져오기 및 전체 HTTP 경로가 남아 있다.
+Engine과 요청 경계에 연결했으며, 전체 HTTP 경로의 저장소 선택/운영 검수가 남아 있다.
 
 발견 관찰·조치·재검증은 같은 쓰기 트랜잭션에서 현재 발견/담당자를 읽고 관련 증거,
 변경 이력과 함께 저장한다. PostgreSQL과 SQLite의 서로 다른 Store 인스턴스에서
@@ -183,6 +183,28 @@ pg_sleep 중 취소와 다음 검증 재시도, 동시 감사 추가의 스냅�
 HTTP 앱의 관리자 감사 경로는 이 저장소 중립 검증기를 사용하나 PostgreSQL HTTP
 서비스 선택·전체 인증/운영 검수는 아직 남아 있다. 감사 CLI는 여전히 SQLite 경로다.
 
+ScopeSentry의 파일/설정된 원본 조회 미리보기와 선택 반영도 네이티브 PostgreSQL
+트랜잭션을 사용한다. 저장소별 명시적 질의로 자산 URL 최대2개/출처/미리보기를
+읽고, 전체 선택의 예상 자산/출처 digest와 상태를 확인한 뒤 생성·출처 변경 이력·
+현재 출처·적용 결과·감사 연결을 한 쓰기 트랜잭션에서 저장한다. 신규 자산/미리보기/
+이력은 strict INSERT이며 기존 자산을 덮어쓰지 않는다. 원본 URL 변경 시 새 범위를
+만들고 기존 자산·검토 중 작업을 유지한다. 반영은 자산 등록이며 실행을 시작하지 않는다.
+같은 미리보기의 같은 선택 재시도는 원래 결과를 반환하며 변경된 선택은 거절한다.
+
+미리보기 만료 정리와50개 입장 제한도 쓰기 트랜잭션에서 직렬화한다. 서로 다른 Store
+인스턴스의 동시 적용/입장과 경쟁하는 미리보기, 중간 감사 INSERT 실패의 전체
+롤백, 원본 다음 페이지 포인터/미리보기의 동시 롤백을 실제 DB에서 검수했다.
+HTTP/JSON parser의 기존100행·UTF-8 1MiB·사용자 소유/권한 확인은 유지한다.
+설정된 원본은 원문/JWT를 저장하지 않고 검토 필드·원문 해시·불투명 연결 계약만 남긴다.
+원본 POST 조회의 DNS부터 응답 처리까지 네이티브 실행 permit으로 감싼다. 소유 연결을
+종료해도 이미 허용한 조회는 끝날 때까지 새 소유자 진입을 막고, 이후 조회/반영은
+거절한다. 실제 loopback 원본의 읽기·페이지 재검토·캐시·실패 후 재시도를 검수했으며
+원본 조회는 검증 대상 요청과 별도로 집계한다. 실제 외부 ScopeSentry 운영 인스턴스/
+JWT 회전/다중 프로세스의 전체 운영 검수는 남아 있다. 미리보기 shape가 서비스가
+생성하는 정상 계약이라는 전제이며 임의 손상 JSON 필드의 SQLite 질의 의미까지
+일치함을 보장하지 않는다. 가져오기 HTTP 경로 자체는 공유 구현을 쓰지만 전체
+PostgreSQL HTTP 저장소 선택/권한/재시작 검수는 아직 활성화하지 않았다.
+
 레코드는 원문 TEXT로 저장하고 검색/관계 연산만 jsonb로 투영한다. 검색 문자열은
 바인딩하고 `%`와 `_`도 문자 그대로 검색한다. JSON 객체의 원문 바이트 보존을 검증한
 전송과, jsonb 질의의 의미는 별도 계약이다. 중복 JSON 키·PostgreSQL numeric 범위를
@@ -199,7 +221,7 @@ HTTP 앱의 관리자 감사 경로는 이 저장소 중립 검증기를 사용�
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py tests/test_postgres_imports.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된

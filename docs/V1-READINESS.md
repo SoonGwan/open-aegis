@@ -110,7 +110,8 @@
     중지된 PG DB의 세션 제외/원본 유지 반환·실제 덤프 복구→SQLite 인증 서버 시작과 네이티브 관계 그래프도 검수.
     JSON·CSV·Markdown의 네이티브 보고서 streaming과 실제 SQL/전송 취소·메모리·일관성도 검수.
     네이티브 관리자 감사 검증의 해시/체크포인트·read-only·시간 제한·동시성·메모리도 검수.
-    HTTP/작업 실행·가져오기·설정의 PostgreSQL 연결과 전체 HTTP 운영 검수는
+    네이티브 ScopeSentry 미리보기/선택·동시성/감사 실패 전체 롤백·출처 이력과 원본 조회 소유권 차단도 검수.
+    HTTP/작업 실행·설정의 PostgreSQL 연결과 전체 HTTP 운영 검수는
     아직 미구현이며 전체 조건은 열려 있음([POSTGRES-STORAGE.md](POSTGRES-STORAGE.md)).
 - [ ] 검토된 확장 도구 계약과 등록·실행·결과 검증.
   - 내장 6개 도구의 계약 버전·코드 지문·계획 스냅샷, 승인/실행/Worker 전 비교,

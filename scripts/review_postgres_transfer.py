@@ -75,6 +75,8 @@ from aegis.graph import build_graph
 from aegis.reporting import report_chunks
 from aegis.export_limits import ExportPolicy,ExportPool
 from aegis.audit_review import AuditReview
+from aegis import scopesentry as imports
+from aegis.scopesentry_remote import Sources,PageInput
 from aegis.postgres_maintenance import PostgresLease
 from aegis.maintenance import WorkspaceBusy
 from aegis.postgres_transfer import postgres_to_sqlite,connect
@@ -105,11 +107,16 @@ usage=usage_summary(s,source='all',ledger='attempts')
 assert usage['calls']==2 and usage['attempt_states']['committed']==1 and usage['attempt_states']['interrupted']==1
 assert usage['reported_tokens']['total_tokens']=='5' and usage['costs']['states']['unconfigured']==2
 assert usage_summary(s,source='all')['calls']==1
-owned_requests=[]
+owned_requests=[];owned_source_requests=[]
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         owned_requests.append(self.path)
         self.send_response(200);self.send_header('Content-Length','2');self.end_headers();self.wfile.write(b'OK')
+    def do_POST(self):
+        query=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+        owned_source_requests.append((self.path,self.headers.get('Authorization'),query))
+        raw=json.dumps({'code':200,'data':{'list':[{'id':'000000000000000000000001','type':'http','url':'https://owned-import.invalid/','body':'private-source-marker'}]}}).encode()
+        self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
     def log_message(self,*args):pass
 server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
 thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
@@ -155,6 +162,23 @@ try:
     verified=AuditReview(s).run(before_audit['checkpoint'])
     assert verified['status']=='verified' and verified['checkpoint']==before_audit['checkpoint']
     assert verified['checkpoint_compared'] and s.audit_integrity()==before_audit
+    os.environ['OWNED_INSTALL_SENTRY_TOKEN']='owned-installed-source-secret'
+    sources=Sources(s,threading.Event(),[{'id':'owned','url':f'http://127.0.0.1:{server.server_port}',
+        'token_env':'OWNED_INSTALL_SENTRY_TOKEN','allow_private':True,'lab_http':True,'project':'owned'}])
+    plan=sources.collect(PageInput(connection_id='owned'),u['id']);task_count=s.count('tasks')
+    raw=json.dumps(s.get('import_previews',plan['id']))
+    assert 'private-source-marker' not in raw and 'owned-installed-source-secret' not in raw
+    decision=imports.ApplyInput(selected=['000000000000000000000001'],authorized=True)
+    result=imports.apply(s,plan['id'],decision,u['id'])
+    assert result['created']==result['linked']==1 and imports.apply(s,plan['id'],decision,u['id'])==result
+    old_asset=s.get('assets',result['items'][0]['asset_id'])
+    changed=imports.preview(s,imports.PreviewInput(source_key='owned',export=json.dumps({'_id':'000000000000000000000001','type':'http','url':'https://owned-import-changed.invalid/'})),u['id'])
+    updated=imports.apply(s,changed['id'],decision,u['id'])
+    assert updated['source_changed']==updated['created']==1 and s.count('asset_source_history')==1
+    assert s.get('assets',old_asset['id'])==old_asset and s.count('tasks')==task_count
+    assert owned_requests==['/'] and len(owned_source_requests)==1
+    assert owned_source_requests[0][0]=='/api/assets/asset' and owned_source_requests[0][1]=='Bearer owned-installed-source-secret'
+    assert owned_source_requests[0][2]['pageIndex']==1 and owned_source_requests[0][2]['pageSize']==50
 finally:
     engine.shutdown();server.shutdown();server.server_close();thread.join(timeout=2)
 assert owned_requests==['/']
@@ -176,7 +200,7 @@ finally:lost.close()
 s=PostgresStore(os.environ['AEGIS_POSTGRES_DSN'],'owned_transfer')
 s.session('owned-native-export-cookie',time.time()+300,u['id']);assert s.valid_session('owned-native-export-cookie')
 with s.transaction() as db:manifest=postgres_manifest(db)
-print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity(),'usage':usage,'owned_lab_requests':len(owned_requests)}))
+print(json.dumps({'module':sys.modules[s.__class__.__module__].__file__,'manifest':manifest,'audit':s.audit_integrity(),'usage':usage,'owned_lab_requests':len(owned_requests),'owned_source_requests':len(owned_source_requests)}))
 ''',forward_proof],'installed native PostgreSQL store'))
             dump=temporary/'owned.dump'
             run([binaries['pg_dump'],'--format=custom','--schema','owned_transfer','--file',dump,'postgres'],'real pg_dump');dump.chmod(0o600)
@@ -239,9 +263,10 @@ s.event(None,'반환 후 이벤트');assert s.audit_integrity()['valid']
             print(json.dumps({'valid':True,'wheel_sha256':hashlib.sha256(wheel.read_bytes()).hexdigest(),
                 'postgres_version':run([binaries['pg_ctl'],'--version'],'version').strip(),
                 'installed_origin':origin['module'],'installed_native_origin':native['module'],'manifest':native['manifest'],'audit':native['audit'],
-                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
+                'checks':['locked optional dependency','server fsync enabled','installed six-command package','atomic offline transfer','installed native Store reads and writes','native security change session revocation','native attempt lifecycle and standalone recovery','native exact metadata usage summary','installed standalone native engine approved owned lab execution','native readonly provenance graph','native JSON CSV Markdown report streams','native bounded readonly audit review','native owned source read and atomic import retry/history','native duplicate runtime owner and active export refusal','actual owned backend termination and stale write refusal','real pg_dump/pg_restore',
                           'installed SQLite return','returned sessions omitted and source preserved','preserved password hashes and exact record','audit continuation','installed returned HTTP server login, records and graph'],
                 'target_requests':native['owned_lab_requests'],'owned_lab_requests':native['owned_lab_requests'],
+                'owned_source_requests':native['owned_source_requests'],'external_source_requests':0,
                 'external_target_requests':0,'service_postgres_backend_enabled':False}))
         finally:
             run([binaries['pg_ctl'],'-D',data,'-w','-m','fast','stop'],'owned PostgreSQL stop')

@@ -6,6 +6,7 @@ import os
 import re
 import threading
 import time
+from contextlib import nullcontext
 from urllib.parse import urlsplit
 
 from fastapi import HTTPException
@@ -85,6 +86,10 @@ class Sources:
         return token, fingerprint
 
     def fetch(self, c, token, page, control):
+        with self.store.execution_permit() if getattr(self.store,'backend',None)=='postgres' else nullcontext():
+            return self._fetch(c,token,page,control)
+
+    def _fetch(self, c, token, page, control):
         p = urlsplit(c.url)
         port = p.port or (443 if p.scheme == 'https' else 80)
         address = resolve(p.hostname, port, c.allow_private, control=control, timeout=control.timeout(4))[0]

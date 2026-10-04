@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from .audit import append_event
+from .scopesentry_queries import SQLiteImports,PostgresImports
 from .network import normalize_url
 from .store_util import identifier, now
 
@@ -97,21 +97,16 @@ def parse_export(text):
     return result
 
 
-def read(db, kind, record_id):
-    row = db.execute('SELECT data FROM records WHERE kind=? AND id=?', (kind, record_id)).fetchone()
-    return json.loads(row['data']) if row else None
-
-
 def target_asset(db, url):
-    rows = db.execute("SELECT data FROM records WHERE kind='assets' AND json_extract(data,'$.url')=? LIMIT 2", (url,)).fetchall()
+    rows = db.assets(url)
     if len(rows) > 1:
         raise HTTPException(409, '같은 주소의 기존 자산이 여러 개입니다. 중복을 정리한 후 다시 미리보세요.')
-    return json.loads(rows[0]['data']) if rows else None
+    return rows[0] if rows else None
 
 
 def inspect(db, item, source_key):
-    link = read(db, 'asset_sources', source_id(source_key, item['external_id']))
-    previous_asset = read(db, 'assets', link['asset_id']) if link else None
+    link = db.read('asset_sources', source_id(source_key, item['external_id']))
+    previous_asset = db.read('assets', link['asset_id']) if link else None
     asset = target_asset(db, item['url'])
     blocked = bool((asset and asset.get('archived_at')) or (link and previous_asset is None))
     action = 'blocked' if blocked else 'create' if asset is None else 'link'
@@ -140,10 +135,10 @@ def preview(store, data, actor_id):
 
 def store_preview(store, source_key, rows, export_hash, actor_id, *, remote=None):
     timestamp = now()
-    with store.lock, store.connect() as db:
-        db.execute('BEGIN IMMEDIATE')
-        db.execute("DELETE FROM records WHERE kind='import_previews' AND json_extract(data,'$.expires_at')<=?", (timestamp,))
-        count = db.execute("SELECT count(*) FROM records WHERE kind='import_previews'").fetchone()[0]
+    with store.write_transaction() as connection:
+        db = PostgresImports(connection) if getattr(store,'backend',None)=='postgres' else SQLiteImports(connection)
+        db.expire(timestamp)
+        count = db.count()
         if count >= 50:
             raise HTTPException(429, '열린 가져오기 미리보기가 50개입니다. 만료 후 다시 시도하세요.')
         rows = [inspect(db, row, source_key) if row['status'] == 'ready' else row for row in rows]
@@ -154,16 +149,16 @@ def store_preview(store, source_key, rows, export_hash, actor_id, *, remote=None
             record['remote'] = remote
             parent = remote.get('previous_preview_id')
             if parent:
-                previous = read(db, 'import_previews', parent)
+                previous = db.read('import_previews', parent)
                 if not previous or previous['actor_id'] != actor_id or previous['expires_at'] <= timestamp:
                     raise HTTPException(409, '이전 페이지가 변경되거나 만료됐습니다. 다시 조회하세요.')
                 if previous['remote'].get('next_preview_id'):
-                    existing = read(db, 'import_previews', previous['remote']['next_preview_id'])
+                    existing = db.read('import_previews', previous['remote']['next_preview_id'])
                     if existing and existing['expires_at'] > timestamp:
                         return public_preview(existing)
                 previous['remote']['next_preview_id'] = record['id']
-                db.execute("UPDATE records SET data=? WHERE kind='import_previews' AND id=?", (json.dumps(previous, ensure_ascii=False), parent))
-        db.execute("INSERT INTO records VALUES ('import_previews',?,?)", (record['id'], json.dumps(record, ensure_ascii=False)))
+                db.update('import_previews',previous)
+        db.insert('import_previews',record)
     return public_preview(record)
 
 
@@ -173,9 +168,9 @@ def apply(store, preview_id, data, actor_id):
     if len(set(data.selected)) != len(data.selected):
         raise HTTPException(422, '선택한 원본 ID가 반복됩니다.')
     timestamp = now()
-    with store.lock, store.connect() as db:
-        db.execute('BEGIN IMMEDIATE')
-        record = read(db, 'import_previews', preview_id)
+    with store.write_transaction() as connection:
+        db = PostgresImports(connection) if getattr(store,'backend',None)=='postgres' else SQLiteImports(connection)
+        record = db.read('import_previews', preview_id)
         if not record:
             raise HTTPException(404, '가져오기 미리보기가 없습니다. 다시 미리보세요.')
         if record['actor_id'] != actor_id:
@@ -204,10 +199,10 @@ def apply(store, preview_id, data, actor_id):
                 asset = {'id': identifier(), 'name': urlsplit(row['url']).netloc[:100], 'url': row['url'], 'type': 'web',
                          'owner': '', 'tags': [], 'authorization_rules': [], 'authorized': True,
                          'created_at': timestamp, 'revision': 1, 'archived_at': None}
-                db.execute("INSERT INTO records VALUES ('assets',?,?)", (asset['id'], json.dumps(asset, ensure_ascii=False)))
+                db.insert('assets',asset)
                 result['created'] += 1
             link_id = source_id(record['source_key'], external_id)
-            previous = read(db, 'asset_sources', link_id)
+            previous = db.read('asset_sources', link_id)
             if previous:
                 result['seen' if previous['source_url'] == row['url'] else 'source_changed'] += 1
             else:
@@ -217,12 +212,12 @@ def apply(store, preview_id, data, actor_id):
                     'last_seen': timestamp, 'preview_id': preview_id, 'export_sha256': record['export_sha256']}
             if previous and previous['asset_id'] != asset['id']:
                 history = {**previous, 'id': identifier(), 'replaced_at': timestamp}
-                db.execute("INSERT INTO records VALUES ('asset_source_history',?,?)", (history['id'], json.dumps(history, ensure_ascii=False)))
-            db.execute("INSERT INTO records VALUES ('asset_sources',?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data", (link_id, json.dumps(link, ensure_ascii=False)))
+                db.insert('asset_source_history',history)
+            db.source(link)
             result['items'].append({'external_id': external_id, 'asset_id': asset['id'], 'url': asset['url']})
         record.update(applied_at=timestamp, selected=selected, result=result)
-        db.execute("UPDATE records SET data=? WHERE kind='import_previews' AND id=?", (json.dumps(record, ensure_ascii=False), preview_id))
-        append_event(db, (timestamp, None, 'info', 'ScopeSentry 자산 가져오기를 반영했습니다.',
+        db.update('import_previews',record)
+        db.event((timestamp, None, 'info', 'ScopeSentry 자산 가져오기를 반영했습니다.',
                          json.dumps({'actor_id': actor_id, 'preview_id': preview_id, 'source_key': record['source_key'],
                                      'export_sha256': record['export_sha256'], 'selected': len(selected),
                                      **{key: result[key] for key in ('created', 'linked', 'seen', 'source_changed')}}, ensure_ascii=False)))
