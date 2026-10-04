@@ -3399,3 +3399,67 @@ on 390×844 has no document overflow.
   different-version/schema/config/startup-failure transition gates remain open.
   Default SQLite preview completed normal shutdown and restarted final code on8790
   (PID79857/session80496), retained its workspace; health/root HTTP200.
+
+
+## Different installed version/UI/config transition and startup rollback
+
+- Prepared local prerelease **0.2.0a1** (private UI package0.2.0-alpha.1), without
+  declaring v1/official publication. Python package/runtime/MCP now report the same
+  installed version; MCP's literal0.1.0 was replaced with package version. UI uses
+  actual settings version and an unknown-version label before it is available,
+  rather than inventing0.1.0. Release metadata fixtures use actual package version.
+- Captured prior built UI before rebuilding: old JS index-cPS8RbeC.js, candidate
+  index-DJrtcSWq.js; CSS remains index-DniDnrrf.css. Final frontend **67 passed in
+  474.29ms** (`artifacts/version-candidate-frontend-tests-final.txt`), final TypeScript/
+  Vite build passes (`artifacts/version-candidate-frontend-build-final.txt`). Source
+  release/MCP subset **28 passed in1.67s** (`artifacts/version-candidate-targeted.txt`),
+  full backend with owned PG opt-in **600 passed in174.86s**, one existing Starlette/
+  httpx warning (`artifacts/version-candidate-backend-final.txt`).
+- Old wheel SHA256dea00a28c6131db44b607988e39c4c4a87771c195003130158b68476f515dee8
+  matches all57 Python files from authoritative git archive10ded2b5e78b338aaad5def57a196693dd691783
+  (`artifacts/version-transition-old-source-proof.json`). Candidate wheel
+  SHA256700406723d95f30a799e07647efc87d93c78b4fd9504f4324ef2aa3b8d07db63 matches all57
+  current Python files at candidate source revision8bc19f2dde54f409de272264507f0e1aa65ac324
+  (`artifacts/version-candidate-source-proof.json`). This is independent source-byte
+  evidence; create CLI itself still does not prove a supplied revision's identity.
+- Enhanced installed transition rehearsal for SQLite/PG, distinct old/new UI input,
+  each artifact's own signing CLI, actual HTTP/MCP version assertions and exact
+  served index/JS/CSS comparisons. PG uses an owned disposable Unix-socket cluster
+  and installed old initializer; all server sockets are inherited bound descriptors.
+  Fault injection writes through app.state.store, so PG failure is an actual native
+  write under its owner rather than an unrelated SQLite file.
+- **Both actual transitions pass** (`artifacts/version-transition-postgres.json`,
+  `artifacts/version-transition-sqlite.json`):0.1.0→0.2.0a1→policy restart→failed
+  startup→recovered0.1.0. Both valid=true,same_version=false,shared_ui_input=false,
+  changed_execution_budget=true,target_requests=0,private_key_removed=true.
+  Initial/candidate/policy-restart/recovered processes exit-15 with cleanup and
+  owner/lease release; injected pre-readiness startup exits3, serves no HTTP, leaves
+  its committed fault note and releases ownership.
+- Execution budget24→candidate12, old package contract approval409 without execution;
+  a newly created candidate plan is refused after same candidate restart at6 with
+  explicit changed-policy reason. Candidate notes/plan/fault note are removed from
+  the restored workspace, original asset/plan/note retained, old cookie401 and
+  original password login accepted, prior version/UI/budget24 selected. PG restores
+  into fresh owned_recovered while original owned_transition retains later notes/
+  fault/source cookie; SQLite preserves its pre-restore DB. Audit and zero target
+  request checks pass; plans remain pending throughout. No production workspace,
+  target/provider or remote source is involved.
+- Candidate's existing installed native initializer/HTTP/owned approval/import/
+  graph/report/ownership/live backup/native restore/MCP/audit/signature/preflight/
+  dump/SQLite-return review passes
+  (`artifacts/version-candidate-installed-postgres-review.json`,valid=true,
+  owned_lab_requests=1,owned_source_requests=1,external_target_requests=0,
+  external_source_requests=0). Default installed runtime/UI/auth/seven CLI/maintenance/
+  release checks pass (`artifacts/version-candidate-installed-runtime-review.json`,
+  valid=true,target_requests=0). Successful runners stop/remove temporary clusters,
+  environments, data and signing keys.
+- Both database schemas remain2 and runtime/PG dependency locks are shared. This
+  proves these different package versions, small UI change and selected runtime
+  budget changes, not arbitrary breaking UI/config/dependency/schema migrations.
+  Different-schema migration, auto service switching, official keys/publication,
+  containers/power/remote fault/load, full browser/mobile/accessibility and other
+  v1 tool/AI/resource gates remain open. No remote publish/push was performed.
+- Local editable distribution now matches runtime0.2.0a1. Preview's0.1.0 process
+  completed normal shutdown and current candidate restarted on8790 (PID28802/
+  session84430). Health/root HTTP200; existing workspace/session/schema retained.
+  Old pending contracts were not rewritten and require current reviewed replan.

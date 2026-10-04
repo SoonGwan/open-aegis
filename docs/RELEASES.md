@@ -21,11 +21,11 @@ umask 077
 openssl genpkey -algorithm ED25519 -out rehearsal-private.pem
 openssl pkey -in rehearsal-private.pem -pubout -out rehearsal-public.pem
 
-aegis-release create --wheel dist/open_aegis-0.1.0-py3-none-any.whl \
-  --web web/dist --lock requirements.lock --output release-0.1.0 \
+aegis-release create --wheel dist/open_aegis-0.2.0a1-py3-none-any.whl \
+  --web web/dist --lock requirements.lock --output release-0.2.0a1 \
   --private-key rehearsal-private.pem --revision FULL_SOURCE_COMMIT_SHA
 
-aegis-release verify --bundle release-0.1.0 --public-key rehearsal-public.pem
+aegis-release verify --bundle release-0.2.0a1 --public-key rehearsal-public.pem
 ```
 
 wheel은 `open-aegis`, 현재 제작 도구와 같은 버전, Python >=3.11 메타데이터가 필요하다.
@@ -50,7 +50,7 @@ payload는 파일당 2 GiB·최대 10,000개 제한이다. 신뢰한 키의 지�
 환경의 절차를 따르며 아래 도구가 자동 중지하지 않는다.
 
 ```sh
-aegis-release prepare --backend sqlite --bundle release-0.1.0 --public-key rehearsal-public.pem \
+aegis-release prepare --backend sqlite --bundle release-0.2.0a1 --public-key rehearsal-public.pem \
   --database data/aegis.db --output before-update
 ```
 
@@ -81,7 +81,7 @@ PostgreSQL용 번들은 선택 의존성 잠금 파일도 서명에 포함한다
 설치본 검수를 대신하지 않는다.
 
 ```sh
-aegis-release create --wheel dist/open_aegis-0.1.0-py3-none-any.whl \
+aegis-release create --wheel dist/open_aegis-0.2.0a1-py3-none-any.whl \
   --web web/dist --lock requirements.lock --postgres-lock requirements-postgres.lock \
   --output release-postgres --private-key rehearsal-private.pem --revision FULL_SOURCE_COMMIT_SHA
 
@@ -146,32 +146,51 @@ aegis-restore --backend sqlite --source before-update/before-update.db --destina
 백업 시점 이후의 변경이므로 복구 시 사라질 수 있다. 운영 업데이트는 사전 공지·
 중지 구간과 데이터 보존 요구에 맞춰 계획해야 한다.
 
-## 설치본 전환·시작 실패 리허설
+## 서로 다른 버전·UI·설정 전환과 시작 실패 리허설
 
-`scripts/review_release_transition.py`는 다른 두 wheel을 체크아웃 밖의 독립된
-가상환경에 설치한다. 각 wheel과 UI·잠금 파일을 임시 키로 서명/검증하고, 이전
-서버에서 만든 합성 자산·승인 대기 작업·노트를 새 서버가 읽는지 실제 HTTP로
-확인한다. 대상 URL에는 요청하지 않는다.
+현재 로컬 후보는0.2.0a1이며 v1 완료/공식 배포를 뜻하지 않는다.
+`scripts/review_release_transition.py`는 서로 다른 wheel을 checkout 밖의 두 독립
+가상환경에 설치하고, 각 설치본의 자체 제작 CLI로 해당 버전의 번들을 서명한다.
+새 검증기로 두 번들의 payload를 확인한 뒤 실제 HTTP/MCP가 설치 버전을 보고하는지
+검사한다. 임시 키는 서명 후 제거하며 공식 신원/키 배포를 검증하지 않는다.
+
+이전 UI는 빌드 교체 전에 별도 디렉터리에 보존한다. `--old-web-dir`를 생략하면
+같은 UI 입력을 사용하므로 UI 변경 검수라고 부르지 않는다. 현재 리허설은 다른 JS
+payload를 가진 이전/후보 UI를 각각 서명하고 HTTP index/JS/CSS의 실제 내용을 비교했다.
+후보의 변경은 버전 미조회 시 잘못된0.1.0 표시를 제거하고 실제 서버 버전을 표시하는
+작은 수정이며, 임의 UI/API 변경의 일반적 호환성이나 전체 브라우저 여정을 보장하지 않는다.
 
 ```sh
-.venv/bin/python scripts/review_release_transition.py \
-  --old-wheel artifacts/conversation-ai-wheel/open_aegis-0.1.0-py3-none-any.whl \
-  --new-wheel artifacts/release-wheel/open_aegis-0.1.0-py3-none-any.whl \
-  --web-dir web/dist --runtime-lock requirements.lock \
-  --old-revision 4a0717e58eb250d07588454de9607f59b0835034 \
-  --new-revision 809a88cf95ead0f4307a2bcb9bbee7544ff453a9
+.venv/bin/python scripts/review_release_transition.py --backend postgres \
+  --old-wheel artifacts/postgres-release-downgrade-wheel/open_aegis-0.1.0-py3-none-any.whl \
+  --new-wheel artifacts/version-candidate-wheel/open_aegis-0.2.0a1-py3-none-any.whl \
+  --old-web-dir artifacts/version-transition-old-web --web-dir web/dist \
+  --runtime-lock requirements.lock --postgres-lock requirements-postgres.lock \
+  --old-revision 10ded2b5e78b338aaad5def57a196693dd691783 \
+  --new-revision 8bc19f2dde54f409de272264507f0e1aa65ac324
 ```
 
-새 서버의 정상 시작/기록 후 종료도 확인한다. 그 다음 앱의 원래 startup과 DB
-기록 후, 준비 완료 전에 합성 예외를 주입한다. 실패 프로세스의 종료·HTTP 미제공·
-워크스페이스 잠금 해제를 확인하고 이전 설치본의 복구 CLI로 사전 백업을 복원한다.
-보존된 이전 UI/설정과 프로세스로 재시작하여 이전 쿠키 거절, 비밀번호 재로그인,
-백업 시점 기록 보존, 이후 정상 기록과 실패 시작 기록 제거, 감사 연결과 종료를 검사한다.
-모든 설치·데이터·서명 키는 임시 공간에 있으며 기존 워크스페이스를 변경하지 않는다.
+PostgreSQL 모드는 소유한0700 임시 Unix socket/신뢰 인증 클러스터를 시작하고 종료한다.
+운영 DB에는 연결하지 않는다. SQLite는 `--backend sqlite`로 같은 절차를 사용하며
+`--postgres-lock`/DB 서버 도구가 필요하지 않다. 두 모드 모두 이전 서버에서 만든
+자산·승인 대기 작업·노트를 후보가 읽고 정상 기록하는지 확인한다. 계획은 실행하지 않는다.
 
-현재 확인한 두 wheel은 서로 다른 코드지만 **모두 버전 0.1.0·스키마 2**이며
-같은 UI 입력·의존성 잠금·공통 설정을 사용한다. 이것은 실제 설치본/프로세스 전환과
-시작 실패의 복구 근거다. 다른 버전/스키마의 마이그레이션, 설정 변경의 호환성,
-UI 기능 변경의 호환성, 자동 서비스 관리자 전환을 검증한 것은 아니다.
-revision 입력과 wheel 소스의 동일성도 이 스크립트가 자동 증명하지 않는다.
-컨테이너/볼륨, 공식 키의 서명 릴리스·공개 배포와 이 나머지 검증은 v1 조건으로 남아 있다.
+이전 설정의 요청 예산24→후보12로 전환하고 기존 도구 계약의 승인 거절을 확인한다.
+후보에서 만든 새 대기 계획은 같은 후보를 예산6으로 재시작한 후 정책 변경 사유로
+승인을 거절한다. 복구할 때 이전 버전/UI/예산24를 선택한다. 이런 승인 차단은 변경
+후 자동 실행을 허용하는 기능이 아니다. 현재 계약/범위/정책으로 새 계획을 검토한다.
+
+실패는 원래 앱 startup에 진입하고 실제 notes 쓰기를 커밋한 뒤 준비 완료 전에
+주입한다. 실패 프로세스가 비정상 종료하고 HTTP를 제공하지 않으며 SQLite 임대 또는
+PG 실행 소유권을 해제한 것을 검사한다. 실제 실패 기록이 원본에 남아 있음을 확인한
+뒤 이전 설치본의 restore CLI로 사전 백업을 복구한다. PG는 새 스키마로 복구하고,
+원본 스키마의 이후 기록/원본 쿠키는 유지한다. SQLite는 복구 직전 DB를 별도 보존한다.
+
+이전 프로세스/UI/설정으로 재시작해 이전 쿠키401, 원래 비밀번호 재로그인,
+백업 시점 자산/계획/노트 유지와 후보 계획/노트·실패 기록 제거, 감사 연결과 정상
+종료를 검증했다. 두 결과 모두 same_version=false, shared_ui_input=false,
+target_requests=0이다. 현재 스키마는 양쪽 모두2이며 실제 다른 DB 스키마 이전을
+검수한 것은 아니다. runtime/선택 PG 의존성 잠금은 공유한다. 깨지는 설정 변경,
+자동 서비스 관리자 전환, 컨테이너/전원/원격 장애, 공식 키와 공개 배포, 전체 UI/부하
+검수는 여전히 v1 조건으로 남아 있다. 입력 revision은 스크립트가 자동 증명하지 않으며,
+이번 old/candidate wheel의57개 Python 파일은 해당 Git revision/실제 source와 별도로 대조했다.
