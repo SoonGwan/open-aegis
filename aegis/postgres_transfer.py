@@ -98,18 +98,20 @@ def postgres_manifest(db):
     return result
 
 
-def postgres_audit(db, checkpoint=None):
+def postgres_audit(db, checkpoint=None, *, check_cancelled=None):
     class Reader:
         stream=None
         def execute(self,query):
+            if check_cancelled:check_cancelled()
             if query.startswith('SELECT e.*,h.previous_hash'):
                 self.stream=db.cursor(name='aegis_audit_verification')
+                self.stream.itersize=32
                 self.stream.execute(query)
                 return self.stream
             return db.execute(query)
     reader=Reader()
     try:
-        return verify_chain(reader,checkpoint)
+        return verify_chain(reader,checkpoint,check_cancelled=check_cancelled)
     finally:
         if reader.stream is not None: reader.stream.close()
 

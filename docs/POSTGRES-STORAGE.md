@@ -90,7 +90,7 @@ python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-transf
 설치 환경, 복구 파일은 정리한다. CI에 선택 의존성/실제 클러스터 검사를 추가했으나
 GitHub hosted 실행 결과는 아직 없다.
 
-남은 v1 조건은 HTTP/작업 실행의 PostgreSQL Store 연결·보고서/감사 읽기,
+남은 v1 조건은 HTTP/작업 실행의 PostgreSQL Store 선택·가져오기와 전체 경로 연결,
 서버 선택 설정·업그레이드·백업/복구의 운영 계약과 HTTP/권한/동시성/재시작 전체 검수다.
 현재 전송 형식은 그 기반이며, 이를 PostgreSQL 서비스 지원 완료로 표시하지 않는다.
 
@@ -104,7 +104,7 @@ Engine의 큐 지표/기한 조회와 발견 관찰·조치·재검증은 저장
 사용한다. 소유한 단독 검수 환경에서 네이티브 PostgreSQL Engine의 승인→로컬 요청→
 증거/커버리지 저장, 재검증 해결 판정, 실행 중 중지·큐 만료·시작 복구를 검수했다.
 이것은 HTTP 서비스의 PostgreSQL 실행 검수가 아니다. 아래 실행 소유권 계약을
-Engine과 요청 경계에 연결했으며, 보고서/가져오기 및 전체 HTTP 경로가 남아 있다.
+Engine과 요청 경계에 연결했으며, 가져오기 및 전체 HTTP 경로가 남아 있다.
 
 발견 관찰·조치·재검증은 같은 쓰기 트랜잭션에서 현재 발견/담당자를 읽고 관련 증거,
 변경 이력과 함께 저장한다. PostgreSQL과 SQLite의 서로 다른 Store 인스턴스에서
@@ -164,6 +164,25 @@ gate는 소유 세션을 종료해도 반환/교체를 막고, 보고서를 닫�
 조회는 대상에 추가 HTTP 요청을 보내지 않는다. HTTP 앱은 이 저장소 중립 보고서
 경로를 호출하지만 PostgreSQL backend 선택 자체는 아직 활성화하지 않았다.
 
+관리자 감사 검증의 `AuditReview`는 저장소를 받아 SQLite 또는 네이티브 PostgreSQL의
+읽기 전용 경로를 사용한다. PostgreSQL 검증은 같은 read-only REPEATABLE READ
+트랜잭션에서 감사 기준·전체 해시 연결·고아 연결 여부와 선택 외부 체크포인트를
+검사하고, 서버 측 커서(batch32)로 감사 행을 읽는다. 이벤트 원문이나 비밀 정보를
+응답에 포함하지 않으며 기준/연결/이벤트를 복구하거나 새 검증 이벤트를 쓰지 않는다.
+단일 검증 슬롯을 사용하고 초과 요청은 기존 busy 계약으로 거절한다.
+
+남은 시간으로 statement_timeout을 설정하고 기존 DB 취소 감시를 사용한다. SQL/행
+처리/결과 반환 전 시간 제한을 확인한다. 불일치는 `mismatch`, 시간 초과·읽기 오류·
+실행 소유권 상실은 `inconclusive`이며 DB 오류 메시지를 응답에 노출하지 않는다.
+10,000개의2KB 상세 기록을 검수한 Python peak memory는2MB 미만이었다. 실제
+pg_sleep 중 취소와 다음 검증 재시도, 동시 감사 추가의 스냅샷 일관성, readonly 쓰기
+거절, 소유 backend 종료 시 진행 중 검증이 교체를 막고 이후 검증이 거절되는 것을
+확인했다. 모든 확인은 소유한 로컬 DB에서 수행했다. 원격 접속/취소 지연·서버 메모리·
+단일 대형 이벤트·외부 체크포인트 수집 자동화의 전체 운영 검증을 뜻하지 않는다.
+검증 응답 자체는 서명/승인 증명이 아니며 신뢰할 외부 체크포인트 보관은 별도다.
+HTTP 앱의 관리자 감사 경로는 이 저장소 중립 검증기를 사용하나 PostgreSQL HTTP
+서비스 선택·전체 인증/운영 검수는 아직 남아 있다. 감사 CLI는 여전히 SQLite 경로다.
+
 레코드는 원문 TEXT로 저장하고 검색/관계 연산만 jsonb로 투영한다. 검색 문자열은
 바인딩하고 `%`와 `_`도 문자 그대로 검색한다. JSON 객체의 원문 바이트 보존을 검증한
 전송과, jsonb 질의의 의미는 별도 계약이다. 중복 JSON 키·PostgreSQL numeric 범위를
@@ -180,7 +199,7 @@ gate는 소유 세션을 종료해도 반환/교체를 막고, 보고서를 닫�
 실제 DB 회귀 검수:
 
 ```sh
-AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py
+AEGIS_TEST_POSTGRES=1 python -m pytest -q tests/test_postgres_transfer.py tests/test_postgres_store.py tests/test_postgres_ledger.py tests/test_postgres_engine.py tests/test_postgres_ownership.py tests/test_postgres_graph.py tests/test_postgres_reports.py tests/test_postgres_audit_review.py
 ```
 
 설치본 검수 스크립트는 checkout 밖에서 잠금 의존성과 wheel을 설치한다. 설치된

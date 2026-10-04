@@ -194,7 +194,7 @@ def create_app(data_dir=None, allow_private=None):
         lease.close()
         raise
     private = allow_private if allow_private is not None else os.environ.get('AEGIS_LAB_MODE') == '1'
-    audit_review = AuditReview(store.path)
+    audit_review = AuditReview(store)
     engine = Engine(store, private, policy=policy)
     scheduler_stop = threading.Event()
     shutdown_requested = threading.Event()

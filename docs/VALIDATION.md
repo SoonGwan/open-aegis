@@ -2958,3 +2958,52 @@ on 390×844 has no document overflow.
   publication or external target/provider request; the complete v1 gate stays open.
 - Owned preview completed normal shutdown before restarting current code on8790
   (PID3544/session42309); `/api/health` and root HTTP200. Existing workspace retained.
+
+
+### PostgreSQL bounded administrator audit review
+
+- AuditReview now accepts a Store or legacy SQLite path. HTTP construction passes
+  its Store; native PostgreSQL uses one owner-aware readonly repeatable-read
+  transaction and the shared chain verifier with named cursor batch32. Deadline
+  checks cover SQL admission, each record and successful response return. Native
+  query cancellation/statement_timeout use the previously tested transaction
+  permit guard. SQLite keeps its readonly URI and SQL progress handler.
+- Actual native tests cover empty and normal chains, prefix and invalid/future
+  checkpoints, event edit/hash deletion/tail deletion/bad state/unsealed append,
+  normal responses without event payloads, and unchanged raw manifests after
+  verification or mismatch. A DELETE attempt in the review transaction is refused
+  by PostgreSQL readonly enforcement; its transaction error becomes inconclusive
+  and the original chain remains valid. Read failures and closed owners return
+  generic inconclusive results without database SQL details. No repair or appended
+  verification event is performed.
+- Concurrent append stays outside the current snapshot and appears on the next
+  review. Single-slot concurrency rejects a second invocation and permits a later
+  retry. Actual pg_sleep(10) is interrupted by a .15-second deadline in under2s;
+  connection, cancellation watcher and slot are released, followed by a successful
+  fresh verification. An admitted review fences replacement after actual owner
+  backend termination until the review finishes; future stale-owner reviews are
+  inconclusive.10,000 actual chained events with2KB detail each use Python traced
+  peak below2MB and a closed server cursor with batch32. This proves representative
+  local cases, not remote network cancellation, server memory, huge single-event
+  limits, long-lived vacuum effects or operational SLO.
+- Native+SQLite review/audit subset: **39 passed in3.64s**
+  (`artifacts/postgres-audit-review-targeted-final.txt`). No UI edits or rebuild.
+- Wheel SHA256a6ff2fe38a052f5375bb218cab8c62df00a56e7b54a0d1fd2f08d911e9d1908b
+  byte-matches all52 service Python files. Outside-checkout installed native Engine
+  generates real proofs, reads native reports and verifies the audit against its
+  checkpoint without appending records, then passes ownership/dump/restore/session
+  return and returned HTTP checks
+  (`artifacts/postgres-audit-review-installed-review.json`,valid=true,target_requests=1,
+  owned_lab_requests=1,external_target_requests=0,service_postgres_backend_enabled=false).
+  Same wheel's default installed HTTP/auth/readonly audit/maintenance/release checks
+  pass (`artifacts/postgres-audit-review-runtime-review.json`,valid=true,target_requests=0).
+  Successful runners stop/remove disposable clusters and installations. CI now
+  includes native review tests; hosted execution remains unverified.
+- Whole PostgreSQL HTTP Store selection/auth lifecycle/import/configuration and
+  operational backup/restore remain required; PostgreSQL CLI audit selection and
+  external checkpoint automation are not implemented. Complete v1 remains open.
+  No remote publication or external target/provider requests.
+- Final full backend with explicit PG opt-in: **519 passed in147.74s**, one
+  existing Starlette/httpx warning (`artifacts/postgres-audit-review-backend-final.txt`).
+- Owned preview completed normal shutdown before restarting current code on8790
+  (PID17981/session33460); `/api/health` and root HTTP200. Existing workspace retained.
