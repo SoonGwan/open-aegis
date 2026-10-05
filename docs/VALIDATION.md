@@ -6432,6 +6432,42 @@ candidate has already passed all six hosted jobs. No v1 tag or production-consol
 release is implied by this local development-preview update.
 
 
+## Terminal task archives — local candidate
+
+The local archive service atomically changes1–25 terminal-task organizational flags,
+versioned history, operation receipts and audit. Actual completed-task archive/restore
+preserves full task execution fields and all selected evidence families without a new
+target GET. Invalid member/version/state, audit failure and revoked roles reject the
+batch. Initial archive checks had11 failures: duplicate fixture asset registration,
+an uncontrolled background planner changing the comparison and reused Annotated ID
+constraints accepting short IDs. Corrected owned fixture setup and a dedicated request
+ID type yield26 passing SQLite/native PostgreSQL cases in12.21s.
+
+The frontend build and100 Node checks pass. The owned desktop exercise confirms
+archive commit→503→same request recovery yields one operation/history, restoration
+retains proof, and a selected revision0 remains pinned after another tab archives and
+restores to revision2. The stale request gets409; explicit clear/reselection succeeds.
+The first owned fixture preserves original task fields, valid audit and zero traffic
+with five intentional operations/history rows, then removes tabs/listener/workspace
+and exits0. Its screenshot exposed squeezed toolbar buttons; controls were moved to
+a separate wrapping row. The final built desktop screenshot is reviewed and the second
+fixture repeats response-loss recovery/restoration and actual new-document archived
+bookmark restoration, then cleans up and exits0. This is not full mobile or assistive
+technology verification. Installation, full regression, hosted and combined notification
+integration checks are still pending; no archive release is declared.
+
+
+Archive-related record/store/native HTTP checks first report101 passing and one old
+assertion requiring `tasks?archived=true` to return422. That assertion is updated for
+the new task archive contract while the unsupported notes archive filter still returns
+422; all6 record-filter tests pass in1.84s. The same Annotated-ID precedence problem
+is reproduced in existing category create/assignment (four actual backend cases fail
+before correcting the dedicated16–80-character request type). Both complete category
+and archive suites plus record queries then pass84 cases in39.99s on SQLite/native
+PostgreSQL. Final100 Node checks and the formatted frontend build pass. The owned
+90-module source/package freeze is pending installed/maintenance checks and has not
+yet been combined with the separate93-module notification candidate.
+
 ## Notification channels and receiver receipts — candidate verification
 
 The independent fixed-webhook implementation adds administrator-reviewed channels,
@@ -6517,6 +6553,24 @@ other successful jobs were retained. This confirms the existing category main so
 and does not promote the newer notification draft or declare v1 readiness.
 
 
+The initial standalone90-module archive wheel
+`d35e2535efc3308ff88860047e6f839b47267b62d659b834aa42df706a863cd9` passes219
+installed related cases in105.43s outside the checkout; owned native/temp resources
+are removed. Archive source is then combined with notification candidate4ecf646 for
+integration review. Both routing groups, SQL fields, native CI cases, CSS and URL tests
+are retained when resolving additive merge conflicts. The combined94-module source
+passes164 native related cases in72.82s and two additional actual-receiver tests in
+3.42s confirming archive/restore never repeats the original terminal notification.
+The combined frontend build passes102 Node checks.
+
+The exact combined wheel is SHA256
+`d306f48198c792691786cff8a31ff183249874ecb3c9cded9455a87327bc345d`,94 Python
+modules byte-matching frozen source. Combined full native, installed and maintenance
+checks are running; prior90-module receipts are retained separately and not attributed
+to this hash. The combined browser/preview and hosted checks remain pending. No new
+archive record is created in the persistent main preview.
+
+
 Final request-budget-corrected notification full native regression is terminal:
 **1,679 passed in1,169.10s**, with OpenSSL3/PostgreSQL16 and actual native backend
 fixtures. The previously recorded source-restart case passes in this complete run;
@@ -6532,6 +6586,17 @@ is terminal with all six jobs successful on functional source `7e3dd0c7e90acc3a8
 Documentation-only follow-ups preserve its frozen93 Python modules. Full native1,679,
 installed205, frontend101 and both-backend installed pairing/backup receipts above
 apply to this source. This permits merging notification PR3; alpha remains0.2.0a1.
+
+
+The exact combined94-module package now passes301 installed cases in141.92s outside
+the checkout with native PostgreSQL. Installed94→89→94 and offline backup/restore
+pass on both stores with exact selected records, valid independent checkpoint and
+restored sessions0; only two intentional test POSTs occur and no target GET occurs.
+Owned cluster/receiver/install resources are removed. Combined desktop browser
+archive503→same-request200→restore200 creates exactly two operations/history rows,
+preserves original execution fields and valid audit with0 target requests. Both
+notification navigation and a new-document archive filter are observed. Both owned
+tabs close and the fixture exits0 removing temporary data. Full native/hosted pending.
 
 
 Notification main merge `d048337ec3f7210f15ecc09b06d3e4ac68dbdbf6` is installed in
@@ -6558,3 +6623,20 @@ tabs closed, fixture exit0 and temporary data removed. Initial assertions wrongl
 expected no audit on POST preview/422; existing request-audit middleware records these
 requests. Corrected checks retain zero domain mutation and assert that request event.
 Full native, installed, cross-version maintenance and hosted checks remain pending.
+
+Combined task archive/notification full native regression completes with
+**1,711 passed in1,187.68s**, OpenSSL3 and PostgreSQL16. Frozen94 Python modules
+remain unchanged through documentation-only main merges. Installed301, combined
+Node102, owned browser, installed94→89→94 and both-store offline restoration
+receipts above apply to wheel SHA256
+`d306f48198c792691786cff8a31ff183249874ecb3c9cded9455a87327bc345d`.
+Retained hosted PR run37379339479 passes verify and four container/Compose jobs;
+native hosted remains pending. PR4 now targets main after notification PR3 merge.
+
+
+Retained archive hosted PR run[37379339479](https://github.com/SoonGwan/open-aegis/actions/runs/37379339479)
+is terminal with all six jobs successful on functional source `a5e5fe51803998a7985e6f903516ffdb10539793`.
+Later main merges/documentation preserve all94 frozen Python modules and executable
+UI source. The duplicate push run37379267778 was cancelled intentionally and is not
+all-job success evidence. Full native1,711, installed301, Node102, both-store
+maintenance and combined browser evidence now permit merging archive PR4.

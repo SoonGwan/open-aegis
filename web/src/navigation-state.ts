@@ -461,7 +461,7 @@ export function readList(query: URLSearchParams, page: string): ListState {
           : page === "schedules" && ["true", "false"].includes(enabled || "")
             ? enabled!
             : "all",
-    archived: page === "assets" && query.get("assets_archived") === "true",
+    archived: (page === "assets" || page === "tasks") && query.get(`${page}_archived`) === "true",
     offset:
       Math.floor((integer(query.get(`${page}_offset`), 10_000_000) || 0) / 25) *
       25,
@@ -505,7 +505,7 @@ export function writeList(
     query.set("findings_severity", state.filter);
   if (page === "schedules" && state.filter !== "all")
     query.set("schedules_enabled", state.filter);
-  if (page === "assets" && state.archived) query.set("assets_archived", "true");
+  if ((page === "assets" || page === "tasks") && state.archived) query.set(`${page}_archived`, "true");
   if (state.offset) query.set(`${page}_offset`, String(state.offset));
   if (state.snapshot !== null)
     query.set(`${page}_snapshot`, String(state.snapshot));

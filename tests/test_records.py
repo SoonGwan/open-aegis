@@ -54,7 +54,9 @@ def test_records_api_auth_bounds_and_no_private_collections(client):
     assert client.get('/api/records/tasks?limit=101').status_code == 422
     assert client.get('/api/records/tasks?offset=-1').status_code == 422
     assert client.get('/api/records/tasks?snapshot=-1').status_code == 422
-    assert client.get('/api/records/tasks?archived=true').status_code == 422
+    assert client.get('/api/records/tasks?archived=true').status_code == 200
+    assert client.get('/api/records/tasks?archived=true').json()['items'] == []
+    assert client.get('/api/records/notes?archived=true').status_code == 422
     for kind in ('users', 'settings', 'sessions', 'evidence'):
         assert client.get('/api/records/' + kind).status_code == 422
     assert client.get('/api/records/tasks').json()['items'] == []
