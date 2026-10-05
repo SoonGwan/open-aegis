@@ -121,6 +121,19 @@ an actual run on the published repository; local review does not prove a GitHub 
 Docker execution, whole UI accessibility/mobile coverage and release signing remain
 separate gates in [V1-READINESS.md](docs/V1-READINESS.md).
 
+## Goal UI review
+
+After building `web/dist`, run `.venv/bin/python scripts/review_goal_ui.py` in a
+terminal. The disposable loopback app prints its synthetic login and task URL.
+Its local provider returns one synthetic objective; a goal containing `대기`
+holds the response until you type `release` in that terminal. Use this to verify
+focus preservation after moving to another control or closing the task detail.
+`--unconfigured` exercises the real missing-provider error. Review draft creation,
+same-request recovery, Tab to acceptance, reset to goal input and error recovery.
+Stop with Ctrl+C; the fixture reports provider calls, pending task states and target
+traffic, then removes its workspace. It validates UI behavior; do not treat its
+synthetic plan as model-quality or executed-security evidence.
+
 ## New checks
 
 Register a named check in `aegis/checks.py`, implement it in `run_check`, and

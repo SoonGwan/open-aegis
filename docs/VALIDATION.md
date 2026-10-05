@@ -5037,3 +5037,48 @@ on 390×844 has no document overflow.
   but before audit-state update/commit. It does not establish commit acknowledgement
   loss, every write/commit boundary, hardware power loss, failed storage, PITR or
   remote recovery. Full v1 completion remains unproven and its gates stay open.
+
+### Goal draft keyboard focus and delayed-response recovery (2026-10-05)
+
+- Actual built-app keyboard flow reproduced a ready draft with focus left on BODY
+  after its focused generation button became disabled (`artifacts/goal-focus-before.json`).
+  `GoalDraftPanel` now queues focus owned by that action and its captured view/
+  session, applies it after saving, and preserves any new user focus. Ready drafts
+  focus a keyboard review heading; error/status notices are focusable, reset
+  returns to the goal input. Goal/mode controls describe their help/provider text
+  and current error via unique IDs. No target approval or request is added.
+- Actual rules generation and same-request restoration focus H4 review, then Tab
+  reaches acceptance; reset focuses enabled TEXTAREA with the goal preserved
+  (`...-keyboard-checks.json`). Real missing-provider409 focuses the alert and
+  keeps both controls enabled with valid descriptive references; Tab returns to
+  generation, changing to rules then generates normally (`...-error-check.json`).
+  Desktop screenshots inspected (`...-error-desktop.png`, `...-review-desktop.png`);
+  review focus has a visible blue3px outline and stays inside the task dialog.
+- Added `scripts/review_goal_ui.py`: disposable valid pending task, synthetic
+  local provider and terminal-controlled delayed response. During held requests,
+  keyboard movement to Worker asset preserves that select after completion
+  (`...-other-control.json`); closing the detail preserves the list status filter
+  and keeps the dialog closed (`...-closed-view.json`). Reopening restores the
+  same request without another provider call; accepting the reviewed draft creates
+  a pending child and settles on its dialog close control. Configured fixture made
+  two provider calls, retained two unapproved pending tasks and zero target traffic;
+  unconfigured fixture made0 calls/one pending task/zero target traffic
+  (`...-provider-fixture.txt`, `...-error-fixture.txt`, `...-cleanup.json`).
+- Fresh frontend **97 tests passed** (`...-frontend-tests.txt`) and TypeScript/Vite
+  build passed (`...-build.txt`). Final JS index-CZXysOmK.js, CSS index-Bi_eIbTY.css.
+  Installed existing wheel with this final UI passed, targets0
+  (`...-installed-runtime.json`). All72 backend Python files still byte-match wheel
+  SHA256 `26aef0a38a9a39ad4e75cef9eafe1ed7ab26bcb7cc3ee0d3b3f8d6baa173ba40`
+  (`...-wheel-proof.json`); prior1035 tests remain the last backend full-suite run.
+  Existing selected-palette contrast verifier also passed; this is not a full
+  rendered accessibility/contrast audit.
+- Owned fixture processes exited and workspaces were removed. SIGTERM left the
+  earlier conversation fixture directory; its exact synthetic task/goal and no
+  open file handles were verified before removing only that owned directory.
+  Goal fixtures shut down with Ctrl+C. Browser tabs closed; installed temp removed.
+  Main preview health ok, exact record counts/task states unchanged, serves final
+  JS without a backend restart (`...-cleanup.json`, `...-wheel-proof.json`).
+- Scope is desktop keyboard/DOM semantics and two real API/provider fixture flows.
+  No claim of actual screen-reader, mobile touch/zoom, full UI journeys, or async
+  session-switch focus verification; model-quality/security execution and full
+  v1 completion remain unproven. Their explicit readiness gates remain open.

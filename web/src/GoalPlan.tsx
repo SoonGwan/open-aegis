@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useId, useRef, useState, type RefObject } from "react";
 import { api, ApiError, captureSession } from "./api";
 import { pendingStorage } from "./chat-pending";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
@@ -59,10 +59,12 @@ export function GoalPlanSummary({
   plan,
   names,
   assets = [],
+  reviewHeading,
 }: {
   plan?: GoalPlan;
   names: Record<string, string>;
   assets?: { id: string; name: string; url?: string }[];
+  reviewHeading?: RefObject<HTMLHeadingElement | null>;
 }) {
   if (!plan) return null;
   return (
@@ -70,7 +72,7 @@ export function GoalPlanSummary({
       className="next-plan observation-execution"
       aria-label="목표 분해 계획"
     >
-      <h4>목표 분해 계획</h4>
+      <h4 ref={reviewHeading} tabIndex={reviewHeading ? 0 : undefined}>목표 분해 계획</h4>
       <p>
         {plan.mode === "ai"
           ? "AI 목표 분해 초안"
@@ -143,6 +145,35 @@ export function GoalDraftPanel({
     [saving, setSaving] = useState(false);
   const active = useRef(true),
     locked = useRef(false);
+  const goalInput = useRef<HTMLTextAreaElement>(null),
+    generateButton = useRef<HTMLButtonElement>(null),
+    acceptButton = useRef<HTMLButtonElement>(null),
+    resetButton = useRef<HTMLButtonElement>(null),
+    reviewHeading = useRef<HTMLHeadingElement>(null),
+    errorNotice = useRef<HTMLParagraphElement>(null),
+    stateNotice = useRef<HTMLParagraphElement>(null);
+  const focusRequest = useRef<{
+    trigger: HTMLElement;
+    view: () => boolean;
+    session: () => boolean;
+    target: "result" | "goal";
+  } | null>(null);
+  const helpId = useId(), providerId = useId(), errorId = useId();
+  function prepareFocus(trigger: HTMLElement | null, target: "result" | "goal", view = captureView(), session = captureSession()) {
+    focusRequest.current = trigger && document.activeElement === trigger
+      ? { trigger, target, view, session } : null;
+  }
+  useLayoutEffect(() => {
+    const request = focusRequest.current;
+    if (!request || saving) return;
+    focusRequest.current = null;
+    if (!active.current || !request.view() || !request.session()) return;
+    // Disabling the action can leave focus on body. Preserve a user's new focus.
+    if (document.activeElement !== document.body && document.activeElement !== request.trigger) return;
+    const target = error ? errorNotice.current : request.target === "goal" ? goalInput.current
+      : draft?.state === "ready" ? reviewHeading.current : stateNotice.current || generateButton.current;
+    target?.focus();
+  }, [saving, draft, error, pending]);
   useEffect(() => {
     active.current = true;
     return () => {
@@ -151,6 +182,8 @@ export function GoalDraftPanel({
   }, []);
   async function generate() {
     if (locked.current || busy || !canOperate || !goal.trim()) return;
+    const view = captureView(), session = captureSession();
+    prepareFocus(generateButton.current, "result", view, session);
     const request = pending || {
       request_id: crypto.randomUUID().replaceAll("-", ""),
       goal: goal.trim(),
@@ -170,8 +203,6 @@ export function GoalDraftPanel({
     setSaving(true);
     setPending(request);
     setError("");
-    const view = captureView(),
-      session = captureSession();
     try {
       const result = await api<Draft>(
         "/tasks/" + encodeURIComponent(taskId) + "/goal-plans",
@@ -199,6 +230,7 @@ export function GoalDraftPanel({
   async function accept() {
     if (locked.current || busy || !canOperate || draft?.state !== "ready")
       return;
+    prepareFocus(acceptButton.current, "result");
     locked.current = true;
     setSaving(true);
     setError("");
@@ -213,6 +245,7 @@ export function GoalDraftPanel({
   }
   function reset() {
     if (saving || busy || (pending && !draft)) return;
+    prepareFocus(resetButton.current, "goal");
     try {
       pendingStorage()?.removeItem(key(actorId, taskId));
     } catch {
@@ -222,6 +255,10 @@ export function GoalDraftPanel({
     setPending(null);
     setDraft(null);
     setError("");
+    if (!pending && !draft && !error && focusRequest.current) {
+      focusRequest.current = null;
+      goalInput.current?.focus();
+    }
   }
   return (
     <section
@@ -229,15 +266,17 @@ export function GoalDraftPanel({
       aria-label="목표 계획 초안"
     >
       <h4>목표를 검증 과제로 나누기</h4>
-      <p>
+      <p id={helpId}>
         목표를 과제·자산·도구·필요한 입력으로 정리합니다. 초안 생성은 대상
-        요청이나 실행 승인이 아닙니다.
+        요청이나 실행 승인이 아닙니다. 목표는 최대 2,000자입니다.
       </p>
       <fieldset disabled={busy || saving || !!pending || !canOperate}>
         <legend>초안 입력</legend>
         <label>
           검증 목표
           <textarea
+            ref={goalInput}
+            aria-describedby={[helpId, providerId, error && errorId].filter(Boolean).join(" ")}
             maxLength={2000}
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
@@ -246,6 +285,7 @@ export function GoalDraftPanel({
         <label>
           초안 방식
           <select
+            aria-describedby={[providerId, error && errorId].filter(Boolean).join(" ")}
             value={mode}
             onChange={(e) => setMode(e.target.value as "rules" | "ai")}
           >
@@ -254,19 +294,20 @@ export function GoalDraftPanel({
           </select>
         </label>
       </fieldset>
-      <p>
+      <p id={providerId}>
         AI 방식은 입력한 목표·자산 이름/유형/ID·공유 할 일·관찰 유형을 설정된
         제공자에게 전송하며 호출 비용이 발생할 수 있습니다. URL 원문·응답·인증
         값은 자동 전송하지 않습니다.
       </p>
-      {error && <p role="alert">{error}</p>}
+      {error && <p id={errorId} ref={errorNotice} role="alert" tabIndex={0}>{error}</p>}
       {pending && !draft && (
-        <p role="status">
+        <p ref={stateNotice} role="status" tabIndex={0}>
           저장한 요청 ID로 미확인 결과를 확인합니다. 같은 요청은 제공자를 다시
           호출하지 않습니다.
         </p>
       )}
       <button
+        ref={generateButton}
         type="button"
         disabled={busy || saving || !canOperate || !goal.trim()}
         onClick={() => void generate()}
@@ -283,6 +324,7 @@ export function GoalDraftPanel({
             plan={draft}
             names={names}
             assets={draft.basis.assets}
+            reviewHeading={reviewHeading}
           />
           {draft.llm_usage && <PlannerUsage call={draft.llm_usage} />}
           <p>
@@ -290,6 +332,7 @@ export function GoalDraftPanel({
             실행 전에 선택한 범위·도구·의존 관계를 검토하세요.
           </p>
           <button
+            ref={acceptButton}
             type="button"
             disabled={busy || saving || !canOperate}
             onClick={() => void accept()}
@@ -301,13 +344,13 @@ export function GoalDraftPanel({
         </>
       )}
       {draft?.state === "generating" && (
-        <p role="status">
+        <p ref={stateNotice} role="status" tabIndex={0}>
           이 요청의 생성 완료를 확인할 수 없습니다. 같은 요청으로 상태를
           확인하세요. 재시작 복구는 제공자를 다시 호출하지 않습니다.
         </p>
       )}
       {draft?.state === "interrupted" && (
-        <p role="alert">
+        <p ref={stateNotice} role="alert" tabIndex={0}>
           초안 저장이 중단되었습니다. 이전 호출 결과를 확정할 수 없어 같은
           요청으로 AI를 재호출하지 않습니다. 새 초안을 준비할 수 있습니다.
         </p>
@@ -316,6 +359,7 @@ export function GoalDraftPanel({
         draft?.state === "ready" ||
         draft?.state === "interrupted") && (
         <button
+          ref={resetButton}
           type="button"
           disabled={busy || saving || !canOperate}
           onClick={reset}
