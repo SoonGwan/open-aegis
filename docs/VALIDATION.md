@@ -6821,3 +6821,11 @@ scan receipts apply to the same production module hashes. Current hosted source
 run37387988876 still awaits its PostgreSQL job; five other jobs are successful.
 Subsequent main merges and documentation commits change no production/UI execution
 source. The earlier340-pass interrupted run is not substituted for this full result.
+
+Retained model PR7 hosted run37387988876 is terminal with all six jobs successful
+at functional UI source65235660b1af344d369e4fb95853636cfe434c88. Later branch commits
+are documentation/main-doc merges only; Python96 and executable UI source remain
+unchanged. Full native1,812, installed484, Node103, both-store maintenance and owned
+browser receipts now permit merging this scoped model profile feature. Candidate
+version remains0.2.0a1; catalog/connectivity/task-agent pins/failover/mobile/long-running
+work is not declared complete. Main report run37389130077 is tracked separately.
