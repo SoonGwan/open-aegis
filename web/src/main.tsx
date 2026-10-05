@@ -9,6 +9,7 @@ import { WorkerProcess } from "./WorkerProcess";
 import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
 import { NotificationChannels, NotificationDeliveries } from "./Notifications";
+import ModelProfiles from "./ModelProfiles";
 import PromptVersions from "./PromptVersions";
 import { TaskCategories } from "./TaskCategories";
 import { TaskTemplates, TemplateOriginSummary, type TemplateOrigin } from "./TaskTemplates";
@@ -295,6 +296,7 @@ const pages = [
   { id: "notes", name: "워크스페이스", icon: BookOpen },
   { id: "agents", name: "에이전트 & 도구", icon: Layers3, group: "SYSTEM" },
   { id: "prompts", name: "프롬프트 버전", icon: BookOpen },
+  { id: "models", name: "모델 프로필", icon: Settings2 },
   { id: "users", name: "사용자 관리", icon: UsersRound },
   { id: "settings", name: "시스템 설정", icon: Settings2 },
 ];
@@ -1205,6 +1207,7 @@ function App() {
                       overview:
                         "자산의 상태를 확인하고, 근거 있는 검증을 시작하세요.",
                       tasks: "목표를 정하고 실행부터 수정 확인까지 추적하세요.",
+                      models: "용도별 모델 선택과 호출 당시 버전을 검토하세요.",
                       prompts: "호출 당시 지침을 기록하고 변경 이력을 검토하세요.",
                       notifications: "작업 종료 알림의 수신처와 상태를 검토해 설정하세요.",
                       deliveries: "전송 결과와 시도 이력을 확인하고 필요한 알림만 다시 보내세요.",
@@ -1758,6 +1761,7 @@ function App() {
             status={filter} onStatus={setFilter} position={list} onPositionChange={changeRecordPosition}
             onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}
 
+          {page === "models" && <ModelProfiles key={auth.user?.id} canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} />}
           {page === "prompts" && <PromptVersions canAdmin={canApprove} />}
           {page === "notifications" && <NotificationChannels canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} onDeliveries={()=>navigation.navigate("deliveries")} />}
           {page === "deliveries" && <NotificationDeliveries canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} onChannels={()=>navigation.navigate("notifications")} onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}

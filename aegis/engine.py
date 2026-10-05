@@ -14,6 +14,7 @@ from .network import Transport
 from .costs import price_snapshot, estimate
 from . import call_ledger, todos, observation_context, observation_execution, goal_planner, goal_retests
 from .llm import completion, token_usage
+from .model_profiles import get_profiles, ProfileUnavailable
 from .prompt_versions import Prompts
 from .store import identifier, now
 from .coverage import slot, finish_remaining
@@ -170,12 +171,13 @@ class Engine:
                 +[c for c in checks if c not in requested and c not in relevant])
         if task['planner'] != 'ai':
             return checks
-        key = os.environ.get('AEGIS_LLM_API_KEY')
-        model = os.environ.get('AEGIS_LLM_MODEL')
-        base = os.environ.get('AEGIS_LLM_BASE_URL', 'https://api.openai.com/v1').rstrip('/')
-        if not key or not model:
-            self.store.event(task['id'], 'LLM 환경변수가 없어 규칙 기반 계획을 사용합니다.', 'warning')
+        profiles = get_profiles(self.store,self.allow_private)
+        try:choice = profiles.capture('planner')
+        except ProfileUnavailable:choice = None
+        if choice is None:
+            self.store.event(task['id'], 'AI 모델 설정을 사용할 수 없어 규칙 기반 계획을 사용합니다.', 'warning')
             return checks
+        base,key,model = choice.base,choice.key,choice.model
         # Only operator-authored context, asset names and checks are sent; no target bodies, identities or credentials.
         prompt = {'goal': task['goal'], 'checks': checks,
                   'assets': [{'name': a['name'], 'type': a['type']} for a in task['scope_snapshot']]}
@@ -193,13 +195,14 @@ class Engine:
             {'role': 'user', 'content': json.dumps(prompt, ensure_ascii=False)}], 'temperature': 0}
         started_at = now()
         price = price_snapshot(model, base, started_at)
-        call_id=call_ledger.start(self.store,'planner',task['id'],model,base,started_at,price,prompt_snapshot=prompt_snapshot)
+        call_id=call_ledger.start(self.store,'planner',task['id'],model,base,started_at,price,prompt_snapshot=prompt_snapshot,model_profile_snapshot=choice.reference)
         usage = token_usage(None)
         outcome = 'request_failed'
         proposed = checks
         try:
             with getattr(self.store,'execution_permit',nullcontext)():
-                raw = completion(base, key, payload, allow_local=self.allow_private, control=control, timeout=self.policy.request_timeout)
+                profiles.guard(choice)
+                raw = completion(base, key, payload, allow_local=choice.local, control=control, timeout=self.policy.request_timeout)
             outcome = 'invalid_plan'
             usage = token_usage(raw.get('usage') if isinstance(raw, dict) else None)
             text = raw['choices'][0]['message']['content'].strip().removeprefix('```json').removeprefix('```').removesuffix('```').strip()
@@ -214,7 +217,7 @@ class Engine:
         detail={
             'model':model, 'outcome':outcome, 'observed_at':observed_at, 'started_at':started_at,
             'tokens':usage, 'cost':estimate(usage, price, observed_at),
-            'checks':proposed, 'call_id':call_id, 'prompt_snapshot':prompt_snapshot,
+            'checks':proposed, 'call_id':call_id, 'prompt_snapshot':prompt_snapshot, 'model_profile_snapshot':choice.reference,
         }
         if context is not None:
             detail['todo_context_fingerprint']=context['fingerprint']

@@ -6689,3 +6689,17 @@ ff7a0cd run37381945973 was cancelled by the new test/source update and is not
 all-job success evidence. Full native is rerunning with the original strict failure
 stop and source-restart recovery assertions retained. The owned distinguishing
 probe is rerunnable in an isolated checkout of5db3c36 (before the fixture correction).
+
+The model profile candidate has96 independently authored Python modules. Related
+native SQLite/PostgreSQL, prompt, provider, conversation, usage and ledger checks
+pass135 cases in28.38s, including owned provider model/key admission, in-flight
+selection changes and final snapshot mismatch rollback.42 profile cases alone pass
+in11.78s. Frontend build and103 Node checks pass. Owned two-tab browser review
+records [503,200,503,200,200,409,200,200,409,200]: lost create/default responses
+replay exact UUID/body; concurrent profile/default writes preserve drafts and require
+explicit latest-version review. Exactly3 profile and3 default versions/operations
+remain, no provider/target calls occur, audit verifies, tabs and disposable fixture
+close with temporary-directory removal. Desktop screenshots were inspected.
+Full native/installed package/backend maintenance/hosted checks remain pending;
+this feature is not yet merged. Task/agent model pins and provider connectivity/
+model catalog/failover remain unimplemented.

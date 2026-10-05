@@ -3,15 +3,17 @@ import json
 import os
 from contextlib import nullcontext
 from .llm import completion, token_usage
+from .model_profiles import get_profiles, ProfileUnavailable
 from .prompt_versions import Prompts
 from .costs import price_snapshot, estimate
 from .store_util import now
 from . import call_ledger
 
 
-def configured():
+def configured(store=None):
     return (os.environ.get('AEGIS_LLM_CHAT_ENABLED') == '1' and
-            bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL')))
+            (get_profiles(store).configured('conversation') if store is not None else
+             bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL'))))
 
 
 def draft(summary, question, *, store, task_id, actor_id, allow_local=False, control=None):
@@ -30,22 +32,25 @@ def _draft(summary, question, *, store, task_id, actor_id, allow_local=False, co
     prompt=json.dumps({'question':question,'sources':sources},ensure_ascii=False)
     if len(prompt.encode())>65536:
         raise ValueError('AI 대화에 전달할 기록이 64 KiB를 초과합니다. 규칙 기반 요약을 사용하세요.')
-    model=os.environ['AEGIS_LLM_MODEL']
-    base=os.environ.get('AEGIS_LLM_BASE_URL','https://api.openai.com/v1').rstrip('/')
+    profiles=get_profiles(store,allow_local)
+    choice=profiles.capture('conversation')
+    if choice is None:raise ValueError('모델 설정을 확인하세요.')
+    model,base=choice.model,choice.base
     prompts=Prompts(store)
     prompt_snapshot=prompts.capture('conversation')
     started_at=now()
     price=price_snapshot(model,base,started_at)
-    metadata={'model':model,'outcome':'request_failed','tokens':token_usage(None),'started_at':started_at,'prompt_snapshot':prompt_snapshot}
-    call_id=call_ledger.start(store,'conversation',task_id,model,base,started_at,price,actor_id,prompt_snapshot=prompt_snapshot)
+    metadata={'model':model,'outcome':'request_failed','tokens':token_usage(None),'started_at':started_at,'prompt_snapshot':prompt_snapshot,'model_profile_snapshot':choice.reference}
+    call_id=call_ledger.start(store,'conversation',task_id,model,base,started_at,price,actor_id,prompt_snapshot=prompt_snapshot,model_profile_snapshot=choice.reference)
     metadata['call_id']=call_id
     result=summary
     try:
+        profiles.guard(choice)
         raw=completion(base,
-            os.environ['AEGIS_LLM_API_KEY'], {'model':model,'temperature':0,'messages':[
+            choice.key, {'model':model,'temperature':0,'messages':[
                 {'role':'system','content':
                  prompts.system(prompt_snapshot, question)},
-                {'role':'user','content':prompt}]},allow_local=allow_local,control=control,timeout=8)
+                {'role':'user','content':prompt}]},allow_local=choice.local,control=control,timeout=8)
         metadata['outcome']='invalid_answer'
         metadata['tokens']=token_usage(raw.get('usage') if type(raw) is dict else None)
         parsed=json.loads(raw['choices'][0]['message']['content'])
@@ -58,7 +63,7 @@ def _draft(summary, question, *, store, task_id, actor_id, allow_local=False, co
         for block in blocks:
             if (type(block) is not dict or set(block)!={'text','citations'} or
                     type(block['text']) is not str or not 1<=len(block['text'].strip())<=1500 or
-                    os.environ['AEGIS_LLM_API_KEY'] in block['text'] or
+                    choice.key in block['text'] or
                     type(block['citations']) is not list or not 1<=len(block['citations'])<=17 or
                     any(type(label) is not str or label not in sources for label in block['citations'])):
                 raise ValueError('Invalid citation or text')
