@@ -7,6 +7,7 @@ from .store_util import now
 from .notification_transport import DispatchError
 
 ID=Annotated[str,Field(min_length=1,max_length=64,pattern=r'^[A-Za-z0-9_-]+$')]
+REQUEST_ID=Annotated[str,Field(min_length=16,max_length=64,pattern=r'^[A-Za-z0-9_-]+$')]
 REVISION=Annotated[int,Field(strict=True,ge=1,le=9_007_199_254_740_991)]
 TaskStatus=Literal['completed','failed','stopped','interrupted','rejected']
 KIND='notification_channels'
@@ -18,7 +19,7 @@ class ChannelInput(BaseModel):
     task_statuses:list[TaskStatus]=Field(default_factory=lambda:['failed','interrupted'],min_length=1,max_length=5)
     enabled:bool=False
     interval_seconds:int=Field(default=60,ge=1,le=3600)
-    request_id:ID=Field(min_length=16)
+    request_id:REQUEST_ID
 
     @model_validator(mode='after')
     def distinct(self):
@@ -109,11 +110,11 @@ class Channels:
 class DeliveryRetry(BaseModel):
     model_config=ConfigDict(extra='forbid',strict=True)
     expected_attempts:int=Field(ge=0,le=3)
-    request_id:ID=Field(min_length=16)
+    request_id:REQUEST_ID
     confirm_possible_duplicate:bool=False
 
 
 class ChannelTest(BaseModel):
     model_config=ConfigDict(extra='forbid',strict=True)
     expected_revision:REVISION
-    request_id:ID=Field(min_length=16)
+    request_id:REQUEST_ID

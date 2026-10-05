@@ -110,3 +110,14 @@ def test_bad_notification_configuration_releases_workspace_lease(tmp_path,monkey
     with TestClient(create_app(tmp_path/'owned-startup')) as restored:
         assert restored.get('/api/health').status_code==200
         assert not restored.app.state.notification_deliveries.thread
+
+
+@pytest.mark.parametrize('route,data',[
+    ('/api/notification-channels',{'name':'Owned','destination_id':'owned'}),
+    ('/api/notification-channels/owned/test',{'expected_revision':1}),
+    ('/api/notification-deliveries/owned/retry',{'expected_attempts':0}),
+])
+def test_short_request_id_rejected_before_any_notification_operation(client,route,data):
+    response=client.post(route,json={**data,'request_id':'short'})
+    assert response.status_code==422,response.text
+    assert client.app.state.store.count('notification_channels')==client.app.state.store.count('notification_deliveries')==client.app.state.store.count('notification_retry_operations')==0

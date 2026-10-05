@@ -6477,3 +6477,22 @@ attempt/operation/runtime/task rows compare exactly, the independent trusted aud
 checkpoint verifies, restored sessions are0 and only the two intentional test POSTs
 occur. Owned temporary installation, receiver and cluster are removed. Final full native
 and hosted runs remain pending. Version remains0.2.0a1; notifications are partial ARTEX scope.
+
+
+Strict notification request-budget correction: the reused Annotated record-ID type
+overrode an extra Field(min_length=16), so short create/test request IDs reached
+operation handling. Actual HTTP tests fail before the correction (4 failed/2 passed);
+a dedicated Annotated request-ID type now enforces16–64 characters for create/edit,
+test and retry. The complete notification suite passes80 cases in30.95s on both
+backends, including the controlled native owner-loss fence. This changes one of the
+93 Python modules; the latest exact wheel is SHA256
+`c2ac9559f3af699823f00301f53fbdb621dfc3075547752cfc6fb014ca7b3004`.
+Its full native/installed/backup-pair checks are running again and preceding wheel
+receipts are retained separately rather than attributed to this hash.
+
+The preceding interrupted full native run recorded one failure in the PostgreSQL
+remote observed-batch source-restart case. Interruption during teardown prevented a
+complete assertion report; it is not a successful full run. The unchanged source-restart
+case then passes both backend variants in4.19s in isolation. The cause is unresolved;
+no timing fix or weakened assertion is inferred. The current full run stops on the
+first failure to retain its precise assertion and investigate if it recurs.
