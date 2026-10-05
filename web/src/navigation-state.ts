@@ -14,6 +14,7 @@ const severities = ["critical", "high", "medium", "low", "info"];
 export const LIST_PAGES = [
   "assets",
   "tasks",
+  "templates",
   "findings",
   "traffic",
   "approvals",
@@ -446,6 +447,7 @@ export function readList(query: URLSearchParams, page: string): ListState {
   return {
     search: searchText(query.get(`${page}_q`)),
     filter:
+      page === "templates" ? (["active","archived","all"].includes(status || "") ? status! : "active") :
       page === "tasks" &&
       TASK_STATUSES.includes(status as (typeof TASK_STATUSES)[number])
         ? status!
@@ -488,6 +490,8 @@ export function writeList(
   ])
     query.delete(`${page}_${suffix}`);
   if (state.search) query.set(`${page}_q`, searchText(state.search));
+  if (page === "templates" && state.filter !== "active")
+    query.set("templates_status", state.filter);
   if (page === "tasks" && state.filter !== "all")
     query.set("tasks_status", state.filter);
   if (page === "findings" && state.filter !== "all")

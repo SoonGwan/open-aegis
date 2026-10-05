@@ -267,3 +267,15 @@ test("malformed detail IDs cannot become API paths; canonicalization removes inv
     id: "a".repeat(80),
   });
 });
+
+test("template bookmarks restore archive/search/page and preserve task navigation", () => {
+  const allowed=[...pages,"templates"];
+  const original="page=templates&templates_status=archived&templates_q=배포&templates_offset=25&templates_snapshot=500&tasks_status=failed&tasks_offset=50";
+  const state=readNavigation(original,allowed);
+  assert.equal(state.list.filter,"archived");assert.equal(state.list.search,"배포");assert.equal(state.list.offset,25);assert.equal(state.list.snapshot,500);
+  const tasks=navigateQuery(original,allowed,"tasks");assert.equal(readNavigation(tasks,allowed).list.filter,"failed");
+  const back=navigateQuery(tasks,allowed,"templates");assert.deepEqual(readNavigation(back,allowed),state);
+  const active=updateListQuery(back,allowed,{filter:"active"});assert.equal(readNavigation(active,allowed).list.filter,"active");assert.equal(readNavigation(active,allowed).list.offset,0);
+  const all=updateListQuery(active,allowed,{filter:"all"});assert.equal(readNavigation(all,allowed).list.filter,"all");
+  assert.equal(readNavigation("page=templates&templates_status=invalid",allowed).list.filter,"active");
+});

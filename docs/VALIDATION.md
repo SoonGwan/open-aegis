@@ -6232,3 +6232,98 @@ observed partial-followup test passes in the native MCP suite. This closes the
 hosted validation of the automatic-note test timing correction and the unchanged
 87-file durable revocation service; it does not validate the separate88-file
 task-template candidate or close remaining v1 gates.
+
+## Versioned task templates — candidate branch
+
+The isolated task-template candidate adds CRUD, revision history, archive/restore,
+bounded SQL search/pagination, list bookmarks, conflict comparison and explicit
+current-scope pending-plan application. It keeps template origin through replan,
+retry, results follow-up and observed derivation; template edits do not rewrite
+existing plans. The service contains88 Python files. Template-specific native
+SQLite/PostgreSQL tests pass **58 cases in30.35s**; relevant template, next-plan,
+identity, dependency and goal suites pass **197 cases in142.69s**
+(`task-template-server-final.txt`, `task-template-related-tests.txt`).
+
+The original candidate loses template origin during replan and lets oversized
+application requests escape as server exceptions. Both fail in both backends
+before correction (`task-template-replan-before.txt`,
+`task-template-oversize-before.txt`) and pass in the final58-case suite. Tests also
+exercise atomic audit rollback for create/edit/archive/apply, changed scope,
+changed template/current role, stale revision, role boundaries, request replay,
+invalid authority-bearing defaults/overrides, fixed-default fresh scope,
+archival and disabled remote tool refusal without outbound requests.
+
+Frontend build succeeds and **98 Node checks pass** using Node22.18.0
+(`task-template-web-build.txt`, `task-template-web-tests.txt`). The initial system
+Node cannot run strip-types; that failed runner is not counted as a product test.
+Actual owned browser UI review confirms create/edit/history/archive/restore/apply,
+a two-tab409 with preserved draft, explicit latest-version comparison and saving,
+original version1 on the existing task after template version6, target requests0
+before approval and one GET after approval, and valid audit
+(`task-template-ui-review.json`). Its temporary fixture exits143; the exact owned
+workspace is then verified against the recorded task and removed. It does not
+establish graceful fixture shutdown. Main preview data and runtime remain untouched.
+Full mobile, failed-response replay across documents and remaining v1 gates remain
+open.
+
+The built wheel matches all88 frozen service files exactly. SHA-256:
+`ceb7b7473159d92cc6dda5ceb48f1cf4948b790f6fdb8acebb23a9ab5ba23c50`
+(`task-template-frozen-source.json`, `task-template-wheel-receipt.json`). Candidate
+public-source scan covers383 files and reports zero unignored candidates; it is
+not proof of secret absence. Installed-wheel and full-native runs were still
+pending when this candidate receipt was written. No public v1 release is claimed.
+
+Installed task-template wheel verification outside the checkout now passes
+**197 cases in147.68s** with actual PostgreSQL enabled and an asserted import from
+the temporary venv's site-packages (`task-template-installed-tests.txt`). Its owned
+venv/test resources are removed. The full native candidate suite remains running;
+this installed related-suite result is not a full v1 release gate.
+
+The rendered template application lost-response review commits the server response
+but sends503 to the browser once. The actual UI retains its error and task-name
+draft, then reuses the same request ID and restores the existing pending task.
+Both server submissions return200; browser statuses are503 then200; exactly one
+task/application and zero target requests remain, with valid audit. The corrected
+owned response intermediary exits0 and removes its temporary workspace
+(`task-template-response-loss-ui-review.json`,
+`task-template-response-loss-ui-process.txt`). Its first wrapper omitted the
+application shutdown state and failed at cleanup; that fixture error is corrected
+and the sequence repeated rather than claiming its first exit as graceful.
+
+A stopped installed-wheel SQLite sequence (88-file write,87-file reader/writer,
+88-file recovery) preserves original templates/history/task origin, but the old
+writer drops origin on its new replan; the new reader does not automatically
+repair that child. New current-template application works after recovery, audit
+remains valid, target requests are zero and owned resources are removed
+(`task-template-version-pair-review.txt`). Rollback is conditional on suppressing
+old-version mutations when template provenance must remain complete; see
+[release ordering](RELEASES.md). Native old/new runtime pairing remains untested.
+
+The first candidate full native invocation finishes **1,515 passed and36 setup
+errors in1,098.52s**, not a pass (`task-template-full-native.txt`). Its explicit
+worktree shell selects macOS LibreSSL3.3.6, and every error occurs while generating
+an Ed25519 fixture key in the two release modules. The same36 release cases pass
+in4.54s when PATH selects required OpenSSL3.x
+(`task-template-release-correct-runner.txt`). Production code is unchanged. A new
+full native invocation with explicit OpenSSL3/PostgreSQL16 PATH is running
+(`task-template-full-supported-native.txt`); it must finish before claiming a clean
+full candidate result. PR1's hosted candidate run37363828003 is also still running.
+The duplicate push run37363822445 for the exact same83433f0 source was cancelled to
+avoid duplicating hosted work; it is not a failed product validation.
+
+The supported candidate full-native invocation is now terminal **1,551 passed
+in1,098.57s**, with actual PostgreSQL and required OpenSSL3 selected explicitly
+(`task-template-full-supported-native.txt`). The service remains byte-identical
+to the installed88-file wheel and to functional source83433f0.
+
+Hosted candidate run
+[37363828003](https://github.com/SoonGwan/open-aegis/actions/runs/37363828003)
+for83433f0 is now **success in all six jobs**. Its first attempt passes verify,
+container(true) and Compose(true), while three other jobs never acquire a hosted
+runner and are cancelled with the annotation “The job was not acquired by Runner
+of type hosted even after multiple attempts”. Retrying the unexecuted jobs closes
+those checks without a production change. The earlier cancelled duplicate push
+run is not substituted for this successful candidate receipt. Subsequent candidate
+commits change only release/validation notes, with the88-file service and UI source
+unchanged. This validates the task-template candidate scope; whole-service v1 gates
+and the documented old-writer provenance limitation remain open.

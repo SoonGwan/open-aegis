@@ -71,7 +71,7 @@ jobs:
         env:
           AEGIS_TEST_POSTGRES: '1'
       - name: Verify native MCP review and atomic scoped result admission
-        run: python -m pytest -q tests/test_mcp_registry.py tests/test_mcp_result_store.py tests/test_mcp_task_execution.py tests/test_mcp_cancellation.py tests/test_mcp_observation_execution.py tests/test_mcp_revocations.py
+        run: python -m pytest -q tests/test_mcp_registry.py tests/test_mcp_result_store.py tests/test_mcp_task_execution.py tests/test_mcp_cancellation.py tests/test_mcp_observation_execution.py tests/test_mcp_revocations.py tests/test_task_templates.py
         env:
           AEGIS_TEST_POSTGRES: '1'
       - name: Rehearse installed native goal plan recovery and fresh approvals

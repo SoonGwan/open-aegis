@@ -12,6 +12,7 @@ React + TypeScript 콘솔, Python/FastAPI 실행 엔진, SQLite 저장소로 구
 이 저장소는 ARTEX의 공개 기능 구성을 참고하여 독립적으로 작성했습니다.
 ARTEX 코드를 복사하거나 포크하지 않았습니다. 현재 버전은 **0.2.0a1 로컬 검증 후보**이며
 ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주장하지 않습니다.
+작업 템플릿의 버전·보관·현재 범위 적용은 [사용 계약](docs/TASK-TEMPLATES.md)에 있습니다.
 구현된 기능과 차이는 [기능 비교표](docs/FEATURES.md)를 확인하세요.
 원본의 기준 버전·기능 구조와 남은 연동의 완료 조건은 [ARTEX 검토](docs/ARTEX-REVIEW.md)에 있습니다.
 최신 고정 소스의 공개 인터페이스와 추가 기능은 [전체 기능 추적 목록](docs/ARTEX-INVENTORY.md)에서 확인할 수 있습니다.
