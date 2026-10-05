@@ -6662,3 +6662,20 @@ intentional notification test POSTs occur. Actual provider snapshot admission is
 separately exercised in the earlier owned HTTP tests, not inferred from this fixture.
 Retained hosted source run is37381945973 on `ff7a0cd21c2704346ed57e56b43b77834acb2adb`;
 full native and hosted checks remain pending. Public PR5 stays draft.
+
+
+The initial prompt full native run stops honestly at1 failed/468 passed in350.28s.
+The source-restart test immediately constructs a new native engine after stopping
+only the old engine, leaving the application event planner alive. Its precise
+failure is WorkspaceBusy at new ownership admission. Twelve observed isolated runs
+pass and do not identify the historical holder. A controlled admitted event-planner
+read then reproduces the exact refusal: its reader PID remains a granted runtime
+ShareLock after engine-only shutdown. Matching the real application lifecycle
+(background worker joins before engine shutdown) passes the same original recovery
+assertions. This establishes the tested race mechanism, not the unrecorded holder
+in the earlier interrupted run. The restart fixture now closes notification/event
+workers before its engine, without sleeps, acquisition retries, weakened assertions
+or any change to production ownership fencing. Frozen95 production modules and
+wheel hash remain unchanged. The first notification-barrier probe was inconclusive
+because no notification worker starts with no destinations; the event-planner
+probe supplies the decisive owned lock observation. Full native must run again.
