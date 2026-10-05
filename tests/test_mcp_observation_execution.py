@@ -98,9 +98,14 @@ def test_unregistered_batch_refuses_creation_and_disabled_batch_refuses_approval
     assert observed_target[1]['requests']==before
 
 
-def test_partial_batch_keeps_proof_and_only_failed_cells_are_repeated_after_new_approval(workspace,observed_target):
+@pytest.mark.parametrize('todo_boundary',['settled','after_review'])
+def test_partial_batch_keeps_proof_and_only_failed_cells_are_repeated_after_new_approval(workspace,observed_target,todo_boundary):
+    from tests.test_event_planner import drain,wait_review
     client=workspace;source,path,body=selection(client,observed_target)
     task=create(client,path,body);target=task['observation_execution']['targets'][0]
+    planner=client.app.state.event_planner
+    if todo_boundary=='after_review':
+        planner.close();drain(planner)
     from urllib.parse import urlsplit
     observed_target[1]['failed'].add(urlsplit(target['url']).path)
     result=run(client,task);assert result['status']=='failed'
@@ -108,9 +113,23 @@ def test_partial_batch_keeps_proof_and_only_failed_cells_are_repeated_after_new_
     rows=client.get('/api/tasks/'+task['id']).json()['coverage']
     assert all({r['status'] for r in row['targets']}=={'completed','failed'} for row in rows)
     assert store.count('evidence')>0 and store.audit_integrity()['valid']
+    if todo_boundary=='settled':
+        wait_review(store,task['id'],lambda review:review.get('automatic_todo',{}).get('status') in {'created','existing'})
     proposal=client.get('/api/tasks/'+task['id']+'/next-plan').json()
     cells=proposal['observation_cells']['cells']
     assert len(cells)==2 and {r['observation_id'] for r in cells}=={target['id']}
+    if todo_boundary=='after_review':
+        assert proposal['shared_todo_context']['items']==[]
+        before=list(observed_target[1]['requests']);tasks=store.count('tasks')
+        source_before=store.get('tasks',task['id'])
+        drain(planner)
+        fresh=client.get('/api/tasks/'+task['id']+'/next-plan').json()
+        assert {key for key in proposal if proposal[key]!=fresh[key]}=={'fingerprint','shared_todo_context'}
+        assert len(fresh['shared_todo_context']['items'])==1
+        assert store.get('tasks',task['id'])==source_before
+        assert client.post('/api/tasks/'+task['id']+'/next-plan',json={'fingerprint':proposal['fingerprint']}).status_code==409
+        assert store.count('tasks')==tasks and observed_target[1]['requests']==before
+        proposal=fresh
     response=client.post('/api/tasks/'+task['id']+'/next-plan',json={'fingerprint':proposal['fingerprint']})
     assert response.status_code==200,response.text
     follow=response.json();assert follow['remote_execution']['mode']=='observation-response'

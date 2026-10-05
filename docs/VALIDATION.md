@@ -6191,3 +6191,28 @@ requests (`mcp-revocation-installed-runtime.txt`). Main preview health is200/0.2
 and all existing counts and task states match before/after restart. The public
 source scan covers379 files with zero unignored candidates; it is not proof of
 secret absence.
+
+The final87-file recovery service also passes the full local suite with actual
+PostgreSQL enabled: **1,491 cases in1,057.42s**
+(`mcp-revocation-full-native.txt`). Hosted run
+[37358449883](https://github.com/SoonGwan/open-aegis/actions/runs/37358449883)
+for4e95d52 fails one PostgreSQL observed partial-followup assertion; the other five
+jobs succeed. It is not an all-green hosted release receipt.
+
+The failed test assumed that an immediately reviewed proposal could be accepted
+while the background planner was still allowed to create an automatic failure
+note. A controlled SQLite/PostgreSQL boundary probe against the original test
+reproduces409 in both backends: only `fingerprint` and `shared_todo_context` change,
+while the task, selected cells and proof remain unchanged
+(`mcp-followup-boundary-before.txt`, rerunnable
+`artifacts/test_observation_followup_boundary_probe.py`). This demonstrates a
+mechanism consistent with the hosted failure; the hosted log did not capture the
+field difference and cannot establish its exact timing by itself.
+
+The test now covers both a settled background note and a forced note insertion
+after review. It asserts stale acceptance409 with no new task or GET, followed by
+fresh acceptance and a new approval that retries only the two failed cells.
+All four SQLite/PostgreSQL cases pass in15.64s
+(`mcp-followup-boundary-after.txt`). No production freshness guard or service file
+changed; the87-file wheel/service evidence above remains applicable. New hosted
+validation is required before claiming this test correction passes Ubuntu.
