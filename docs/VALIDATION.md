@@ -6216,3 +6216,10 @@ All four SQLite/PostgreSQL cases pass in15.64s
 (`mcp-followup-boundary-after.txt`). No production freshness guard or service file
 changed; the87-file wheel/service evidence above remains applicable. New hosted
 validation is required before claiming this test correction passes Ubuntu.
+
+The corrected follow-up test and related registry, remote admission, execution,
+cancellation, observed batch, recovery and automatic-note suites pass **224 cases
+in313.39s** with native PostgreSQL enabled (`mcp-followup-native-related.txt`).
+The correction is published in7d96ecd; hosted run
+[37361283266](https://github.com/SoonGwan/open-aegis/actions/runs/37361283266)
+was still in progress when this local receipt was recorded.
