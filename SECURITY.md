@@ -4,11 +4,9 @@ This project is pre-release software. It has not received an independent
 security audit. Run the console on loopback or behind a private authenticated
 network boundary. Use HTTPS and `AEGIS_SECURE_COOKIE=1` for remote access.
 
-Report vulnerabilities privately to the repository owner's GitHub security
-advisory channel after the public repository has been created and private
-reporting has been enabled. Until that channel exists, arrange a private
-contact with the maintainer; do not post credentials or exploitable deployment
-details in a public issue.
+Report vulnerabilities through the enabled
+[private vulnerability reporting channel](https://github.com/SoonGwan/open-aegis/security/advisories/new).
+Do not post credentials or exploitable deployment details in a public issue.
 
 The console has admin, operator and viewer roles in one shared workspace.
 Only admins approve execution and manage accounts; operators manage plans,

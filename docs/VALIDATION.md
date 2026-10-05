@@ -5910,9 +5910,58 @@ reviewed in `.gitleaksignore`, and current wording is clarified. This scan does
 not prove absence of every secret. Preview restart preserved all record counts
 and four task states exactly; existing pending work was not approved.
 
-The full frozen-source regression and hosted Linux/container checks remain
-pending in this entry. Remote stop kills/reaps the local RPC client and prevents
+The full frozen-source regression passes **1,383 tests in856.63s**, exit0,
+including native PostgreSQL; only the existing TestClient httpx deprecation
+warning remains (`artifacts/mcp-worker-final-full-tests.txt`). Source bytes were
+rechecked against the wheel after completion. Hosted image/Compose checks pass;
+general verify/native storage CI jobs remain pending at this point. Remote stop kills/reaps the local RPC client and prevents
 result admission/later dispatch; it does not guarantee immediate cancellation of
 already-running remote server requests. General plugin OS/egress isolation,
 remote cancellation, observed-response adapters, production interoperability and
 the complete v1 gate remain open.
+
+
+### First hosted Linux image/Compose evidence
+
+Private review repository `SoonGwan/open-aegis` now contains the source at
+`0b341c57bf7d8e139fbe3e8914bc0aaa0e84a6f9`. The
+[Verify run](https://github.com/SoonGwan/open-aegis/actions/runs/37340628617)
+on Ubuntu24.04 passes both image modes and both actual Compose modes.
+Authenticated setup/UI, nonroot/read-only deployment, loopback publication,
+retained volume/cookie after restart/recreation, checkpoints, stopped-app restore,
+old-session refusal and clean shutdown are verified. PostgreSQL Compose uses16.15,
+preserves the source schema and removes owned resources. No target execution was
+approved. All four receipts are valid; ordinary application bridge egress is not
+blocked. Downloaded job logs and extracted receipts are retained under
+`artifacts/mcp-worker-hosted-*`. This is private verification, not a public v1
+release or a production/PITR/multiarchitecture claim. General verify/native
+storage jobs were still running when this subsection was recorded.
+
+
+The hosted general verify job subsequently passes897 tests with486 PostgreSQL
+cases skipped as expected without that job's optional driver/native-test flag
+(587.78s). Its owned SQLite churn, installed runtime/maintenance and installed
+SIGKILL goal recovery receipts are valid. Churn completes45 approved synthetic
+tasks; installed recovery preserves request identities and waits for fresh
+approval after interruption. Actual native PostgreSQL runs in the separate job;
+these skipped cases are not described as passed by the general job.
+Evidence: `artifacts/mcp-worker-hosted-verify-receipt.json`.
+
+
+### Hosted completion and public source candidate
+
+All six jobs of the referenced Verify run completed successfully for executable
+source commit `0b341c57bf7d8e139fbe3e8914bc0aaa0e84a6f9`. Native storage subsets
+pass385/12/42/11 cases in their respective steps; the SQLite/native MCP
+review/admission/Worker step passes105 cases. These counts overlap other runs and
+are not added to the full-suite total. Native installed transfer, execution churn
+and process/database/write/audit crash recovery return valid receipts. See
+`artifacts/mcp-worker-hosted-postgres-receipt.json`. Documentation-only additions
+after this run do not change the85 frozen service files or the built console.
+
+The [source repository](https://github.com/SoonGwan/open-aegis) is now public with
+MIT licensing and enabled private vulnerability reporting. The initial validation
+ran privately before publication. The published version remains0.2.0a1; no v1
+completion, production deployment, independent audit or star count is claimed.
+Remote cancellation/observed-response/general plugin isolation and the other
+unmet v1 criteria remain tracked rather than silently omitted.

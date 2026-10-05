@@ -1,5 +1,7 @@
 # Open Aegis
 
+[English](README.en.md)
+
 **자산부터 증거, 수정 확인까지 연결하는 오픈소스 보안 검증 워크스페이스.**
 
 React + TypeScript 콘솔, Python/FastAPI 실행 엔진, SQLite 저장소로 구성됩니다.
@@ -70,8 +72,9 @@ docker compose up --build -d
 
 http://127.0.0.1:8787 에 접속하고 관리자 비밀번호 및 설치 토큰을 입력합니다.
 컨테이너는 비관리자 사용자로 실행되며 데이터는 `aegis-data` 볼륨에 보존됩니다.
-기본 포트 공개 범위는 호스트의 loopback입니다. Docker 실행은 현재 로컬 환경에
-Docker가 없어 검증하지 못했습니다. 로컬 Python 실행 및 프런트엔드 빌드는 검증했습니다.
+기본 포트 공개 범위는 호스트의 loopback입니다. 기본/드라이버 포함 이미지와 SQLite/PostgreSQL Compose를 GitHub의 Ubuntu24.04에서
+검증했습니다. 시작·인증·볼륨 보존·백업 복구·정상 종료를 확인했으며
+전체 운영/PITR·멀티 아키텍처 검수는 계속 진행 중입니다.
 PostgreSQL 사용 시 `AEGIS_INSTALL_POSTGRES=1`로 재빌드하고 저장소 DSN·스키마를
 설정합니다. DB/스키마 준비는 [설치 계약](docs/POSTGRES-STORAGE.md)을 따릅니다.
 컨테이너 검수 절차와 확인 한계는 [운영 문서](docs/OPERATIONS.md)를 참고하세요.
