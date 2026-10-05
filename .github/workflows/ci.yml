@@ -58,6 +58,9 @@ jobs:
       - run: python -m pytest -q tests/test_postgres_goal_selection.py
         env:
           AEGIS_TEST_POSTGRES: '1'
+      - run: python -m pytest -q tests/test_postgres_goal_observations.py
+        env:
+          AEGIS_TEST_POSTGRES: '1'
       - run: python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-wheel
       - name: Rehearse installed native goal plan recovery and fresh approvals
         run: python scripts/review_goal_recovery.py --wheel artifacts/postgres-wheel/*.whl --backend postgres --crash --database-crash --database-crash-in-flight --database-crash-write --database-crash-audit

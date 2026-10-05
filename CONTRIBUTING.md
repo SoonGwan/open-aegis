@@ -171,3 +171,9 @@ or live third-party scans to tests.
 Describe the user-visible behavior, reproduction, and validation. Screenshots
 help for UI changes. Keep generated databases, local artifacts, credentials,
 and virtual environments out of Git.
+
+`review_goal_ui.py --objective-observations` seeds a synthetic approved goal and
+completed endpoint inventory with one observation for objective-specific picker
+review. Build the console first; create only a pending plan in this fixture. Do
+not approve the seeded `.invalid` target. The fixture logs target traffic and
+provider calls at shutdown and removes its disposable workspace.

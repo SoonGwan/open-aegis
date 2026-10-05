@@ -5232,3 +5232,39 @@ on 390×844 has no document overflow.
   collected cases (`.../goal-selection-collected-tests.txt`). Fresh source hash and
   retained preview health/counts/task states reconfirmed in cleanup proof.
   Full v1, whole mobile/SR, mixed-version operation and semantic goal quality remain open.
+
+## Objective-bound observation response plans — 2026-10-05
+
+- Frozen backend regression run with native PostgreSQL enabled: **1,083 passed,
+  2 setup errors** in 578.31s. Both errors were `StaticFiles` finding no
+  `web/dist/assets` during a concurrent frontend rebuild; application assertions
+  did not run for those two cases. After the build completed, the exact two
+  cases passed in **1.61s**. Combined evidence covers all **1,085 collected
+  tests** on unchanged backend source; this is not a single clean full-suite run.
+  Future reviews must finish frontend builds before tests that mount their assets.
+- SQLite and native PostgreSQL: **26 passed** for objective asset/check filtering,
+  separate approval, actual owned `/api/account` GET, independent URL result and
+  unchanged base coverage/goal progress, exact request replay, changed objective/
+  scope refusal, retry/replan origin preservation, damaged/removed origin refusal,
+  viewer permissions and final-transaction rollback. A rejected HTTP mutation
+  retains its single user-request audit event; plan/coverage/source changes roll back.
+- Before reproduction from `be94d9a`: the same owned source scenario fails at the
+  new objective observation preview with **404**; no import/collection failure.
+- Frontend: **97 passed**, TypeScript/Vite build successful. Actual built console
+  with explicitly synthetic seeded observations: only the objective's declared
+  response check appears, selection creates a pending plan, origin and selected URL
+  display, and the original-goal button returns to the source. Fixture shutdown
+  confirms **0 target traffic records**, **0 provider calls**; no fixture approval.
+  This is desktop evidence, not real mobile or screen-reader coverage.
+- Wheel `9581dd0c102fd4743f7393799b2487001bcc1508b962444a6e07edd95f0b3127`: all
+  **74 Python files** match current source. Installed runtime outside checkout
+  passes locked dependencies, eight CLI entry points, HTTP/UI/auth/persistence,
+  maintenance/release rehearsals and clean shutdown with **0 target requests**.
+- Owned preview restarted with unchanged 4 tasks, 23 coverage records and 3 traffic
+  records; loopback health reports `ok`. Disposable browser fixture and tab removed.
+- Automatic interpretation, goal-origin inheritance for generic finding retests,
+  automatic observation follow-up/shared todos, full mobile/SR, production and
+  public-release gates remain open. This does not establish complete v1 readiness.
+
+Local ignored evidence: `artifacts/goal-observation-*`; source tests are
+`tests/test_goal_observations.py` and `tests/test_postgres_goal_observations.py`.

@@ -3,6 +3,7 @@ import { api, ApiError, captureSession } from "./api";
 import { pendingStorage } from "./chat-pending";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { WorkerDependencies } from "./WorkerDependencies";
+import { ObservationExecutionPicker } from "./ObservationExecution";
 import { useRecords, RecordState } from "./records";
 import { readDetail, readTaskGoal, goalCollectionMatches, type TaskGoalState, type FindingCollectionState, type HistoryMode, type ListPosition } from "./navigation-state";
 
@@ -389,12 +390,13 @@ type GoalFinding = {
 };
 const emptyGoalFindingState: FindingCollectionState = {expanded:false,search:"",offset:0,snapshot:null};
 
-export function GoalProgress({taskId,onFinding,onTask,actorId,canOperate,busy,onRetest,state,onChange}: {
+export function GoalProgress({taskId,onFinding,onTask,actorId,canOperate,busy,onRetest,state,onChange,canObserve=false,names={}}: {
   taskId:string;
   onFinding:(id:string)=>void; onTask:(id:string)=>void;
   actorId:string; canOperate:boolean; busy:boolean;
   onRetest:(path:string,requestId:string,onFailure:(message:string)=>void)=>Promise<boolean>;
   state:TaskGoalState; onChange:(changes:Partial<TaskGoalState>,mode?:HistoryMode)=>void;
+  canObserve?:boolean; names?:Record<string,string>;
 }) {
   const [rows,setRows]=useState<{id:string;title:string;completed:number;expected:number}[]|null>(null);
   const [error,setError]=useState(""),[loading,setLoading]=useState(false);
@@ -434,6 +436,10 @@ export function GoalProgress({taskId,onFinding,onTask,actorId,canOperate,busy,on
         state={state.objectives[row.id]||emptyGoalFindingState}
         onChange={(changes,mode)=>change({objectives:{[row.id]:{...(state.objectives[row.id]||emptyGoalFindingState),...changes}}},mode)}
         onFinding={onFinding} onTask={onTask} actorId={actorId} canOperate={canOperate} busy={busy} onRetest={onRetest}/>
+      {canObserve && <ObservationExecutionPicker key={taskId+":"+row.id} taskId={taskId} objectiveId={row.id} objectiveTitle={row.title}
+        actorId={actorId} names={names} canOperate={canOperate} busy={busy}
+        captureView={()=>{const captured=location.search;return ()=>location.search===captured && readDetail(location.search)?.id===taskId;}}
+        onCreated={async(id,current)=>{if(current())onTask(id);}}/>}
     </article>)}
   </section>;
 }

@@ -51,7 +51,7 @@ from . import todos
 from .event_planner import EventPlanner
 from . import observation_context
 from . import observation_execution
-from . import goal_planner, goal_evidence, goal_retests
+from . import goal_planner, goal_evidence, goal_retests, goal_observations
 
 
 class Credentials(BaseModel):
@@ -249,7 +249,7 @@ def create_app(data_dir=None, allow_private=None):
         with store.lock:
             return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None, goal_retest=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None, goal_retest=None, goal_observation=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
@@ -296,9 +296,16 @@ def create_app(data_dir=None, allow_private=None):
         if attempt_source and attempt_source.get('observation_execution'):
             previous = attempt_source['observation_execution']
             try:
-                current = observation_execution.preview(store, previous['source_task_id'])['context']
-                selection = observation_execution.Selection(fingerprint=current['fingerprint'],
-                    observation_ids=previous['observation_ids'], checks=data.checks, request_id=identifier()+identifier())
+                origin=attempt_source.get('goal_observation')
+                reviewed=goal_observations.preview(store,previous['source_task_id'],origin['objective_id']) if origin else observation_execution.preview(store,previous['source_task_id'])
+                current = reviewed['context']
+                selection = observation_execution.Selection(fingerprint=reviewed.get('fingerprint',current['fingerprint']),
+                    observation_ids=previous['observation_ids'], checks=data.checks, request_id=origin['request_id'] if origin else identifier()+identifier())
+                if origin:
+                    _,_,fresh_origin=goal_observations.prepare(store,previous['source_task_id'],origin['objective_id'],selection)
+                    if any(fresh_origin[key]!=origin[key] for key in goal_observations.ORIGIN):
+                        raise planning_history.PlanningConflict('원래 목표 과제가 변경되었습니다. 새 관찰 계획을 검토하세요.')
+                    goal_observation=fresh_origin
                 observation_request = (previous['source_task_id'], selection)
             except (planning_history.PlanningConflict, LookupError, ValueError) as exc:
                 raise HTTPException(409, str(exc)) from exc
@@ -326,9 +333,13 @@ def create_app(data_dir=None, allow_private=None):
         if observation_request:
             source_id, selection = observation_request
             try:
-                context, execution = observation_execution.prepare(store, source_id, selection)
+                if goal_observation:
+                    context,execution,fresh_origin=goal_observations.prepare(store,source_id,goal_observation['objective_id'],selection)
+                    if fresh_origin!=goal_observation:raise planning_history.PlanningConflict('목표 관찰 참조가 변경되었습니다.')
+                    task['goal_observation']=fresh_origin
+                else:context, execution = observation_execution.prepare(store, source_id, selection)
                 task.update(worker_observation_context=context, observation_execution=execution)
-                if planned_id:task['observation_selection'] = selection.model_dump()
+                if planned_id or goal_observation:task['observation_selection'] = selection.model_dump()
                 observation_execution.require(task)
             except (planning_history.PlanningConflict, LookupError) as exc:
                 raise HTTPException(409, str(exc)) from exc
@@ -387,7 +398,10 @@ def create_app(data_dir=None, allow_private=None):
         elif observation_request:
             with store.write_transaction() as db:
                 try:
-                    fresh_context, fresh_execution = observation_execution.prepare(store, source_id, selection, connection=db)
+                    if goal_observation:
+                        fresh_context,fresh_execution,fresh_origin=goal_observations.prepare(store,source_id,goal_observation['objective_id'],selection,connection=db)
+                        if fresh_origin!=goal_observation:raise planning_history.PlanningConflict('목표 과제 참조가 변경되었습니다.')
+                    else:fresh_context, fresh_execution = observation_execution.prepare(store, source_id, selection, connection=db)
                 except (planning_history.PlanningConflict, LookupError) as exc:raise HTTPException(409, str(exc)) from exc
                 if (fresh_execution != execution or
                         any(store.get('assets', asset['id'], connection=db) != asset for asset in assets)):
@@ -1030,6 +1044,37 @@ def create_app(data_dir=None, allow_private=None):
                 checks=selection.checks, workers=source.get('workers', 3), planner=source.get('planner', 'rules'))
             result = create_task_locked(data, observation_request=(task_id, selection), planned_id=planned_id)
             return result
+
+    @app.get('/api/tasks/{task_id}/goal-objectives/{objective_id}/observation-plan', dependencies=auth)
+    def goal_observation_preview(task_id: str, objective_id: str):
+        try:return goal_observations.preview(store,task_id,objective_id)
+        except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+        except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+
+    @app.post('/api/tasks/{task_id}/goal-objectives/{objective_id}/observation-plan', dependencies=operations)
+    def goal_observation_plan(task_id: str, objective_id: str, selection: observation_execution.Selection):
+        with engine.lock,store.lock:
+            if engine.closed:raise HTTPException(409,'서버가 종료 중입니다.')
+            planned_id=goal_planner.digest({'goal_observation':task_id,'objective':objective_id,'request':selection.request_id})[:32]
+            existing=store.get('tasks',planned_id)
+            if existing:
+                ref=existing.get('goal_observation')
+                if (existing.get('observation_selection')!=selection.model_dump()
+                        or type(ref) is not dict or ref.get('objective_id')!=objective_id
+                        or ref.get('source_task_id')!=task_id):
+                    raise HTTPException(409,'같은 목표 관찰 요청 ID의 선택이 일치하지 않습니다.')
+                try:observation_execution.require(existing,approved=goal_planner.has_execution_approval(existing))
+                except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+                return existing
+            try:
+                context,execution,origin=goal_observations.prepare(store,task_id,objective_id,selection)
+                source=store.get('tasks',task_id)
+            except LookupError as exc:raise HTTPException(404,str(exc)) from exc
+            except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+            data=TaskInput(name=('과제 관찰 검사 · '+origin['objective_title'])[:120],goal=source['goal'],
+                asset_ids=list(dict.fromkeys(row['asset_id'] for row in execution['targets'])),checks=selection.checks,
+                workers=source.get('workers',3),planner='rules')
+            return create_task_locked(data,observation_request=(task_id,selection),planned_id=planned_id,goal_observation=origin)
 
     @app.get('/api/tasks/{task_id}/planner', dependencies=auth)
     def automatic_plan_review(task_id: str):

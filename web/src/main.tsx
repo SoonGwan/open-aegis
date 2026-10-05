@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
 import { validateWorkerDependencies, WorkerDependencyError } from "./worker-dependency-state";
 import { NextPlan, TodoPlanBasis, WorkerObservationBasis, type TodoPlanContext, type ObservationPlanContext } from "./NextPlan";
-import { ObservationExecutionPicker, ObservationExecutionBasis, type ObservationExecution } from "./ObservationExecution";
+import { ObservationExecutionPicker, ObservationExecutionBasis, GoalObservationOrigin, type GoalObservationRef, type ObservationExecution } from "./ObservationExecution";
 import { GoalDraftPanel, GoalPlanSummary, GoalProgress, GoalRetestOrigin, type GoalRetestRef, type GoalPlan, type GoalSelection } from "./GoalPlan";
 import { WorkerProcess } from "./WorkerProcess";
 import { WorkerHistory } from "./WorkerHistory";
@@ -98,6 +98,7 @@ type Task = {
   goal_plan?: GoalPlan;
   goal_selection?: GoalSelection;
   goal_retest?: GoalRetestRef;
+  goal_observation?: GoalObservationRef;
   observation_execution?: ObservationExecution;
   id: string;
   name: string;
@@ -2879,9 +2880,10 @@ function App() {
             <TodoPlanBasis context={selectedTask.shared_todo_context} planner={selectedTask.planner} names={Object.fromEntries(tools.map(t=>[t.id,t.name]))} />
             <WorkerObservationBasis context={selectedTask.worker_observation_context} />
             <ObservationExecutionBasis execution={selectedTask.observation_execution} />
+            <GoalObservationOrigin origin={selectedTask.goal_observation} onTask={id=>navigation.openDetail({kind:"task",id})}/>
             <GoalRetestOrigin origin={selectedTask.goal_retest} onTask={id=>navigation.openDetail({kind:"task",id})} onFinding={id=>navigation.openDetail({kind:"finding",id})} />
             <GoalPlanSummary plan={selectedTask.goal_plan} selection={selectedTask.goal_selection} names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))} assets={selectedTask.scope_snapshot} />
-            {selectedTask.goal_plan && <GoalProgress key={`goal-progress-${selectedTask.id}`} taskId={selectedTask.id} state={navigation.taskGoal} onChange={navigation.updateTaskGoal} actorId={auth.user?.id||""} canOperate={canOperate} busy={busy} onRetest={async(path,requestId,onFailure)=>{const view=captureActionView(),session=captureSession();const result=await act(path,"POST",{request_id:requestId},"목표 재검증 계획을 만들었습니다.",onFailure) as Task|undefined;if(result&&view()&&session()){navigation.openDetail({kind:"task",id:result.id});return true;}return false;}} onFinding={id=>navigation.openDetail({kind:"finding",id})} onTask={id=>navigation.openDetail({kind:"task",id})} />}
+            {selectedTask.goal_plan && <GoalProgress key={`goal-progress-${selectedTask.id}`} taskId={selectedTask.id} canObserve={!!selectedTask.approved_at && ["completed","failed","stopped","interrupted"].includes(selectedTask.status)} names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))} state={navigation.taskGoal} onChange={navigation.updateTaskGoal} actorId={auth.user?.id||""} canOperate={canOperate} busy={busy} onRetest={async(path,requestId,onFailure)=>{const view=captureActionView(),session=captureSession();const result=await act(path,"POST",{request_id:requestId},"목표 재검증 계획을 만들었습니다.",onFailure) as Task|undefined;if(result&&view()&&session()){navigation.openDetail({kind:"task",id:result.id});return true;}return false;}} onFinding={id=>navigation.openDetail({kind:"finding",id})} onTask={id=>navigation.openDetail({kind:"task",id})} />}
             {auth.user && !selectedTask.observation_execution && ["pending","completed","failed","stopped","interrupted"].includes(selectedTask.status) && <GoalDraftPanel
               key={`goal-draft-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id} actorId={auth.user.id}
               initialGoal={selectedTask.goal} busy={busy} canOperate={canOperate} captureView={captureActionView}

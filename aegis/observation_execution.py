@@ -48,6 +48,11 @@ def preview(store, source_id, *, connection=None):
 
 def prepare(store, source_id, selection, *, connection=None):
     context = preview(store, source_id, connection=connection)['context']
+    return prepare_context(context, selection)
+
+
+def prepare_context(context, selection):
+    observation_context.require(context)
     if context['fingerprint'] != selection.fingerprint:
         raise PlanningConflict('관찰 근거가 변경되었습니다. 선택 목록을 다시 확인하세요.')
     by_id = {row['id']: row for row in context['items']}
@@ -56,7 +61,7 @@ def prepare(store, source_id, selection, *, connection=None):
     targets = [by_id[id] for id in selection.observation_ids]
     if len({(row['asset_id'], row['url']) for row in targets}) != len(targets):
         raise PlanningConflict('같은 자산의 같은 URL을 중복 선택할 수 없습니다.')
-    execution = {'format': FORMAT, 'source_task_id': source_id,
+    execution = {'format': FORMAT, 'source_task_id': context['source_task_id'],
                  'context_fingerprint': context['fingerprint'],
                  'observation_ids': selection.observation_ids, 'targets': targets}
     execution['fingerprint'] = digest(execution)
@@ -64,12 +69,16 @@ def prepare(store, source_id, selection, *, connection=None):
 
 
 def approval_contract(task):
-    return {'format': FORMAT, 'fingerprint': digest({
+    basis = {
         'execution': task['observation_execution'], 'checks': task['checks'],
-        'scope_snapshot': task['scope_snapshot']})}
+        'scope_snapshot': task['scope_snapshot']}
+    if task.get('goal_observation') is not None:basis['goal_observation']=task['goal_observation']
+    return {'format': FORMAT, 'fingerprint': digest(basis)}
 
 
 def require(task, *, approved=False):
+    from . import goal_observations
+    goal_observations.require(task)
     execution = task.get('observation_execution')
     if execution is None:
         if task.get('observation_execution_contract') is not None:

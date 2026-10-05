@@ -18,17 +18,17 @@ export type ObservationExecution = {
     scope_revision: number;
   }[];
 };
-const key = (actor: string, task: string) =>
-  "aegis:observation-request:" + JSON.stringify([actor, task]);
+const key = (actor: string, task: string, objective?: string) =>
+  "aegis:observation-request:" + JSON.stringify(objective ? [actor, task, objective] : [actor, task]);
 const allowed = [
   "security_headers",
   "transport_security",
   "cookie_policy",
   "cors_policy",
 ];
-function read(actor: string, task: string): ObservationExecutionInput | null {
+function read(actor: string, task: string, objective?: string): ObservationExecutionInput | null {
   try {
-    const raw = pendingStorage()?.getItem(key(actor, task));
+    const raw = pendingStorage()?.getItem(key(actor, task, objective));
     if (!raw || raw.length > 5000) return null;
     const value = JSON.parse(raw) as ObservationExecutionInput;
     if (
@@ -57,6 +57,17 @@ function read(actor: string, task: string): ObservationExecutionInput | null {
   } catch {
     return null;
   }
+}
+
+export type GoalObservationRef = {source_task_id:string;source_task_name:string;objective_title:string;objective_id:string};
+export function GoalObservationOrigin({origin,onTask}:{origin?:GoalObservationRef;onTask:(id:string)=>void}) {
+  if(!origin)return null;
+  return <section className="next-plan" aria-label="관찰 검사의 원래 목표 과제">
+    <h4>목표 과제에서 선택한 관찰 검사</h4>
+    <p>{origin.source_task_name} · {origin.objective_title}</p>
+    <p>과제에 속한 자산의 관찰 URL과 선언한 응답 검사를 선택한 계획입니다. 실행에는 별도 관리자 승인이 필요합니다. 기본 응답 완료율이나 자연어 목표 달성으로 합치지 않습니다.</p>
+    <button type="button" onClick={()=>onTask(origin.source_task_id)}>원래 목표 작업 열기</button>
+  </section>;
 }
 
 export function ObservationExecutionBasis({
@@ -93,6 +104,8 @@ export function ObservationExecutionPicker({
   busy,
   captureView,
   onCreated,
+  objectiveId,
+  objectiveTitle,
 }: {
   taskId: string;
   actorId: string;
@@ -101,8 +114,12 @@ export function ObservationExecutionPicker({
   busy: boolean;
   captureView: () => () => boolean;
   onCreated: (id: string, current: () => boolean) => Promise<void>;
+  objectiveId?: string;
+  objectiveTitle?: string;
 }) {
-  const [pending, setPending] = useState(() => read(actorId, taskId));
+  const storageKey=key(actorId,taskId,objectiveId);
+  const path="/tasks/"+encodeURIComponent(taskId)+(objectiveId?"/goal-objectives/"+encodeURIComponent(objectiveId):"")+"/observation-plan";
+  const [pending, setPending] = useState(() => read(actorId, taskId, objectiveId));
   const [ids, setIds] = useState<string[]>(pending?.observation_ids || []);
   const [checks, setChecks] = useState<string[]>(
     pending?.checks || ["security_headers"],
@@ -111,6 +128,7 @@ export function ObservationExecutionPicker({
     context: ObservationPlanContext;
     checks: string[];
     max_targets: number;
+    fingerprint?: string;
   } | null>(null);
   const [loading, setLoading] = useState(false),
     [saving, setSaving] = useState(false),
@@ -139,15 +157,19 @@ export function ObservationExecutionPicker({
         context: ObservationPlanContext;
         checks: string[];
         max_targets: number;
+        fingerprint?: string;
       }>(
-        "/tasks/" + encodeURIComponent(taskId) + "/observation-plan",
+        path,
         "GET",
         undefined,
         request.signal,
       );
       if (active.current && view() && session()) {
         setPreview(result);
-        if (!pending) setIds([]);
+        if (!pending) {
+          setIds([]);
+          setChecks(previous=>{const selected=previous.filter(check=>result.checks.includes(check));return selected.length?selected:result.checks.slice(0,1);});
+        }
       }
     } catch (err) {
       if (active.current && view() && session() && !request.signal.aborted)
@@ -166,7 +188,7 @@ export function ObservationExecutionPicker({
     )
       return;
     const request = pending || {
-      fingerprint: preview!.context.fingerprint,
+      fingerprint: preview!.fingerprint || preview!.context.fingerprint,
       observation_ids: ids,
       checks,
       request_id: crypto.randomUUID().replaceAll("-", ""),
@@ -174,7 +196,7 @@ export function ObservationExecutionPicker({
     try {
       const storage = pendingStorage();
       if (!storage) throw new Error();
-      storage.setItem(key(actorId, taskId), JSON.stringify(request));
+      storage.setItem(storageKey, JSON.stringify(request));
     } catch {
       setError(
         "요청 복구 정보를 저장하지 못했습니다. 브라우저 저장소를 확인하세요.",
@@ -190,14 +212,14 @@ export function ObservationExecutionPicker({
       current = () => active.current && view() && session();
     try {
       const task = await api<{ id: string }>(
-        "/tasks/" + encodeURIComponent(taskId) + "/observation-plan",
+        path,
         "POST",
         request,
       );
       if (!session()) return;
       try {
-        if (read(actorId, taskId)?.request_id === request.request_id)
-          pendingStorage()?.removeItem(key(actorId, taskId));
+        if (read(actorId, taskId, objectiveId)?.request_id === request.request_id)
+          pendingStorage()?.removeItem(storageKey);
       } catch {
         /* Exact replay is safe if storage cleanup fails. */
       }
@@ -209,7 +231,7 @@ export function ObservationExecutionPicker({
       if (current()) {
         if (err instanceof ApiError && err.status === 409) {
           try {
-            pendingStorage()?.removeItem(key(actorId, taskId));
+            pendingStorage()?.removeItem(storageKey);
           } catch {
             /* Keep replay information when storage is unavailable. */
           }
@@ -225,8 +247,10 @@ export function ObservationExecutionPicker({
     }
   }
   return (
-    <section className="next-plan observation-execution" aria-label="관찰 응답 검사 계획">
-      <h4>관찰 응답 검사 계획</h4>
+    <section className="next-plan observation-execution" aria-label={objectiveId?"과제의 관찰 응답 검사 · "+objectiveTitle:"관찰 응답 검사 계획"}>
+      <h4>{objectiveId?"이 과제의 관찰 응답 검사":"관찰 응답 검사 계획"}</h4>
+      {objectiveId && <p>이 과제에 선언된 자산의 관찰과 응답 검사만 선택합니다. 새 계획에도 원래 과제 출처를 보존합니다.</p>}
+      {preview && !preview.checks.length && <p role="status">이 과제에는 지원하는 응답 검사가 없습니다. 목표 초안을 새로 검토해 검사 범위를 정하세요.</p>}
       <p>
         출처와 현재 범위를 확인한 관찰 중 최대 10개를 선택합니다. 계획 생성과
         URL 조회는 별개이며 새 계획의 관리자 승인 후 GET 요청을 보냅니다.
@@ -278,7 +302,7 @@ export function ObservationExecutionPicker({
           </fieldset>
           <fieldset disabled={busy || saving || !!pending || !canOperate}>
             <legend>관찰 응답의 검증 도구</legend>
-            {allowed.map((id) => (
+            {preview.checks.map((id) => (
               <label key={id}>
                 <input
                   type="checkbox"
