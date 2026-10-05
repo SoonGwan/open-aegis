@@ -321,7 +321,13 @@ def test_restarted_source_marks_one_batch_unknown_without_replaying_any_url(work
     store.patch('tasks',task['id'],status='running',approved_at=time.time(),observation_execution_contract=approval_contract(task))
     attempt_id=_digest([task['id'],task['asset_ids'][0],OBSERVATION_CHECK,'owned-server'])
     store.put('mcp_execution_attempts',{'id':attempt_id,'task_id':task['id'],'state':'dispatching'})
-    before=list(observed_target[1]['requests']);client.app.state.engine.shutdown()
+    before=list(observed_target[1]['requests'])
+    # Match the application's shutdown order before replacing its runtime owner.
+    # An admitted background read must keep fencing takeover until it completes.
+    client.app.state.notification_deliveries.close()
+    client.app.state.event_planner.close()
+    assert not client.app.state.event_planner.thread.is_alive()
+    client.app.state.engine.shutdown()
     if getattr(store,'backend',None)=='postgres':
         from aegis.postgres_store import PostgresStore
         recovered=PostgresStore(store._dsn,store.schema)

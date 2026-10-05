@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, model_valida
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .task_templates import Templates, TemplateInput, TemplateEdit, TemplateArchive, TemplateApply
+from .prompt_versions import Prompts, Purpose, PromptEdit, PromptPreview
 from .notification_transport import Webhooks
 from .notification_channels import Channels,ChannelInput,ChannelEdit,DeliveryRetry,ChannelTest
 from .notification_deliveries import Deliveries
@@ -882,6 +883,26 @@ def create_app(data_dir=None, allow_private=None):
             store.event(None, ('자산 보관: ' if data.archived else '자산 복원: ') + asset['name'],
                         detail={'asset_id': asset_id, 'paused_schedules': paused})
             return asset
+
+    @app.get('/api/prompts', dependencies=auth)
+    def prompt_catalog():
+        service = Prompts(store)
+        return {'items': [service.capture(purpose) for purpose in ('planner', 'conversation')],
+                'version_limit': 200, 'execution_authorized': False}
+
+    @app.put('/api/prompts/{purpose}')
+    def prompt_change(purpose: Purpose, data: PromptEdit, actor=Depends(administrator)):
+        return Prompts(store).change(purpose, data, actor)
+
+    @app.post('/api/prompts/{purpose}/preview', dependencies=auth)
+    def prompt_preview(purpose: Purpose, data: PromptPreview):
+        return Prompts(store).render(purpose, data.template, data.value)
+
+    @app.get('/api/prompts/{purpose}/history', dependencies=auth)
+    def prompt_history(purpose: Purpose, limit: int=Query(25,ge=1,le=25),
+                       offset: int=Query(0,ge=0), snapshot: int|None=Query(None,ge=0)):
+        return store.page('prompt_versions',limit=limit,offset=offset,snapshot=snapshot,
+                          filters={'task_id':purpose})
 
     @app.post('/api/tasks/archive-assignment')
     def task_archive_assignment(data:ArchiveInput,actor=Depends(operator)):

@@ -6609,6 +6609,21 @@ No notification fixture or target request is added to the persistent workspace.
 Main hosted run37379865635 remains pending; prior PR all-six success is distinct.
 
 
+Prompt supplement version candidate connects planner/conversation capture to durable
+call attempts and final metadata. Related native/backend checks pass87 cases in16.29s;
+owned actual provider POST retains revision1 while the current prompt changes to2,
+and same-message replay makes no extra POST. Invalid model tools retain the approved
+check set. A controlled two-save race has one200 and one409. UTF-8/variable/request
+budgets, fresh role, audit rollback, version cap and corrupt fingerprint are checked.
+Frontend build and101 existing Node checks pass. Owned desktop preview/save503→same
+request200 preserves one version; two tabs yield200/409, preserve the original draft
+and require explicit latest review before200. Default restoration creates version4;
+four histories/operations remain,0 provider calls/target requests, valid audit, both
+tabs closed, fixture exit0 and temporary data removed. Initial assertions wrongly
+expected no audit on POST preview/422; existing request-audit middleware records these
+requests. Corrected checks retain zero domain mutation and assert that request event.
+Full native, installed, cross-version maintenance and hosted checks remain pending.
+
 Combined task archive/notification full native regression completes with
 **1,711 passed in1,187.68s**, OpenSSL3 and PostgreSQL16. Frozen94 Python modules
 remain unchanged through documentation-only main merges. Installed301, combined
@@ -6627,6 +6642,55 @@ all-job success evidence. Full native1,711, installed301, Node102, both-store
 maintenance and combined browser evidence now permit merging archive PR4.
 
 
+After integrating verified archive main26a1e8a, the prompt candidate passes173 related
+native/backend cases in59.39s, frontend build and102 Node checks. The independently
+packaged95 Python modules exactly match frozen source; wheel SHA256
+`bf22cf5ed105f2587f7c2e954f2160eab3f8273b26c08a7fac5f9ccb01622ce8`.
+Official public-source Gitleaks scan covers405 tracked/unignored files with0 candidates.
+The additive app/SQL/CI/documentation merge retains both prompt and archive contracts.
+Final full native, installed and95→94→95/backup receipts remain pending.
+
+
+The exact95-module prompt package passes388 installed cases in156.51s outside the
+checkout, including native backend cases, with temporary installation/cluster removal.
+Installed95→94→95 and offline backup/restore pass on both stores: prompt/config/
+version/operation rows and an explicitly synthetic committed call snapshot are
+preserved alongside task archive and notification families. Original save replay
+returns revision1 without reverting current default revision2. The independent audit
+checkpoint verifies, restored sessions are0, no target traffic occurs and only two
+intentional notification test POSTs occur. Actual provider snapshot admission is
+separately exercised in the earlier owned HTTP tests, not inferred from this fixture.
+Retained hosted source run is37381945973 on `ff7a0cd21c2704346ed57e56b43b77834acb2adb`;
+full native and hosted checks remain pending. Public PR5 stays draft.
+
+
+The initial prompt full native run stops honestly at1 failed/468 passed in350.28s.
+The source-restart test immediately constructs a new native engine after stopping
+only the old engine, leaving the application event planner alive. Its precise
+failure is WorkspaceBusy at new ownership admission. Twelve observed isolated runs
+pass and do not identify the historical holder. A controlled admitted event-planner
+read then reproduces the exact refusal: its reader PID remains a granted runtime
+ShareLock after engine-only shutdown. Matching the real application lifecycle
+(background worker joins before engine shutdown) passes the same original recovery
+assertions. This establishes the tested race mechanism, not the unrecorded holder
+in the earlier interrupted run. The restart fixture now closes notification/event
+workers before its engine, without sleeps, acquisition retries, weakened assertions
+or any change to production ownership fencing. Frozen95 production modules and
+wheel hash remain unchanged. The first notification-barrier probe was inconclusive
+because no notification worker starts with no destinations; the event-planner
+probe supplies the decisive owned lock observation. Full native must run again.
+
+
+After matching restart shutdown to the application lifecycle,107 native/backend
+MCP observation, ownership and notification delivery checks pass in158.48s.
+Production source is still the frozen95-module wheel. Latest hosted source run
+is37383092295 at `a82836b646c6e34dd7b08b9224b27de3f3ccfed6`; its preceding
+ff7a0cd run37381945973 was cancelled by the new test/source update and is not
+all-job success evidence. Full native is rerunning with the original strict failure
+stop and source-restart recovery assertions retained. The owned distinguishing
+probe is rerunnable in an isolated checkout of5db3c36 (before the fixture correction).
+
+
 Archive main merge `26a1e8acdd60c3da15022fbb7f6fe9609fb7840d` is installed in
 the persisted loopback preview127.0.0.1:8790. Frozen94 modules match validated
 source; Node22 build passes and served HTML/assets compare exactly. Original11
@@ -6642,3 +6706,15 @@ is terminal with all six jobs successful on merge `26a1e8acdd60c3da15022fbb7f6fe
 This completes hosted verification for the currently running94-module loopback
 preview. The newer95-module prompt draft has separate running checks and is not
 promoted by this main receipt. Version remains0.2.0a1.
+
+
+Final prompt full native regression passes **1,747 in1,197.75s** after the lifecycle
+fixture correction, retaining all original recovery assertions. Hosted run
+[37383092295](https://github.com/SoonGwan/open-aegis/actions/runs/37383092295)
+passes all six jobs on `a82836b646c6e34dd7b08b9224b27de3f3ccfed6`. Later documentation
+merges preserve all95 frozen production modules. Exact wheel/install388, Node102,
+95→94→95 and both-store backup receipts remain applicable. Combined desktop
+read-only review also observes prompt navigation and ordinary/archive task filters
+with0 mutations/provider calls/target requests, closed tab and fixture exit0.
+This permits merging PR5 while version remains0.2.0a1. The independent96-module
+model-profile workspace is not part of this verified candidate.

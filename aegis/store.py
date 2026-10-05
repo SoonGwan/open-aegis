@@ -159,6 +159,8 @@ class Store:
         fields = {
             'assets': ('name', 'url', 'owner', 'tags'),
             'tasks': ('name', 'status', 'goal'),
+            'prompt_versions':('action','actor.name','snapshot.template'),
+
             'task_archive_history':('actor.name','actor.username'),
 
             'notification_channels':('name','destination_id'),
