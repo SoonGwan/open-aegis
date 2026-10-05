@@ -40,7 +40,7 @@ def evidence_inputs(store, task, parents):
         current=store.get('tasks',task['id'],connection=db)
         if not current or current.get('id')!=task['id']:
             raise ValueError('선행 작업의 출처를 확인할 수 없습니다.')
-        for field in ('asset_ids','scope_snapshot','checks','tool_contracts','approved_at','worker_dependencies','worker_dependency_contract','goal_plan'):
+        for field in ('asset_ids','scope_snapshot','checks','tool_contracts','approved_at','worker_dependencies','worker_dependency_contract','goal_plan','goal_selection','goal_selection_contract'):
             default={} if field=='worker_dependencies' else None
             if json.dumps(current.get(field,default),sort_keys=True,allow_nan=False)!=json.dumps(task.get(field,default),sort_keys=True,allow_nan=False):
                 raise ValueError('승인된 Worker 입력 계약이 변경되었습니다.')

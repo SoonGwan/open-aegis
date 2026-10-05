@@ -26,6 +26,7 @@ export type GoalPlan = {
   };
   draft_id?: string;
 };
+export type GoalSelection = { cells: {asset_id:string;check:string}[]; source_task_id:string; fingerprint:string };
 type Draft = GoalPlan & {
   basis: { assets: { id: string; name: string; url: string }[] };
   id: string;
@@ -60,11 +61,13 @@ export function GoalPlanSummary({
   names,
   assets = [],
   reviewHeading,
+  selection,
 }: {
   plan?: GoalPlan;
   names: Record<string, string>;
   assets?: { id: string; name: string; url?: string }[];
   reviewHeading?: RefObject<HTMLHeadingElement | null>;
+  selection?: GoalSelection | null;
 }) {
   if (!plan) return null;
   return (
@@ -73,6 +76,11 @@ export function GoalPlanSummary({
       aria-label="목표 분해 계획"
     >
       <h4 ref={reviewHeading} tabIndex={reviewHeading ? 0 : undefined}>목표 분해 계획</h4>
+      {selection && <details open>
+        <summary>이번 회차의 실행 조합 · {selection.cells.length}개</summary>
+        <p>원래 과제는 유지합니다. 실패·누락·범위 변경, 공유 할 일 요청과 필요한 선행 Worker 검사만 새로 승인해 실행합니다. 목록에 없는 조합은 요청하지 않습니다.</p>
+        <ul>{selection.cells.map(row=><li key={row.asset_id+":"+row.check}>{assets.find(asset=>asset.id===row.asset_id)?.name || row.asset_id} · {names[row.check] || row.check}</li>)}</ul>
+      </details>}
       <p>
         {plan.mode === "ai"
           ? "AI 목표 분해 초안"
@@ -415,7 +423,7 @@ export function GoalProgress({taskId,onFinding,onTask,actorId,canOperate,busy,on
   }
   return <section className="next-plan" aria-label="목표 과제의 검사 진행률">
     <h4>과제별 검사 진행률</h4>
-    <p>연결된 도구·자산의 실행 완료만 집계합니다. 자연어 목표 달성이나 기대 근거의 사실성을 판정하지 않습니다.</p>
+    <p>연결된 도구·자산의 실행 완료만 집계합니다. 선택한 조합만 재검사한 회차는 범위·도구 계약이 일치하는 이전 회차의 완료 기록도 함께 집계합니다. 자연어 목표 달성이나 기대 근거의 사실성을 판정하지 않습니다.</p>
     <button type="button" disabled={loading} onClick={()=>state.expanded?void load():change({expanded:true})}>
       {loading?"조회 중…":"과제 검사 결과 확인"}
     </button>

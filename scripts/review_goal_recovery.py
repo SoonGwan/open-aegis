@@ -113,7 +113,10 @@ def finished(http, task_id):
         result = http('/api/tasks/' + task_id)
         if result['task']['status'] in ('completed', 'failed', 'stopped', 'interrupted'):
             assert result['task']['status'] == 'completed', result['task']['status']
-            assert {row['check'] for row in result['coverage']} == set(result['task']['checks'])
+            selection = result['task'].get('goal_selection')
+            expected = {(row['asset_id'],row['check']) for row in selection['cells']} if selection else {
+                (asset,check) for asset in result['task']['asset_ids'] for check in result['task']['checks']}
+            assert {(row['asset_id'],row['check']) for row in result['coverage']} == expected
             assert all(row['status'] == 'completed' or
                        (row['check'] == 'api_authorization' and row['status'] == 'skipped')
                        for row in result['coverage'])
@@ -507,7 +510,7 @@ with transfer.connect(os.environ['AEGIS_POSTGRES_DSN']) as db:
             http('/api/tasks/' + goal['id'] + '/approve', method='POST')
             finished(http, goal['id'])
             http('/api/tasks/' + goal['id'] + '/todos', {'request_id': 'e' * 32,
-                 'title': 'Owned follow-up', 'check_ids': ['security_headers']})
+                 'title': 'Owned follow-up', 'check_ids': list(goal['checks'])})
             path = '/api/tasks/' + goal['id'] + '/next-plan'
             proposal = http(path)
             assert proposal['available']

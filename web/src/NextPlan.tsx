@@ -3,7 +3,7 @@ import { api } from "./api";
 import { PolicySummary, type ExecutionPolicy } from "./runtime";
 import { ToolContracts } from "./ToolContracts";
 import type { ToolManifest } from "./tool-contract-state";
-import { GoalPlanSummary, type GoalPlan } from "./GoalPlan";
+import { GoalPlanSummary, type GoalPlan, type GoalSelection } from "./GoalPlan";
 import { WorkerDependencies } from "./WorkerDependencies";
 
 type Cell = {
@@ -217,6 +217,7 @@ type Proposal = {
   }[];
   execution_policy: ExecutionPolicy;
   goal_plan?: GoalPlan | null;
+  goal_selection?: GoalSelection | null;
   tool_contracts?: ToolManifest;
   basis: {
     missing_checks: string[];
@@ -503,8 +504,8 @@ export function NextPlan({
             </button>
           )}
           {proposal.goal_plan && <>
-            <GoalPlanSummary plan={proposal.goal_plan} names={names} assets={proposal.scope_snapshot} />
-            <p>목표 후속 회차는 원래 과제의 전체 선택 조합과 Worker 의존 관계를 유지해 다시 검사합니다. 완료된 검사도 포함되며 아래 반복 근거를 검토한 뒤 새로 승인합니다.</p>
+            <GoalPlanSummary plan={proposal.goal_plan} selection={proposal.goal_selection} names={names} assets={proposal.scope_snapshot} />
+            <p>{proposal.goal_selection ? "원래 과제와 Worker 의존 관계를 유지하며 이번 회차에 표시한 조합만 다시 검사합니다. 선행 Worker나 공유 할 일 요청으로 반복하는 완료 검사는 아래 근거에서 확인하고 새로 승인합니다." : "목표 후속 회차는 원래 과제의 전체 선택 조합과 Worker 의존 관계를 유지해 다시 검사합니다. 완료된 검사도 포함되며 아래 반복 근거를 검토한 뒤 새로 승인합니다."}</p>
             {!!proposal.basis.todo_outside_goal_checks?.length && <p role="alert">목표 밖의 요청: {checkNames(proposal.basis.todo_outside_goal_checks)}</p>}
           </>}
           {proposal.available && proposal.task && (

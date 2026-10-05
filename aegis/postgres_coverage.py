@@ -28,6 +28,9 @@ def latest_summary(db, asset_ids=None):
         LEFT JOIN records c ON c.kind='coverage' AND c.id=t.id||':'||a.id||':'||checks.value
           AND %s=t.id AND %s=a.id AND %s=checks.value
         WHERE t.kind='tasks' AND t.data::jsonb->>'observation_execution' IS NULL
+          AND (t.data::jsonb->>'goal_selection' IS NULL OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(t.data::jsonb->'goal_selection'->'cells') selected
+              WHERE selected->>'asset_id'=a.id AND selected->>'check'=checks.value))
           AND (t.data::jsonb->'goal_plan'->>'execution' IS NULL OR EXISTS (
             SELECT 1 FROM jsonb_array_elements(t.data::jsonb->'goal_plan'->'decomposition'->'objectives') objective
               CROSS JOIN jsonb_array_elements_text(objective->'asset_ids') goal_asset

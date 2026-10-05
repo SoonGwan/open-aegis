@@ -106,6 +106,7 @@ class Engine:
             self.stops[task_id] = threading.Event()
             self.store.patch('tasks', task_id, status='queued', approved_at=now(), execution_policy=self.policy.public(),
                              worker_dependency_contract=dependency_contract(task),
+                             **({'goal_selection_contract': task['goal_selection']} if task.get('goal_selection') else {}),
                              **({'observation_execution_contract': observation_execution.approval_contract(task)}
                                 if task.get('observation_execution') else {}))
             self.store.event(task_id, '등록된 범위와 검증 도구를 승인했습니다.', detail={'checks': task['checks'], 'asset_ids': task['asset_ids'], 'tool_contracts': task['tool_contracts']})
@@ -238,6 +239,8 @@ class Engine:
             require_dependency_contract(task)
             observation_execution.require(task, approved=True)
             goal_planner.require_task(task)
+            from . import goal_selection
+            goal_selection.require(task, approved=True)
             goal_retests.require(task)
             checks = self.plan(task, control)
             control.check()
@@ -297,6 +300,10 @@ class Engine:
                 for id, asset in list(pending.items()):
                     if control.stop.is_set() or control.expired():break
                     asset_checks = goal_planner.execution_checks(task, id, checks)
+                    if not asset_checks:
+                        finished({'asset_id': id, 'completed_checks': [], 'fingerprints': [], 'errors': []})
+                        del pending[id]
+                        continue
                     parents = dependencies.get(id, [])
                     if not all(parent in outcomes for parent in parents):continue
                     if len(running) >= task['workers']:break

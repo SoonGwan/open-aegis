@@ -22,6 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8812)
     parser.add_argument('--unconfigured', action='store_true', help='Exercise the real missing-provider configuration error')
+    parser.add_argument('--selective-round', action='store_true', help='Seed synthetic completed/failed goal cells for follow-up review; never execute targets')
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error('port must be 1..65535')
@@ -82,8 +83,26 @@ def main():
                            checks=['security_headers']).model_dump(), 'id': 'owned-goal-task',
                 'status': 'pending', 'created_at': timestamp, 'approved_at': None,
                 'done': 0, 'errors': 0, 'scope_snapshot': [asset], 'tool_contracts': contracts_for(['security_headers'])}
+        if args.selective_round:
+            from aegis import goal_planner
+            decomposition = {'objectives':[{'id':'g1','title':'합성 회차 선택 검수',
+                'rationale':'완료/실패 셀을 직접 만든 UI 검수용 기록입니다. 실제 대상 검사 결과가 아닙니다.',
+                'asset_ids':[asset['id']], 'checks':['security_headers','cors_policy'],
+                'expected_evidence':'선택 조합을 검토하고 새 승인 대기 계획만 생성', 'missing_inputs':[]}],
+                'worker_dependencies':{}}
+            plan = {'draft_id':'owned-selective-ui-draft','basis_fingerprint':'a'*64,
+                    'goal':'합성 후속 회차 선택 확인','decomposition':decomposition,
+                    'mode':'rules','execution':'objective_pairs'}
+            plan['fingerprint']=goal_planner.fingerprint(plan)
+            task.update(goal=plan['goal'], checks=['security_headers','cors_policy'],
+                        status='completed', approved_at=timestamp, goal_plan=plan,
+                        tool_contracts=contracts_for(['security_headers','cors_policy']))
         store.put_many([('assets', asset), ('tasks', task),
                         *[('coverage', row) for row in planned_slots(task)]])
+        if args.selective_round:
+            for row in planned_slots(task):
+                store.put('coverage',{**row,'status':'completed' if row['check']=='security_headers' else 'failed'})
+            print('Selective-round cells are synthetic seeded records; target execution has not occurred.',flush=True)
         print('Owned goal QA: admin / owned-goal-password-only', flush=True)
         print('Goal text containing 대기 holds the owned provider; type release to complete it.', flush=True)
         print(f'http://127.0.0.1:{args.port}/?page=tasks&detail=task&detail_id=owned-goal-task', flush=True)

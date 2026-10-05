@@ -134,6 +134,14 @@ Details and network/trust limits are in [OPERATIONS.md](docs/OPERATIONS.md).
 
 ## Goal UI review
 
+`scripts/review_goal_ui.py --selective-round` seeds explicitly synthetic completed/
+failed goal cells for follow-up review. Check the one-cell selection, pending
+acceptance/detail and progress1/2 without approving execution. These seed records
+are not real target evidence; actual sparse execution is exercised by SQLite/native
+PostgreSQL tests. The goal recovery harness compares the result's declared selected
+asset/check pairs, while its write/audit crash fixture requests all goal tools to
+retain the existing six-cell staging gate.
+
 After building `web/dist`, run `.venv/bin/python scripts/review_goal_ui.py` in a
 terminal. The disposable loopback app prints its synthetic login and task URL.
 Its local provider returns one synthetic objective; a goal containing `대기`

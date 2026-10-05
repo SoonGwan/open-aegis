@@ -5166,3 +5166,69 @@ on 390×844 has no document overflow.
   official releases and full v1 readiness remain open. Service/frontend unchanged;
   prior1035 backend/97 frontend tests remain latest suite evidence. Existing selected
   design-pair verifier and diff whitespace check pass; no full accessibility claim.
+
+
+### Goal follow-up selected pairs and retained prior proof (2026-10-05)
+
+- Added goal_selection contract for new objective_pairs follow-ups: immutable source,
+  canonical nonempty asset/check subset and fingerprint. Select failed/missing/stale
+  cells and explicit active-todo check requests; recursively include each selected
+  child's complete declared parent checks for task-local dependency handoffs. Original
+  goal/decomposition/assets/checks/dependencies stay unchanged. Approval pins a copy;
+  execution rejects changed/removed contracts. Replan/retry and continuation replay
+  preserve the subset. Legacy plans retain their full approved matrix.
+- Engine skips even the base GET for assets without selected checks. Planned slots
+  and SQLite/native PostgreSQL latest-coverage ranking filter by the selected pairs,
+  preserving untouched source coverage. Goal progress aggregates same-goal approved
+  history in one read snapshot, rejects incompatible scope/tool proof, keeps original
+  cell IDs/source_task_id and treats current pending selection as unexecuted. Findings
+  remain task-local; no semantic goal_verified claim is added.
+- New actual-transport regression: two assets/two declared tools, one owned failure;
+  follow-up selects only second-asset CORS. After fresh approval exactly one /other/
+  GET and one completed cell; first asset unrequested, source coverage unchanged,
+  aggregate completed4 and both objectives2/2. SQLite/native repeat tests cover
+  attempts/replay, todo-request repeats and invalid selection/approval metadata.
+  Baseline892c8cc fails missing goal_selection in a temporary owned checkout
+  (`artifacts/goal-selection-before.txt`), which was removed. Expanded147 tests pass
+  (`.../goal-selection-expanded-tests.txt`); final null-plan guard/selection tests20
+  pass across both stores (`.../goal-selection-final-guard-tests.txt`). Final scope-change/
+  accepted-replay damage cases also pass,24 total (`.../goal-selection-final-scope-replay-tests.txt`):
+  stale review rejected without partial child; only stale/failed pairs reapproved;
+  damaged approved selection rejects replay while original completed result remains.
+- Real built UI on a disposable synthetic seeded fixture shows one CORS pair, zero
+  repeated completed pairs, acceptance to a pending detail with one unexecuted row
+  and prior-progress1/2. Corrected a stale whole-matrix explanation found during
+  actual review. Screenshot/DOM recorded (`.../goal-selection-ui-review.png/json`).
+  Fixture provider_calls0/target_traffic0, one pending unapproved child; cleaned
+  fixture/tabs (`.../goal-selection-ui-fixture.txt`, `.../goal-selection-cleanup-proof.json`).
+  This is desktop UI of explicitly seeded proof, not an actual scan or mobile/SR test.
+- Node20 in the web working directory refused the required strip-types option;
+  reran explicitly with Node22.18.0:97 frontend tests pass and final TypeScript/Vite
+  build passes (`.../goal-selection-final-frontend-tests.txt`,
+  `.../goal-selection-node22-build.txt`), JS index-6LBcfAe8.js/CSS index-Bi_eIbTY.css.
+  Selected design-pair verifier/diff whitespace checks pass, not full accessibility.
+- Final installed wheel SHA256
+  `429a02164a47206fd66bcd95e1808bdaa6aa06d7c766e62af91944c6836bb80d`, all73 service
+  files byte-match (`.../goal-selection-final-wheel-proof.json`). Real installed
+  runtime/maintenance with final UI passes target_requests0 (`.../goal-selection-final-installed-runtime.txt`).
+  Recovery harness initially assumed all task checks produce rows and failed on the
+  valid subset; now checks exact declared selected pairs. Its write/audit fixture
+  explicitly requests all goal tools, preserving its six-cell precommit crash gate.
+  Final installed both-backend process/database/write/audit crash modes pass
+  (`.../goal-selection-final-installed-recovery.txt`): SQLite5owned GETs/audit43→92;
+  native7GETs/audit43→112 plus two write/audit stages2GETs each/audit28→48. No external
+  or preapproval restore traffic; no hardware/PITR/commit-acknowledgement-loss claim.
+  Temporary installations removed; retained preview restarted only after exact idle
+  counts/states and owned PID/CWD verification, serves final UI and remains healthy
+  with identical counts/task states (`.../goal-selection-preview-before.json`,
+  `.../goal-selection-preview.txt`, `.../goal-selection-cleanup-proof.json`).
+- First full suite:1052pass/1failure after532.59s. The final null-plan guard was edited
+  after test-process startup; deterministic package-contract test correctly detected
+  cached startup digest versus changed files. No test was weakened. Fresh frozen
+  contract tests17pass (`.../goal-selection-frozen-contract-tests.txt`); final service
+  code stayed frozen: full rerun1055pass in535.93s
+  (`.../goal-selection-frozen-full-tests.txt`). Four later-added scope/replay cases
+  pass in the final24-case suite; full1055 plus those four covers all1059 current
+  collected cases (`.../goal-selection-collected-tests.txt`). Fresh source hash and
+  retained preview health/counts/task states reconfirmed in cleanup proof.
+  Full v1, whole mobile/SR, mixed-version operation and semantic goal quality remain open.

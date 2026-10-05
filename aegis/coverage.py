@@ -81,6 +81,10 @@ def latest_summary(db, asset_ids=None):
           AND json_extract(c.data,'$.check')=checks.value
         WHERE a.id=json_extract(scope.value,'$.id') AND t.kind='tasks'
           AND json_extract(t.data,'$.observation_execution') IS NULL
+          AND (json_extract(t.data,'$.goal_selection') IS NULL OR EXISTS (
+            SELECT 1 FROM json_each(t.data,'$.goal_selection.cells') selected
+              WHERE json_extract(selected.value,'$.asset_id')=a.id
+                AND json_extract(selected.value,'$.check')=checks.value))
           AND (json_extract(t.data,'$.goal_plan.execution') IS NULL OR
             EXISTS (SELECT 1 FROM json_each(t.data,'$.goal_plan.decomposition.objectives') objective
               CROSS JOIN json_each(objective.value,'$.asset_ids') goal_asset

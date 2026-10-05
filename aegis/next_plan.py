@@ -44,7 +44,7 @@ def propose(store, task_id, policy, *, connection=None):
         seen_checks = {check for attempt in history if goal_planner.has_execution_approval(attempt) for check in attempt['checks']}
         ancestors = [{k: t.get(k) for k in ('id', 'planning_round', 'checks', 'approved_at', 'status',
                      'next_plan_id', 'next_plan_fingerprint', 'scope_snapshot', 'tool_contracts',
-                     'followup_of', 'followup_fingerprint', 'retry_of', 'replan_of', 'replaced_by', 'retry_successor', 'goal_plan')}
+                     'followup_of', 'followup_fingerprint', 'retry_of', 'replan_of', 'replaced_by', 'retry_successor', 'goal_plan', 'goal_selection')}
                      for t in history[1:]]
         accepted, accepted_kind = continuation(store, source, connection=db)
         assets = [store.get('assets', id, connection=db) for id in ids]
@@ -82,6 +82,10 @@ def propose(store, task_id, policy, *, connection=None):
         selected = [c['id'] for c in CATALOG if c['id'] in missing or c['id'] in retry or c['id'] in requested]
         outside_goal=[check for check in requested if check not in checks] if goal else []
         if goal:selected=list(checks) if retry or any(check in checks for check in requested) else []
+        selection = None
+        if goal and goal.get('execution') == 'objective_pairs' and selected:
+            from . import goal_selection
+            selection = goal_selection.prepare(source, rows, requested)
         task = {'name': ('다음 계획 · ' + source['name'])[:120], 'goal': source.get('goal', ''),
                 'asset_ids': ids, 'checks': selected, 'workers': source.get('workers', 3),
                 'planner': source.get('planner', 'rules'),
@@ -91,7 +95,8 @@ def propose(store, task_id, policy, *, connection=None):
                  'round': round_number, 'ancestors': ancestors,
                  'scope_snapshot': scopes, 'assets': assets, 'coverage': cells,
                  'task': task, 'tool_contracts': contracts_for(selected) if selected else None,
-                 'execution_policy': policy, 'shared_todo_context':context, 'worker_observation_context':observations}
+                 'execution_policy': policy, 'shared_todo_context':context, 'worker_observation_context':observations,
+                 'goal_selection':selection}
         fingerprint = hashlib.sha256(json.dumps(basis, sort_keys=True, ensure_ascii=False,
                                                 allow_nan=False, separators=(',', ':')).encode()).hexdigest()
         limited = round_number >= MAX_ROUNDS
@@ -103,12 +108,14 @@ def propose(store, task_id, policy, *, connection=None):
                 'reason': 'already_accepted' if accepted else ('history_limit' if history_limited else 'round_limit' if limited else 'goal_scope_change_required' if outside_goal else ('goal_results_followup' if goal else 'results_followup') if selected else ('no_remaining_goal_checks' if goal else 'no_remaining_checks')),
                 'task': task if selected and not limited and not history_limited else None,
                 'goal_plan':goal,
+                'goal_selection':selection,
                 'shared_todo_context':context,
                 'worker_observation_context':observations,
                 'basis': {'missing_checks': missing, 'retry_checks': retry, 'todo_requested_checks':requested, 'coverage': cells,
                           'todo_outside_goal_checks':outside_goal,
                           'skipped_cells': [r['id'] for r in rows if r['status'] == 'skipped'],
-                          'repeated_completed_cells': [r['id'] for r in rows if r['status'] == 'completed' and r['check'] in selected]},
+                          'repeated_completed_cells': [r['id'] for r in rows if r['status'] == 'completed' and r['check'] in selected
+                            and (selection is None or {'asset_id':r['asset_id'],'check':r['check']} in selection['cells'])]},
                 'scope_snapshot': assets, 'execution_policy': policy,
                 'tool_contracts': basis['tool_contracts'],
                 'accepted_task_id': accepted['id'] if accepted else None, 'accepted_kind': accepted_kind,

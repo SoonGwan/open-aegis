@@ -53,6 +53,10 @@ def execution_checks(task, asset_id, ordered=None):
     if plan['fingerprint'] != fingerprint(plan):raise PlanningConflict('목표 실행 계약이 변경되었습니다.')
     selected = {check for objective in plan['decomposition']['objectives']
                 if asset_id in objective['asset_ids'] for check in objective['checks']}
+    from . import goal_selection
+    goal_selection.require(task, approved=has_execution_approval(task))
+    if task.get('goal_selection'):
+        selected &= {row['check'] for row in task['goal_selection']['cells'] if row['asset_id'] == asset_id}
     return [check for check in ordered if check in selected]
 
 
@@ -189,6 +193,8 @@ def recover(store):
 
 
 def require_task(task):
+    from . import goal_selection
+    goal_selection.require(task, approved=has_execution_approval(task))
     plan=task.get('goal_plan')
     if plan is None:return
     try:
@@ -212,14 +218,37 @@ def progress(store, task_id):
         require_task(task)
         if not task.get('goal_plan'):return {'objectives':[],'goal_verified':False}
         rows=task_rows(store,task,get_record=lambda kind,id:store.get(kind,id,connection=db))
+        if task.get('goal_selection'):
+            from .planning_history import history
+            from .tool_contracts import require_contracts, ToolContractMismatch
+            latest = {}
+            current_revisions = {asset['id']:asset.get('revision',1) for asset in task['scope_snapshot']}
+            for attempt in reversed(history(store,task_id,connection=db)):
+                if attempt['id'] != task_id and not has_execution_approval(attempt):continue
+                require_task(attempt)
+                if attempt.get('goal_plan') != task['goal_plan']:
+                    raise PlanningConflict('목표 과제와 다른 후속 이력이 있습니다.')
+                revisions = {asset['id']:asset.get('revision',1) for asset in attempt['scope_snapshot']}
+                try:
+                    require_contracts(attempt)
+                    compatible = True
+                except ToolContractMismatch:
+                    compatible = False
+                for row in task_rows(store,attempt,get_record=lambda kind,id:store.get(kind,id,connection=db)):
+                    row = {**row, 'source_task_id':attempt['id']}
+                    if not has_execution_approval(attempt) and row['status'] != 'not_started':row['status']='not_recorded'
+                    if type(row.get('asset_revision')) is not int or row['asset_revision'] != revisions[row['asset_id']]:row['status']='not_recorded'
+                    elif revisions[row['asset_id']] != current_revisions[row['asset_id']] or not compatible:row['status']='stale'
+                    latest[row['asset_id'],row['check']] = row
+            rows = list(latest.values())
         approved=has_execution_approval(task)
         revisions={a['id']:a.get('revision',1) for a in task['scope_snapshot']}
         result=[]
         for objective in task['goal_plan']['decomposition']['objectives']:
-            cells=[{key:r.get(key) for key in ('id','asset_id','check','status','asset_revision')}
+            cells=[{key:r.get(key) for key in ('id','asset_id','check','status','asset_revision','source_task_id')}
                    for r in rows if r['asset_id'] in objective['asset_ids'] and r['check'] in objective['checks']]
             for cell in cells:
-                if not approved and cell['status']!='not_started':cell['status']='not_recorded'
+                if not approved and cell.get('source_task_id') in (None,task_id) and cell['status']!='not_started':cell['status']='not_recorded'
                 if type(cell['asset_revision']) is not int or cell['asset_revision']!=revisions[cell['asset_id']]:cell['status']='not_recorded'
             completed=sum(cell['status']=='completed' for cell in cells)
             expected=len(objective['asset_ids'])*len(objective['checks'])
