@@ -304,3 +304,19 @@ test("task archive bookmark stays separate from asset archive and resets paginat
   assert.equal(readNavigation(navigateQuery(active,pages,"assets"),pages).list.archived,true);
   assert.equal(readNavigation("page=tasks&tasks_archived=invalid",pages).list.archived,false);
 });
+
+
+test("notification channel bookmarks are independent from delivery status", () => {
+  const allowed=[...pages,"notifications","deliveries"];
+  const original="?page=notifications&notifications_status=disabled&notifications_q=검토&notifications_offset=25&notifications_snapshot=90&deliveries_status=unknown&deliveries_offset=50&deliveries_snapshot=120";
+  const channels=readNavigation(original,allowed);assert.equal(channels.list.filter,"disabled");assert.equal(channels.list.search,"검토");
+  const moved=navigateQuery(original,allowed,"deliveries");assert.equal(readNavigation(moved,allowed).list.filter,"unknown");assert.equal(readNavigation(moved,allowed).list.offset,50);
+  const reset=updateListQuery(moved,allowed,{filter:"failed"});assert.equal(readNavigation(reset,allowed).list.offset,0);
+  assert.equal(readNavigation(navigateQuery(reset,allowed,"notifications"),allowed).list.offset,25);
+});
+
+test("notification bookmarks reject unreviewed statuses", () => {
+  const allowed=[...pages,"notifications","deliveries"];
+  assert.equal(readNavigation("?page=notifications&notifications_status=unknown",allowed).list.filter,"all");
+  assert.equal(readNavigation("?page=deliveries&deliveries_status=active",allowed).list.filter,"all");
+});

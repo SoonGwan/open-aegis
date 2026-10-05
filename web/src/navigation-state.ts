@@ -16,6 +16,8 @@ export const LIST_PAGES = [
   "tasks",
   "templates",
   "categories",
+  "notifications",
+  "deliveries",
   "findings",
   "traffic",
   "approvals",
@@ -449,6 +451,8 @@ export function readList(query: URLSearchParams, page: string): ListState {
     search: searchText(query.get(`${page}_q`)),
     filter:
       (page === "templates" || page === "categories") ? (["active","archived","all"].includes(status || "") ? status! : "active") :
+      page === "notifications" && ["active","disabled"].includes(status || "") ? status! :
+      page === "deliveries" && ["queued","dispatching","delivered","failed","unknown","blocked"].includes(status || "") ? status! :
       page === "tasks" &&
       TASK_STATUSES.includes(status as (typeof TASK_STATUSES)[number])
         ? status!
@@ -492,6 +496,8 @@ export function writeList(
     query.delete(`${page}_${suffix}`);
   if (state.search) query.set(`${page}_q`, searchText(state.search));
   if ((page === "templates" || page === "categories") && state.filter !== "active")
+    query.set(`${page}_status`, state.filter);
+  if ((page === "notifications" || page === "deliveries") && state.filter !== "all")
     query.set(`${page}_status`, state.filter);
   if (page === "tasks" && state.filter !== "all")
     query.set("tasks_status", state.filter);
