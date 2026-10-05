@@ -181,3 +181,23 @@ def test_native_report_fences_replacement_and_rejects_lost_owner(stores,postgres
         stream.close()
         if replacement:replacement.close()
         owner.close()
+
+
+def test_native_statement_timeout_does_not_shorten_export_budget(stores,monkeypatch):
+    from aegis.postgres_streams import query_permit
+    _,pg=stores;pool=ExportPool(ExportPolicy(timeout=10));permit=pool.acquire()
+    observed=[];original=permit.remaining
+    def remaining():
+        value=original();observed.append(value);return value
+    monkeypatch.setattr(permit,'remaining',remaining)
+    try:
+        with transfer.connect(pg._dsn) as db,db.transaction():
+            with query_permit(db,permit):
+                # The configuration samples after the initial deadline check.
+                budget=observed[1]
+                row=db.execute("SELECT current_setting('statement_timeout')::interval AS configured").fetchone()
+                assert row['configured'].total_seconds()>=budget
+                assert row['configured'].total_seconds()-budget<=.001
+    finally:permit.finish('completed')
+    assert pool.metrics()['active']==0
+    assert not any(t.name=='aegis-report-cancel' and t.is_alive() for t in threading.enumerate())
