@@ -390,3 +390,16 @@ def test_rotating_scope_key_does_not_reexecute_same_approval(tmp_path, target):
     with pytest.raises(ExecutionRejected, match='scope_grant_consumed'):
         Runner('owned-server', rotated, path, allow_private=True).execute('validate_security_headers', {'grant': token})
     assert len(state['requests']) == 1
+
+
+@pytest.mark.parametrize('budget', [True, False, 0, -1, 2.5, '1', 25])
+def test_scope_factory_cannot_increase_or_coerce_approved_request_budget(target, budget):
+    with pytest.raises(ScopeGrantError):
+        grant(approved_task(target[0], request_budget=24), request_budget=budget)
+    assert not target[1]['requests']
+
+
+def test_scope_factory_can_only_reduce_shared_asset_budget(target):
+    token = grant(approved_task(target[0], request_budget=24), request_budget=1)
+    assert verify_claim(token, KEY, 'owned-server').limits.request_budget == 1
+    assert not target[1]['requests']

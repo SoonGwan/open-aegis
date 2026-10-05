@@ -20,6 +20,7 @@ type Tool = {
   name: string;
   revision: number;
   enabled: boolean;
+  execution_available?: boolean;
   definition_sha256: string;
 };
 type Page = { items: Tool[]; total: number; has_more: boolean };
@@ -138,7 +139,7 @@ export function MCPRegistryPanel() {
       if (!alive.current || signal.aborted) return;
       clearReview();
       setMessage(
-        `${result.items.length}개 도구를 등록했습니다. 실행에는 아직 사용할 수 없습니다.`,
+        `${result.items.length}개 도구를 등록했습니다. 검증 실행은 별도 작업 승인이 필요합니다.`,
       );
       await load(signal, 0);
     });
@@ -174,8 +175,8 @@ export function MCPRegistryPanel() {
         </button>
       </div>
       <p>
-        관리자가 도구 정의를 검토해 등록합니다. 등록된 원격 도구는 아직 검증
-        실행에 사용할 수 없습니다.
+        관리자가 도구 정의를 검토해 등록합니다. 운영자가 구성한 GET 실행 어댑터는
+        새 작업에서 선택할 수 있습니다. 등록은 실행 승인이 아닙니다.
       </p>
       {error && (
         <p role="alert" className="error">
@@ -291,6 +292,7 @@ export function MCPRegistryPanel() {
           </strong>
           <p>
             버전 {tool.revision} · {tool.enabled ? "등록됨" : "비활성화됨"}
+            {tool.enabled && tool.execution_available ? " · 실행 어댑터 검토됨" : " · 실행 어댑터 없음"}
           </p>
           <div className="mcp-actions">
             <button

@@ -137,9 +137,16 @@ def main():
     from .__main__ import AegisServer
     try:
         key = os.environ.get('AEGIS_MCP_SCOPE_KEY', '').encode()
+        raw_limits = os.environ.get('AEGIS_MCP_EXEC_LIMITS', '{}').encode()
+        if len(raw_limits) > 32768:
+            raise ValueError()
+        limits = _decode(raw_limits)
+        if not isinstance(limits, dict):
+            raise ValueError()
         app = create_execution_app(os.environ.get('AEGIS_MCP_SERVER_ID', ''),
                                    os.environ.get('AEGIS_MCP_BEARER_TOKEN', ''), key,
                                    os.environ.get('AEGIS_MCP_EXEC_DATA_DIR', 'data/mcp-execution'),
+                                   ceiling=RequestLimits(**limits),
                                    allow_private=os.environ.get('AEGIS_MCP_EXEC_LAB') == '1',
                                    credential_envs=tuple(filter(None, os.environ.get('AEGIS_MCP_TEST_ENVS', '').split(','))),
                                    allowed_origins=tuple(filter(None, os.environ.get('AEGIS_MCP_ALLOWED_ORIGINS', '').split(','))))

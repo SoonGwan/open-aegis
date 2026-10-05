@@ -65,6 +65,7 @@ import { ChatPanel } from "./chat-panel";
 import { SharedTodos } from "./shared-todos";
 import { ScopeSentryImport, AssetSources } from "./ScopeSentryImport";
 import { MCPRegistryPanel } from "./MCPRegistry";
+import { RemoteExecutionPicker, RemoteExecutionSummary, type RemoteExecution } from "./RemoteExecution";
 import { ToolContracts } from "./ToolContracts";
 import { toolContractsMatch, type ToolManifest } from "./tool-contract-state";
 import {
@@ -110,6 +111,7 @@ type Task = {
   checks: string[];
   workers: number;
   worker_dependencies?: Record<string, string[]>;
+  remote_execution?: RemoteExecution;
   planner: string;
   llm_usage?: PlannerCall;
   shared_todo_context?:TodoPlanContext;
@@ -477,8 +479,12 @@ function App() {
   const [modal, setModalState] = useState<
     "asset" | "task" | "import" | "note" | "scopesentry" | "sources" | null
   >(null);
+  const [remoteChecks, setRemoteChecks] = useState<string[] | null>(null);
+  const [taskCheckChoices, setTaskCheckChoices] = useState<Record<string, boolean>>({});
   const setModal = useCallback((value: typeof modal) => {
     localActionScope.current.invalidate();
+    setRemoteChecks(null);
+    setTaskCheckChoices({});
     setModalState(value);
   }, []);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
@@ -939,6 +945,7 @@ function App() {
           checks: data.getAll("check"),
           workers: Number(data.get("workers")),
           planner: data.get("planner"),
+          remote_connection_id: data.get("remote_connection_id") || null,
           worker_dependencies: JSON.parse(String(data.get("worker_dependencies") || "{}")),
         };
         validateWorkerDependencies(body.asset_ids, body.worker_dependencies);
@@ -1985,6 +1992,7 @@ function App() {
                       )}
                       <ToolContracts snapshot={t.tool_contracts} current={settings?.tool_contracts}
                         selected={t.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))} pending />
+                      <RemoteExecutionSummary contract={t.remote_execution} />
                       <WorkerDependencies dependencies={t.worker_dependencies} assets={t.scope_snapshot} />
                       <div className="approval-buttons">
                         <button disabled={busy || !canOperate} onClick={() => void replanPending(t.id)}>
@@ -2595,6 +2603,7 @@ function App() {
                   />
                 </label>
                 <AssetPicker initialId={taskAssetId} initialAsset={visibleAssets.find(asset => asset.id === taskAssetId)} onDraftChange={() => setFormError("")} />
+                <RemoteExecutionPicker disabled={busy} onChecks={setRemoteChecks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))} />
                 <fieldset>
                   <legend>검증 도구</legend>
                   <div className="check-grid">
@@ -2604,7 +2613,9 @@ function App() {
                           type="checkbox"
                           name="check"
                           value={t.id}
-                          defaultChecked
+                          disabled={!!remoteChecks && !remoteChecks.includes(t.id)}
+                          checked={(taskCheckChoices[t.id] ?? true) && (!remoteChecks || remoteChecks.includes(t.id))}
+                          onChange={(event) => setTaskCheckChoices((choices) => ({...choices, [t.id]: event.target.checked}))}
                         />
                         {t.name}
                       </label>
@@ -2823,6 +2834,7 @@ function App() {
             <ToolContracts snapshot={selectedTask.tool_contracts} current={settings?.tool_contracts}
               selected={selectedTask.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))}
               pending={selectedTask.status === "pending"} />
+            <RemoteExecutionSummary contract={selectedTask.remote_execution} />
             <WorkerDependencies dependencies={selectedTask.worker_dependencies} assets={selectedTask.scope_snapshot} />
             {replanError?.id === selectedTask.id && <p className="form-error" role="alert">{replanError.message}</p>}
             {selectedTask.followup_of && <p className="subtle">

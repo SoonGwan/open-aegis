@@ -136,7 +136,7 @@ def verify_claim(token, key, server_id, *, timestamp=None):
         raise ScopeGrantError('invalid_scope_grant') from None
 
 
-def issue_grant(task, asset_id, check_id, server_id, key, *, ttl=60, timestamp=None, allow_private=False):
+def issue_grant(task, asset_id, check_id, server_id, key, *, ttl=60, timestamp=None, allow_private=False, request_budget=None):
     """Mint only from a current approved task snapshot, never arbitrary URL input."""
     try:
         require_contracts(task)
@@ -154,6 +154,10 @@ def issue_grant(task, asset_id, check_id, server_id, key, *, ttl=60, timestamp=N
         relevant['authorization_rules'] = asset.get('authorization_rules', []) if check_id == 'api_authorization' else []
         policy = task['execution_policy']
         limits = RequestLimits(**{key: policy[key] for key in RequestLimits.model_fields})
+        if request_budget is not None:
+            if type(request_budget) is not int or not 1 <= request_budget <= limits.request_budget:
+                raise ValueError()
+            limits = limits.model_copy(update={'request_budget': request_budget})
         current = int(time.time() if timestamp is None else timestamp)
         queue_timeout = policy['queue_timeout']
         if type(queue_timeout) not in (int, float) or not 1 <= queue_timeout <= 3600 or approved > current + 5:

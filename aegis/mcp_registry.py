@@ -36,6 +36,7 @@ class Registry:
         self.store, self.stop = store, stop
         self.connections = {}
         self.gate = threading.Lock()
+        self.executor = None
         if not isinstance(connections, list) or len(connections) > 10:
             raise ValueError('connection_budget')
         for item in connections:
@@ -191,7 +192,8 @@ class Registry:
                            'connection_contract': record['connection_contract'],
                            'protocol_version': fresh['protocolVersion'], 'server_info': fresh['serverInfo'],
                            'revision': revision, 'registered_by': actor_id, 'registered_at': timestamp,
-                           'preview_id': preview_id, 'enabled': True, 'execution_available': False}
+                           'preview_id': preview_id, 'catalog_sha256': record['fingerprint'], 'enabled': True,
+                           'execution_available': bool(self.executor and self.executor.available(connection.id, tool))}
                     records.append(('mcp_tools', row))
                     items.append(self.summary(row))
                 result = {'preview_id': preview_id, 'items': items, 'execution_available': False}

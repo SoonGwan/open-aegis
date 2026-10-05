@@ -101,6 +101,7 @@ class NextPlanInput(BaseModel):
 
 
 class TaskInput(BaseModel):
+    remote_connection_id: str | None = Field(default=None, max_length=64, pattern=r'^[A-Za-z0-9_.-]+$')
     name: str = Field(min_length=1, max_length=120)
     goal: str = Field(default='등록된 자산의 보안 설정과 접근 권한을 검증합니다.', max_length=2000)
     asset_ids: list[str] = Field(min_length=1, max_length=20)
@@ -238,6 +239,10 @@ def create_app(data_dir=None, allow_private=None):
     try:
         source_connections = Sources.from_env(store, shutdown_requested)
         mcp_registry = Registry.from_env(store, shutdown_requested)
+        from .mcp_task_execution import Executors
+        mcp_executors = Executors.from_env(mcp_registry)
+        mcp_registry.executor = mcp_executors
+        engine.remote = mcp_executors
     except BaseException:
         engine.shutdown()
         if lease:lease.close()
@@ -322,6 +327,16 @@ def create_app(data_dir=None, allow_private=None):
                     scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id,
                     retest_triage_revision=triage_revision, retry_of=retry_of, execution_policy=engine.policy.public(),
                     tool_contracts=contracts_for(data.checks), replan_of=replacing['id'] if replacing else None)
+        location_source = attempt_source or (followup[0] if followup else {}) or (
+            (store.get('tasks', observation_request[0]) or {}) if observation_request else {})
+        task['remote_connection_id'] = data.remote_connection_id or location_source.get('remote_connection_id')
+        if task['remote_connection_id']:
+            try:
+                task['remote_execution'] = mcp_executors.snapshot(task['remote_connection_id'], data.checks)
+            except ValueError as exc:
+                raise HTTPException(409, str(exc)) from None
+            if observation_request:
+                raise HTTPException(409, '원격 관찰 응답 검증 어댑터는 아직 지원하지 않습니다.')
         if attempt_source:
             task.update(planning_history.metadata(attempt_source))
             if attempt_source.get('goal_plan'):task['goal_plan']=attempt_source['goal_plan']
@@ -366,6 +381,8 @@ def create_app(data_dir=None, allow_private=None):
         except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         try:goal_planner.require_task(task)
         except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+        try:mcp_executors.require(task)
+        except ValueError as exc:raise HTTPException(409,str(exc)) from None
         records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]
         if goal_draft:records.append(('goal_plans',{**goal_draft,'accepted_task_id':task['id']}))
         if followup:
@@ -706,6 +723,10 @@ def create_app(data_dir=None, allow_private=None):
     def mcp_connections():
         return mcp_registry.public_connections()
 
+    @app.get('/api/integrations/mcp/executors', dependencies=operations)
+    def remote_executors():
+        return mcp_executors.public()
+
     @app.post('/api/integrations/mcp/previews')
     def mcp_preview(data: MCPPreviewInput, actor=Depends(administrator)):
         return mcp_registry.preview(data, actor['id'])
@@ -1042,7 +1063,8 @@ def create_app(data_dir=None, allow_private=None):
             except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
             finding=store.get('findings',finding_id)
             data=TaskInput(name=('목표 재검증 · '+finding['title'])[:120],asset_ids=[ref['asset_id']],
-                           checks=[ref['check']],workers=1,planner='rules')
+                           checks=[ref['check']],workers=1,planner='rules',
+                           remote_connection_id=(store.get('tasks', task_id) or {}).get('remote_connection_id'))
             return create_task_locked(data,retest_of=finding_id,planned_id=planned_id,goal_retest=ref)
 
     @app.post('/api/tasks/{task_id}/goal-plans/{draft_id}/accept', dependencies=operations)
@@ -1065,7 +1087,8 @@ def create_app(data_dir=None, allow_private=None):
             source=store.get('tasks',task_id)
             if not source:raise HTTPException(409,'출처 작업이 없습니다.')
             planned=TaskInput(name=('목표 계획 · '+source['name'])[:120],goal=draft['goal'],asset_ids=ids,checks=checks,
-                workers=source.get('workers',3),planner='rules',worker_dependencies=draft['decomposition']['worker_dependencies'])
+                workers=source.get('workers',3),planner='rules',worker_dependencies=draft['decomposition']['worker_dependencies'],
+                remote_connection_id=source.get('remote_connection_id'))
             return create_task_locked(planned,goal_draft=draft)
 
     @app.post('/api/tasks/{task_id}/observation-plan', dependencies=operations)
@@ -1329,7 +1352,9 @@ def create_app(data_dir=None, allow_private=None):
         if not finding:
             raise HTTPException(404, '발견 사항이 없습니다.')
         data = TaskInput(name='재검증 · ' + finding['title'], asset_ids=[finding['asset_id']],
-                         checks=[finding['check']], workers=1)
+                         checks=[finding['check']], workers=1,
+                         remote_connection_id=(store.get('tasks', finding['task_ids'][-1]) or {}).get('remote_connection_id')
+                            if finding.get('task_ids') else None)
         if finding.get('observation_id'):
             with engine.lock, store.lock:
                 source_id = finding.get('observation_source_task_id')

@@ -17,15 +17,32 @@ class DiscoveryError(ValueError):
 
 
 def discover(connection, stop=None, *, timeout=15):
+    value = _supervise(connection, connection.model_dump(), 'child_main', stop, timeout)
+    if not isinstance(value, dict) or set(value) != {'protocolVersion', 'serverInfo', 'tools'}:
+        raise DiscoveryError('discovery_contract')
+    return value
+
+
+def invoke(connection, name, arguments, catalog_sha, definition_sha, control):
+    control.check()
+    timeout = min(300, control.deadline - time.monotonic()) if control.deadline else 60
+    return _supervise(connection, {'connection': connection.model_dump(), 'name': name,
+        'arguments': arguments, 'catalog_sha256': catalog_sha, 'definition_sha256': definition_sha},
+        'call_main', control.stop, timeout)
+
+
+def _supervise(connection, payload, child_function, stop, timeout):
     """Bound a child lifetime, reap on cancellation, and do not inherit app secrets."""
     control = TaskControl(stop=stop, deadline=time.monotonic() + timeout)
     environment = {k: v for k, v in os.environ.items()
                    if k in ('PATH', 'SYSTEMROOT', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'LANG', 'LC_CTYPE')}
     if connection.token_env and connection.token_env in os.environ:
         environment[connection.token_env] = os.environ[connection.token_env]
-    request = json.dumps(connection.model_dump()).encode()
+    request = json.dumps(payload).encode()
+    if len(request) > 65536:
+        raise DiscoveryError('input_budget')
     bootstrap = ('import sys;sys.path.insert(0,sys.argv[1]);'
-                 'from aegis.mcp_process import child_main;child_main()')
+                 f'from aegis.mcp_process import {child_function};{child_function}()')
     process = None
     try:
         control.check()
@@ -35,7 +52,7 @@ def discover(connection, stop=None, *, timeout=15):
                 input_file.write(request)
                 input_file.seek(0)
                 process = subprocess.Popen([sys.executable, '-I', '-c', bootstrap,
-                                            str(Path(__file__).resolve().parent.parent)],
+                                           str(Path(__file__).resolve().parent.parent), str(timeout)],
                                            cwd=folder, env=environment, stdin=input_file,
                                            stdout=output, stderr=subprocess.DEVNULL, close_fds=True)
                 try:
@@ -54,8 +71,6 @@ def discover(connection, stop=None, *, timeout=15):
                     process.wait(timeout=3)
         from .remote_mcp import _decode
         value = _decode(raw)
-        if not isinstance(value, dict) or set(value) != {'protocolVersion', 'serverInfo', 'tools'}:
-            raise DiscoveryError('discovery_contract')
         return value
     except (OSError, ValueError, TimeoutError, InterruptedError):
         raise DiscoveryError('discovery_failed') from None
@@ -66,6 +81,14 @@ def discover(connection, stop=None, *, timeout=15):
 
 
 def child_main():
+    _child()
+
+
+def call_main():
+    _child(call=True)
+
+
+def _child(call=False):
     # Apply limits in the child rather than preexec_fn in a threaded web process.
     # Linux AS is a virtual-address limit. macOS has no equivalent reliable RSS
     # guarantee here; neither is a filesystem/egress isolation boundary.
@@ -75,15 +98,18 @@ def child_main():
     resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
     if sys.platform.startswith('linux'):
         resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
-    from .remote_mcp import Client, Connection, _decode, _encode
+    from .remote_mcp import Client, Connection, _decode, _encode, _digest
     client = None
     try:
-        raw = sys.stdin.buffer.read(32769)
-        if len(raw) > 32768:
+        budget = 65536 if call else 32768
+        raw = sys.stdin.buffer.read(budget + 1)
+        if len(raw) > budget:
             raise ValueError('configuration_budget')
-        connection = Connection(**_decode(raw))
-        client = Client(connection)
-        control = TaskControl(deadline=time.monotonic() + 12)
+        value = _decode(raw)
+        connection = Connection(**(value['connection'] if call else value))
+        timeout = min(300, float(sys.argv[2])) if call else 12
+        client = Client(connection, operation_timeout=timeout)
+        control = TaskControl(deadline=time.monotonic() + timeout)
         initialized = client.initialize(control)
         tools = client.list_tools(control)
         fields = {'name', 'title', 'description', 'inputSchema', 'outputSchema', 'annotations', '_meta'}
@@ -91,12 +117,19 @@ def child_main():
                   'serverInfo': {k: initialized['serverInfo'][k] for k in ('name', 'version')},
                   'tools': sorted([{k: v for k, v in tool.items() if k in fields} for tool in tools],
                                   key=lambda tool: tool['name'])}
+        if call:
+            definition = next(tool for tool in result['tools'] if tool['name'] == value['name'])
+            if _digest(result) != value['catalog_sha256'] or _digest(definition) != value['definition_sha256']:
+                raise ValueError('execution_contract_changed')
+            grant = client.approve_call(value['name'], value['arguments'], control)
+            result = client.call_tool(value['name'], value['arguments'], grant, control)
         encoded = _encode(result, MAX_OUTPUT)
         token = os.environ.get(connection.token_env, '') if connection.token_env else ''
+        protected = [token, value['arguments'].get('grant', '') if call else '']
         stack = [result]
-        while token and stack:
+        while stack:
             item = stack.pop()
-            if isinstance(item, str) and token in item:
+            if isinstance(item, str) and any(secret and secret in item for secret in protected):
                 raise ValueError('credential_in_metadata')
             if isinstance(item, dict):
                 stack.extend(item.keys())

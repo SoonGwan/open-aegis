@@ -45,6 +45,7 @@ def peer(monkeypatch, tmp_path, request):
                                               'required': ['url'], 'additionalProperties': False})
                 result = {'tools': [{'name': 'inspect', 'description': state['revision'],
                                     'inputSchema': schema, 'annotations': {'readOnlyHint': True}}]}
+                result['tools'].extend(state.get('extra_tools', []))
                 if state['pages']:
                     if request['params'].get('cursor'):
                         result['tools'][0]['name'] = 'second'
@@ -428,3 +429,22 @@ def test_sse_bom_cr_and_multiline_json():
 
     response = io.BytesIO(b'\xef\xbb\xbf: comment\rdata: {"jsonrpc": "2.0",\rdata: "id": 1, "result": {}}\r\r')
     assert next(_sse_messages(response)) == {'jsonrpc': '2.0', 'id': 1, 'result': {}}
+
+
+def test_unselected_catalog_change_invalidates_call_approval(peer):
+    state, client = peer
+    client.initialize()
+    client.list_tools()
+    args = {'url': 'https://owned.invalid/'}
+    grant = client.approve_call('inspect', args)
+    state['extra_tools'] = [{'name': 'other', 'description': 'new unselected tool',
+                            'inputSchema': {'type': 'object'}}]
+    with pytest.raises(RemoteMCPError, match='approval_changed'):
+        client.call_tool('inspect', args, grant)
+    assert not requests(state, 'tools/call')
+
+
+@pytest.mark.parametrize('value', [True, False, 0, -.1, 301, float('nan'), float('inf'), '12', None])
+def test_operation_timeout_rejects_invalid_trusted_configuration(value):
+    with pytest.raises(RemoteMCPError, match='operation_timeout'):
+        Client(Connection(id='owned', url='https://owned.invalid/mcp'), operation_timeout=value)

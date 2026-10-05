@@ -91,6 +91,8 @@ def propose(store, task_id, policy, *, connection=None):
                 'asset_ids': ids, 'checks': selected, 'workers': source.get('workers', 3),
                 'planner': source.get('planner', 'rules'),
                 'worker_dependencies': source.get('worker_dependencies', {})}
+        if source.get('remote_connection_id'):
+            task['remote_connection_id'] = source['remote_connection_id']
         basis = {'source_task_id': task_id, 'source_status': source['status'],
                  'source_approved_at': source['approved_at'], 'goal_plan':goal, 'source_tool_contracts': source.get('tool_contracts'),
                  'round': round_number, 'ancestors': ancestors,

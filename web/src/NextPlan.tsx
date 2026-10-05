@@ -212,6 +212,7 @@ type Proposal = {
     workers: number;
     planner: string;
     worker_dependencies: Record<string, string[]>;
+    remote_connection_id?: string;
   };
   scope_snapshot: {
     id: string;

@@ -135,7 +135,10 @@ def _sse_messages(response):
 
 
 class Client:
-    def __init__(self, connection: Connection):
+    def __init__(self, connection: Connection, *, operation_timeout=12):
+        if type(operation_timeout) not in (int, float) or not .1 <= operation_timeout <= 300:
+            raise RemoteMCPError('operation_timeout')
+        self.operation_timeout = operation_timeout
         p = urlsplit(connection.url)
         if p.scheme != 'https' and not (connection.lab_http and connection.allow_private
                                        and p.hostname in ('127.0.0.1', '::1')):
@@ -152,8 +155,8 @@ class Client:
 
     def _control(self, control):
         return TaskControl(stop=control.stop if control else None,
-                           deadline=min(time.monotonic() + 12, control.deadline)
-                           if control and control.deadline is not None else time.monotonic() + 12)
+                           deadline=min(time.monotonic() + self.operation_timeout, control.deadline)
+                           if control and control.deadline is not None else time.monotonic() + self.operation_timeout)
 
     @contextmanager
     def _operation(self, control):
@@ -390,7 +393,7 @@ class Client:
             raise RemoteMCPError('arguments_contract') from None
         return _digest({'connection': self.connection.model_dump(), 'credential': self._credential,
                         'session': self._session, 'version': self._version, 'server': self._server,
-                        'tool': self._tools[name], 'arguments': arguments})
+                        'tool': self._tools[name], 'catalog_sha256': _digest(self._tools), 'arguments': arguments})
 
     def approve_call(self, name, arguments, control=None):
         """Trusted caller attests it reviewed the latest listed definition and input.

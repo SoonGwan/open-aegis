@@ -28,6 +28,7 @@ class Engine:
         self.policy = policy or ExecutionPolicy.from_env()
         self.limiter = OriginLimiter(self.policy)
         self.owner=None;self.pool=None
+        self.remote = None
         self.stops = {}
         self.lock = threading.RLock()
         self.futures = {}
@@ -43,6 +44,9 @@ class Engine:
                 goal_planner.recover(store)
             for task in store.recovery_tasks():
                 if task['status'] in ('running', 'queued', 'stopping'):
+                    if task.get('remote_execution'):
+                        from .mcp_task_execution import recover_attempts
+                        recover_attempts(store, task)
                     finish_remaining(store, task, 'interrupted', '서버 재시작으로 실행 결과를 확인할 수 없습니다.')
                     store.patch('tasks', task['id'], status='interrupted', finished_at=now())
                     store.event(task['id'], '서버 재시작으로 작업이 중단되었습니다. 새 승인 작업으로 다시 실행하세요.', 'warning')
@@ -95,6 +99,10 @@ class Engine:
             goal_planner.require_task(task)
             goal_retests.require(task)
             validate_dependencies(task['asset_ids'], task.get('worker_dependencies', {}))
+            if self.remote:
+                self.remote.require(task, refresh=bool(task.get('remote_execution')))
+            elif task.get('remote_execution') or task.get('remote_connection_id'):
+                raise ValueError('원격 실행 구성을 확인하세요.')
             if task.get('execution_policy') and task['execution_policy'] != self.policy.public():
                 raise ValueError('서버 실행 정책이 변경되었습니다. 현재 정책으로 새 계획을 만드세요.')
             for snapshot in task['scope_snapshot']:
@@ -103,13 +111,21 @@ class Engine:
                     raise ValueError('보관된 자산은 승인할 수 없습니다. 활성 자산으로 새 계획을 만드세요.')
                 if current.get('revision', 1) != snapshot.get('revision', 1):
                     raise ValueError('계획 생성 후 자산이 수정되었습니다. 현재 범위로 새 계획을 만드세요.')
-            self.stops[task_id] = threading.Event()
-            self.store.patch('tasks', task_id, status='queued', approved_at=now(), execution_policy=self.policy.public(),
+            approved = dict(task, status='queued', approved_at=now(), execution_policy=self.policy.public(),
                              worker_dependency_contract=dependency_contract(task),
                              **({'goal_selection_contract': task['goal_selection']} if task.get('goal_selection') else {}),
                              **({'observation_execution_contract': observation_execution.approval_contract(task)}
                                 if task.get('observation_execution') else {}))
-            self.store.event(task_id, '등록된 범위와 검증 도구를 승인했습니다.', detail={'checks': task['checks'], 'asset_ids': task['asset_ids'], 'tool_contracts': task['tool_contracts']})
+            with self.store.lock, self.store.write_transaction() as db:
+                if self.store.get('tasks', task_id, connection=db) != task:
+                    raise ValueError('승인 중 계획이 변경됐습니다. 다시 검토하세요.')
+                if self.remote:
+                    self.remote.require(task, connection=db)
+                self.store.put_many([('tasks', approved)], connection=db)
+                self.store.event(task_id, '등록된 범위와 검증 도구를 승인했습니다.', detail={
+                    'checks': task['checks'], 'asset_ids': task['asset_ids'], 'tool_contracts': task['tool_contracts'],
+                    **({'remote_execution': task['remote_execution']} if task.get('remote_execution') else {})}, connection=db)
+            self.stops[task_id] = threading.Event()
             future=self.pool.submit(self.run, task_id)
             self.futures[task_id]=future
             def cleanup(_):
@@ -334,6 +350,13 @@ class Engine:
         return list(outcomes.values())
 
     def validate_asset(self, task, asset, checks, control, inputs=None):
+        if task.get('remote_execution'):
+            if not self.remote:
+                raise ValueError('원격 실행 구성이 없습니다.')
+            if inputs:
+                self.store.event(task['id'], '승인된 선행 Worker의 완료 근거를 원격 Worker에 연결했습니다.',
+                    detail={'asset_id': asset['id'], 'worker_id': task['id'] + ':' + asset['id'], 'dependency_inputs': inputs})
+            return self.remote.run_asset(task, asset, checks, control)
         stop = control.stop
         task_id = task['id']
         worker_id = task_id + ':' + asset['id']

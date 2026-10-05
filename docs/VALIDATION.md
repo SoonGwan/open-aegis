@@ -5714,7 +5714,7 @@ No registration is added to Worker checks, tasks, findings or coverage.
 
 Service discovery runs fixed client code in a supervised POSIX child with
 minimal environment, bounded file output, CPU/FD limits and parent deadline.
-Owned tests prove unrelated secrets are not forwarded, hanging/stopped children
+Owned tests prove unrelated environment variables are not forwarded; hanging/stopped children
 are killed and reaped, temporary work directories are removed, and trusted TLS
 can register while untrusted/wrong-host fixtures receive no HTTP credentials.
 Known credential reflection in metadata is rejected. Linux address-space
@@ -5865,3 +5865,54 @@ remained unchanged and byte-match the installed wheel after the run and preview
 restart. CI now includes native MCP registry/admission tests and allows25 minutes
 for verification/storage jobs; the workflow YAML parses locally. Hosted CI,
 Linux/amd64 production proof and main Worker integration remain unverified.
+
+
+## Main approved MCP Worker integration — 2026-10-06
+
+Configured fixed GET adapters now connect administrator tool review, explicit task
+server selection, pending scope/policy/server snapshots, administrator approval,
+supervised RPC and atomic result admission. The server's six current-code tool
+definitions must match exactly; arbitrary registered tools remain ineligible.
+Approval state and audit are committed together. Worker dispatch rechecks full
+approval authority and current asset authorization/revision/URL before RPC.
+An asset's request budget is shared between checks. Each dispatch has a persistent
+attempt; unknown responses and startup recovery do not automatically replay it.
+Replans, finding retests and follow-up plans preserve the server and require new
+approval. Observed-response remote jobs are explicitly refused.
+
+Actual disposable desktop browser review registered two definitions, selected the
+remote server, preserved manual check choices across local/remote switching, and
+showed scope/server/limits in approval. Target requests were zero before approval.
+After approval, two GET checks completed with two admitted receipts, three
+findings and one scoped link observation; the link was not visited. The source
+fixture and temporary directory were removed. This is not full mobile, screen
+reader or simultaneous submission QA.
+
+The built console passes97 frontend tests and the selected design contrast check.
+An isolated installation outside the checkout passes203 MCP-related tests with
+SQLite and actual PostgreSQL16, including task approval, shared budget, stale
+keys/tools, approval-audit rollback, dispatch-time authority change, stop without
+admission/next check, startup recovery and retest/replan location preservation.
+The initially failing recovery test incorrectly reused a closed PostgreSQL lease;
+using a fresh Store/Engine reproduces restart and passes both backends.
+Installed runtime/UI/authentication/persistence/maintenance/release smoke review
+is valid and makes no target requests. The wheel contains exactly85 frozen Python
+service files, byte-matching source; SHA256:
+`49fa76c9b3459bd8b8c083daa93e681aa7aa6c4d07836ec2669638e05ec8cabc`.
+Evidence: `artifacts/mcp-worker-installed-tests.txt`,
+`artifacts/mcp-worker-installed-runtime.txt`,
+`artifacts/mcp-worker-final-wheel-receipt.json`, and the owned UI state receipt.
+
+Gitleaks8.30.1, downloaded from its official release with matching archive
+checksum, scanned145 prior commits/~3.66MB. One generic-key candidate was ordinary
+prose in the earlier validation entry; its exact historical fingerprint is
+reviewed in `.gitleaksignore`, and current wording is clarified. This scan does
+not prove absence of every secret. Preview restart preserved all record counts
+and four task states exactly; existing pending work was not approved.
+
+The full frozen-source regression and hosted Linux/container checks remain
+pending in this entry. Remote stop kills/reaps the local RPC client and prevents
+result admission/later dispatch; it does not guarantee immediate cancellation of
+already-running remote server requests. General plugin OS/egress isolation,
+remote cancellation, observed-response adapters, production interoperability and
+the complete v1 gate remain open.

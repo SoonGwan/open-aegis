@@ -49,7 +49,7 @@ ARTEX를 실행하거나 전체 코드를 감사한 결과가 아니다. 특정 
 | 발견·조치 | [TRIAGE.md](TRIAGE.md) | 담당자·사유·수정 충돌·상태 보존 |
 | 사람과 대화 | [chat-panel.tsx](../web/src/chat-panel.tsx) | 기록/관찰 출처 인용·선택적 AI 초안·잘못된 인용의 규칙 복구·원자적 사용량 저장; AI 실행 개입 없음 |
 | 실행 과정 | [WORKER-PROCESS.md](WORKER-PROCESS.md) | 작업/자산별 근거와 여러 작업의 Worker 실행 기록 검색 HTTP/MCP/UI; 공유 할 일 저장·HTTP/MCP 조회 구현; 편집 UI·명시적 도구 요청·변경 이벤트 기반 제안 준비·관찰 미완료 조합의 자동 기록/사람 결정 보존([계약](OBSERVATION-TODOS.md)) 구현; 의미적 관찰 소비는 남아 있음 |
-| 읽기 연동 | [MCP.md](MCP.md), [REMOTE-MCP.md](REMOTE-MCP.md) | 로컬 stdio 조회; 원격 클라이언트 기반의 연결·목록·명시적 호출과 관리자 API/UI의 메타데이터 검토 등록·비활성화/감사 구현, 앱의 원격 실행 통합은 남아 있음 |
+| 읽기 연동 | [MCP.md](MCP.md), [REMOTE-MCP.md](REMOTE-MCP.md) | 로컬 stdio 조회; 원격 클라이언트 기반의 연결·목록·명시적 호출과 관리자 API/UI의 메타데이터 검토 등록·비활성화/감사 구현, 구성된 고정 GET 어댑터의 작업 승인·Worker·원자적 결과 저장 연결; 일반 플러그인 격리·원격 즉시 취소·관찰 응답 어댑터는 남아 있음 |
 | 무결성 | [AUDIT.md](AUDIT.md), [AuditPanel.tsx](../web/src/AuditPanel.tsx) | 관리자 수동 연결 검증; 독립 보관 자동화 없음 |
 | 설치·복구 | [OPERATIONS.md](OPERATIONS.md) | SQLite·설치 패키지 검증; 실제 컨테이너 실행 미검증 |
 

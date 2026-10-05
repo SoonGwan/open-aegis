@@ -23,11 +23,11 @@ class AdmissionError(ValueError):
 AUTHORITY_FIELDS = ('id', 'approved_at', 'asset_ids', 'scope_snapshot', 'checks', 'tool_contracts',
                     'execution_policy', 'worker_dependencies', 'worker_dependency_contract',
                     'goal_plan', 'goal_selection', 'goal_selection_contract',
-                    'observation_execution', 'observation_execution_contract')
+                    'observation_execution', 'observation_execution_contract', 'remote_execution', 'remote_connection_id')
 
 
 def admit(store, task, asset_id, check_id, token, key, server_id, response, *,
-          ceiling=None, allow_private=False, protected_values=()):
+          ceiling=None, allow_private=False, protected_values=(), attempt_id=None, control=None):
     """Validate completely, then commit receipt/evidence/coverage/audit together.
 
 Replaying an identical still-valid response returns its original receipt. A
@@ -38,12 +38,14 @@ receipt is proof of local admission, not remote runtime or target attestation.
         output = validate_execution_response(token, key, server_id, response,
                                              ceiling=ceiling, allow_private=allow_private)
         claim = verify_claim(token, key, server_id)
+        if task.get('remote_execution') and not attempt_id:
+            raise ValueError()
         if (claim.task_id != task['id'] or claim.asset.id != asset_id or claim.check_id != check_id
                 or task.get('observation_execution') or task.get('observation_cells')):
             raise ValueError()
         expected = issue_grant(task, asset_id, check_id, server_id, key,
                                ttl=claim.expires_at - claim.issued_at, timestamp=claim.issued_at,
-                               allow_private=claim.allow_private)
+                               allow_private=claim.allow_private, request_budget=claim.limits.request_budget)
         if not hmac.compare_digest(token, expected):
             raise ValueError()
         secrets = (key.decode('utf-8', errors='ignore'), token, *protected_values)
@@ -68,6 +70,8 @@ receipt is proof of local admission, not remote runtime or target attestation.
     # The shared write connection is passed through every evidence helper. No
     # helper commits a nested transaction or leaves an orphan on audit failure.
     with store.lock, store.write_transaction() as db:
+        if control:
+            control.check()
         existing = store.get('mcp_execution_receipts', receipt_id, connection=db)
         if existing is not None:
             identity = {'id': receipt_id, 'format': 'aegis-mcp-admission-v1', 'task_id': task['id'],
@@ -86,6 +90,13 @@ receipt is proof of local admission, not remote runtime or target attestation.
                 or check_id not in execution_checks(current, asset_id)):
             raise AdmissionError('task_authority_changed')
         require_contracts(current)
+        attempt = store.get('mcp_execution_attempts', attempt_id, connection=db) if attempt_id else None
+        if attempt_id and (not attempt or attempt.get('state') != 'dispatching'
+                or attempt.get('grant_sha256') != output['grant_sha256']
+                or attempt.get('task_id') != task['id'] or attempt.get('asset_id') != asset_id
+                or attempt.get('check') != check_id or attempt.get('server_id') != server_id
+                or attempt.get('contract_sha256') != hashlib.sha256(_encode(current.get('remote_execution'))).hexdigest()):
+            raise AdmissionError('remote_attempt_changed')
         scopes = [asset for asset in current['scope_snapshot'] if asset['id'] == asset_id]
         if len(scopes) != 1:
             raise AdmissionError('task_authority_changed')
@@ -117,11 +128,13 @@ receipt is proof of local admission, not remote runtime or target attestation.
                    'result_sha256': result_sha, 'authority_sha256': authority_sha,
                    'created_at': timestamp, 'finding_ids': [], 'evidence_ids': [],
                    'observation_ids': [], 'traffic_ids': [], 'coverage_id': coverage_id,
+                   'fingerprints': [], 'coverage_status': 'skipped' if skipped else 'completed',
                    'provenance_basis': 'validated_remote_result_and_local_approval_metadata'}
         for item in findings:
             finding, evidence, _ = record_observation(store, current, asset, item, connection=db)
             receipt['finding_ids'].append(finding['id'])
             receipt['evidence_ids'].append(evidence['id'])
+            receipt['fingerprints'].append(finding['fingerprint'])
         for url in observed:
             record = record_link(store, current, asset, check_id, url, connection=db)
             receipt['observation_ids'].append(record['id'])
@@ -136,10 +149,16 @@ receipt is proof of local admission, not remote runtime or target attestation.
                     'reason': skipped or '승인된 원격 GET 검증 결과를 확인했습니다.',
                     'updated_at': timestamp, 'finished_at': timestamp, 'remote_admission_id': receipt_id}
         records.extend([('coverage', coverage), ('mcp_execution_receipts', receipt)])
+        if attempt:
+            receipt['attempt_id'] = attempt_id
+            records.append(('mcp_execution_attempts', {**attempt, 'state': 'admitted',
+                'receipt_id': receipt_id, 'finished_at': timestamp}))
         store.put_many(records, connection=db)
         store.event(task['id'], '승인된 원격 검증 결과를 원자적으로 기록했습니다.', detail={
             'asset_id': asset_id, 'worker_id': task['id'] + ':' + asset_id, 'check': check_id,
             'server_id': server_id, 'remote_admission_id': receipt_id,
             'grant_sha256': output['grant_sha256'], 'result_sha256': result_sha,
             'findings': len(findings), 'observations': len(observed), 'requests': len(output['traffic'])}, connection=db)
+        if control:
+            control.check()
         return receipt

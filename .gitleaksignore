@@ -1,0 +1,3 @@
+# Reviewed historical prose in VALIDATION.md describing environment isolation.
+# No credential values are ignored. See the MCP Worker validation record.
+639ce91c28c49b29573f10fb7f58ae272c48e617:docs/VALIDATION.md:generic-api-key:5717
