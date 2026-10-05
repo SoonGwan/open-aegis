@@ -107,8 +107,8 @@ agent/server 소스에서 문자열 이름을 직접 선언한 도구 생성 호
 | 승인 규칙·기록·실행 상세 | global/task intercept rules, pending decide, history/execution | 범위/도구/버전의 작업 승인·감사 연결됨; 도구 호출별 사용자 규칙 미구현 |
 | 자산 차단 규칙 | 도메인·IP·URL·CIDR 관리 | 각 요청의 URL 범위/DNS/IP·redirect 검사 연결됨; 전역 사용자 차단 규칙 UI 미구현 |
 | 모델 승인 판단 | judge 구성·usage·검토 맥락 | 미구현; 현재 승인자는 관리자 |
-| 알림 채널·필터 | 여러 채널 인스턴스·종류·설정 마스킹·필터·속도 | 미구현; 이메일/webhook 등의 운영자 선택 전송 계약 필요 |
-| 알림 배달·수동 재전송 | deliveries, attempts/state, retry | 미구현; 영속 배달 이력·실패/중복/재시작 검증 필요 |
+| 알림 채널·필터 | 여러 채널 인스턴스·종류·설정 마스킹·필터·속도 | 일부 구현; 고정 webhook 수신처·관리자 승인·버전/상태 필터·DB 간격·비활성 테스트·마스킹·SQL/URL·충돌 검토([계약](NOTIFICATIONS.md)); 이메일/전용 어댑터·임의 이벤트 필터는 남아 있음 |
+| 알림 배달·수동 재전송 | deliveries, attempts/state, retry | 일부 구현; 원자적 이벤트/커서/전송 이력·시도 영수증·미확인 복구·최대3회 수동 재전송·응답 손실 중복 방지·SQL/URL; 교차 버전·설치본 복구·장시간 운영 검수는 남아 있음 |
 | 인증·관리 설정 | setup/login/password, JWT, settings | 초기 관리자·서버 세션·admin/operator/viewer·세션 폐기 연결됨 |
 | 로그·활동·감사·정리 | 현재/과거/stream 로그·활동 SSE·audit·gc | DB 활동·SSE 재연결·감사 연결 검증·체크포인트·제한된 보존 CLI 연결됨; 외부 감사 보관 자동화 남음 |
 | 웹 검색·프록시 설정 | 설정/연결 테스트·전역 프록시 | 미구현; 범위 외 검색을 검증 요청으로 취급하지 않음 |

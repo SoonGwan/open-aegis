@@ -6418,3 +6418,45 @@ Two retry rounds were needed because unexecuted hosted jobs could not acquire ru
 the annotations name runner allocation, with no failed test step. Successful jobs were
 retained and only cancelled/unexecuted jobs retried. Candidate functionality is validated;
 release `0.2.0a1` remains alpha and v1 readiness gates remain open.
+
+
+## Notification channels and receiver receipts — candidate verification
+
+The independent fixed-webhook implementation adds administrator-reviewed channels,
+immutable versions, terminal-task source events, an atomic durable cursor/receipt,
+persisted per-channel cooldown, bounded POSTs, attempt history, explicit test sending
+for inactive channels and manual retry capped at3 attempts. Unknown/failed sends never
+automatically retry. HTTP2xx means receiver acceptance, not human receipt.
+
+The owned desktop browser exercised committed create→503→same-request replay with
+ONE channel; HTTP500→explicit duplicate review→committed retry→503→same-request replay
+with ONE retry operation and exactly TWO receiver POSTs sharing one Idempotency-Key.
+The retry modal preserved the reviewed first-attempt snapshot while the parent polling
+showed receiver acceptance after attempt2. Two-tab edit409 retained the draft, required
+explicit latest-version review and produced exactly three channel versions. Channel
+history and both attempt results were visible; the actual desktop screenshot was
+reviewed. Audit remained valid. All owned tabs, listener, receiver and workspace were
+removed. The first fixture ended with SIGINT/exit130 after cleanup; that exit is not a
+successful fixture exit0. No mobile or assistive-technology claim is made.
+
+Focused server checks passed72/73 before the last startup test used a nonexistent
+`/health` path; after correcting it to the actual `/api/health`, all13 HTTP cases passed
+in11.41s. The earlier actual native related suite passed181 in80.20s; the initial
+installed package passed198 in88.69s, and initial installed93→89→93 plus offline
+backup/restore preserved all selected notification records and trusted audit checkpoints
+on SQLite and native PostgreSQL, with restored sessions0 and only the two intentional
+receiver POSTs. These initial installation receipts precede the following source fix.
+
+A controlled native owner-session termination during an owned pending POST exposed
+missing execution admission: before the fix a replacement owner could acquire the
+workspace during the pending request. After adding the existing store execution permit
+around the POST, the same scenario passes: takeover is fenced until the pending POST
+finishes, receipt persistence refuses the lost owner and a fresh owner recovers unknown
+without a second POST (1 case in1.89s). The prior full run was intentionally stopped at
+266 passing cases to include this source correction; it is not a completed full run.
+
+The final frozen package contains93 Python modules exactly matching source hashes,
+SHA256 `8734248fd38642c9b244472cfd3023f18dc846e50510be1a77f1599ba06cd12a`.
+The frontend build passes and101 Node checks pass. Existing Vite large-chunk warning
+remains. Final full native/installed/pair-restore runs are pending and will be recorded
+when complete. Version remains0.2.0a1; notifications are partial ARTEX scope.

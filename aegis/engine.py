@@ -16,6 +16,7 @@ from . import call_ledger, todos, observation_context, observation_execution, go
 from .llm import completion, token_usage
 from .store import identifier, now
 from .coverage import slot, finish_remaining
+from .notification_events import terminal
 from .findings import record_observation, apply_retest
 from .worker_observations import record_link
 from .worker_dependencies import validate as validate_dependencies, evidence_inputs, contract as dependency_contract, require_contract as require_dependency_contract, WorkerDependencyMismatch
@@ -48,8 +49,7 @@ class Engine:
                         from .mcp_task_execution import recover_attempts
                         recover_attempts(store, task)
                     finish_remaining(store, task, 'interrupted', '서버 재시작으로 실행 결과를 확인할 수 없습니다.')
-                    store.patch('tasks', task['id'], status='interrupted', finished_at=now())
-                    store.event(task['id'], '서버 재시작으로 작업이 중단되었습니다. 새 승인 작업으로 다시 실행하세요.', 'warning')
+                    terminal(store,task['id'],{'status':'interrupted','finished_at':now()},'서버 재시작으로 작업이 중단되었습니다. 새 승인 작업으로 다시 실행하세요.','warning')
             from .mcp_revocations import recover_pending
             recover_pending(store)
             self.queue_thread = threading.Thread(target=self.watch_queue,daemon=True,name='aegis-queue-deadline')
@@ -79,8 +79,7 @@ class Engine:
                         if task.get('retest_of'):apply_retest(self.store,task,'inconclusive')
                         finish_remaining(self.store,task,'failed','대기열 시간 제한을 초과했습니다.')
                         self.stops.pop(task['id'],None)
-                        self.store.patch('tasks',task['id'],status='failed',finished_at=now(),errors=1,termination_reason='queue_timeout')
-                        self.store.event(task['id'],'대기열 시간 제한을 초과했습니다. 새 승인 계획으로 다시 실행하세요.','warning')
+                        terminal(self.store,task['id'],{'status':'failed','finished_at':now(),'errors':1,'termination_reason':'queue_timeout'},'대기열 시간 제한을 초과했습니다. 새 승인 계획으로 다시 실행하세요.','warning')
             except Exception as exc:
                 # Do not expose exception content, SQL values or target data.
                 with self.lock:
@@ -152,8 +151,11 @@ class Engine:
                 self.stops.pop(task_id,None)
             if status == 'rejected':
                 finish_remaining(self.store, task, 'cancelled', '실행 승인이 거절되었습니다.')
-            self.store.patch('tasks', task_id, status=status)
-            self.store.event(task_id, '작업 중지 요청을 기록했습니다.', 'warning')
+            if status in ('rejected','stopped'):
+                terminal(self.store,task_id,{'status':status,'finished_at':now()},'작업 중지 요청을 기록했습니다.','warning')
+            else:
+                self.store.patch('tasks', task_id, status=status)
+                self.store.event(task_id, '작업 중지 요청을 기록했습니다.', 'warning')
             return self.store.get('tasks', task_id)
 
     def plan(self, task, control=None):
@@ -238,15 +240,14 @@ class Engine:
         if stop.is_set():
             finish_remaining(self.store, task, 'cancelled', '실행 전에 중지되었습니다.')
             if task.get('retest_of'):apply_retest(self.store,task,'inconclusive')
-            self.store.patch('tasks', task_id, status='stopped', finished_at=now(), termination_reason='shutdown' if self.closed else 'operator_stop')
+            terminal(self.store,task_id,{'status':'stopped','finished_at':now(),'termination_reason':'shutdown' if self.closed else 'operator_stop'},'실행 전에 작업이 중지되었습니다.','warning')
             with self.lock:
                 self.stops.pop(task_id, None)
             return
         if now() - (task.get('approved_at') or now()) > self.policy.queue_timeout:
             finish_remaining(self.store, task, 'failed', '대기열 시간 제한을 초과했습니다. 새 승인 계획으로 다시 실행하세요.')
             if task.get('retest_of'):apply_retest(self.store,task,'inconclusive')
-            self.store.patch('tasks', task_id, status='failed', finished_at=now(), errors=1, termination_reason='queue_timeout')
-            self.store.event(task_id, '대기열 시간 제한을 초과했습니다.', 'warning')
+            terminal(self.store,task_id,{'status':'failed','finished_at':now(),'errors':1,'termination_reason':'queue_timeout'},'대기열 시간 제한을 초과했습니다.','warning')
             with self.lock:self.stops.pop(task_id, None)
             return
         control = TaskControl(stop, time.monotonic()+self.policy.task_timeout)
@@ -283,8 +284,7 @@ class Engine:
                 self.store.event(task_id, '재검증 결과를 기록했습니다.', detail={'conclusion': conclusion})
             finish_remaining(self.store, task, 'cancelled' if status == 'stopped' else 'failed',
                              '중지되어 실행하지 못했습니다.' if status == 'stopped' else '작업 종료 전 결과를 기록하지 못했습니다.')
-            self.store.patch('tasks', task_id, status=status, finished_at=now(), errors=errors, termination_reason='timeout' if timed_out else ('shutdown' if self.closed else 'operator_stop') if stop.is_set() else None)
-            self.store.event(task_id, '작업 종료: ' + status, 'warning' if errors else 'info', {'errors': errors})
+            terminal(self.store,task_id,{'status':status,'finished_at':now(),'errors':errors,'termination_reason':'timeout' if timed_out else ('shutdown' if self.closed else 'operator_stop') if stop.is_set() else None},'작업 종료: '+status,'warning' if errors else 'info',{'errors':errors})
         except Exception as exc:
             timed_out = control.expired() and not stop.is_set()
             stopped = stop.is_set()
@@ -297,9 +297,9 @@ class Engine:
             if task.get('retest_of'):
                 apply_retest(self.store, task, 'inconclusive')
             current = self.store.get('tasks', task_id)
-            self.store.patch('tasks', task_id, status='stopped' if stopped else 'failed', finished_at=now(),
-                             errors=max(1, current['errors']), termination_reason=('shutdown' if self.closed else 'operator_stop') if stopped else 'timeout' if timed_out else 'worker_dependency_changed' if dependency_changed else 'tool_contract_changed' if contract_changed else 'internal_error')
-            self.store.event(task_id, '작업 실행 시간 제한을 초과했습니다.' if timed_out else '작업이 중지되었습니다.' if stopped else contract_message if contract_changed else '작업 실행 중 내부 오류가 발생했습니다. 서버 로그를 확인하세요.', 'warning' if stopped or timed_out or contract_changed else 'error')
+            terminal(self.store,task_id,{'status':'stopped' if stopped else 'failed','finished_at':now(),
+                     'errors':max(1,current['errors']),'termination_reason':('shutdown' if self.closed else 'operator_stop') if stopped else 'timeout' if timed_out else 'worker_dependency_changed' if dependency_changed else 'tool_contract_changed' if contract_changed else 'internal_error'},
+                     '작업 실행 시간 제한을 초과했습니다.' if timed_out else '작업이 중지되었습니다.' if stopped else contract_message if contract_changed else '작업 실행 중 내부 오류가 발생했습니다. 서버 로그를 확인하세요.','warning' if stopped or timed_out or contract_changed else 'error')
         finally:
             with self.lock:
                 self.stops.pop(task_id, None)
@@ -487,7 +487,6 @@ class Engine:
                 if task and task['status'] in ('queued','running','stopping'):
                     finish_remaining(self.store,task,'cancelled','서버 종료로 실행하지 못했습니다.')
                     if task.get('retest_of'):apply_retest(self.store,task,'inconclusive')
-                    self.store.patch('tasks',task_id,status='stopped',finished_at=now(),termination_reason='shutdown')
-                    self.store.event(task_id,'서버 종료로 대기 작업을 중지했습니다. 새 승인 계획으로 다시 실행하세요.','warning')
+                    terminal(self.store,task_id,{'status':'stopped','finished_at':now(),'termination_reason':'shutdown'},'서버 종료로 대기 작업을 중지했습니다. 새 승인 계획으로 다시 실행하세요.','warning')
             self.stops.clear()
             self.futures.clear()

@@ -3663,3 +3663,5 @@ pre,
 .category-panel > p { padding:20px 20px 0; margin:0; overflow-wrap:anywhere; }
 .category-members li > .table-link { flex:1 1 160px; overflow-wrap:anywhere; }
 .category-members li > span { overflow-wrap:anywhere; max-width:100%; }
+
+.notification-fields{border:0;padding:0;display:grid;gap:16px;min-width:0}.notification-fields label:not(.notification-check){display:grid;gap:8px}.notification-check{display:flex;align-items:start;gap:10px;padding:8px 0;overflow-wrap:anywhere}.notification-check input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin-top:2px}.notification-notice{padding:20px;overflow-wrap:anywhere}.notification-history{padding-left:20px;overflow-wrap:anywhere}.notification-history li{padding:12px 0;border-bottom:var(--stroke) solid var(--ink)}.notification-history p{margin:8px 0}.notification-fields fieldset{min-width:0;border:var(--stroke) solid var(--ink);padding:12px}

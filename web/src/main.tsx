@@ -8,12 +8,15 @@ import { GoalDraftPanel, GoalPlanSummary, GoalProgress, GoalRetestOrigin, type G
 import { WorkerProcess } from "./WorkerProcess";
 import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
+import { NotificationChannels, NotificationDeliveries } from "./Notifications";
 import { TaskCategories } from "./TaskCategories";
 import { TaskTemplates, TemplateOriginSummary, type TemplateOrigin } from "./TaskTemplates";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
 import {
   Activity,
+  Bell,
+  Send,
   ArrowDownToLine,
   ArrowRight,
   BookOpen,
@@ -281,6 +284,8 @@ const pages = [
     group: "OPERATIONS",
   },
   { id: "traffic", name: "트래픽 기록", icon: Activity },
+  { id: "notifications", name: "알림 채널", icon: Bell },
+  { id: "deliveries", name: "알림 전송 이력", icon: Send },
   { id: "reports", name: "보고서", icon: FileText },
   { id: "schedules", name: "예약 검증", icon: Clock3 },
   { id: "notes", name: "워크스페이스", icon: BookOpen },
@@ -1192,6 +1197,8 @@ function App() {
                       overview:
                         "자산의 상태를 확인하고, 근거 있는 검증을 시작하세요.",
                       tasks: "목표를 정하고 실행부터 수정 확인까지 추적하세요.",
+                      notifications: "작업 종료 알림의 수신처와 상태를 검토해 설정하세요.",
+                      deliveries: "전송 결과와 시도 이력을 확인하고 필요한 알림만 다시 보내세요.",
                       categories: "작업을 분류하고 여러 작업의 분류를 한 번에 변경하세요.",
                       templates: "반복 사용할 검사 설정을 저장하고 현재 자산으로 계획을 만드세요.",
                       processes: "여러 작업의 Worker 실행 기록을 검색하고 출처를 확인하세요.",
@@ -1741,6 +1748,9 @@ function App() {
           {page === "categories" && <TaskCategories canOperate={canOperate} search={search} onSearch={setSearch}
             status={filter} onStatus={setFilter} position={list} onPositionChange={changeRecordPosition}
             onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}
+
+          {page === "notifications" && <NotificationChannels canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} onDeliveries={()=>navigation.navigate("deliveries")} />}
+          {page === "deliveries" && <NotificationDeliveries canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} onChannels={()=>navigation.navigate("notifications")} onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}
 
           {page === "tasks" && (
             <>
