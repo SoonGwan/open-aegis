@@ -4956,3 +4956,44 @@ on 390×844 has no document overflow.
   and recovery through new service ownership and new approval. It does not prove
   a crash during database writes/commit, hardware power loss, storage failure,
   PITR or remote-backup recovery. Those and other full v1 gates remain open.
+
+### Installed follow-up write interrupted before parent linkage (2026-10-05)
+
+- Added `--database-crash-write` to the installed recovery helper, requiring the
+  existing native `--database-crash` contract. It creates a separate owned
+  `goal_write` schema and real loopback goal execution/todo/next-plan HTTP flow.
+  A temporary BEFORE INSERT trigger at the parent upsert requires the already
+  staged child with correct followup_of and exactly six coverage records in that
+  transaction. Only then does it increment a nontransactional probe sequence and
+  sleep. The harness observes that signal before immediate database shutdown.
+  This is the actual installed application transaction, not a separately simulated
+  write or a caught SQL exception used as a proxy for server failure.
+- WAL startup recovery must be observed. The interrupted HTTP mutation and stale
+  health return503. After stopping that owned service, task/coverage/goal-plan rows
+  must exactly match their pre-write snapshot and the audit checkpoint must match
+  its pre-write value. The fixture trigger/function/sequence are removed. Fresh
+  service startup retains no parent next_plan_id; the same reviewed fingerprint
+  creates one pending plan with six not_started cells, repeated POST returns that
+  plan, and no target request occurs until a new explicit approval.
+- Native PostgreSQL16.15 combined mode passed
+  (`artifacts/goal-write-database-crash.txt`). `--backend both` with all crash flags
+  also passed (`...-both.txt`); the separate write scenario is native only. Each
+  write scenario made two owned GETs, one immediate DB shutdown and one owned
+  service SIGKILL, audit28→48. The exact pre-write audit28 checkpoint survived
+  the crash; preapproval recovery and external target requests were0. Existing
+  recovery scenarios remain valid: SQLite five GETs/audit43→99; PostgreSQL seven
+  GETs/audit43→119 with two in-flight DB ownership-loss checks.
+- Normal `--backend both` control passed with the optional write result null,
+  three GETs per backend/audit40→76 (`...-control.txt`). Invalid write-flag
+  combinations reject with exit2 before setup (`...-proof.json`). All three
+  successful temporary installations were removed (`...-cleanup.json`). Retained
+  preview health is ok; no preview restart or data mutation was needed.
+- Service/frontend unchanged; verified wheel SHA256
+  `26aef0a38a9a39ad4e75cef9eafe1ed7ab26bcb7cc3ee0d3b3f8d6baa173ba40` still matches
+  all72 service Python files (`...-proof.json`). The prior1035-test run remains
+  the last full-suite evidence. Native CI now requests the write mode; hosted CI
+  was not run. No broad unit/frontend rerun for this harness-only addition.
+- This covers one uncommitted follow-up transaction after child/coverage staging
+  and before parent linkage/audit append/commit. It does not establish every write
+  boundary, an already-staged audit append, commit acknowledgement loss, hardware
+  power loss, failed storage, PITR or remote recovery. Full v1 gates remain open.

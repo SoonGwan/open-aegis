@@ -1,5 +1,6 @@
 """Rehearse installed goal round/retest backup and fresh approvals on owned loopback HTTP."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from http.cookiejar import CookieJar
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -394,6 +395,134 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=
         thread.join(timeout=2)
 
 
+def rehearse_write_crash(root, python, binaries, environment, run, dsn, crash_database):
+    """Interrupt the real follow-up HTTP write after child/coverage staging."""
+    folder = root / 'write-crash'
+    folder.mkdir()
+    environment = {**environment, 'AEGIS_STORAGE_BACKEND': 'postgres', 'AEGIS_POSTGRES_DSN': dsn,
+                   'AEGIS_POSTGRES_SCHEMA': 'goal_write', 'AEGIS_DATA_DIR': str(folder / 'data')}
+    run([binaries / 'aegis-init-postgres'], environment)
+    probe_program = '''
+import json,os,sys
+from aegis import postgres_transfer as transfer
+with transfer.connect(os.environ['AEGIS_POSTGRES_DSN']) as db:
+    transfer.set_schema(db,'goal_write')
+    action=sys.argv[1]
+    if action=='install':
+        db.execute('CREATE SEQUENCE goal_write.write_crash_seen')
+        db.execute("""CREATE FUNCTION goal_write.hold_followup_write() RETURNS trigger LANGUAGE plpgsql AS $$
+        DECLARE child_id text;
+        BEGIN
+          IF NEW.kind='tasks' AND NEW.data::jsonb ? 'next_plan_id' THEN
+            child_id := NEW.data::jsonb->>'next_plan_id';
+            IF NOT EXISTS(SELECT 1 FROM goal_write.records WHERE kind='tasks' AND id=child_id
+                          AND data::jsonb->>'followup_of'=NEW.id) THEN
+              RAISE EXCEPTION 'Owned child was not staged';
+            END IF;
+            IF (SELECT count(*) FROM goal_write.records WHERE kind='coverage'
+                AND data::jsonb->>'task_id'=child_id) != 6 THEN
+              RAISE EXCEPTION 'Owned six-cell coverage was not staged';
+            END IF;
+            PERFORM nextval('goal_write.write_crash_seen');
+            PERFORM pg_sleep(60);
+          END IF;
+          RETURN NEW;
+        END $$""")
+        db.execute('CREATE TRIGGER hold_followup_write BEFORE INSERT ON goal_write.records '
+                   'FOR EACH ROW EXECUTE FUNCTION goal_write.hold_followup_write()')
+        print(json.dumps({'installed':True}))
+    elif action=='seen':
+        row=db.execute('SELECT last_value,is_called FROM goal_write.write_crash_seen').fetchone()
+        print(json.dumps(dict(row)))
+    elif action=='remove':
+        db.execute('DROP TRIGGER hold_followup_write ON goal_write.records')
+        db.execute('DROP FUNCTION goal_write.hold_followup_write()')
+        db.execute('DROP SEQUENCE goal_write.write_crash_seen')
+        print(json.dumps({'removed':True}))
+    elif action=='snapshot':
+        rows=db.execute('SELECT kind,id,data FROM goal_write.records WHERE kind=ANY(%s) ORDER BY kind,id',
+                        (['tasks','coverage','goal_plans'],)).fetchall()
+        print(json.dumps({'records':[{'kind':r['kind'],'id':r['id'],'data':json.loads(r['data'])} for r in rows]}))
+    else:raise ValueError('Unknown owned probe')
+'''
+    def probe(action):
+        return run([python, '-I', '-c', probe_program, action], environment)
+    class Handler(OwnedTarget):
+        requests = []
+        hold = False
+    target = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    thread = threading.Thread(target=target.serve_forever, daemon=True)
+    thread.start()
+    try:
+        checkpoint = folder / 'before-write.json'
+        with service(python, folder, environment, 'source') as (http, _, crash_owned):
+            http('/api/auth/setup', {'password': 'owned-goal-recovery-password',
+                                    'setup_token': 'owned-goal-recovery-token'})
+            asset = http('/api/assets', {'name': 'Owned write recovery target', 'authorized': True,
+                                        'url': 'http://127.0.0.1:' + str(target.server_port) + '/'})
+            original = http('/api/tasks', {'name': 'Owned write recovery', 'asset_ids': [asset['id']],
+                                          'checks': ['security_headers']})
+            draft_path = '/api/tasks/' + original['id'] + '/goal-plans'
+            draft = http(draft_path, {'request_id': 'd' * 32, 'mode': 'rules', 'goal': 'Owned header review'})
+            goal = http(draft_path + '/' + draft['id'] + '/accept', {'fingerprint': draft['fingerprint']})
+            assert len(goal['checks']) == 6
+            http('/api/tasks/' + goal['id'] + '/approve', method='POST')
+            finished(http, goal['id'])
+            http('/api/tasks/' + goal['id'] + '/todos', {'request_id': 'e' * 32,
+                 'title': 'Owned follow-up', 'check_ids': ['security_headers']})
+            path = '/api/tasks/' + goal['id'] + '/next-plan'
+            proposal = http(path)
+            assert proposal['available']
+            body = {'fingerprint': proposal['fingerprint']}
+            before = probe('snapshot')
+            before_audit = run([binaries / 'aegis-verify-audit', '--output', checkpoint], environment)
+            assert before_audit['valid'] and Handler.requests == ['/']
+            probe('install')
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(http, path, body, expected=503)
+                deadline = time.monotonic() + 5
+                while not probe('seen')['is_called']:
+                    assert not future.done(), 'Write request finished before its staged-write gate'
+                    assert time.monotonic() < deadline, 'Write request did not reach its staged-write gate'
+                    time.sleep(.05)
+                assert probe('seen')['last_value'] == 1
+                recovery = crash_database()
+                future.result(timeout=5)
+            http('/api/health', expected=503)
+            assert Handler.requests == ['/']
+            crash_owned()
+        assert probe('snapshot') == before
+        after_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], environment)
+        assert after_audit['valid'] and after_audit['checkpoint'] == before_audit['checkpoint']
+        probe('remove')
+        with service(python, folder, environment, 'write-recovered') as (http, _, _):
+            http('/api/auth/login', {'password': 'owned-goal-recovery-password'})
+            assert 'next_plan_id' not in http('/api/tasks/' + goal['id'])['task']
+            assert http(path)['fingerprint'] == proposal['fingerprint']
+            following = http(path, body)
+            assert following['status'] == 'pending' and following['approved_at'] is None
+            assert following['goal_plan'] == goal['goal_plan']
+            assert http(path, body)['id'] == following['id']
+            assert http('/api/records/tasks')['total'] == 3
+            assert all(row['status'] == 'not_started' for row in http('/api/tasks/' + following['id'])['coverage'])
+            assert Handler.requests == ['/']
+            http('/api/tasks/' + following['id'] + '/approve', method='POST')
+            finished(http, following['id'])
+            assert Handler.requests == ['/', '/']
+        final_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], environment)
+        assert final_audit['valid'] and final_audit['events'] > before_audit['events']
+        return {**recovery, 'valid': True, 'staged_child_and_six_coverage_cells_confirmed': True,
+                'uncommitted_plan_records_rolled_back': True, 'audit_checkpoint_unchanged_after_crash': True,
+                'same_fingerprint_recovery_and_one_pending_plan': True, 'fresh_approval_completed': True,
+                'owned_target_requests': len(Handler.requests), 'preapproval_recovery_requests': 0,
+                'external_target_requests': 0, 'owned_service_sigkills': 1,
+                'audit_events_before': before_audit['events'], 'audit_events_final': final_audit['events']}
+    finally:
+        target.shutdown()
+        target.server_close()
+        thread.join(timeout=2)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--wheel', required=True, type=Path)
@@ -401,11 +530,14 @@ def main():
     parser.add_argument('--crash', action='store_true', help='SIGKILL owned pending and in-flight servers; verify interrupted recovery and newly approved retry')
     parser.add_argument('--database-crash', action='store_true', help='Immediately stop the owned PostgreSQL cluster and verify WAL recovery of committed pending plans; requires --crash and a PostgreSQL backend')
     parser.add_argument('--database-crash-in-flight', action='store_true', help='Also immediately stop the owned database during approved retry GETs; verify stale service refusal, restart and fresh approval; requires --database-crash')
+    parser.add_argument('--database-crash-write', action='store_true', help='Also stop the owned database during a real HTTP follow-up write after child and coverage staging; requires --database-crash')
     args = parser.parse_args()
     if args.database_crash and (not args.crash or args.backend == 'sqlite'):
         parser.error('--database-crash requires --crash and --backend postgres or both')
     if args.database_crash_in_flight and not args.database_crash:
         parser.error('--database-crash-in-flight requires --database-crash')
+    if args.database_crash_write and not args.database_crash:
+        parser.error('--database-crash-write requires --database-crash')
     wheel = args.wheel.resolve(strict=True)
     repository = Path(__file__).resolve().parents[1]
     environment = {key: value for key, value in os.environ.items()
@@ -438,6 +570,7 @@ def main():
                       'assert Path(aegis.__file__).is_relative_to(Path(sys.prefix));'
                       'print(json.dumps({"module":aegis.__file__}))'], environment)
         results = []
+        write_crash_recovery = None
         if args.backend in ('sqlite', 'both'):
             results.append(rehearse('sqlite', root, python, binaries, environment, run, crash=args.crash))
         if native:
@@ -462,13 +595,16 @@ def main():
                 return {'shutdown_mode': 'immediate', 'wal_recovery_confirmed': True}
             try:
                 dsn = 'host=' + str(socket_folder) + ' port=' + str(port) + ' dbname=postgres'
+                if args.database_crash_write:
+                    write_crash_recovery = rehearse_write_crash(root, python, binaries, environment, run, dsn, crash_database)
                 results.append(rehearse('postgres', root, python, binaries, environment, run, dsn,
                                         crash=args.crash, database_crash=crash_database if args.database_crash else None,
                                         database_crash_in_flight=args.database_crash_in_flight))
             finally:
                 run([postgres_binaries['pg_ctl'], '-D', cluster, '-w', '-m', 'fast', 'stop'], environment)
         print(json.dumps({'valid': True, 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
-                          'installed_origin': origin['module'], 'results': results}, ensure_ascii=False))
+                          'installed_origin': origin['module'], 'write_crash_recovery': write_crash_recovery,
+                          'results': results}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

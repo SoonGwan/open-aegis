@@ -89,6 +89,18 @@ are verified throughout. Native CI requests this mode. This exercises a held HTT
 request across database loss; a crash during a database write transaction is
 separate validation.
 
+`--database-crash-write` with `--database-crash` adds a separate owned schema and
+real HTTP follow-up write rehearsal. A temporary trigger confirms that the new
+child and six coverage cells are staged, then exposes a nontransactional sequence
+signal and holds the parent-link insert. Immediate database shutdown must roll back
+the task/coverage/goal-plan records to the exact prior snapshot and retain the
+audit checkpoint. The stale service returns 503. After restart the same fingerprint
+creates one unapproved pending plan; explicit approval completes it. This adds two
+owned target GETs, one database shutdown and one service SIGKILL. Native CI requests
+it. The fixture trigger/function/sequence are removed before recovery. This covers
+one precommit point in a follow-up transaction; commit-acknowledgement ambiguity,
+other write boundaries and hardware/storage failures need separate validation.
+
 The wheel contains the Python backend/CLI, not the frontend bundle. Its UI is supplied
 explicitly via AEGIS_WEB_DIR for this review; Docker packages the separately built UI.
 Build dependencies, runner images and Python/Node patch versions are not fully pinned,
