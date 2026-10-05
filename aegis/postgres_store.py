@@ -242,6 +242,14 @@ class PostgresStore:
         with (nullcontext(connection) if connection is not None else self.transaction()) as db:
             return [{**row,'detail':json.loads(row['detail'])} for row in db.execute('SELECT * FROM events WHERE '+where+' ORDER BY seq LIMIT %s',(*args,limit))]
 
+    def event_progress(self,after,*,connection=None):
+        if after is not None and (type(after) is not int or after<0):raise ValueError('Invalid event position')
+        with (nullcontext(connection) if connection is not None else self.read_transaction()) as db:
+            latest=db.execute('SELECT coalesce(max(seq),0) AS latest FROM events').fetchone()['latest']
+            if after is None:return {'latest_event_seq':latest,'pending_events':None,'first_pending_seq':None,'oldest_pending_at':None}
+            row=db.execute('SELECT count(*) AS pending,min(seq) AS first,min(ts) AS oldest FROM events WHERE seq>%s',(after,)).fetchone()
+            return {'latest_event_seq':latest,'pending_events':row['pending'],'first_pending_seq':row['first'],'oldest_pending_at':row['oldest']}
+
     def recent_events(self,limit=100):
         with self.transaction() as db:
             rows=db.execute('SELECT * FROM events ORDER BY seq DESC LIMIT %s',(limit,)).fetchall()

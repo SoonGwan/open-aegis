@@ -14,6 +14,13 @@ export type ExecutionPolicy = {
   pending_limit: number;
 };
 type Runtime = {
+  event_planner?: {
+    alive: boolean; errors: number; last_error_at: number | null;
+    progress?: {status: "current" | "uninitialized" | "replay_required" | "invalid";
+      after: number | null; latest_event_seq: number; pending_events: number | null;
+      oldest_pending_seconds: number | null; sampled_at: number;
+      asset_page: {event_seq: number; task_offset: number} | null};
+  };
   authentication?: {
     active: number;
     parallel: number;
@@ -205,6 +212,23 @@ export function RuntimePanel() {
                 </div>
               ))}
             </div>
+            {data.event_planner?.progress && <section aria-label="자동 계획 이벤트 처리">
+              <h4>자동 계획 이벤트 처리</h4>
+              <p role={data.event_planner.progress.status === "invalid" || !data.event_planner.alive || data.event_planner.errors > 0 ? "alert" : "status"}>
+                {data.event_planner.alive ? "동작 중" : "중단됨"} · 누적 오류 {data.event_planner.errors}회
+                {data.event_planner.progress.status === "invalid" ? " · 저장된 처리 위치를 확인할 수 없습니다. 운영 기록을 확인하세요." :
+                  data.event_planner.progress.status === "replay_required" ? " · 정책 변경으로 이전 이벤트를 다시 처리해야 합니다." :
+                  data.event_planner.progress.status === "uninitialized" ? " · 최초 처리 위치를 준비하고 있습니다." : ""}
+                {data.event_planner.last_error_at && ` · 마지막 오류 ${new Date(data.event_planner.last_error_at * 1000).toLocaleString("ko-KR")}`}
+              </p>
+              <dl className="runtime-policy">
+                <div className="setting-row"><dt>처리 위치 / 최신 이벤트</dt><dd>{data.event_planner.progress.after ?? "미확인"} / {data.event_planner.progress.latest_event_seq}</dd></div>
+                <div className="setting-row"><dt>남은 이벤트</dt><dd>{data.event_planner.progress.pending_events === null ? "미확인" : `${data.event_planner.progress.pending_events}건`}</dd></div>
+                <div className="setting-row"><dt>가장 오래 기다린 이벤트</dt><dd>{data.event_planner.progress.oldest_pending_seconds === null ? (data.event_planner.progress.pending_events === 0 ? "없음" : "미확인") : `${data.event_planner.progress.oldest_pending_seconds.toFixed(1)}초`}</dd></div>
+                {data.event_planner.progress.asset_page && <div className="setting-row"><dt>자산 작업 조회 위치</dt><dd>이벤트 {data.event_planner.progress.asset_page.event_seq} · {data.event_planner.progress.asset_page.task_offset}개 항목 뒤</dd></div>}
+              </dl>
+              <p className="subtle">남은 이벤트는 저장된 실제 건수이며 작업 수나 실행 승인 수가 아닙니다. 처리 위치는 재시작 후 이어집니다. 대기 시간은 저장된 시각 기준으로 시스템 시계 변경의 영향을 받습니다.</p>
+            </section>}
             <p className="subtle">
               작업 수와 시간 초과는 저장된 전체 기록 기준입니다.
               요청·재시도·속도 제한·보고서·로그인 지표는 서버를 재시작하면

@@ -309,6 +309,14 @@ class Store:
             rows = db.execute(query, args).fetchall()
         return [{**dict(row), 'detail': json.loads(row['detail'])} for row in rows]
 
+    def event_progress(self, after, *, connection=None):
+        if after is not None and (type(after) is not int or after<0):raise ValueError('Invalid event position')
+        with (nullcontext(connection) if connection is not None else self.read_transaction()) as db:
+            latest=db.execute('SELECT coalesce(max(seq),0) FROM events').fetchone()[0]
+            if after is None:return {'latest_event_seq':latest,'pending_events':None,'first_pending_seq':None,'oldest_pending_at':None}
+            row=db.execute('SELECT count(*),min(seq),min(ts) FROM events WHERE seq>?',(after,)).fetchone()
+            return {'latest_event_seq':latest,'pending_events':row[0],'first_pending_seq':row[1],'oldest_pending_at':row[2]}
+
     def recent_events(self, limit=100):
         with self.connect() as db:
             rows = db.execute('SELECT * FROM events ORDER BY seq DESC LIMIT ?', (limit,)).fetchall()

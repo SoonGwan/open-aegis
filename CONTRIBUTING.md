@@ -198,3 +198,8 @@ removes the disposable workspace.
 명령은 [실행 부하 리허설](docs/EXECUTION-LOAD.md)을 따릅니다. 이벤트 묶음의 작업별
 마지막 변경·원자 롤백·자산 페이지 경계·처리 한도는 `tests/test_event_planner_batches.py`와
 `tests/test_postgres_event_planner_batches.py`에서 확인합니다.
+
+자동 계획의 저장 위치·실제 대기 행 수·정책 재처리·손상 위치·자산 페이지 지표는
+`tests/test_event_planner_metrics.py`와 `tests/test_postgres_event_planner_metrics.py`에서
+검증합니다. `scripts/review_event_progress_ui.py --state current|replay|invalid`는
+처리기를 멈춘 합성 UI 검수 환경이며 대상 작업을 만들거나 실행하지 않습니다.

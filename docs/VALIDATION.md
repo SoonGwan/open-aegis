@@ -5458,3 +5458,46 @@ Local evidence: `artifacts/observation-todos-*`; source tests:
 Evidence: ignored `artifacts/execution-load-*`, `artifacts/event-batches-*`;
 source: `scripts/review_execution_load.py`, `tests/test_event_planner_batches.py`,
 `tests/test_postgres_event_planner_batches.py`.
+
+## Durable event progress visible in runtime and settings — 2026-10-05
+
+- Final frozen-source full regression with native PostgreSQL enabled:
+  **1,165 passed in721.16s**. No failed assertions/setup errors; only the existing
+  Starlette/httpx test-client deprecation warning remains.
+- Baseline `d65ffd7` real authenticated HTTP runtime responds200 but contains no
+  durable progress fields. The owned reproduction fails that explicit assertion;
+  the temporary checkout is removed.
+- **14 SQLite/native PostgreSQL cases pass in11.02s**: SQL aggregation counts one
+  pending row across a1,000-sequence gap, never loads event payloads or changes
+  cursor/audit/target traffic, reports full replay without rewriting the stored
+  cursor, and refuses to call corrupt format/boolean/ahead/fanout state zero work.
+  A pending asset page stays visible until its final commit. The initial run
+  caught an incorrect timestamp column name; both aggregates use actual `ts`.
+- Settings displays process survival/errors plus durable position/latest sequence,
+  actual pending rows and oldest wall-clock age. Pending0 displays no oldest
+  event; corrupt position displays unknown. Policy replay counts from0 and is
+  explicitly labeled. Old runtime responses without progress remain displayable.
+- Three disposable built-app desktop fixtures show **38 pending events**,
+  policy replay0/38 with38 rows, and corrupt position/remaining/age **unknown**.
+  DOM/PNG inspected; tabs and services closed. Each fixture reports **0 tasks,
+  0 target traffic** at shutdown. Provider configuration is removed. These are
+  synthetic stopped-consumer scenarios, not mobile/SR or real backlog generation.
+- New metrics with owned20s execution/read/recovery: SQLite**43 cycles/129 churn
+  jobs/137 target GETs**, nativePG**18 cycles/54 churn jobs/62 target GETs**. Both
+  pass burst approvals,2-running+2-queued process loss,4 interrupted recovery,
+  unapproved preservation,0 automatic requests, fresh approved retry, audit and
+  clean shutdown/lease reacquisition. Temporary resources removed.
+- Frontend**97 passed**; final TypeScript/Vite build `index-DIKJ8B-c.js` succeeds.
+  Wheel `5e8facc858a2b7e3868b47c96c07d0a72e7788b93d8cea49903307a08064c825`
+  matches all**76 Python files**. Installed runtime outside checkout passes
+  HTTP/UI/auth/persistence/maintenance/release rehearsals with0 target requests.
+  **7 installed feature tests pass in5.26s**, temporary installation removed.
+  Native CI includes the new cases; hosted execution remains unverified.
+- Main loopback preview is refreshed after confirming no active jobs. Health200
+  and all original record counts/four task states are preserved.
+- Age uses recorded wall-clock time, clamps negative age to0, and is not a
+  monotonic processing deadline or production SLO. Counts are events, not jobs
+  or approvals. Storage consistency/SLO/long production/mobile gates remain open.
+
+Evidence: ignored `artifacts/event-progress-*`; source tests:
+`tests/test_event_planner_metrics.py`, `tests/test_postgres_event_planner_metrics.py`.

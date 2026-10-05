@@ -1,6 +1,7 @@
 """Durable event-driven proposal preparation; never creates or approves a task."""
 import hashlib
 import json
+import math
 import threading
 
 from . import next_plan, planning_history, observation_todos
@@ -12,6 +13,10 @@ FORMAT = 'aegis-event-planner-v1'
 AUTOMATION_REVISION = 'observed-failure-notes-v1'
 PAGE_SIZE = 25
 EVENT_BATCH_SIZE = 25
+
+
+def policy_fingerprint(policy):
+    return hashlib.sha256(json.dumps({'policy':policy,'automation_revision':AUTOMATION_REVISION},sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
 def asset_trigger(event):
@@ -36,8 +41,36 @@ class EventPlanner:
         if self.thread: self.thread.join()
 
     def metrics(self):
-        return {'alive': bool(self.thread and self.thread.is_alive()), 'errors': self.errors,
-                'last_error_at': self.last_error_at, 'execution_authorized': False}
+        with self.store.read_transaction() as db:
+            saved=self.store.get('planner_state',STATE_ID,connection=db)
+            status='uninitialized';after=0;fanout=None
+            if saved is not None:
+                if (saved.get('format')!=FORMAT or type(saved.get('after')) is not int
+                        or saved['after']<0 or type(saved.get('policy_fingerprint')) is not str):
+                    status='invalid';after=None
+                elif saved['policy_fingerprint']!=policy_fingerprint(self.policy()):
+                    status='replay_required'
+                else:
+                    status='current';after=saved['after'];fanout=saved.get('fanout')
+            progress=self.store.event_progress(after,connection=db)
+            if after is not None and after>progress['latest_event_seq']:status='invalid'
+            if fanout is not None:
+                if (type(fanout) is not dict or type(fanout.get('event_seq')) is not int
+                        or fanout['event_seq']!=progress['first_pending_seq']
+                        or type(fanout.get('offset')) is not int or fanout['offset']<0
+                        or (fanout.get('snapshot') is not None and (type(fanout['snapshot']) is not int or fanout['snapshot']<0))):
+                    status='invalid'
+            if status=='invalid':
+                after=None;fanout=None
+                progress.update(pending_events=None,first_pending_seq=None,oldest_pending_at=None)
+            at=now();oldest=progress['oldest_pending_at']
+            age=max(0,at-oldest) if type(oldest) in (int,float) and math.isfinite(oldest) and oldest>0 else None
+            if oldest is not None and age is None:progress['oldest_pending_at']=None
+            return {'alive': bool(self.thread and self.thread.is_alive()), 'errors': self.errors,
+                'last_error_at': self.last_error_at, 'execution_authorized': False,
+                'progress':{'status':status,'after':after,**progress,'oldest_pending_seconds':age,
+                    'asset_page':{'event_seq':fanout['event_seq'],'task_offset':fanout['offset']} if fanout else None,
+                    'sampled_at':at}}
 
     def watch(self):
         while not self.stop_event.is_set():
@@ -91,7 +124,7 @@ class EventPlanner:
     def step(self):
         """Commit a bounded event prefix or one asset fanout page atomically."""
         policy = self.policy()
-        digest = hashlib.sha256(json.dumps({'policy':policy,'automation_revision':AUTOMATION_REVISION}, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        digest = policy_fingerprint(policy)
         with self.store.read_transaction() as db:
             saved = self.store.get('planner_state', STATE_ID, connection=db)
             if (saved is not None and saved.get('format') == FORMAT and type(saved.get('after')) is int
