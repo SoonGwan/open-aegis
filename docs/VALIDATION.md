@@ -5766,3 +5766,46 @@ The main idle preview restarted gracefully with the final service source at
 no plan was approved or target executed (`mcp-registry-preview-{baseline,after}.json`).
 Execution registration/authorization/audit, remote scope enforcement and
 isolated Worker execution gates remain open.
+
+## Signed scoped MCP execution foundation
+
+The separate execution server implements the reviewed six-check GET adapter.
+Owned HTTP fixtures prove actual SDK initialization/list/call, scoped target
+GETs, strict whole-result admission, signature/server/package/expiry rejection,
+path redirect refusal, private-target dual permission, credential allow-list and
+known-secret reflection refusal. Signed rate/budget and deadline limits are
+verified. Two actual isolated Python processes sharing a SQLite nonce ledger
+produce exactly one target GET; server reconstruction and signing-key rotation
+do not revive a consumed approved job. Supervised registry discovery preserves
+the execution profile without any target requests. These use trusted fixture
+approval snapshots, not the main app approval/Worker execution pipeline.
+
+Final execution/client/registry tests passed117 in67.83s, including actual
+native disposable PostgreSQL. The same117 passed in70.46s from a separately
+installed wheel outside checkout; owned installation/cluster resources were
+removed. The final full regression passed1297 in788.28s, exit0, with only the
+existing TestClient httpx deprecation warning. Earlier interrupted/superseded
+runs are not the final validation evidence.
+
+Final wheel SHA256 is
+`ae8927787890b663d67a5a32bb344c13e8c01bee6a708baa6fa1175388eccdc5`;
+all83 service Python files byte-match the frozen source. Installed HTTP/UI,
+authentication, pending-plan persistence, maintenance and signed-release smoke
+pass with0 target requests. Final receipts are ignored
+`artifacts/mcp-execution-final-{targeted-tests,full-tests,installed-feature-tests,installed-runtime}.txt`,
+`mcp-execution-final-frozen-source.json`, `mcp-execution-final-wheel-receipt.json`
+and `mcp-execution-final-wheel/`. Installed reproduction is
+`artifacts/review_installed_mcp_execution_final.py`.
+
+This phase does not establish generic plugin OS isolation, remote attestation,
+main task approval/cancellation/audit/result persistence integration, global
+limits across server instances, production compatibility or v1 completion.
+See [MCP-EXECUTION.md](MCP-EXECUTION.md) for the actual authority and operating
+boundaries. No frontend source changed; prior frontend/browser receipts remain
+limited to their documented scope.
+
+The existing idle preview restarted gracefully on127.0.0.1:8790 with health200.
+Read-only snapshots of exactly `preview-data/aegis.db` preserve all record-kind
+counts and four task states; no plan was approved or target executed. Receipts:
+`mcp-execution-preview-{baseline,after}.json`. After the final full run and
+preview restart, all83 service files still byte-match the final installed wheel.

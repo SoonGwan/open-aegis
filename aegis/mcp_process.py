@@ -86,7 +86,7 @@ def child_main():
         control = TaskControl(deadline=time.monotonic() + 12)
         initialized = client.initialize(control)
         tools = client.list_tools(control)
-        fields = {'name', 'title', 'description', 'inputSchema', 'outputSchema', 'annotations'}
+        fields = {'name', 'title', 'description', 'inputSchema', 'outputSchema', 'annotations', '_meta'}
         result = {'protocolVersion': initialized['protocolVersion'],
                   'serverInfo': {k: initialized['serverInfo'][k] for k in ('name', 'version')},
                   'tools': sorted([{k: v for k, v in tool.items() if k in fields} for tool in tools],
