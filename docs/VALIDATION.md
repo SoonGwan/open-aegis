@@ -6419,6 +6419,18 @@ the annotations name runner allocation, with no failed test step. Successful job
 retained and only cancelled/unexecuted jobs retried. Candidate functionality is validated;
 release `0.2.0a1` remains alpha and v1 readiness gates remain open.
 
+PR [2](https://github.com/SoonGwan/open-aegis/pull/2) is merged as main `f370d91`.
+The main service matches all 89 frozen installed-wheel Python files. Rebuilt preview
+assets are `/assets/index-BJd00qKd.js` and `/assets/index-YYjuvzvz.css`; HTTP responses
+match their built bytes. Health reports `0.2.0a1`, and both category and template APIs
+require authentication. Exact read-only snapshots before/after the owned restart keep
+all 11 record-family counts and the four task states unchanged; no fixture category
+records enter the main workspace (`task-category-main-preview-receipt.json`). The old
+preview exits143 on SIGTERM, not a claimed exit0; the restarted service is healthy.
+The merge-triggered main hosted run `37373173305` is pending, while the exact functional
+candidate has already passed all six hosted jobs. No v1 tag or production-console
+release is implied by this local development-preview update.
+
 
 ## Notification channels and receiver receipts — candidate verification
 
@@ -6458,5 +6470,10 @@ without a second POST (1 case in1.89s). The prior full run was intentionally sto
 The final frozen package contains93 Python modules exactly matching source hashes,
 SHA256 `8734248fd38642c9b244472cfd3023f18dc846e50510be1a77f1599ba06cd12a`.
 The frontend build passes and101 Node checks pass. Existing Vite large-chunk warning
-remains. Final full native/installed/pair-restore runs are pending and will be recorded
-when complete. Version remains0.2.0a1; notifications are partial ARTEX scope.
+remains. The final exact package passes199 installed related checks in88.91s, including
+the owner-loss fence, outside the checkout. Final installed93→89→93 and offline
+backup/restore pass on both SQLite and native PostgreSQL: notification/channel/version/
+attempt/operation/runtime/task rows compare exactly, the independent trusted audit
+checkpoint verifies, restored sessions are0 and only the two intentional test POSTs
+occur. Owned temporary installation, receiver and cluster are removed. Final full native
+and hosted runs remain pending. Version remains0.2.0a1; notifications are partial ARTEX scope.
