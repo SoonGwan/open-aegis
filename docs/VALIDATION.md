@@ -6263,3 +6263,9 @@ The built wheel matches all88 frozen service files exactly. SHA-256:
 public-source scan covers383 files and reports zero unignored candidates; it is
 not proof of secret absence. Installed-wheel and full-native runs were still
 pending when this candidate receipt was written. No public v1 release is claimed.
+
+Installed task-template wheel verification outside the checkout now passes
+**197 cases in147.68s** with actual PostgreSQL enabled and an asserted import from
+the temporary venv's site-packages (`task-template-installed-tests.txt`). Its owned
+venv/test resources are removed. The full native candidate suite remains running;
+this installed related-suite result is not a full v1 release gate.
