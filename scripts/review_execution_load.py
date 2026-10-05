@@ -80,6 +80,7 @@ def main():
     for path in sorted((ROOT/'aegis').rglob('*.py')):
         fingerprint.update(path.relative_to(ROOT).as_posix().encode());fingerprint.update(path.read_bytes())
     counts=Counter();latencies=deque(maxlen=2000);samples=[];event_samples=deque(maxlen=2000)
+    read_timings={}
     peak_pending=0;peak_event_age=0.0;errors=[];lock=threading.Lock();stopped=threading.Event()
     held=threading.Event();release=threading.Event()
     class Target(LabHandler):
@@ -140,11 +141,19 @@ def main():
                             with httpx.Client(base_url=str(client.base_url),cookies=cookie,trust_env=False,timeout=15) as reader:
                                 while not stopped.is_set():
                                     path=paths[iteration%len(paths)];iteration+=1;at=time.monotonic()
-                                    response=reader.get('/api'+path)
+                                    first_body=None;byte_count=0
+                                    with reader.stream('GET','/api'+path) as response:
+                                        headers_at=time.monotonic()
+                                        pieces=[]
+                                        for piece in response.iter_bytes():
+                                            if first_body is None:first_body=time.monotonic()
+                                            byte_count+=len(piece);pieces.append(piece)
+                                        body_at=time.monotonic()
+                                        content=b''.join(pieces)
                                     if response.status_code==429 and 'export' in path:
                                         assert float(response.headers['Retry-After'])>0;key='export_limited'
                                     else:
-                                        response.raise_for_status();body=response.json();key=path.split('?')[0]
+                                        response.raise_for_status();body=json.loads(content);key=path.split('?')[0]
                                         if 'records' in path:assert len(body['items'])<=25
                                         if path=='/runtime':
                                             assert body['queue_watchdog']['errors']==0 and body['event_planner']['errors']==0
@@ -154,7 +163,14 @@ def main():
                                                 event_samples.append({key:progress[key] for key in ('sampled_at','after','latest_event_seq','pending_events','oldest_pending_seconds')})
                                                 peak_pending=max(peak_pending,progress['pending_events'])
                                                 peak_event_age=max(peak_event_age,progress['oldest_pending_seconds'] or 0)
-                                    with lock:counts[key]+=1;latencies.append(time.monotonic()-at)
+                                    completed_at=time.monotonic()
+                                    timing={'elapsed_seconds':completed_at-at,'headers_seconds':headers_at-at,
+                                        'first_body_seconds':None if first_body is None else first_body-at,
+                                        'download_seconds':body_at-headers_at,'validation_seconds':completed_at-body_at,
+                                        'response_bytes':byte_count,'status_code':response.status_code}
+                                    with lock:
+                                        counts[key]+=1;latencies.append(completed_at-at)
+                                        read_timings.setdefault(key,deque(maxlen=2000)).append(timing)
                                     stopped.wait(.02)
                         except Exception as exc:
                             with lock:errors.append(type(exc).__name__)
@@ -259,6 +275,7 @@ def main():
                         python=sys.version.split()[0],platform=platform.system(),architecture=platform.machine(),
                         owned_target_requests=len(Target.requests),read_responses=dict(counts),read_errors=errors,
                         sampled_latency_seconds={'p50':ordered[int((len(ordered)-1)*.5)],'p95':ordered[int((len(ordered)-1)*.95)]},
+                        read_timing_samples={key:list(value) for key,value in read_timings.items()},
                         baseline=baseline,sample_peak_rss_kib=max([baseline['rss_kib'],*[s['rss_kib'] for s in samples]]),samples=samples,
                         event_progress_samples=list(event_samples),peak_pending_events=peak_pending,peak_event_age_seconds=peak_event_age,
                         disk={'baseline_bytes':disk_baseline,'after_churn_bytes':disk_after_churn,
