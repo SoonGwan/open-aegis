@@ -6607,3 +6607,13 @@ counts and four task states remain identical across the idle restart. Health is2
 at0.2.0a1; template/category/channel/delivery reads return401 unauthenticated.
 No notification fixture or target request is added to the persistent workspace.
 Main hosted run37379865635 remains pending; prior PR all-six success is distinct.
+
+
+Combined task archive/notification full native regression completes with
+**1,711 passed in1,187.68s**, OpenSSL3 and PostgreSQL16. Frozen94 Python modules
+remain unchanged through documentation-only main merges. Installed301, combined
+Node102, owned browser, installed94→89→94 and both-store offline restoration
+receipts above apply to wheel SHA256
+`d306f48198c792691786cff8a31ff183249874ecb3c9cded9455a87327bc345d`.
+Retained hosted PR run37379339479 passes verify and four container/Compose jobs;
+native hosted remains pending. PR4 now targets main after notification PR3 merge.
