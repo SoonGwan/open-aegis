@@ -12,6 +12,8 @@ from .store_util import now
 
 FIELDS = {
     'assets':('name','url','owner','tags'), 'tasks':('name','status','goal'),
+    'task_archive_history':('actor.name','actor.username'),
+
     'notification_channels':('name','destination_id'),
     'notification_channel_versions':('action','actor.name','snapshot.name'),
     'notification_deliveries':('channel_id','task_id','status','payload.task_name','result_code'),
@@ -201,7 +203,7 @@ class PostgresStore:
         if 'todo_id' in filters and kind!='todo_history':raise ValueError('Todo filter requires todo history')
         if ('source' in filters or 'state' in filters) and kind!='llm_calls':raise ValueError('Call filters require provider attempts')
         if 'enabled' in filters and kind!='schedules':raise ValueError('Enabled filter is only valid for schedules')
-        if archived is not None and kind!='assets':raise ValueError('Archive filter is only valid for assets')
+        if archived is not None and kind not in ('assets','tasks'):raise ValueError('Archive filter requires assets or tasks')
         with (nullcontext(connection) if connection is not None else self.transaction()) as db:
             if snapshot is None:snapshot=db.execute('SELECT coalesce(max(rowid),0) AS snapshot FROM records WHERE kind=%s',(kind,)).fetchone()['snapshot']
             clauses=['kind=%s','rowid<=%s'];args=[kind,snapshot]

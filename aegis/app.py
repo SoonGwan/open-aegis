@@ -23,6 +23,7 @@ from .notification_transport import Webhooks
 from .notification_channels import Channels,ChannelInput,ChannelEdit,DeliveryRetry,ChannelTest
 from .notification_deliveries import Deliveries
 from .task_categories import Categories, CategoryInput, CategoryEdit, CategoryArchive, CategoryAssignment
+from .task_archives import Archives,ArchiveInput
 from . import __version__
 from .checks import CATALOG, CHECK_IDS
 from .tool_contracts import contracts_for
@@ -256,6 +257,7 @@ def create_app(data_dir=None, allow_private=None):
         raise
     task_templates = Templates(store, TaskInput)
     task_categories = Categories(store)
+    task_archives = Archives(store)
     auth_lock = threading.Lock()
     chat_lock = threading.Lock()
     goal_lock = threading.Lock()
@@ -727,8 +729,8 @@ def create_app(data_dir=None, allow_private=None):
                 task_id: str | None = Query(None, max_length=80), archived: bool | None = None,
                 enabled: bool | None = None, category_id: str | None = Query(None,min_length=1,max_length=80,pattern=r'^[A-Za-z0-9_-]+$')):
         if category_id is not None and kind!='tasks':raise HTTPException(422,'작업 분류 필터는 작업에만 사용할 수 있습니다.')
-        if archived is not None and kind != 'assets':
-            raise HTTPException(422, '보관 필터는 자산에만 사용할 수 있습니다.')
+        if archived is not None and kind not in ('assets','tasks'):
+            raise HTTPException(422, '보관 필터는 자산·작업에만 사용할 수 있습니다.')
         if enabled is not None and kind != 'schedules':
             raise HTTPException(422, '활성 필터는 예약에만 사용할 수 있습니다.')
         return store.page(kind, limit=limit, offset=offset, snapshot=snapshot, search=search, archived=archived,
@@ -880,6 +882,15 @@ def create_app(data_dir=None, allow_private=None):
             store.event(None, ('자산 보관: ' if data.archived else '자산 복원: ') + asset['name'],
                         detail={'asset_id': asset_id, 'paused_schedules': paused})
             return asset
+
+    @app.post('/api/tasks/archive-assignment')
+    def task_archive_assignment(data:ArchiveInput,actor=Depends(operator)):
+        return task_archives.change(data,actor)
+
+    @app.get('/api/tasks/{task_id}/archive-history', dependencies=auth)
+    def task_archive_history(task_id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
+        if not store.get('tasks',task_id):raise HTTPException(404,'작업이 없습니다.')
+        return store.page('task_archive_history',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':task_id})
 
     @app.get('/api/notifications', dependencies=auth)
     def notifications_metadata():

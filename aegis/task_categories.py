@@ -9,13 +9,14 @@ KIND='task_categories'
 HISTORY='task_category_history'
 MAX_REVISION=9_007_199_254_740_991
 RecordID=Annotated[str,Field(min_length=1,max_length=80,pattern=r'^[A-Za-z0-9_-]+$')]
+RequestID=Annotated[str,Field(strict=True,min_length=16,max_length=80,pattern=r'^[A-Za-z0-9_-]+$')]
 Revision=Annotated[int,Field(strict=True,ge=0,le=MAX_REVISION)]
 
 
 class CategoryInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
     name:str=Field(min_length=1,max_length=80)
-    request_id:RecordID=Field(min_length=16)
+    request_id:RequestID
 
 
 class CategoryEdit(BaseModel):
@@ -35,7 +36,7 @@ class CategoryAssignment(BaseModel):
     task_ids:list[RecordID]=Field(min_length=1,max_length=25)
     category_id:RecordID|None
     expected_revisions:dict[RecordID,Revision]=Field(min_length=1,max_length=25)
-    request_id:RecordID=Field(min_length=16)
+    request_id:RequestID
 
     @model_validator(mode='after')
     def exact_revisions(self):

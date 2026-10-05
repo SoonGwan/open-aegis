@@ -11,6 +11,7 @@ import { WorkerDependencies } from "./WorkerDependencies";
 import { NotificationChannels, NotificationDeliveries } from "./Notifications";
 import { TaskCategories } from "./TaskCategories";
 import { TaskTemplates, TemplateOriginSummary, type TemplateOrigin } from "./TaskTemplates";
+import { TaskArchiveDialog, TaskArchiveHistory, canArchive } from "./TaskArchives";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
 import {
@@ -102,6 +103,8 @@ type Asset = {
   archived_at?: number | null;
 };
 type Task = {
+  archived_at?: number | null;
+  archive_revision?: number;
   category_ref?: {id:string;name:string;revision:number} | null;
   category_revision?:number;
   category_origin_task_id?:string;
@@ -488,6 +491,9 @@ function App() {
   const setFilter = (value: string) => navigation.updateList({ filter: value });
   const setShowArchived = (value: boolean) =>
     navigation.updateList({ archived: value });
+  const [archiveSelection, setArchiveSelection] = useState<Record<string, Task>>({});
+  const [taskArchiveModal, setTaskArchiveModal] = useState<Task[] | null>(null);
+  useEffect(() => { setArchiveSelection({}); setTaskArchiveModal(null); }, [page, auth?.user?.id, showArchived, search, filter]);
   const localActionScope = useRef(new ViewScope());
   const [modal, setModalState] = useState<
     "asset" | "task" | "import" | "note" | "scopesentry" | "sources" | null
@@ -744,7 +750,7 @@ function App() {
       )[page] || null
     : null;
   const recordFilters: Record<string, string> = {};
-  if (page === "assets") recordFilters.archived = String(showArchived);
+  if (page === "assets" || page === "tasks") recordFilters.archived = String(showArchived);
   if (page === "approvals") recordFilters.status = "pending";
   else if (page === "tasks" && filter !== "all") recordFilters.status = filter;
   if (page === "findings" && filter !== "all") recordFilters.severity = filter;
@@ -1775,6 +1781,12 @@ function App() {
                   ))}
                 </select>
               </Toolbar>
+              <div className="task-archive-toolbar">
+                <select aria-label="작업 보관 상태" value={showArchived ? "archived" : "active"} onChange={e => setShowArchived(e.target.value === "archived")}>
+                  <option value="active">일반 작업</option><option value="archived">보관된 작업</option>
+                </select>
+                {canOperate && <><span>선택 {Object.keys(archiveSelection).length}/25 · 종료 작업만</span><button disabled={!Object.keys(archiveSelection).length} onClick={() => setTaskArchiveModal(Object.values(archiveSelection))}>{showArchived ? "선택 작업 복원" : "선택 작업 보관"}</button><button disabled={!Object.keys(archiveSelection).length} onClick={() => setArchiveSelection({})}>선택 해제</button></>}
+              </div>
               <section className="panel">
                 {!records.ready ? (
                   <RecordState records={records} />
@@ -1783,6 +1795,7 @@ function App() {
                     <table>
                       <thead>
                         <tr>
+                          {canOperate && <th>보관 선택</th>}
                           <th>검증 작업</th>
                           <th>상태</th>
                           <th>범위</th>
@@ -1794,6 +1807,9 @@ function App() {
                       <tbody>
                         {visibleTasks.map((t) => (
                           <tr key={t.id}>
+                            {canOperate && <td><input className="task-archive-selection" type="checkbox" aria-label={`${t.name} 보관 선택`} checked={Boolean(archiveSelection[t.id])}
+                              disabled={!canArchive(t) || (!archiveSelection[t.id] && Object.keys(archiveSelection).length >= 25)}
+                              onChange={e => setArchiveSelection(previous => { const next = {...previous}; if(e.target.checked) next[t.id] = t; else delete next[t.id]; return next; })}/></td>}
                             <td>
                               <button
                                 className="table-link"
@@ -1871,6 +1887,8 @@ function App() {
               </section>
             </>
           )}
+
+          {page === "tasks" && taskArchiveModal && <TaskArchiveDialog tasks={taskArchiveModal} archived={!showArchived} onClose={() => setTaskArchiveModal(null)} onSaved={() => setArchiveSelection({})}/>}
 
           {page === "findings" && (
             <>
@@ -2861,6 +2879,8 @@ function App() {
               </details>
             )}
             <TemplateOriginSummary origin={selectedTask.template_origin} />
+            {selectedTask.archived_at && <p>보관된 작업 · 실행 결과와 증거가 보존됩니다.</p>}
+            <TaskArchiveHistory key={`archive-history-${selectedTask.id}`} taskId={selectedTask.id}/>
             {(selectedTask.category_ref || selectedTask.category_revision) && <p>작업 분류: <strong>{selectedTask.category_ref?.name || "미분류"}</strong> · 변경 버전 {selectedTask.category_revision || 0}{selectedTask.category_origin_task_id && " · 이전 작업에서 이어받음"} · 이름은 지정 당시 기록입니다.</p>}
             <ToolContracts snapshot={selectedTask.tool_contracts} current={settings?.tool_contracts}
               selected={selectedTask.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))}
