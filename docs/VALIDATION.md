@@ -6364,3 +6364,18 @@ revision. This entry does not close the v1 readiness gates.
   PostgreSQL 16 on the runner path. Hosted candidate and cross-version reviews are still
   pending at the time of this entry. The main preview remains on the verified template
   feature and does not contain this candidate's fixture data.
+
+Installed category old/new SQLite pairing is now complete (`task-category-version-pair-review.txt`).
+The 89→88→89 sequence preserves original category/version/history/receipt/task records and
+valid audit with zero target requests. The old writer's new replan omits classification.
+The first review incorrectly expected a new child after recovery; actual duplicate
+protection returns the existing old-version child. The controlled follow-up explicitly
+checks that identity and absence of automatic repair, then classifies the child with the
+current writer and verifies its next new replan inherits current classification and origin.
+All owned temporary resources were removed. Release ordering is conditional as described
+in [RELEASES.md](RELEASES.md); native version pairing and backup/restore are not inferred.
+
+Candidate pull request [2](https://github.com/SoonGwan/open-aegis/pull/2) remains draft while
+full native and hosted checks run. Functional head `480b9d9` matches the frozen 89-file
+installed wheel. The duplicate push run `37370339038` was cancelled deliberately; the
+pull-request run `37370424605` is the retained candidate hosted validation.
