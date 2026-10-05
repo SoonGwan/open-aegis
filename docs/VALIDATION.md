@@ -6766,3 +6766,21 @@ its receipts apply to that earlier source. The final source/package and full nat
 installed/maintenance checks must be refreshed. Provider-origin retention is stated
 explicitly: existing call receipts retain scheme/host/port, while profile versions
 and call records do not retain API keys or full endpoint paths.
+
+Final96-module model package matches frozen source exactly; wheel SHA256
+5eb52b286114fa9a690ffb08aed21c3874d3c6df4f2fbc1342103a2604f24e4e.
+Both-store installed96→95→96/offline backup restore is repeated on this package:
+model/profile/default families and the explicitly synthetic call snapshot remain
+exact, alongside prompt/archive/notification rows. Checkpoint verifies, restored
+sessions are0, receiver POSTs are exactly2 intentional notification tests with no
+replay duplicates or target traffic, temporary resources are removed. The earlier
+wheel15d155c6 passed478 installed checks in187.00s; final installed/full runs continue.
+
+Call details now render the stored profile/default/prompt snapshots. An explicitly
+synthetic owned committed call stays at historical model/profile/selection/prompt
+revision1 while current configuration is revision2. Browser DOM and desktop images
+show the historical model/additional instruction, current model separately and the
+settings-to-model-review navigation. No actual provider POST or target traffic is
+used for this display fixture, audit verifies and its tab/workspace are removed.
+This frontend-only change preserves all frozen96 Python module hashes. Build and
+103 Node checks pass. Task/agent pins and connectivity/model-list/failover remain open.

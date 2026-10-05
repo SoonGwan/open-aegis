@@ -2513,9 +2513,11 @@ function App() {
                     AEGIS_LLM_BASE_URL=https://provider.example/v1
                   </pre>
                   <p>
-                    서버 환경변수를 설정하고 재시작하세요. 키는 브라우저에
-                    반환하거나 데이터베이스에 저장하지 않습니다.
+                    기본 환경 설정을 사용하거나 모델 프로필에서 검토한 설정을
+                    용도별로 선택하세요. 키는 브라우저에 반환하거나 데이터베이스에
+                    저장하지 않습니다.
                   </p>
+                  <button onClick={() => navigation.navigate("models")}>모델 프로필 검토</button>
                 </div>
               </section>
               <UsageSummary />
