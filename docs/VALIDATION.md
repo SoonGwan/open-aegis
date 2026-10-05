@@ -6689,3 +6689,32 @@ ff7a0cd run37381945973 was cancelled by the new test/source update and is not
 all-job success evidence. Full native is rerunning with the original strict failure
 stop and source-restart recovery assertions retained. The owned distinguishing
 probe is rerunnable in an isolated checkout of5db3c36 (before the fixture correction).
+
+
+Archive main merge `26a1e8acdd60c3da15022fbb7f6fe9609fb7840d` is installed in
+the persisted loopback preview127.0.0.1:8790. Frozen94 modules match validated
+source; Node22 build passes and served HTML/assets compare exactly. Original11
+collection counts and four task states remain identical across the idle restart.
+No archive/notification fixture is added. Health200 is0.2.0a1 and unauthenticated
+archive mutations/history, notification channels, templates/categories return401.
+Notification main run37379865635 was cancelled automatically by the newer main merge;
+it is not all-job success evidence. Archive main run37381510130 remains pending.
+
+
+Archive main hosted run[37381510130](https://github.com/SoonGwan/open-aegis/actions/runs/37381510130)
+is terminal with all six jobs successful on merge `26a1e8acdd60c3da15022fbb7f6fe9609fb7840d`.
+This completes hosted verification for the currently running94-module loopback
+preview. The newer95-module prompt draft has separate running checks and is not
+promoted by this main receipt. Version remains0.2.0a1.
+
+
+Final prompt full native regression passes **1,747 in1,197.75s** after the lifecycle
+fixture correction, retaining all original recovery assertions. Hosted run
+[37383092295](https://github.com/SoonGwan/open-aegis/actions/runs/37383092295)
+passes all six jobs on `a82836b646c6e34dd7b08b9224b27de3f3ccfed6`. Later documentation
+merges preserve all95 frozen production modules. Exact wheel/install388, Node102,
+95→94→95 and both-store backup receipts remain applicable. Combined desktop
+read-only review also observes prompt navigation and ordinary/archive task filters
+with0 mutations/provider calls/target requests, closed tab and fixture exit0.
+This permits merging PR5 while version remains0.2.0a1. The independent96-module
+model-profile workspace is not part of this verified candidate.
