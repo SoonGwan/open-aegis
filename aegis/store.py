@@ -159,6 +159,9 @@ class Store:
         fields = {
             'assets': ('name', 'url', 'owner', 'tags'),
             'tasks': ('name', 'status', 'goal'),
+            'task_categories':('name',),
+            'task_category_versions':('action','actor.name','snapshot.name'),
+            'task_category_history':('actor.name','before.name','after.name'),
             'task_templates': ('name','description','category','definition.goal'),
             'task_template_history': ('action','actor.name','snapshot.name'),
             'findings': ('title', 'asset_name', 'check', 'severity', 'status'),
@@ -182,8 +185,9 @@ class Store:
         if priority and kind != 'findings':
             raise ValueError('Priority order is only valid for findings')
         filters = filters or {}
-        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id', 'enabled', 'source', 'state', 'todo_id'}:
+        if not filters.keys() <= {'status', 'severity', 'asset_id', 'task_id', 'check', 'finding_id', 'enabled', 'source', 'state', 'todo_id', 'category_id'}:
             raise ValueError('Unknown record filter')
+        if 'category_id' in filters and kind != 'tasks':raise ValueError('Category filter requires tasks')
         if 'todo_id' in filters and kind != 'todo_history':raise ValueError('Todo filter requires todo history')
         if ('source' in filters or 'state' in filters) and kind != 'llm_calls':
             raise ValueError('Call filters require provider attempts')
@@ -204,6 +208,12 @@ class Store:
                 clauses.append(f'instr(lower({expression}),lower(?))>0')
                 args.append(search)
             for key, value in filters.items():
+                if key == 'category_id':
+                    if value == 'unclassified':
+                        clauses.append("json_extract(data,'$.category_ref.id') IS NULL")
+                    else:
+                        clauses.append("json_extract(data,'$.category_ref.id')=?");args.append(value)
+                    continue
                 if key == 'finding_id' and kind == 'evidence':
                     clauses.append("""id IN (SELECT ref.value FROM records f CROSS JOIN json_each(f.data,'$.evidence_ids') ref
                       WHERE f.kind='findings' AND f.id=?)""")

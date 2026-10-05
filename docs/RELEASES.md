@@ -215,3 +215,22 @@ API가 없으므로 후보 UI의 템플릿 흐름도 이전 서버와 함께 사
 가장 마지막으로 출처가 온전히 유지되는 상태는 이전 writer가 파생 계획을 쓰기
 전이다. 이는 조건부 코드 전환 검토이며 데이터 복구 증명이 아니다. PostgreSQL의
 두 버전 전환과 운영 백업/복원은 이 SQLite 검토에서 실행하지 않았다.
+
+### Task-category old/new writer pairing
+
+The category candidate uses the existing records schema. Installed SQLite pairing
+(89-file category writer → previous 88-file template writer → category writer)
+preserves original category records, versions, membership history, operation receipts
+and original task references; audit integrity stays valid and no target request occurs.
+
+The old writer lacks the category API and omits classification on a newly derived
+replan. Returning to the current writer does not rewrite that existing child: repeated
+replan still returns the same pending child through the existing duplicate guard.
+An explicit current-version classification of that child works, and a subsequent new
+replan inherits the newly reviewed category with a fresh membership revision and origin.
+Rollback is therefore conditional on avoiding old-version derived-plan writes when
+complete classification provenance is required. The same boundary is reproduced with
+installed native PostgreSQL writers. Installed backup/restore into a fresh native schema
+also preserves every category/history/receipt/task record, validates the independently
+captured audit checkpoint and revokes restored sessions. These owned fixtures do not
+cover every earlier release or a mixed-version production deployment.

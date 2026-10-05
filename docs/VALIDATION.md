@@ -6327,3 +6327,94 @@ run is not substituted for this successful candidate receipt. Subsequent candida
 commits change only release/validation notes, with the88-file service and UI source
 unchanged. This validates the task-template candidate scope; whole-service v1 gates
 and the documented old-writer provenance limitation remain open.
+
+## Task category candidate — 2026-10-06
+
+The independent category implementation is a development candidate. It adds versioned
+CRUD/archive/restore, immutable category and per-task membership history, bounded SQL
+membership filtering, and an operator UI for atomic changes to 1–25 tasks. Classification
+preserves execution fields; derived plans inherit classification with a fresh membership
+revision. This entry does not close the v1 readiness gates.
+
+- Dual SQLite/native PostgreSQL category tests: **48 passed in 23.77 s**. Coverage includes
+  whole-batch stale/missing-member rejection, audit-fault rollback, immutable replay,
+  revoked role/disabled-user checks, worker updates and real in-flight request completion,
+  inherited-origin replacement, and SQL counts/pagination without `Store.all`.
+- A test fixture initially sent a Boolean into PostgreSQL's integer `users.disabled`
+  column; it now uses the schema's integer representation. SQL filter fixture setup was
+  corrected to pass the lab URL and explicit checks to the existing test helpers. Those
+  fixture failures were retained in local evidence and are not product regressions.
+- Exact wheel/source equality: **89 Python files**, wheel SHA-256
+  `8242a9f203c3c9a3e3881f8742c5e921a6bff7e3c63b0c914f0908a51e9db152`.
+  An isolated install outside the checkout passed **245 related tests in 171.00 s** with
+  native PostgreSQL. The import originated in the temporary virtual environment's
+  `site-packages`, and owned temporary resources were removed.
+- Frontend production build and **99 Node checks** passed. Build retains Vite's warning
+  about the main JavaScript chunk exceeding 500 kB. A missing JSX closing brace in the
+  new detail summary was caught by the build and corrected before the successful build.
+- Actual owned desktop browser: create, version history, archive/restore, archived
+  membership lookup by stable ID, stale edit draft retention and explicit latest-version
+  review. Two tasks were classified atomically; the first committed response was replaced
+  by controlled HTTP 503. Retrying the real form sent the identical request ID/body and
+  returned HTTP 200 with **one operation and two member-history rows**. Original task
+  execution fields were unchanged, no target GET occurred, and audit integrity passed.
+  All owned tabs, server and temporary data were removed with fixture exit 0. Layout was
+  reviewed again after search/card spacing adjustments. No mobile or screen-reader claim.
+- Full native regression is running on the frozen service source with OpenSSL 3 and
+  PostgreSQL 16 on the runner path. Hosted candidate and cross-version reviews are still
+  pending at the time of this entry. The main preview remains on the verified template
+  feature and does not contain this candidate's fixture data.
+
+Installed category old/new SQLite pairing is now complete (`task-category-version-pair-review.txt`).
+The 89→88→89 sequence preserves original category/version/history/receipt/task records and
+valid audit with zero target requests. The old writer's new replan omits classification.
+The first review incorrectly expected a new child after recovery; actual duplicate
+protection returns the existing old-version child. The controlled follow-up explicitly
+checks that identity and absence of automatic repair, then classifies the child with the
+current writer and verifies its next new replan inherits current classification and origin.
+All owned temporary resources were removed. Release ordering is conditional as described
+in [RELEASES.md](RELEASES.md); native version pairing and backup/restore are not inferred.
+
+Candidate pull request [2](https://github.com/SoonGwan/open-aegis/pull/2) remains draft while
+full native and hosted checks run. Functional head `480b9d9` matches the frozen 89-file
+installed wheel. The duplicate push run `37370339038` was cancelled deliberately; the
+pull-request run `37370424605` is the retained candidate hosted validation.
+
+The same installed 89→88→89 pairing also passes against actual owned PostgreSQL
+(`task-category-native-version-pair-review.txt`). The old-writer classification omission
+and retained-child behavior match the SQLite boundary. Installed `aegis.cli.backup` and
+`aegis.cli.restore` then restore to a fresh PostgreSQL schema with an independently
+captured trusted audit checkpoint. Category definitions, versions, membership history,
+operation receipts and complete task records compare exactly before/after. An actual
+source login creates sessions, and the restored session table is empty. The fixture
+records zero target GETs and removes its cluster, server and temporary installation
+(`task-category-installed-native-restore.txt`). This is a category-scoped native pairing
+and backup/restore receipt, not coverage of every earlier release or mixed-version deployment.
+
+The category candidate's full native regression is terminal **1,599 passed in
+1,129.23 s**, with actual SQLite/PostgreSQL and the required OpenSSL 3/PostgreSQL 16
+runner path (`task-category-full-native.txt`). Frozen service source remains the exact
+89-file installed wheel; later commits change documentation only. This result closes
+the candidate native regression check, while retained hosted run `37370424605` is still
+running. It does not substitute for the remaining hosted checks or whole-service v1 gates.
+
+Category functional head `480b9d9` now passes retained hosted run
+[37370424605](https://github.com/SoonGwan/open-aegis/actions/runs/37370424605) in **all six jobs**.
+Hosted verify reports **1,009 passed /590 skipped in785.52 s** and **99 frontend checks**.
+Native groups pass **385 in372.66 s**, **12 in25.84 s**, **42 in108.28 s**, **11 in16.57 s**,
+and **321 MCP/template/category cases in501.09 s**. Both container variants and both
+Compose variants pass. Exact job logs are retained locally in `task-category-hosted-full.txt`.
+Subsequent candidate commits change release/validation notes only.
+
+Installed SQLite backup/restore also passes the category pairing, exact category/history/
+receipt/task comparison, independently captured audit checkpoint and actual restored-session
+revocation (`task-category-installed-sqlite-restore.txt`). Together with the native receipt,
+this covers the owned category fixtures on both supported backends; it does not imply full
+mobile/accessibility or every release/environment combination.
+
+The previous template main source `e74c050` independently passes all six jobs in
+[37369068051](https://github.com/SoonGwan/open-aegis/actions/runs/37369068051).
+Two retry rounds were needed because unexecuted hosted jobs could not acquire runners;
+the annotations name runner allocation, with no failed test step. Successful jobs were
+retained and only cancelled/unexecuted jobs retried. Candidate functionality is validated;
+release `0.2.0a1` remains alpha and v1 readiness gates remain open.

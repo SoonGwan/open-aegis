@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, model_valida
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .task_templates import Templates, TemplateInput, TemplateEdit, TemplateArchive, TemplateApply
+from .task_categories import Categories, CategoryInput, CategoryEdit, CategoryArchive, CategoryAssignment
 from . import __version__
 from .checks import CATALOG, CHECK_IDS
 from .tool_contracts import contracts_for
@@ -249,6 +250,7 @@ def create_app(data_dir=None, allow_private=None):
         if lease:lease.close()
         raise
     task_templates = Templates(store, TaskInput)
+    task_categories = Categories(store)
     auth_lock = threading.Lock()
     chat_lock = threading.Lock()
     goal_lock = threading.Lock()
@@ -334,6 +336,9 @@ def create_app(data_dir=None, allow_private=None):
             (store.get('tasks', observation_request[0]) or {}) if observation_request else {})
         if not template_request and location_source.get('template_origin'):
             task['template_origin']=location_source['template_origin']
+        if location_source.get('category_ref'):
+            task.update(category_ref=location_source['category_ref'],category_revision=0,
+                        category_origin_task_id=location_source.get('category_origin_task_id',location_source['id']))
         task['remote_connection_id'] = data.remote_connection_id or location_source.get('remote_connection_id')
         if attempt_source:
             task.update(planning_history.metadata(attempt_source))
@@ -711,13 +716,14 @@ def create_app(data_dir=None, allow_private=None):
                 search: str = Query('', max_length=200), status: str | None = Query(None, max_length=80),
                 severity: str | None = Query(None, max_length=80), asset_id: str | None = Query(None, max_length=80),
                 task_id: str | None = Query(None, max_length=80), archived: bool | None = None,
-                enabled: bool | None = None):
+                enabled: bool | None = None, category_id: str | None = Query(None,min_length=1,max_length=80,pattern=r'^[A-Za-z0-9_-]+$')):
+        if category_id is not None and kind!='tasks':raise HTTPException(422,'작업 분류 필터는 작업에만 사용할 수 있습니다.')
         if archived is not None and kind != 'assets':
             raise HTTPException(422, '보관 필터는 자산에만 사용할 수 있습니다.')
         if enabled is not None and kind != 'schedules':
             raise HTTPException(422, '활성 필터는 예약에만 사용할 수 있습니다.')
         return store.page(kind, limit=limit, offset=offset, snapshot=snapshot, search=search, archived=archived,
-                          filters={k: v for k, v in {'status': status, 'severity': severity, 'asset_id': asset_id, 'task_id': task_id, 'enabled': enabled}.items() if v is not None}, compact_findings=True)
+                          filters={k: v for k, v in {'status': status, 'severity': severity, 'asset_id': asset_id, 'task_id': task_id, 'enabled': enabled, 'category_id':category_id}.items() if v is not None}, compact_findings=True)
 
     @app.get('/api/assets', dependencies=auth)
     def assets(response: Response, include_archived: bool = False):
@@ -865,6 +871,39 @@ def create_app(data_dir=None, allow_private=None):
             store.event(None, ('자산 보관: ' if data.archived else '자산 복원: ') + asset['name'],
                         detail={'asset_id': asset_id, 'paused_schedules': paused})
             return asset
+
+    @app.get('/api/task-categories', dependencies=auth)
+    def categories_list(limit: int=Query(25,ge=1,le=25),offset: int=Query(0,ge=0),snapshot: int|None=Query(None,ge=0),search: str=Query('',max_length=200),status: Literal['active','archived','all']='active'):
+        return store.page('task_categories',limit=limit,offset=offset,snapshot=snapshot,search=search,filters={'status':status} if status!='all' else {})
+
+    @app.post('/api/task-categories')
+    def category_create(data: CategoryInput, actor=Depends(operator)):
+        return task_categories.create(data,actor)
+
+    @app.get('/api/task-categories/{category_id}', dependencies=auth)
+    def category_detail(category_id: str):return task_categories.get(category_id)
+
+    @app.put('/api/task-categories/{category_id}')
+    def category_edit(category_id: str,data: CategoryEdit,actor=Depends(operator)):
+        return task_categories.change(category_id,data,actor)
+
+    @app.post('/api/task-categories/{category_id}/archive')
+    def category_archive(category_id: str,data: CategoryArchive,actor=Depends(operator)):
+        return task_categories.change(category_id,data,actor)
+
+    @app.get('/api/task-categories/{category_id}/history', dependencies=auth)
+    def category_history(category_id: str,limit: int=Query(25,ge=1,le=25),offset: int=Query(0,ge=0),snapshot: int|None=Query(None,ge=0)):
+        task_categories.get(category_id)
+        return store.page('task_category_versions',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':category_id})
+
+    @app.post('/api/tasks/category-assignment')
+    def category_assignment(data: CategoryAssignment,actor=Depends(operator)):
+        return task_categories.assign(data,actor)
+
+    @app.get('/api/tasks/{task_id}/category-history', dependencies=auth)
+    def task_category_history(task_id: str,limit: int=Query(25,ge=1,le=25),offset: int=Query(0,ge=0),snapshot: int|None=Query(None,ge=0)):
+        if not store.get('tasks',task_id):raise HTTPException(404,'작업이 없습니다.')
+        return store.page('task_category_history',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':task_id})
 
     @app.get('/api/task-templates', dependencies=auth)
     def templates_list(limit: int=Query(25,ge=1,le=25),offset: int=Query(0,ge=0),snapshot: int|None=Query(None,ge=0),search: str=Query('',max_length=200),status: Literal['active','archived','all']='active'):
