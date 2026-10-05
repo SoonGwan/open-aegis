@@ -12,6 +12,9 @@ from .store_util import now
 
 FIELDS = {
     'assets':('name','url','owner','tags'), 'tasks':('name','status','goal'),
+    'model_profiles':('name','model','destination_id'),
+    'model_profile_versions':('actor.name','snapshot.name','snapshot.model'),
+    'model_default_versions':('actor.name','snapshot.profile_id'),
     'prompt_versions':('action','actor.name','snapshot.template'),
 
     'task_archive_history':('actor.name','actor.username'),

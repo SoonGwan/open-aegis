@@ -16,6 +16,8 @@ export type ProviderCall = {
   actor_id: string | null;
   model: string;
   provider_origin: string | null;
+  prompt_snapshot?: { purpose: string; revision: number; template: string; fingerprint: string };
+  model_profile_snapshot?: { kind: string; purpose: string; selection_revision: number; model: string; destination_id: string; profile_id?: string; profile_revision?: number };
   started_at: number;
   observed_at: number;
   settled_at?: number;
@@ -160,6 +162,18 @@ export function CallHistory({
             <details>
               <summary>호출 상세 · 사용량과 가격 근거</summary>
               <p>제공자: {call.provider_origin || "미확인"}</p>
+              <section aria-label="호출 당시 모델 설정">
+                <h5>호출 당시 모델 선택</h5>
+                {call.model_profile_snapshot ? <>
+                  <p>용도: {call.model_profile_snapshot.purpose === "planner" ? "검증 순서 계획" : "기록 기반 대화"} · 선택 버전 {call.model_profile_snapshot.selection_revision}</p>
+                  <p>모델: {call.model_profile_snapshot.model} · 고정 수신처: {call.model_profile_snapshot.destination_id}</p>
+                  <p>{call.model_profile_snapshot.kind === "profile" ? `프로필 ${call.model_profile_snapshot.profile_id} · 버전 ${call.model_profile_snapshot.profile_revision}` : "기본 환경 설정"}</p>
+                </> : <p>모델 선택 스냅샷 기록 없음</p>}
+              </section>
+              <section aria-label="호출 당시 프롬프트">
+                <h5>호출 당시 추가 지침</h5>
+                {call.prompt_snapshot ? <><p>프롬프트 버전 {call.prompt_snapshot.revision}</p><pre className="prompt-text">{call.prompt_snapshot.template || "기본 프롬프트 · 추가 지침 없음"}</pre></> : <p>프롬프트 스냅샷 기록 없음</p>}
+              </section>
               <p>호출자 ID: {call.actor_id || "기록 없음"}</p>
               <p>{usage[call.tokens.status] || "알 수 없는 사용량 상태"}</p>
               <dl>

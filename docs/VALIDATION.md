@@ -6690,6 +6690,19 @@ all-job success evidence. Full native is rerunning with the original strict fail
 stop and source-restart recovery assertions retained. The owned distinguishing
 probe is rerunnable in an isolated checkout of5db3c36 (before the fixture correction).
 
+The model profile candidate has96 independently authored Python modules. Related
+native SQLite/PostgreSQL, prompt, provider, conversation, usage and ledger checks
+pass135 cases in28.38s, including owned provider model/key admission, in-flight
+selection changes and final snapshot mismatch rollback.42 profile cases alone pass
+in11.78s. Frontend build and103 Node checks pass. Owned two-tab browser review
+records [503,200,503,200,200,409,200,200,409,200]: lost create/default responses
+replay exact UUID/body; concurrent profile/default writes preserve drafts and require
+explicit latest-version review. Exactly3 profile and3 default versions/operations
+remain, no provider/target calls occur, audit verifies, tabs and disposable fixture
+close with temporary-directory removal. Desktop screenshots were inspected.
+Full native/installed package/backend maintenance/hosted checks remain pending;
+this feature is not yet merged. Task/agent model pins and provider connectivity/
+model catalog/failover remain unimplemented.
 
 Archive main merge `26a1e8acdd60c3da15022fbb7f6fe9609fb7840d` is installed in
 the persisted loopback preview127.0.0.1:8790. Frozen94 modules match validated
@@ -6727,6 +6740,11 @@ match the fresh frontend build byte for byte; health reports0.2.0a1 and unauthen
 prompt/channel/category/template reads return401. This is a local preview,
 not an external production deployment. Main hosted run37385598230 remains pending.
 
+Model profile native boundary/race review now passes58 cases in14.34s. Two concurrent
+writes admit only one reviewed profile/default revision; invalid recipient addresses,
+ports and credential controls never enable a profile. The real25-profile catalog
+cap rejects an extra profile, while explicitly synthetic revision200 boundary rows
+verify rejection without pretending200 actual saves occurred.
 Prompt main hosted run37385598230 fails the native report deadline case with
 QueryCanceled(statement timeout), while384 other native checks pass. The actual
 new native boundary regression fails before the fix: PostgreSQL is configured for
@@ -6739,6 +6757,41 @@ This demonstrates the controlled rounding mechanism, not the unrecorded exact
 remaining value on the hosted failure. Prior95-module wheel remains prior source;
 the one production module change requires a new package receipt.
 
+An additional real API regression rejects control characters in profile names before
+storage. It fails before (SQLite returns200 for a NUL-containing name), then all64
+native/backend profile cases pass in15.77s after validation. The initial full run
+was intentionally interrupted at340 passes/163.44s and is not full-suite success.
+The initial96-module wheel15d155c6 passes both-store96→95→96/offline backup restore;
+its receipts apply to that earlier source. The final source/package and full native/
+installed/maintenance checks must be refreshed. Provider-origin retention is stated
+explicitly: existing call receipts retain scheme/host/port, while profile versions
+and call records do not retain API keys or full endpoint paths.
+
+Final96-module model package matches frozen source exactly; wheel SHA256
+5eb52b286114fa9a690ffb08aed21c3874d3c6df4f2fbc1342103a2604f24e4e.
+Both-store installed96→95→96/offline backup restore is repeated on this package:
+model/profile/default families and the explicitly synthetic call snapshot remain
+exact, alongside prompt/archive/notification rows. Checkpoint verifies, restored
+sessions are0, receiver POSTs are exactly2 intentional notification tests with no
+replay duplicates or target traffic, temporary resources are removed. The earlier
+wheel15d155c6 passed478 installed checks in187.00s; final installed/full runs continue.
+
+Call details now render the stored profile/default/prompt snapshots. An explicitly
+synthetic owned committed call stays at historical model/profile/selection/prompt
+revision1 while current configuration is revision2. Browser DOM and desktop images
+show the historical model/additional instruction, current model separately and the
+settings-to-model-review navigation. No actual provider POST or target traffic is
+used for this display fixture, audit verifies and its tab/workspace are removed.
+This frontend-only change preserves all frozen96 Python module hashes. Build and
+103 Node checks pass. Task/agent pins and connectivity/model-list/failover remain open.
+
+Final wheel5eb52b28 passes484 installed checks in188.24s outside the checkout,
+including native/backend model profiles and report deadlines, with installation/
+cluster cleanup. Final local full native and retained hosted run37387988876 at
+65235660b1af344d369e4fb95853636cfe434c88 remain pending. Duplicate push run
+37387983785 is intentionally cancelled and is not success evidence. Earlier model
+hosted heads21b1bfb and3d9c1a9 are superseded/cancelled. Environment examples below
+are operator documentation; all96 frozen production modules remain exact.
 Report deadline wheel has95 modules and changes only aegis/postgres_streams.py
 from the prior prompt freeze. SHA256a059c78cd3e7e8f618d7662943709879aa6d4302d5b38e384652f9a936b8eff8.
 All32 report/export checks also pass in17.28s on the installed wheel outside checkout,
@@ -6760,3 +6813,19 @@ and original pending/completed/failed task states. Exact95-module source matches
 the installed report wheel; existing UI assets remain byte-exact and unauthenticated
 reads return401. Version is0.2.0a1. This is not an external deployment.
 Main hosted run37389130077 remains pending; PR6's six-job success is retained separately.
+
+Final frozen96-module model source passes the complete native/backend suite:
+1,812 passed in1,217.29s (20:17), with the strict failure stop retained. Installed484,
+frontend build/Node103, owned browser, both-store96→95→96/backup restore and public
+scan receipts apply to the same production module hashes. Current hosted source
+run37387988876 still awaits its PostgreSQL job; five other jobs are successful.
+Subsequent main merges and documentation commits change no production/UI execution
+source. The earlier340-pass interrupted run is not substituted for this full result.
+
+Retained model PR7 hosted run37387988876 is terminal with all six jobs successful
+at functional UI source65235660b1af344d369e4fb95853636cfe434c88. Later branch commits
+are documentation/main-doc merges only; Python96 and executable UI source remain
+unchanged. Full native1,812, installed484, Node103, both-store maintenance and owned
+browser receipts now permit merging this scoped model profile feature. Candidate
+version remains0.2.0a1; catalog/connectivity/task-agent pins/failover/mobile/long-running
+work is not declared complete. Main report run37389130077 is tracked separately.

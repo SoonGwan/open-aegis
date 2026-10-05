@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, model_valida
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .task_templates import Templates, TemplateInput, TemplateEdit, TemplateArchive, TemplateApply
+from .model_profiles import Profiles, ProfileInput, ProfileEdit, DefaultEdit
 from .prompt_versions import Prompts, Purpose, PromptEdit, PromptPreview
 from .notification_transport import Webhooks
 from .notification_channels import Channels,ChannelInput,ChannelEdit,DeliveryRetry,ChannelTest
@@ -250,6 +251,8 @@ def create_app(data_dir=None, allow_private=None):
         mcp_executors = Executors.from_env(mcp_registry)
         mcp_registry.executor = mcp_executors
         engine.remote = mcp_executors
+        model_profiles = Profiles(store,private)
+        store.model_profiles = model_profiles
         notification_channels = Channels(store,Webhooks.from_env())
         notification_deliveries = Deliveries(store,notification_channels)
     except BaseException:
@@ -514,6 +517,7 @@ def create_app(data_dir=None, allow_private=None):
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store, app.state.engine = store, engine
     app.state.event_planner = event_planner
+    app.state.model_profiles = model_profiles
     app.state.notification_channels = notification_channels
     app.state.notification_deliveries = notification_deliveries
     app.state.exports = exports
@@ -883,6 +887,43 @@ def create_app(data_dir=None, allow_private=None):
             store.event(None, ('자산 보관: ' if data.archived else '자산 복원: ') + asset['name'],
                         detail={'asset_id': asset_id, 'paused_schedules': paused})
             return asset
+
+    @app.get('/api/models/configuration', dependencies=auth)
+    def model_configuration():
+        return {'destinations':model_profiles.destinations.public(private),'profile_limit':25,'conversation_enabled':os.environ.get('AEGIS_LLM_CHAT_ENABLED')=='1',
+                'defaults':[{**model_profiles.default(purpose),'configuration_available':model_profiles.configured(purpose)}
+                            for purpose in ('planner','conversation')],'execution_authorized':False}
+
+    @app.get('/api/model-profiles', dependencies=auth)
+    def model_profile_list(limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0),
+                           search:str=Query('',max_length=200),status:Literal['active','disabled','all']='all'):
+        page=store.page('model_profiles',limit=limit,offset=offset,snapshot=snapshot,search=search,
+                        filters={'status':status} if status!='all' else {})
+        return {**page,'items':[model_profiles.public(row) for row in page['items']]}
+
+    @app.post('/api/model-profiles')
+    def model_profile_create(data:ProfileInput,actor=Depends(administrator)):
+        return model_profiles.change(None,data,actor)
+
+    @app.get('/api/model-profiles/{id}', dependencies=auth)
+    def model_profile_detail(id:str):return model_profiles.public(model_profiles.get(id))
+
+    @app.put('/api/model-profiles/{id}')
+    def model_profile_change(id:str,data:ProfileEdit,actor=Depends(administrator)):
+        return model_profiles.change(id,data,actor)
+
+    @app.get('/api/model-profiles/{id}/history', dependencies=auth)
+    def model_profile_history(id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
+        model_profiles.get(id)
+        return store.page('model_profile_versions',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':id})
+
+    @app.put('/api/model-defaults/{purpose}')
+    def model_default_change(purpose:Purpose,data:DefaultEdit,actor=Depends(administrator)):
+        return model_profiles.choose(purpose,data,actor)
+
+    @app.get('/api/model-defaults/{purpose}/history', dependencies=auth)
+    def model_default_history(purpose:Purpose,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
+        return store.page('model_default_versions',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':purpose})
 
     @app.get('/api/prompts', dependencies=auth)
     def prompt_catalog():
@@ -1411,7 +1452,7 @@ def create_app(data_dir=None, allow_private=None):
                 if original['content']!=data.content or original.get('mode','rules')!=data.mode:
                     raise HTTPException(409,'같은 전송 ID에 다른 질문이나 답변 방식을 사용할 수 없습니다.')
                 return store.get('messages','reply-'+digest)
-        if data.mode=='ai' and not conversation_ai.configured():
+        if data.mode=='ai' and not conversation_ai.configured(store):
             raise HTTPException(409,'AI 대화가 서버에 설정되지 않았습니다. 규칙 기반 요약을 사용하세요.')
         summary = summarize_task(store, task_id, data.content)
         if summary is None:
@@ -1582,9 +1623,9 @@ def create_app(data_dir=None, allow_private=None):
     def settings():
         return {'version': __version__, 'schema_version': SCHEMA_VERSION, 'storage': backend, 'lab_mode': private,
                 'tool_contracts': contracts_for([item['id'] for item in CATALOG]),
-                'llm_configured': bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL')),
-                'llm_model': os.environ.get('AEGIS_LLM_MODEL', ''), 'request_budget': engine.policy.request_budget, 'max_workers': 4,
-                'llm_chat_configured':conversation_ai.configured(),
+                'llm_configured': model_profiles.configured('planner'),
+                'llm_model': model_profiles.model_name('planner'), 'request_budget': engine.policy.request_budget, 'max_workers': 4,
+                'llm_chat_configured':conversation_ai.configured(store),
                 'execution_policy': engine.policy.public(),
                 'agents': [{'id': 'planner', 'name': 'Planner', 'role': '승인된 도구의 실행 순서를 계획', 'tools': ['catalog']},
                            {'id': 'worker', 'name': 'Worker', 'role': '범위 내 검증과 증거 수집', 'tools': list(CHECK_IDS)},

@@ -30,6 +30,13 @@ claim complete ARTEX parity or detection of every vulnerability.
   store verified results and audit events. Selected observed URLs use a separately
   registered batch tool, reuse each response across checks, and preserve provenance
   through partial retries and retests. Arbitrary registered tools do not run.
+- Reuse versioned task templates, organize tasks by categories, and archive terminal
+  tasks while retaining execution and evidence history.
+- Review versioned prompt supplements and fixed-recipient model profiles for separate
+  planner/conversation defaults; inspect the snapshots saved with each call. Model
+  profiles are undergoing final verification; task/agent pins and failover remain open.
+- Configure fixed webhook notifications with delivery/attempt history and explicit
+  bounded manual retries.
 - Use optional OpenAI-compatible planning and recorded-evidence conversation;
   keep provider usage and configured price estimates distinct from actual billing.
 - Use administrator/operator/viewer roles within one shared workspace, SQLite or
@@ -74,6 +81,12 @@ Remote execution requires both a fixed `AEGIS_MCP_CONNECTIONS` endpoint and an
 reviews tool definitions before a task can select the server. Each task still
 requires approval. See [the execution contract](docs/MCP-EXECUTION.md).
 
+Additional model recipients use `AEGIS_MODEL_DESTINATIONS`: fixed IDs and names
+reference server environment variables containing the URL and API key. Review
+profiles/defaults after credential changes. Configuration availability is distinct
+from a tested provider connection. See [model profiles](docs/MODEL-PROFILES.md)
+and [prompt versions](docs/PROMPT-VERSIONS.md).
+
 ## Current limits and verification
 
 This is a single shared workspace, not tenant isolation. Current checks validate
@@ -90,14 +103,14 @@ observed-response jobs use the fixed batch adapter. General plugin OS/egress
 isolation, full accessibility/mobile journeys, production interoperability and
 the complete v1 release criteria remain open.
 
-Verification uses owned synthetic targets and disposable databases. The cancellation-recovery change
-passes 39 cases with SQLite and actual PostgreSQL. Its related MCP
-integration passes 311 tests from an isolated installed wheel with
-SQLite and actual PostgreSQL. The console passes 97 tests. Hosted Ubuntu 24.04
-image and Compose rehearsals verify startup, authentication, retained data,
-backup/restore and clean shutdown. These checks do not constitute an independent
-security audit or a production guarantee. See [validation records](docs/VALIDATION.md)
-for exact artifacts, dates and remaining checks.
+Verification uses owned synthetic targets and disposable databases, including native
+PostgreSQL ownership, provider-call admission, recovery, installed wheel and offline
+backup/restore checks. Hosted Ubuntu24.04 image and Compose rehearsals cover startup,
+authentication, retained data and clean shutdown. Current model profiles pass64 native
+profile checks,1,812 full native/backend checks,484 installed checks and103 frontend
+checks. All six hosted jobs also pass on the retained source run. See [validation records](docs/VALIDATION.md) for source
+identities, preserved receipts and the remaining v1 checks. This project has not
+undergone an independent security audit.
 
 Contributions should preserve approval, scope, evidence and recovery behavior.
 See [CONTRIBUTING.md](CONTRIBUTING.md); report security issues privately following

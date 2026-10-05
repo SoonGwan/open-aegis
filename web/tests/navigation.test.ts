@@ -320,3 +320,13 @@ test("notification bookmarks reject unreviewed statuses", () => {
   assert.equal(readNavigation("?page=notifications&notifications_status=unknown",allowed).list.filter,"all");
   assert.equal(readNavigation("?page=deliveries&deliveries_status=active",allowed).list.filter,"all");
 });
+
+test("model profile bookmarks normalize filters and reset pagination on search", () => {
+  const allowed = [...pages, "models"];
+  const original = "?page=models&models_q=검토&models_status=disabled&models_offset=50&models_snapshot=123&tasks_status=failed";
+  assert.deepEqual(readNavigation(original, allowed).list, { search: "검토", filter: "disabled", archived: false, offset: 50, snapshot: 123 });
+  const changed = updateListQuery(original, allowed, { search: "새 모델" });
+  assert.deepEqual(readNavigation(changed, allowed).list, { search: "새 모델", filter: "disabled", archived: false, offset: 0, snapshot: null });
+  assert.equal(new URLSearchParams(changed).get("tasks_status"), "failed");
+  assert.equal(readNavigation("?page=models&models_status=queued", allowed).list.filter, "all");
+});
