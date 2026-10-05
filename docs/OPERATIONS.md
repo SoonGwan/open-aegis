@@ -220,7 +220,7 @@ python3 scripts/review_container.py
 python3 scripts/review_container.py --postgres-extra
 ```
 
-각 실행은 고유한 이미지·내부 네트워크·볼륨과 서버 컨테이너를 만들고 임의의
+각 실행은 고유한 이미지·bridge 네트워크·볼륨과 서버 컨테이너를 만들고 임의의
 호스트 loopback 포트만 공개한다. 비관리자/read-only 실행, 실제 health, UI 파일,
 최초 설정/인증, 승인 대기 계획, 볼륨/쿠키의 재시작 유지, 체크포인트 보관/반복,
 중지한 볼륨의 복구, 이전 세션 거절/비밀번호 유지·백업 이후 노트 제거, 정상 종료를
@@ -228,9 +228,12 @@ python3 scripts/review_container.py --postgres-extra
 추가 드라이버 import를 확인하지만 HTTP/복구 리허설의 저장소는 SQLite이며 실제
 PostgreSQL 컨테이너 검수를 대신하지 않는다. 빌드 캐시와 내려받은 base image는
 Docker에 남을 수 있다. 패키지 다운로드에는 빌드 네트워크가 필요하다.
+네트워크는 Compose와 같은 일반 bridge이며 외부 송신을 차단하지 않는다.
+Docker29.5.2의 internal-only 네트워크에서는 지정한 호스트 포트가 실제로 공개되지
+않는 현상을 재현하여 이 구성을 사용한다. 복구 컨테이너는 `--network none`으로 실행한다.
 
-CI에 두 이미지 모드의 검수 job을 추가했지만 현재 로컬에는 Docker 실행기가 없다.
-이 스크립트의 문법/실행기 부재 거절과 직접 loopback 상태 검사·설치 패키지는
-검증했으며, 실제 image build/volume/restart/restore·CI hosted 실행·멀티 아키텍처는
-아직 확인되지 않았다. Docker 검수 성공으로 표시하려면 실제 결과 JSON과 종료/
-정리 결과를 기록해야 한다. 파일이 존재하는 것만으로 통과 판정하지 않는다.
+2026-10-05에는 별도 Colima VM의 Linux arm64/Docker29.5.2에서 두 이미지 모드의
+실제 build/health/HTTP/volume/restart/restore/종료 검수를 통과했다.
+결과와 정리 근거는 [VALIDATION.md](VALIDATION.md)의 컨테이너 검수 항목에 기록한다.
+CI에도 두 모드가 있지만 hosted 실행·amd64/멀티 아키텍처·실제 Compose 기동과
+PostgreSQL 컨테이너 저장소는 아직 미검증이다.

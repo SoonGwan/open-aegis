@@ -64,7 +64,9 @@ def main():
         run('build','--build-arg',f'AEGIS_INSTALL_POSTGRES={int(args.postgres_extra)}','--tag',image,'.',timeout=900)
         run('volume','create','--label',f'open-aegis.review={identity}',volume)
         resources.append(('volume',volume))
-        run('network','create','--internal','--label',f'open-aegis.review={identity}',network)
+        # Match Compose's bridge network: internal-only networks can silently
+        # omit published ports on Docker 29. Egress is not blocked by this QA.
+        run('network','create','--driver','bridge','--label',f'open-aegis.review={identity}',network)
         resources.append(('network',network))
         resources.append(('container',container))
         run('run','--detach','--name',container,'--label',f'open-aegis.review={identity}',
@@ -78,7 +80,9 @@ def main():
         configuration=json.loads(run('inspect','--format','{{json .HostConfig}}',container))
         assert configuration['ReadonlyRootfs'] and 'ALL' in configuration['CapDrop']
         assert 'no-new-privileges:true' in configuration['SecurityOpt']
-        assert run('network','inspect','--format','{{.Internal}}',network)=='true'
+        network_configuration=json.loads(run('network','inspect',network))[0]
+        assert network_configuration['Driver']=='bridge' and not network_configuration['Internal']
+        assert network_configuration['Labels']['open-aegis.review']==identity
         run('exec',container,'python','-c',
             "import errno; from pathlib import Path; p=Path('/app/review-write');\ntry: p.write_text('fixture')\nexcept OSError as e: assert e.errno==errno.EROFS\nelse: raise AssertionError('Root filesystem writable')\np=Path('/app/data/review-write');p.write_text('fixture');assert p.read_text()=='fixture';p.unlink()")
         run('exec',container,'python','-m','pip','check')
@@ -141,7 +145,8 @@ def main():
         assert request('/api/runtime')['requests']['requests']==0
         stop()
         result={'valid':True,'postgres_driver':args.postgres_extra,'http_backend':'sqlite','target_requests':0,
-                'checks':['image build','nonroot/read-only/isolated network','actual health','UI bundles','setup/auth',
+                'network':'owned bridge; loopback publication; egress not blocked',
+                'checks':['image build','nonroot/read-only/owned bridge network','actual health','UI bundles','setup/auth',
                           'volume data/cookie retained across restart','checkpoint capture/repeat','offline restore',
                           'restored session rejected and password retained','pending task without execution','clean stop']}
     finally:

@@ -5082,3 +5082,38 @@ on 390×844 has no document overflow.
   No claim of actual screen-reader, mobile touch/zoom, full UI journeys, or async
   session-switch focus verification; model-quality/security execution and full
   v1 completion remain unproven. Their explicit readiness gates remain open.
+
+
+### Actual arm64 container build/restart/offline restore (2026-10-05)
+
+- Installed Docker CLI29.7.2, buildx0.36.1 and Colima0.10.3; started a private
+  Linux arm64 VM/Docker29.5.2 with two CPUs/2GiB RAM and no host mounts. All daemon,
+  cache, Lima and Docker config paths belonged to one fresh temporary workspace;
+  default Docker context remained desktop-linux. Host tools remain installed;
+  no background service/autostart was configured.
+- Actual default Dockerfile build passed (`artifacts/container-default-build.txt`).
+  Initial full QA failed at published-port lookup after health/read-only/UID checks
+  (`.../container-review-default.txt`): internal-only network accepted loopback
+  publication but NetworkSettings.Ports returned null. An owned minimal container
+  reproduced it. The harness now matches Compose's ordinary owned bridge network,
+  asserts its driver/ownership and requires exactly one127.0.0.1 publication.
+  This is not an egress firewall; offline maintenance still uses network none.
+  Similar behavior is reported in the upstream
+  [Moby discussion](https://github.com/moby/moby/discussions/53256).
+- Both actual harness runs exited0/valid:true (`.../container-review-default-fixed.txt`,
+  `.../container-review-postgres-extra-fixed.txt`): image build; UID10001; read-only
+  root and writable volume; cap-drop/no-new-privileges; actual health and bundled
+  UI; HTTP setup/auth; pending unapproved task; live backup/checkpoint capture and
+  duplicate rejection; restart retains data/cookie; offline restore/chain verification;
+  restored cookie rejected, password retained, post-backup note absent; clean stop.
+  Both report target_requests0. Extra mode imports locked psycopg3.3.6; both HTTP
+  and restore scenarios use SQLite, not native PostgreSQL.
+- Owned review/debug containers, volumes and networks removed; warm image removed;
+  dedicated VM and its data deleted; private temporary root removed. Cleanup proof
+  lists no containers/volumes and only built-in bridge/host/none networks
+  (`.../container-cleanup-proof.json`, `.../container-vm-cleanup.txt`). Retained preview
+  health ok, exact record counts/task states unchanged (`.../container-preview-proof.json`).
+- No service/frontend change; prior1035 backend/97 frontend passes remain the latest
+  suite evidence. These are actual local arm64 Dockerfile/harness results. Hosted CI,
+  amd64/multi-architecture, actual Compose startup, PostgreSQL container storage,
+  production deployment/egress controls and full v1 readiness remain unverified.
