@@ -6792,3 +6792,16 @@ cluster cleanup. Final local full native and retained hosted run37387988876 at
 37387983785 is intentionally cancelled and is not success evidence. Earlier model
 hosted heads21b1bfb and3d9c1a9 are superseded/cancelled. Environment examples below
 are operator documentation; all96 frozen production modules remain exact.
+Report deadline wheel has95 modules and changes only aegis/postgres_streams.py
+from the prior prompt freeze. SHA256a059c78cd3e7e8f618d7662943709879aa6d4302d5b38e384652f9a936b8eff8.
+All32 report/export checks also pass in17.28s on the installed wheel outside checkout,
+including native SQL deadline/disconnect cleanup; temporary resources are removed.
+Retained PR6 hosted run37387185260 remains pending; its duplicate push37387178574
+was intentionally cancelled. The original main run37385598230 is terminal with five
+successful jobs and one native report failure, not six-job success.
+
+Retained PR6 hosted run37387185260 is terminal with all six jobs successful at
+functional source178ce3eba1c767a02b6951ab30c3222e9961a904. Subsequent branch changes
+are validation documentation only; the95 production modules exactly match the
+installed32-case wheel receipt. This closes the native report deadline correction;
+prior main run37385598230 remains honestly recorded as failed.
