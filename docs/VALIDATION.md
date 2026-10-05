@@ -6746,3 +6746,9 @@ including native SQL deadline/disconnect cleanup; temporary resources are remove
 Retained PR6 hosted run37387185260 remains pending; its duplicate push37387178574
 was intentionally cancelled. The original main run37385598230 is terminal with five
 successful jobs and one native report failure, not six-job success.
+
+Retained PR6 hosted run37387185260 is terminal with all six jobs successful at
+functional source178ce3eba1c767a02b6951ab30c3222e9961a904. Subsequent branch changes
+are validation documentation only; the95 production modules exactly match the
+installed32-case wheel receipt. This closes the native report deadline correction;
+prior main run37385598230 remains honestly recorded as failed.
