@@ -101,6 +101,16 @@ it. The fixture trigger/function/sequence are removed before recovery. This cove
 one precommit point in a follow-up transaction; commit-acknowledgement ambiguity,
 other write boundaries and hardware/storage failures need separate validation.
 
+`--database-crash-audit` requires `--database-crash-write` and adds a second owned
+schema with the same HTTP flow. Its audit-state trigger confirms the staged child,
+six coverage cells, parent link, audit event and linked hash before signalling the
+crash gate. It stops the database before the audit-state update/commit and requires
+exact rollback of plan records, audit rows/state and the storage event watermark.
+Before/after snapshot digests and audit sequence numbers are included in the report.
+Recovery again requires one pending plan and a fresh approval. This adds two more
+owned GETs, one DB shutdown and one service SIGKILL. Native CI requests this mode;
+an acknowledged/ambiguous commit or hardware/storage failure is still separate.
+
 The wheel contains the Python backend/CLI, not the frontend bundle. Its UI is supplied
 explicitly via AEGIS_WEB_DIR for this review; Docker packages the separately built UI.
 Build dependencies, runner images and Python/Node patch versions are not fully pinned,

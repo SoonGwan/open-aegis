@@ -57,7 +57,7 @@ jobs:
       - run: python -m pip wheel --no-deps . --wheel-dir artifacts/postgres-wheel
       - run: python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-wheel
       - name: Rehearse installed native goal plan recovery and fresh approvals
-        run: python scripts/review_goal_recovery.py --wheel artifacts/postgres-wheel/*.whl --backend postgres --crash --database-crash --database-crash-in-flight --database-crash-write
+        run: python scripts/review_goal_recovery.py --wheel artifacts/postgres-wheel/*.whl --backend postgres --crash --database-crash --database-crash-in-flight --database-crash-write --database-crash-audit
 
   container:
     runs-on: ubuntu-24.04

@@ -4997,3 +4997,43 @@ on 390×844 has no document overflow.
   and before parent linkage/audit append/commit. It does not establish every write
   boundary, an already-staged audit append, commit acknowledgement loss, hardware
   power loss, failed storage, PITR or remote recovery. Full v1 gates remain open.
+
+### Installed staged audit append rollback on database shutdown (2026-10-05)
+
+- Added `--database-crash-audit`, requiring `--database-crash-write`, to the
+  installed goal recovery helper. A separate owned `goal_write_audit` schema
+  repeats the real HTTP follow-up creation. A BEFORE UPDATE audit-state trigger
+  checks the staged child, all six coverage cells, the parent's next_plan_id,
+  inserted audit event and event_hashes entry matching the proposed new head and
+  old previous head. Only that confirmed stage signals the nontransactional probe
+  sequence; the database is immediately stopped before audit-state update/commit.
+- Snapshots now include task/coverage/goal-plan records, events, event_hashes,
+  audit_state and storage_metadata. All must exactly match before/after shutdown;
+  independent before/after digests are emitted. WAL recovery and the exact prior
+  audit checkpoint must verify. The stale service refuses the mutation/health;
+  after fixture removal and service restart, the same fingerprint creates one
+  unapproved pending plan, duplicate submission returns it and fresh approval
+  completes it without any preapproval target request.
+- Native combined mode passed (`artifacts/goal-audit-database-crash.txt`). Final
+  script's `--backend both` with all crash flags passed (`...-both.txt`). Both
+  record-stage and audit-stage scenarios each made two owned GETs, one immediate
+  database shutdown and one owned service SIGKILL; audit event count28→48, exact
+  retained crash checkpoint seq28. Final sequence53 differs from event count48;
+  the resulting chain and checkpoint extension verify despite identity gaps.
+  Each before/after snapshot digest pair is equal; audit-stage proof includes the
+  staged parent/event/hash and rollback of audit rows/state/storage watermark.
+- Existing scenarios in the same final run passed: SQLite five GETs/audit43→99;
+  PostgreSQL seven GETs/audit43→119 and both in-flight ownership-loss recovery
+  checks. No external target/preapproval recovery requests. Normal both-backend
+  control passed with both optional write reports null, three GETs per backend,
+  audit40→76 (`...-control.txt`). Invalid audit-flag combinations reject exit2
+  before setup (`...-proof.json`). Three successful temporary installations were
+  removed (`...-cleanup.json`); retained preview health ok, no data change/restart.
+- Service/frontend unchanged; reused wheel SHA256
+  `26aef0a38a9a39ad4e75cef9eafe1ed7ab26bcb7cc3ee0d3b3f8d6baa173ba40`, all72 service
+  Python files freshly byte-match (`...-proof.json`). Prior1035 tests remain the
+  last full-suite evidence. Native CI now requests the audit mode; hosted CI unrun.
+- This covers an uncommitted audit append after parent linkage/event/hash staging
+  but before audit-state update/commit. It does not establish commit acknowledgement
+  loss, every write/commit boundary, hardware power loss, failed storage, PITR or
+  remote recovery. Full v1 completion remains unproven and its gates stay open.

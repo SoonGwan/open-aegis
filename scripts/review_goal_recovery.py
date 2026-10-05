@@ -395,12 +395,14 @@ def rehearse(backend, root, python, binaries, environment, run, dsn=None, crash=
         thread.join(timeout=2)
 
 
-def rehearse_write_crash(root, python, binaries, environment, run, dsn, crash_database):
-    """Interrupt the real follow-up HTTP write after child/coverage staging."""
-    folder = root / 'write-crash'
+def rehearse_write_crash(root, python, binaries, environment, run, dsn, crash_database, stage='records'):
+    """Interrupt a real follow-up HTTP transaction at a confirmed staging point."""
+    assert stage in ('records', 'audit')
+    schema = 'goal_write' if stage == 'records' else 'goal_write_audit'
+    folder = root / ('write-crash-' + stage)
     folder.mkdir()
     environment = {**environment, 'AEGIS_STORAGE_BACKEND': 'postgres', 'AEGIS_POSTGRES_DSN': dsn,
-                   'AEGIS_POSTGRES_SCHEMA': 'goal_write', 'AEGIS_DATA_DIR': str(folder / 'data')}
+                   'AEGIS_POSTGRES_SCHEMA': schema, 'AEGIS_DATA_DIR': str(folder / 'data')}
     run([binaries / 'aegis-init-postgres'], environment)
     probe_program = '''
 import json,os,sys
@@ -428,25 +430,61 @@ with transfer.connect(os.environ['AEGIS_POSTGRES_DSN']) as db:
           END IF;
           RETURN NEW;
         END $$""")
-        db.execute('CREATE TRIGGER hold_followup_write BEFORE INSERT ON goal_write.records '
-                   'FOR EACH ROW EXECUTE FUNCTION goal_write.hold_followup_write()')
+        if sys.argv[2]=='audit':
+            db.execute("""CREATE OR REPLACE FUNCTION goal_write.hold_followup_write() RETURNS trigger LANGUAGE plpgsql AS $$
+            DECLARE child_id text;
+            BEGIN
+              SELECT task_id INTO child_id FROM goal_write.events WHERE seq=NEW.last_seq;
+              IF EXISTS(SELECT 1 FROM goal_write.records WHERE kind='tasks' AND id=child_id
+                        AND data::jsonb->>'followup_of' IS NOT NULL) THEN
+                IF NOT EXISTS(SELECT 1 FROM goal_write.records child JOIN goal_write.records parent
+                              ON parent.kind='tasks' AND parent.id=child.data::jsonb->>'followup_of'
+                              WHERE child.kind='tasks' AND child.id=child_id
+                              AND parent.data::jsonb->>'next_plan_id'=child_id) THEN
+                  RAISE EXCEPTION 'Owned parent link was not staged';
+                END IF;
+                IF (SELECT count(*) FROM goal_write.records WHERE kind='coverage'
+                    AND data::jsonb->>'task_id'=child_id) != 6 THEN
+                  RAISE EXCEPTION 'Owned six-cell coverage was not staged';
+                END IF;
+                IF NOT EXISTS(SELECT 1 FROM goal_write.event_hashes WHERE seq=NEW.last_seq
+                              AND event_hash=NEW.head_hash AND previous_hash=OLD.head_hash) THEN
+                  RAISE EXCEPTION 'Owned audit event hash was not staged';
+                END IF;
+                PERFORM nextval('goal_write.write_crash_seen');
+                PERFORM pg_sleep(60);
+              END IF;
+              RETURN NEW;
+            END $$""")
+            db.execute('CREATE TRIGGER hold_followup_write BEFORE UPDATE ON goal_write.audit_state '
+                       'FOR EACH ROW EXECUTE FUNCTION goal_write.hold_followup_write()')
+        else:
+            db.execute('CREATE TRIGGER hold_followup_write BEFORE INSERT ON goal_write.records '
+                       'FOR EACH ROW EXECUTE FUNCTION goal_write.hold_followup_write()')
         print(json.dumps({'installed':True}))
     elif action=='seen':
         row=db.execute('SELECT last_value,is_called FROM goal_write.write_crash_seen').fetchone()
         print(json.dumps(dict(row)))
     elif action=='remove':
-        db.execute('DROP TRIGGER hold_followup_write ON goal_write.records')
+        db.execute('DROP TRIGGER hold_followup_write ON goal_write.'+
+                   ('audit_state' if sys.argv[2]=='audit' else 'records'))
         db.execute('DROP FUNCTION goal_write.hold_followup_write()')
         db.execute('DROP SEQUENCE goal_write.write_crash_seen')
         print(json.dumps({'removed':True}))
     elif action=='snapshot':
         rows=db.execute('SELECT kind,id,data FROM goal_write.records WHERE kind=ANY(%s) ORDER BY kind,id',
                         (['tasks','coverage','goal_plans'],)).fetchall()
-        print(json.dumps({'records':[{'kind':r['kind'],'id':r['id'],'data':json.loads(r['data'])} for r in rows]}))
+        print(json.dumps({'records':[{'kind':r['kind'],'id':r['id'],'data':json.loads(r['data'])} for r in rows],
+                          'events':[dict(r) for r in db.execute('SELECT * FROM goal_write.events ORDER BY seq')],
+                          'event_hashes':[dict(r) for r in db.execute('SELECT * FROM goal_write.event_hashes ORDER BY seq')],
+                          'audit_state':dict(db.execute('SELECT * FROM goal_write.audit_state WHERE id=1').fetchone()),
+                          'storage_metadata':dict(db.execute('SELECT * FROM goal_write.storage_metadata WHERE id=1').fetchone())}))
     else:raise ValueError('Unknown owned probe')
 '''
+    # Both names are fixed owned-fixture identifiers selected above, not inputs.
+    probe_program = probe_program.replace('goal_write', schema)
     def probe(action):
-        return run([python, '-I', '-c', probe_program, action], environment)
+        return run([python, '-I', '-c', probe_program, action, stage], environment)
     class Handler(OwnedTarget):
         requests = []
         hold = False
@@ -491,7 +529,8 @@ with transfer.connect(os.environ['AEGIS_POSTGRES_DSN']) as db:
             http('/api/health', expected=503)
             assert Handler.requests == ['/']
             crash_owned()
-        assert probe('snapshot') == before
+        after = probe('snapshot')
+        assert after == before
         after_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], environment)
         assert after_audit['valid'] and after_audit['checkpoint'] == before_audit['checkpoint']
         probe('remove')
@@ -511,12 +550,20 @@ with transfer.connect(os.environ['AEGIS_POSTGRES_DSN']) as db:
             assert Handler.requests == ['/', '/']
         final_audit = run([binaries / 'aegis-verify-audit', '--checkpoint', checkpoint], environment)
         assert final_audit['valid'] and final_audit['events'] > before_audit['events']
-        return {**recovery, 'valid': True, 'staged_child_and_six_coverage_cells_confirmed': True,
+        return {**recovery, 'valid': True, 'write_stage': stage,
+                'staged_child_and_six_coverage_cells_confirmed': True,
+                'staged_parent_and_audit_event_hash_confirmed': stage == 'audit',
                 'uncommitted_plan_records_rolled_back': True, 'audit_checkpoint_unchanged_after_crash': True,
+                'audit_rows_and_metadata_rolled_back': True,
+                'records_and_audit_snapshot_sha256_before': hashlib.sha256(json.dumps(before, sort_keys=True).encode()).hexdigest(),
+                'records_and_audit_snapshot_sha256_after': hashlib.sha256(json.dumps(after, sort_keys=True).encode()).hexdigest(),
                 'same_fingerprint_recovery_and_one_pending_plan': True, 'fresh_approval_completed': True,
                 'owned_target_requests': len(Handler.requests), 'preapproval_recovery_requests': 0,
                 'external_target_requests': 0, 'owned_service_sigkills': 1,
-                'audit_events_before': before_audit['events'], 'audit_events_final': final_audit['events']}
+                'audit_events_before': before_audit['events'], 'audit_events_final': final_audit['events'],
+                'audit_last_seq_before': before_audit['checkpoint']['seq'],
+                'audit_last_seq_after_crash': after_audit['checkpoint']['seq'],
+                'audit_last_seq_final': final_audit['checkpoint']['seq']}
     finally:
         target.shutdown()
         target.server_close()
@@ -531,6 +578,7 @@ def main():
     parser.add_argument('--database-crash', action='store_true', help='Immediately stop the owned PostgreSQL cluster and verify WAL recovery of committed pending plans; requires --crash and a PostgreSQL backend')
     parser.add_argument('--database-crash-in-flight', action='store_true', help='Also immediately stop the owned database during approved retry GETs; verify stale service refusal, restart and fresh approval; requires --database-crash')
     parser.add_argument('--database-crash-write', action='store_true', help='Also stop the owned database during a real HTTP follow-up write after child and coverage staging; requires --database-crash')
+    parser.add_argument('--database-crash-audit', action='store_true', help='Also interrupt the real follow-up transaction after parent linkage and audit event/hash staging; requires --database-crash-write')
     args = parser.parse_args()
     if args.database_crash and (not args.crash or args.backend == 'sqlite'):
         parser.error('--database-crash requires --crash and --backend postgres or both')
@@ -538,6 +586,8 @@ def main():
         parser.error('--database-crash-in-flight requires --database-crash')
     if args.database_crash_write and not args.database_crash:
         parser.error('--database-crash-write requires --database-crash')
+    if args.database_crash_audit and not args.database_crash_write:
+        parser.error('--database-crash-audit requires --database-crash-write')
     wheel = args.wheel.resolve(strict=True)
     repository = Path(__file__).resolve().parents[1]
     environment = {key: value for key, value in os.environ.items()
@@ -571,6 +621,7 @@ def main():
                       'print(json.dumps({"module":aegis.__file__}))'], environment)
         results = []
         write_crash_recovery = None
+        audit_crash_recovery = None
         if args.backend in ('sqlite', 'both'):
             results.append(rehearse('sqlite', root, python, binaries, environment, run, crash=args.crash))
         if native:
@@ -597,6 +648,8 @@ def main():
                 dsn = 'host=' + str(socket_folder) + ' port=' + str(port) + ' dbname=postgres'
                 if args.database_crash_write:
                     write_crash_recovery = rehearse_write_crash(root, python, binaries, environment, run, dsn, crash_database)
+                if args.database_crash_audit:
+                    audit_crash_recovery = rehearse_write_crash(root, python, binaries, environment, run, dsn, crash_database, 'audit')
                 results.append(rehearse('postgres', root, python, binaries, environment, run, dsn,
                                         crash=args.crash, database_crash=crash_database if args.database_crash else None,
                                         database_crash_in_flight=args.database_crash_in_flight))
@@ -604,6 +657,7 @@ def main():
                 run([postgres_binaries['pg_ctl'], '-D', cluster, '-w', '-m', 'fast', 'stop'], environment)
         print(json.dumps({'valid': True, 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
                           'installed_origin': origin['module'], 'write_crash_recovery': write_crash_recovery,
+                          'audit_crash_recovery': audit_crash_recovery,
                           'results': results}, ensure_ascii=False))
 
 
