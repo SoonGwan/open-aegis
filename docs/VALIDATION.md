@@ -6739,3 +6739,9 @@ including the original pending/completed/failed task states. Served HTML/assets
 match the fresh frontend build byte for byte; health reports0.2.0a1 and unauthenticated
 prompt/channel/category/template reads return401. This is a local preview,
 not an external production deployment. Main hosted run37385598230 remains pending.
+
+Model profile native boundary/race review now passes58 cases in14.34s. Two concurrent
+writes admit only one reviewed profile/default revision; invalid recipient addresses,
+ports and credential controls never enable a profile. The real25-profile catalog
+cap rejects an extra profile, while explicitly synthetic revision200 boundary rows
+verify rejection without pretending200 actual saves occurred.

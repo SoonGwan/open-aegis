@@ -228,3 +228,52 @@ def test_malformed_persisted_selection_is_unavailable_without_provider_calls(cli
     assert not service.configured('planner')
     with pytest.raises(ProfileUnavailable):service.capture('planner')
     assert not store.all('llm_calls') and not store.all('traffic')
+
+
+def test_concurrent_profile_and_default_saves_admit_only_one_reviewed_revision(client):
+    profile=create(client,enabled=True).json()['profile']
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        replies=list(pool.map(lambda n:change(client,profile,model='owned-race-'+str(n),request_id='owned-race-profile-'+str(n)),range(2)))
+    assert sorted(r.status_code for r in replies)==[200,409]
+    current=next(r.json()['profile'] for r in replies if r.status_code==200)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        replies=list(pool.map(lambda n:choose(client,current,request_id='owned-race-default-'+str(n)),range(2)))
+    assert sorted(r.status_code for r in replies)==[200,409]
+    store=client.app.state.store
+    assert store.count('model_profile_versions')==2 and store.count('model_default_versions')==1
+    assert client.app.state.model_profiles.capture('planner').model==current['model']
+    assert not store.all('llm_calls') and store.audit_integrity()['valid']
+
+
+@pytest.mark.parametrize('base,key',[
+    ('http://example.invalid/v1','owned-key'),('https://user:pass@example.invalid/v1','owned-key'),
+    ('https://example.invalid/v1?redirect=1','owned-key'),('https://example.invalid:0/v1','owned-key'),
+    ('https://example.invalid:65536/v1','owned-key'),('https://example.invalid/v1','bad\nkey'),
+])
+def test_unreviewable_recipient_never_enables_a_profile(client,monkeypatch,base,key):
+    monkeypatch.setenv('OWNED_MODEL_BASE',base);monkeypatch.setenv('OWNED_MODEL_KEY',key)
+    assert create(client,enabled=True).status_code==409
+    store=client.app.state.store
+    assert store.count('model_profiles')==store.count('model_profile_versions')==0
+    assert not store.all('llm_calls') and not store.all('traffic')
+
+
+def test_profile_catalog_limit_and_exhausted_versions_never_mutate(client):
+    from aegis.model_profiles import DefaultEdit
+    for n in range(25):
+        assert create(client,name='Owned catalog '+str(n),request_id='owned-catalog-create-'+str(n)).status_code==200
+    store=client.app.state.store;service=client.app.state.model_profiles
+    assert create(client,name='Owned overflow',request_id='owned-catalog-overflow').status_code==409
+    assert store.count('model_profiles')==store.count('model_profile_versions')==25
+    profile=store.all('model_profiles')[0]
+    # Explicit boundary fixtures exercise rejection without fabricating200 saves.
+    profile['revision']=200;profile['fingerprint']=service.fingerprint(profile);store.put('model_profiles',profile)
+    assert change(client,profile).status_code==409
+    default={'id':'planner','purpose':'planner','revision':200,'profile_id':None,'profile_revision':None,'profile_fingerprint':None}
+    store.put('model_defaults',default)
+    actor=store.user(username='admin')
+    with pytest.raises(HTTPException) as caught:
+        service.choose('planner',DefaultEdit(expected_revision=200,profile_id=None,request_id='owned-default-cap-001'),actor)
+    assert caught.value.status_code==409
+    assert store.get('model_defaults','planner')==default and store.count('model_default_versions')==0
+    assert store.count('model_profile_versions')==25 and not store.all('llm_calls')
