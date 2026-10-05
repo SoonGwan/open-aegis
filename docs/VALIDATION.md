@@ -6649,3 +6649,16 @@ packaged95 Python modules exactly match frozen source; wheel SHA256
 Official public-source Gitleaks scan covers405 tracked/unignored files with0 candidates.
 The additive app/SQL/CI/documentation merge retains both prompt and archive contracts.
 Final full native, installed and95→94→95/backup receipts remain pending.
+
+
+The exact95-module prompt package passes388 installed cases in156.51s outside the
+checkout, including native backend cases, with temporary installation/cluster removal.
+Installed95→94→95 and offline backup/restore pass on both stores: prompt/config/
+version/operation rows and an explicitly synthetic committed call snapshot are
+preserved alongside task archive and notification families. Original save replay
+returns revision1 without reverting current default revision2. The independent audit
+checkpoint verifies, restored sessions are0, no target traffic occurs and only two
+intentional notification test POSTs occur. Actual provider snapshot admission is
+separately exercised in the earlier owned HTTP tests, not inferred from this fixture.
+Retained hosted source run is37381945973 on `ff7a0cd21c2704346ed57e56b43b77834acb2adb`;
+full native and hosted checks remain pending. Public PR5 stays draft.
