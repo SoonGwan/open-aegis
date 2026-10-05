@@ -19,6 +19,9 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, model_valida
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .task_templates import Templates, TemplateInput, TemplateEdit, TemplateArchive, TemplateApply
+from .notification_transport import Webhooks
+from .notification_channels import Channels,ChannelInput,ChannelEdit,DeliveryRetry,ChannelTest
+from .notification_deliveries import Deliveries
 from .task_categories import Categories, CategoryInput, CategoryEdit, CategoryArchive, CategoryAssignment
 from . import __version__
 from .checks import CATALOG, CHECK_IDS
@@ -245,6 +248,8 @@ def create_app(data_dir=None, allow_private=None):
         mcp_executors = Executors.from_env(mcp_registry)
         mcp_registry.executor = mcp_executors
         engine.remote = mcp_executors
+        notification_channels = Channels(store,Webhooks.from_env())
+        notification_deliveries = Deliveries(store,notification_channels)
     except BaseException:
         engine.shutdown()
         if lease:lease.close()
@@ -490,11 +495,13 @@ def create_app(data_dir=None, allow_private=None):
         event_planner.start()
         mcp_executors.revocations.start()
         try:
+            notification_deliveries.start()
             yield
         finally:
             scheduler_stop.set()
             thread.join(timeout=6)
             try:
+                await asyncio.to_thread(notification_deliveries.close)
                 await asyncio.to_thread(event_planner.close)
                 await asyncio.to_thread(engine.shutdown)
             finally:
@@ -504,6 +511,8 @@ def create_app(data_dir=None, allow_private=None):
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store, app.state.engine = store, engine
     app.state.event_planner = event_planner
+    app.state.notification_channels = notification_channels
+    app.state.notification_deliveries = notification_deliveries
     app.state.exports = exports
     app.state.source_connections = source_connections
     app.state.mcp_registry = mcp_registry
@@ -871,6 +880,60 @@ def create_app(data_dir=None, allow_private=None):
             store.event(None, ('자산 보관: ' if data.archived else '자산 복원: ') + asset['name'],
                         detail={'asset_id': asset_id, 'paused_schedules': paused})
             return asset
+
+    @app.get('/api/notifications', dependencies=auth)
+    def notifications_metadata():
+        return {'destinations':notification_channels.webhooks.public(),'alive':bool(notification_deliveries.thread and notification_deliveries.thread.is_alive()),
+                'errors':notification_deliveries.errors,'last_error_at':notification_deliveries.last_error_at,'execution_authorized':False}
+
+    @app.get('/api/notification-channels', dependencies=auth)
+    def notification_channel_list(limit: int=Query(25,ge=1,le=25),offset: int=Query(0,ge=0),snapshot: int|None=Query(None,ge=0),search: str=Query('',max_length=200),status: Literal['active','disabled','all']='all'):
+        page=store.page('notification_channels',limit=limit,offset=offset,snapshot=snapshot,search=search,filters={'status':status} if status!='all' else {})
+        return {**page,'items':[notification_channels.public(row) for row in page['items']]}
+
+    @app.post('/api/notification-channels')
+    def notification_channel_create(data:ChannelInput,actor=Depends(administrator)):
+        return notification_channels.create(data,actor)
+
+    @app.get('/api/notification-channels/{id}', dependencies=auth)
+    def notification_channel_detail(id:str):return notification_channels.public(notification_channels.get(id))
+
+    @app.put('/api/notification-channels/{id}')
+    def notification_channel_edit(id:str,data:ChannelEdit,actor=Depends(administrator)):
+        return notification_channels.change(id,data,actor)
+
+    @app.post('/api/notification-channels/{id}/test')
+    def notification_channel_test(id:str,data:ChannelTest,actor=Depends(administrator)):
+        return notification_deliveries.test(id,data,actor)
+
+    @app.get('/api/notification-channels/{id}/history', dependencies=auth)
+    def notification_channel_history(id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
+        notification_channels.get(id)
+        page=store.page('notification_channel_versions',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':id})
+        return {**page,'items':[{**row,'snapshot':notification_channels.public(row['snapshot'])} for row in page['items']]}
+
+    def delivery_public(record):return {key:value for key,value in record.items() if key!='destination_fingerprint'}
+
+    @app.get('/api/notification-deliveries', dependencies=auth)
+    def notification_delivery_list(limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0),search:str=Query('',max_length=200),status:Literal['queued','dispatching','delivered','failed','unknown','blocked']|None=None,channel_id:str|None=Query(None,max_length=64)):
+        filters={key:value for key,value in {'status':status,'channel_id':channel_id}.items() if value is not None}
+        page=store.page('notification_deliveries',limit=limit,offset=offset,snapshot=snapshot,search=search,filters=filters)
+        return {**page,'items':[delivery_public(row) for row in page['items']]}
+
+    @app.get('/api/notification-deliveries/{id}', dependencies=auth)
+    def notification_delivery_detail(id:str):
+        row=store.get('notification_deliveries',id)
+        if not row:raise HTTPException(404,'알림 전송 기록이 없습니다.')
+        return delivery_public(row)
+
+    @app.get('/api/notification-deliveries/{id}/attempts', dependencies=auth)
+    def notification_delivery_attempts(id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
+        notification_delivery_detail(id)
+        return store.page('notification_attempts',limit=limit,offset=offset,snapshot=snapshot,filters={'delivery_id':id})
+
+    @app.post('/api/notification-deliveries/{id}/retry')
+    def notification_delivery_retry(id:str,data:DeliveryRetry,actor=Depends(administrator)):
+        return notification_deliveries.retry(id,actor=actor,**data.model_dump())
 
     @app.get('/api/task-categories', dependencies=auth)
     def categories_list(limit: int=Query(25,ge=1,le=25),offset: int=Query(0,ge=0),snapshot: int|None=Query(None,ge=0),search: str=Query('',max_length=200),status: Literal['active','archived','all']='active'):

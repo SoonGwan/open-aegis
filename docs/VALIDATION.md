@@ -6430,3 +6430,105 @@ preview exits143 on SIGTERM, not a claimed exit0; the restarted service is healt
 The merge-triggered main hosted run `37373173305` is pending, while the exact functional
 candidate has already passed all six hosted jobs. No v1 tag or production-console
 release is implied by this local development-preview update.
+
+
+## Notification channels and receiver receipts — candidate verification
+
+The independent fixed-webhook implementation adds administrator-reviewed channels,
+immutable versions, terminal-task source events, an atomic durable cursor/receipt,
+persisted per-channel cooldown, bounded POSTs, attempt history, explicit test sending
+for inactive channels and manual retry capped at3 attempts. Unknown/failed sends never
+automatically retry. HTTP2xx means receiver acceptance, not human receipt.
+
+The owned desktop browser exercised committed create→503→same-request replay with
+ONE channel; HTTP500→explicit duplicate review→committed retry→503→same-request replay
+with ONE retry operation and exactly TWO receiver POSTs sharing one Idempotency-Key.
+The retry modal preserved the reviewed first-attempt snapshot while the parent polling
+showed receiver acceptance after attempt2. Two-tab edit409 retained the draft, required
+explicit latest-version review and produced exactly three channel versions. Channel
+history and both attempt results were visible; the actual desktop screenshot was
+reviewed. Audit remained valid. All owned tabs, listener, receiver and workspace were
+removed. The first fixture ended with SIGINT/exit130 after cleanup; that exit is not a
+successful fixture exit0. No mobile or assistive-technology claim is made.
+
+Focused server checks passed72/73 before the last startup test used a nonexistent
+`/health` path; after correcting it to the actual `/api/health`, all13 HTTP cases passed
+in11.41s. The earlier actual native related suite passed181 in80.20s; the initial
+installed package passed198 in88.69s, and initial installed93→89→93 plus offline
+backup/restore preserved all selected notification records and trusted audit checkpoints
+on SQLite and native PostgreSQL, with restored sessions0 and only the two intentional
+receiver POSTs. These initial installation receipts precede the following source fix.
+
+A controlled native owner-session termination during an owned pending POST exposed
+missing execution admission: before the fix a replacement owner could acquire the
+workspace during the pending request. After adding the existing store execution permit
+around the POST, the same scenario passes: takeover is fenced until the pending POST
+finishes, receipt persistence refuses the lost owner and a fresh owner recovers unknown
+without a second POST (1 case in1.89s). The prior full run was intentionally stopped at
+266 passing cases to include this source correction; it is not a completed full run.
+
+The final frozen package contains93 Python modules exactly matching source hashes,
+SHA256 `8734248fd38642c9b244472cfd3023f18dc846e50510be1a77f1599ba06cd12a`.
+The frontend build passes and101 Node checks pass. Existing Vite large-chunk warning
+remains. The final exact package passes199 installed related checks in88.91s, including
+the owner-loss fence, outside the checkout. Final installed93→89→93 and offline
+backup/restore pass on both SQLite and native PostgreSQL: notification/channel/version/
+attempt/operation/runtime/task rows compare exactly, the independent trusted audit
+checkpoint verifies, restored sessions are0 and only the two intentional test POSTs
+occur. Owned temporary installation, receiver and cluster are removed. Final full native
+and hosted runs remain pending. Version remains0.2.0a1; notifications are partial ARTEX scope.
+
+
+Strict notification request-budget correction: the reused Annotated record-ID type
+overrode an extra Field(min_length=16), so short create/test request IDs reached
+operation handling. Actual HTTP tests fail before the correction (4 failed/2 passed);
+a dedicated Annotated request-ID type now enforces16–64 characters for create/edit,
+test and retry. The complete notification suite passes80 cases in30.95s on both
+backends, including the controlled native owner-loss fence. This changes one of the
+93 Python modules; the latest exact wheel is SHA256
+`c2ac9559f3af699823f00301f53fbdb621dfc3075547752cfc6fb014ca7b3004`.
+Its full native/installed/backup-pair checks are running again and preceding wheel
+receipts are retained separately rather than attributed to this hash.
+
+The preceding interrupted full native run recorded one failure in the PostgreSQL
+remote observed-batch source-restart case. Interruption during teardown prevented a
+complete assertion report; it is not a successful full run. The unchanged source-restart
+case then passes both backend variants in4.19s in isolation. The cause is unresolved;
+no timing fix or weakened assertion is inferred. The current full run stops on the
+first failure to retain its precise assertion and investigate if it recurs.
+
+
+The request-budget-corrected exact wheel
+`c2ac9559f3af699823f00301f53fbdb621dfc3075547752cfc6fb014ca7b3004` now passes
+205 installed related cases in90.21s outside the checkout and repeats the installed
+93→89→93 pairing and offline backup/restore on SQLite/native PostgreSQL with exact
+selected rows, valid independent checkpoint, restored sessions0, only two intentional
+test POSTs and removed owned resources. Retained latest-source hosted PR run is
+[37377405131](https://github.com/SoonGwan/open-aegis/actions/runs/37377405131).
+The obsolete5485037 run was automatically cancelled by the later source update; its
+container/Compose jobs passed but its verify/native jobs were cancelled. Duplicate
+push run37377400210 was cancelled intentionally for the same latest source, retaining
+the PR run. Cancelled runs are not all-job success evidence. Full native remains running.
+
+The independent category main merge `f370d91` now passes all six retained hosted jobs
+in [37373173305](https://github.com/SoonGwan/open-aegis/actions/runs/37373173305).
+Only its unexecuted native job was rerun after the runner-allocation annotation; all
+other successful jobs were retained. This confirms the existing category main source
+and does not promote the newer notification draft or declare v1 readiness.
+
+
+Final request-budget-corrected notification full native regression is terminal:
+**1,679 passed in1,169.10s**, with OpenSSL3/PostgreSQL16 and actual native backend
+fixtures. The previously recorded source-restart case passes in this complete run;
+its earlier interrupted assertion cause remains unproven, and no speculative fix
+is attributed. Source remains the exact93-module wheel SHA256
+`c2ac9559f3af699823f00301f53fbdb621dfc3075547752cfc6fb014ca7b3004`.
+Hosted latest-source verify and both container/Compose variants pass; the native hosted
+job remains pending. Notifications stay draft until all required hosted checks finish.
+
+
+Notification hosted run [37377405131](https://github.com/SoonGwan/open-aegis/actions/runs/37377405131)
+is terminal with all six jobs successful on functional source `7e3dd0c7e90acc3a8999939d17d36b42515b86bc`.
+Documentation-only follow-ups preserve its frozen93 Python modules. Full native1,679,
+installed205, frontend101 and both-backend installed pairing/backup receipts above
+apply to this source. This permits merging notification PR3; alpha remains0.2.0a1.

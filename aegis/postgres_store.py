@@ -12,6 +12,10 @@ from .store_util import now
 
 FIELDS = {
     'assets':('name','url','owner','tags'), 'tasks':('name','status','goal'),
+    'notification_channels':('name','destination_id'),
+    'notification_channel_versions':('action','actor.name','snapshot.name'),
+    'notification_deliveries':('channel_id','task_id','status','payload.task_name','result_code'),
+    'notification_attempts':('status','result_code'),
     'task_categories':('name',),
     'task_category_versions':('action','actor.name','snapshot.name'),
     'task_category_history':('actor.name','before.name','after.name'),
@@ -190,7 +194,9 @@ class PostgresStore:
         if kind not in FIELDS or not 1<=limit<=1000 or offset<0 or (snapshot is not None and snapshot<0):raise ValueError('Invalid record query')
         if priority and kind!='findings':raise ValueError('Priority order is only valid for findings')
         filters=filters or {}
-        if not filters.keys()<={'status','severity','asset_id','task_id','check','finding_id','enabled','source','state','todo_id','category_id'}:raise ValueError('Unknown record filter')
+        if not filters.keys()<={'status','severity','asset_id','task_id','check','finding_id','enabled','source','state','todo_id','category_id','channel_id','delivery_id'}:raise ValueError('Unknown record filter')
+        if 'channel_id' in filters and kind!='notification_deliveries':raise ValueError('Channel filter requires deliveries')
+        if 'delivery_id' in filters and kind!='notification_attempts':raise ValueError('Delivery filter requires attempts')
         if 'category_id' in filters and kind!='tasks':raise ValueError('Category filter requires tasks')
         if 'todo_id' in filters and kind!='todo_history':raise ValueError('Todo filter requires todo history')
         if ('source' in filters or 'state' in filters) and kind!='llm_calls':raise ValueError('Call filters require provider attempts')
