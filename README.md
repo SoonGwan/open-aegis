@@ -328,3 +328,5 @@ SQLite와 새 PostgreSQL 스키마 사이의 검증된 오프라인 데이터 �
 [저장소·전송 계약](docs/POSTGRES-STORAGE.md)을 확인하세요.
 
 작업 분류의 조직·일괄 변경 범위는 [계약](docs/TASK-CATEGORIES.md)을 참고하세요.
+
+종료 작업의 보관·복원 범위는 [사용 계약](docs/TASK-ARCHIVES.md)을 참고하세요.

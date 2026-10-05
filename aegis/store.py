@@ -159,6 +159,7 @@ class Store:
         fields = {
             'assets': ('name', 'url', 'owner', 'tags'),
             'tasks': ('name', 'status', 'goal'),
+            'task_archive_history':('actor.name','actor.username'),
             'task_categories':('name',),
             'task_category_versions':('action','actor.name','snapshot.name'),
             'task_category_history':('actor.name','before.name','after.name'),
@@ -233,8 +234,8 @@ class Store:
                     clauses.append(f"json_extract(data,'$.{key}')=?")
                 args.append(value)
             if archived is not None:
-                if kind != 'assets':
-                    raise ValueError('Archive filter is only valid for assets')
+                if kind not in ('assets','tasks'):
+                    raise ValueError('Archive filter requires assets or tasks')
                 clauses.append("coalesce(json_extract(data,'$.archived_at'),0)" + ('!=0' if archived else '=0'))
             where = ' AND '.join(clauses)
             total = db.execute('SELECT count(*) FROM records WHERE ' + where, args).fetchone()[0]

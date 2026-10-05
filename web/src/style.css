@@ -3663,3 +3663,7 @@ pre,
 .category-panel > p { padding:20px 20px 0; margin:0; overflow-wrap:anywhere; }
 .category-members li > .table-link { flex:1 1 160px; overflow-wrap:anywhere; }
 .category-members li > span { overflow-wrap:anywhere; max-width:100%; }
+.task-archive-selection { width:18px; height:18px; padding:0; }
+.task-archive-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:18px; }
+.task-archive-toolbar select { width:auto; min-width:160px; }
+.task-archive-toolbar button { flex:none; white-space:nowrap; }

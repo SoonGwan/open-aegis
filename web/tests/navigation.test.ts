@@ -294,3 +294,13 @@ test("category bookmarks retain state and reject unsupported filters", () => {
   assert.equal(readNavigation(edited, allowed).list.offset, 0);
   assert.equal(readNavigation("?page=categories&categories_status=running",allowed).list.filter,"active");
 });
+test("task archive bookmark stays separate from asset archive and resets pagination", () => {
+  const original = "page=tasks&tasks_archived=true&tasks_q=owned&tasks_status=failed&tasks_offset=25&tasks_snapshot=90&assets_archived=true";
+  const state = readNavigation(original, pages);
+  assert.equal(state.list.archived, true); assert.equal(state.list.offset,25);
+  const active = updateListQuery(original,pages,{archived:false});
+  const restored = readNavigation(active,pages);
+  assert.equal(restored.list.archived,false);assert.equal(restored.list.offset,0);assert.equal(restored.list.snapshot,null);
+  assert.equal(readNavigation(navigateQuery(active,pages,"assets"),pages).list.archived,true);
+  assert.equal(readNavigation("page=tasks&tasks_archived=invalid",pages).list.archived,false);
+});

@@ -6430,3 +6430,40 @@ preview exits143 on SIGTERM, not a claimed exit0; the restarted service is healt
 The merge-triggered main hosted run `37373173305` is pending, while the exact functional
 candidate has already passed all six hosted jobs. No v1 tag or production-console
 release is implied by this local development-preview update.
+
+
+## Terminal task archives — local candidate
+
+The local archive service atomically changes1–25 terminal-task organizational flags,
+versioned history, operation receipts and audit. Actual completed-task archive/restore
+preserves full task execution fields and all selected evidence families without a new
+target GET. Invalid member/version/state, audit failure and revoked roles reject the
+batch. Initial archive checks had11 failures: duplicate fixture asset registration,
+an uncontrolled background planner changing the comparison and reused Annotated ID
+constraints accepting short IDs. Corrected owned fixture setup and a dedicated request
+ID type yield26 passing SQLite/native PostgreSQL cases in12.21s.
+
+The frontend build and100 Node checks pass. The owned desktop exercise confirms
+archive commit→503→same request recovery yields one operation/history, restoration
+retains proof, and a selected revision0 remains pinned after another tab archives and
+restores to revision2. The stale request gets409; explicit clear/reselection succeeds.
+The first owned fixture preserves original task fields, valid audit and zero traffic
+with five intentional operations/history rows, then removes tabs/listener/workspace
+and exits0. Its screenshot exposed squeezed toolbar buttons; controls were moved to
+a separate wrapping row. The final built desktop screenshot is reviewed and the second
+fixture repeats response-loss recovery/restoration and actual new-document archived
+bookmark restoration, then cleans up and exits0. This is not full mobile or assistive
+technology verification. Installation, full regression, hosted and combined notification
+integration checks are still pending; no archive release is declared.
+
+
+Archive-related record/store/native HTTP checks first report101 passing and one old
+assertion requiring `tasks?archived=true` to return422. That assertion is updated for
+the new task archive contract while the unsupported notes archive filter still returns
+422; all6 record-filter tests pass in1.84s. The same Annotated-ID precedence problem
+is reproduced in existing category create/assignment (four actual backend cases fail
+before correcting the dedicated16–80-character request type). Both complete category
+and archive suites plus record queries then pass84 cases in39.99s on SQLite/native
+PostgreSQL. Final100 Node checks and the formatted frontend build pass. The owned
+90-module source/package freeze is pending installed/maintenance checks and has not
+yet been combined with the separate93-module notification candidate.

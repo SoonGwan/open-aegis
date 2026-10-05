@@ -10,6 +10,16 @@ BASE='/api/task-categories'
 ASSIGN='/api/tasks/category-assignment'
 
 
+@pytest.mark.parametrize('operation',['create','assign'])
+def test_short_request_id_rejected_before_category_mutation(client,lab,operation):
+    category=create(client);planned=task(client,register(client,lab[0]),['security_headers']);store=client.app.state.store
+    if operation=='create':response=client.post(BASE,json={'name':'Other','request_id':'short'})
+    else:response=client.post(ASSIGN,json=request(category,[planned],request_id='short'))
+    assert response.status_code==422,response.text
+    assert store.count('task_categories')==1 and store.count('task_category_history')==store.count('task_category_operations')==0
+    assert store.get('tasks',planned['id'])==planned and not lab[1].requests
+
+
 def create(client,name='Deployment',request_id='category-create-001'):
     response=client.post(BASE,json={'name':name,'request_id':request_id});assert response.status_code==200,response.text
     return response.json()['category']
