@@ -6829,3 +6829,13 @@ unchanged. Full native1,812, installed484, Node103, both-store maintenance and o
 browser receipts now permit merging this scoped model profile feature. Candidate
 version remains0.2.0a1; catalog/connectivity/task-agent pins/failover/mobile/long-running
 work is not declared complete. Main report run37389130077 is tracked separately.
+
+Model profiles main994963d now serve the exact frozen96-module source and the
+fresh separately staged frontend at localhttp://127.0.0.1:8790. Verified owned
+PID52298 exits before UI replacement/restart; all59 record bodies retain original
+SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c
+and task states. Served assets/index-iRUJ9NXv.js and index-gW8Sd6S8.css match build
+bytes. Model configuration/profile/prompt/channel/category/template reads require
+authentication(401); health is0.2.0a1. This is a local preview, not external hosting.
+Main run37390419067 is pending; prior report main37389130077 is automatically
+cancelled by this merge and is not six-job success evidence. PR7 retains six successes.
