@@ -6625,3 +6625,13 @@ Later main merges/documentation preserve all94 frozen Python modules and executa
 UI source. The duplicate push run37379267778 was cancelled intentionally and is not
 all-job success evidence. Full native1,711, installed301, Node102, both-store
 maintenance and combined browser evidence now permit merging archive PR4.
+
+
+Archive main merge `26a1e8acdd60c3da15022fbb7f6fe9609fb7840d` is installed in
+the persisted loopback preview127.0.0.1:8790. Frozen94 modules match validated
+source; Node22 build passes and served HTML/assets compare exactly. Original11
+collection counts and four task states remain identical across the idle restart.
+No archive/notification fixture is added. Health200 is0.2.0a1 and unauthenticated
+archive mutations/history, notification channels, templates/categories return401.
+Notification main run37379865635 was cancelled automatically by the newer main merge;
+it is not all-job success evidence. Archive main run37381510130 remains pending.
