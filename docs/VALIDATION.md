@@ -5554,4 +5554,51 @@ other unchecked v1 requirements remain open.
 Evidence: ignored `artifacts/execution-soak-*-900s.{json,txt}`, progress and
 `execution-soak-*-summary.json`; smoke instrumentation receipts are
 `artifacts/soak-metrics-*`. Scripts: `review_execution_load.py` and
-`summarize_execution_load.py`. Both long receipts match current service source.
+`summarize_execution_load.py`. Both long receipts match the service source at that
+measurement (`3947acd`); later report batching is not included in those receipts.
+
+### Report delivery batching — targeted and installed verification, 2026-10-05
+
+The report async iterator now bounds each worker call by128 source chunks and
+64KiB accumulated source bytes, retaining an oversized record intact. Content,
+snapshot ownership and per-source-chunk permit checks retain their contracts.
+See [execution/load evidence](EXECUTION-LOAD.md#조회-지연의-구간-구분-검수--2026-10-05)
+for the diagnostic and actual HTTP measurements; these are not production SLOs.
+
+Report/export-limit/nativePostgreSQL targeted tests:31 passed in14.57s. Added
+coverage checks all three formats with large Unicode values, exact exported
+bytes and incremental delivery across a subsequent evidence write within the
+original read snapshot. Existing SQL/send deadline, disconnect and cleanup
+checks also pass. No frontend source or bundle changed.
+
+The rebuilt wheel contains all76 service Python files byte-for-byte. SHA-256:
+`fb00e8e5f4dd9549a9a52e190b9b935c9e9e733d6aabeb5c594109537558618f`.
+Installed-runtime HTTP/UI/authentication/persistence/maintenance/release checks
+pass outside checkout with0 target requests. An independent installation with
+locked development dependencies and copied fixtures imports `aegis` from its
+own site-packages and runs both SQLite report/export-limit test files:22 passed
+in4.63s. The temporary installation was removed.
+
+Evidence: ignored `artifacts/report-batching-targeted-tests.txt`,
+`report-batching-frozen-wheel/`, `report-batching-installed-runtime.txt` and
+`report-batching-installed-feature-tests.txt`. The latter reproduction is
+`artifacts/review_installed_report_batching.py`. The frozen full regression,
+including nativePostgreSQL, passed1169 tests in822.86s; its process exited0
+(`report-batching-frozen-full-tests.txt`). The only reported warning is the
+existing FastAPI/Starlette TestClient httpx deprecation. Service source remained
+unchanged during this run and the concurrent long rehearsals.
+
+The owned idle preview was gracefully stopped (143), restarted with the current
+service source and existing frontend bundle at127.0.0.1:8790, and returned
+HTTP200 health. Read-only snapshots of exactly `preview-data/aegis.db` before
+and after matched record counts and all four task statuses:one pending, two
+completed, one failed. No task approval or target execution was performed.
+Post-change900s execution rehearsals both exited0 with temporary resources
+removed and source fingerprints matching the frozen/current service. SQLite
+completed723 cycles/2169 approved churn tasks; nativePostgreSQL461/1383. Both
+verified process-loss recovery, no automatic target request, fresh approval,
+audit chain, clean shutdown and actual lease reacquisition. Detailed timing,
+resource observations, counts and limits are in
+[execution/load evidence](EXECUTION-LOAD.md#묶음-전달-적용-후15분-누적-실행--2026-10-05).
+Evidence: `artifacts/execution-batched-*-900s.{json,txt}` and summary JSONs.
+This does not complete production SLO/retention/multi-day operation or v1.

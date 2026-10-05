@@ -46,7 +46,8 @@ def main():
                 return dispatched
             dispatched=asyncio.run(consume())
         for state in (direct,dispatched):state['sha256']=state.pop('hash').hexdigest()
-        assert all(direct[key]==dispatched[key] for key in ('chunks','bytes','sha256'))
+        # Delivery boundaries can differ; exported bytes must remain identical.
+        assert all(direct[key]==dispatched[key] for key in ('bytes','sha256'))
         result.update(valid=True,direct=direct,async_dispatch=dispatched,
             limitation='Same synthetic SQLite fixture; excludes HTTP, ASGI send and concurrency.')
     result['temporary_resources_removed']=True

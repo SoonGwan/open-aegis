@@ -134,6 +134,33 @@ def test_async_stream_early_close_releases_snapshot(tmp_path,monkeypatch):
     assert len(opened)==1 and opened[0].closed
 
 
+@pytest.mark.parametrize('format',('json','csv','markdown'))
+def test_async_delivery_matches_complete_report_including_large_unicode_record(tmp_path,monkeypatch,format):
+    store=Store(tmp_path/'report.db');seed(store,150)
+    store.patch('findings','0',title='한글🙂'*30000)
+    monkeypatch.setattr(reporting,'now',lambda:1)
+    expected=b''.join(reporting.report_chunks(store.path,format,'report-task'))
+    async def consume():
+        return b''.join([chunk async for chunk in reporting.report_stream(store.path,format,'report-task')])
+    assert asyncio.run(consume())==expected
+
+
+def test_async_delivery_remains_incremental_and_snapshot_consistent(tmp_path,monkeypatch):
+    store=Store(tmp_path/'report.db');seed(store,150)
+    monkeypatch.setattr(reporting,'now',lambda:1)
+    expected=b''.join(reporting.report_chunks(store.path,'json','report-task'))
+    opened=track_connections(monkeypatch)
+    async def consume():
+        stream=reporting.report_stream(store.path,'json','report-task')
+        first=await anext(stream)
+        assert len(first)<len(expected) and not opened[0].closed
+        store.patch('evidence','e-0',proof='changed after first delivery')
+        try:return first+b''.join([chunk async for chunk in stream])
+        finally:await stream.aclose()
+    assert asyncio.run(consume())==expected
+    assert opened[0].closed
+
+
 def test_stream_python_memory_does_not_scale_with_export_size(tmp_path):
     store=Store(tmp_path/'report.db')
     seed(store,6000)

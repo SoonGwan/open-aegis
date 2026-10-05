@@ -1,6 +1,7 @@
 """Complete report streams from one read-only storage snapshot.
 
-Memory grows with the largest record, not the number of exported records.
+Memory grows with the largest record plus a bounded delivery buffer, not the
+number of exported records.
 Slow downloads retain their read snapshot (and can delay WAL checkpointing).
 """
 import csv
@@ -152,14 +153,23 @@ def report_chunks(path, format, task_id=None, permit=None):
         raise
 
 
-def next_chunk(iterator):
-    return next(iterator,None)
+def next_report_batch(iterator):
+    # Keep the DB iterator on serialized worker calls, but avoid a thread/ASGI
+    # transition for every small JSON delimiter or record. An oversized record
+    # stays intact; memory is bounded by 64 KiB plus the largest record.
+    chunks=[];size=0
+    for _ in range(128):
+        chunk=next(iterator,None)
+        if chunk is None:break
+        chunks.append(chunk);size+=len(chunk)
+        if size>=64*1024:break
+    return b''.join(chunks) if chunks else None
 
 
 async def report_stream(path, format, task_id=None, permit=None):
     iterator = report_chunks(path,format,task_id,permit)
     try:
-        while (chunk := await anyio.to_thread.run_sync(next_chunk,iterator)) is not None:
+        while (chunk := await anyio.to_thread.run_sync(next_report_batch,iterator)) is not None:
             yield chunk
     finally:
         # Close the cursor/snapshot even if a client disconnects or streaming fails.

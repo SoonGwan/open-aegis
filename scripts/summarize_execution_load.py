@@ -1,8 +1,39 @@
 """Summarize completed owned rehearsal measurements; no SLO/pass inference."""
 import argparse
 import json
+import math
 from pathlib import Path
 import statistics
+
+
+def endpoint_timings(samples):
+    if samples is None:return None  # Older completed receipts have mixed timing only.
+    if not isinstance(samples,dict):raise ValueError('Endpoint timing samples must be an object')
+    result={}
+    for endpoint,rows in samples.items():
+        if not isinstance(endpoint,str) or not isinstance(rows,list) or not 1<=len(rows)<=2000:
+            raise ValueError('Each endpoint requires 1..2000 timing samples')
+        metrics={};statuses={}
+        for field in ('elapsed_seconds','headers_seconds','first_body_seconds','download_seconds','validation_seconds','response_bytes'):
+            values=[]
+            for row in rows:
+                value=row[field]
+                if field=='first_body_seconds' and value is None:continue
+                if type(value) not in (int,float) or not math.isfinite(value) or value<0:
+                    raise ValueError('Timing and size observations must be finite nonnegative numbers')
+                if field=='response_bytes' and type(value) is not int:raise ValueError('Response bytes must be an integer')
+                values.append(value)
+            values.sort()
+            metrics[field]={'sample_count':len(values),
+                'p50':values[int((len(values)-1)*.5)] if values else None,
+                'p95':values[int((len(values)-1)*.95)] if values else None,
+                'max':values[-1] if values else None}
+        for row in rows:
+            status=row['status_code']
+            if type(status) is not int or not 100<=status<=599:raise ValueError('Invalid observed HTTP status')
+            statuses[str(status)]=statuses.get(str(status),0)+1
+        result[endpoint]={'sample_count':len(rows),'status_counts':statuses,'metrics':metrics}
+    return result
 
 
 def summarize(data,progress=()):
@@ -33,8 +64,9 @@ def summarize(data,progress=()):
         'peak_event_age_seconds':data.get('peak_event_age_seconds'),
         'disk':data.get('disk'),'last_sample_rss_kib':samples[-1]['rss_kib'],
         'last_sample_minus_baseline_rss_kib':samples[-1]['rss_kib']-baseline['rss_kib'],
-        'sampled_latency_seconds':data['sampled_latency_seconds'],'recovery':data['recovery'],
-        'limits':'Quarter windows are observations, not memory growth attribution or production SLO certification.'}
+        'sampled_latency_seconds':data['sampled_latency_seconds'],
+        'sampled_endpoint_timings':endpoint_timings(data.get('read_timing_samples')),'recovery':data['recovery'],
+        'limits':'Quarter windows and last up to2000 samples per endpoint are observations, not memory growth attribution or production SLO certification. Metric percentiles are independent and cannot be added.'}
 
 
 def main():

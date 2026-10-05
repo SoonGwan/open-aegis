@@ -31,12 +31,17 @@ association is valid or that an asset is secure.
 
 ## Resource lifecycle and limits
 
-The async response requests one synchronous chunk at a time in the threadpool. A worker
-may change between chunks, but connection access remains serial. The connection closes
+The async response requests a bounded batch in each threadpool call: at most128 source
+chunks, stopping once buffered bytes reach64KiB. A single oversized record stays intact,
+so the batch can exceed64KiB by the largest source chunk. This avoids a thread and ASGI
+send transition for every delimiter or small record. A worker may change between batches,
+but connection access remains serial and encoding checks the permit for each source
+chunk. Delivery boundaries are not record boundaries or part of the export format.
+The connection closes
 on normal completion, a data/SQL error, early iterator close and either ASGI disconnect
 path (disconnect event or send failure). No whole-workspace Python list or joined report
-string is built. Memory still depends on the largest individual stored record, its JSON
-encoding and SQLite's cache; this is not a universal process-memory limit.
+string is built. Memory still depends on the bounded buffer, largest individual stored
+record, its JSON encoding and SQLite's cache; this is not a universal process-memory limit.
 
 A slow download keeps its read snapshot open and can delay WAL checkpointing. All
 formats and authenticated roles share admission slots per server process. The default
