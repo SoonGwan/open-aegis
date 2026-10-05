@@ -6586,3 +6586,14 @@ is terminal with all six jobs successful on functional source `7e3dd0c7e90acc3a8
 Documentation-only follow-ups preserve its frozen93 Python modules. Full native1,679,
 installed205, frontend101 and both-backend installed pairing/backup receipts above
 apply to this source. This permits merging notification PR3; alpha remains0.2.0a1.
+
+
+The exact combined94-module package now passes301 installed cases in141.92s outside
+the checkout with native PostgreSQL. Installed94→89→94 and offline backup/restore
+pass on both stores with exact selected records, valid independent checkpoint and
+restored sessions0; only two intentional test POSTs occur and no target GET occurs.
+Owned cluster/receiver/install resources are removed. Combined desktop browser
+archive503→same-request200→restore200 creates exactly two operations/history rows,
+preserves original execution fields and valid audit with0 target requests. Both
+notification navigation and a new-document archive filter are observed. Both owned
+tabs close and the fixture exits0 removing temporary data. Full native/hosted pending.
