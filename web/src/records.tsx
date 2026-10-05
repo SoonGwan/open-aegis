@@ -229,14 +229,16 @@ export function Pagination({
 export function AssetPicker({
   initialId,
   initialAsset,
+  initialSelection,
   onDraftChange,
 }: {
   initialId: string | null;
   initialAsset?: PickerAsset;
+  initialSelection?: WorkerSelection;
   onDraftChange?: () => void;
 }) {
   const [search, setSearch] = useState("");
-  const [selection, setSelection] = useState<WorkerSelection>(() => ({
+  const [selection, setSelection] = useState<WorkerSelection>(() => initialSelection || ({
     selected: initialId
       ? {
           [initialId]: initialAsset || {

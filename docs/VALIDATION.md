@@ -6223,3 +6223,43 @@ in313.39s** with native PostgreSQL enabled (`mcp-followup-native-related.txt`).
 The correction is published in7d96ecd; hosted run
 [37361283266](https://github.com/SoonGwan/open-aegis/actions/runs/37361283266)
 was still in progress when this local receipt was recorded.
+
+## Versioned task templates — candidate branch
+
+The isolated task-template candidate adds CRUD, revision history, archive/restore,
+bounded SQL search/pagination, list bookmarks, conflict comparison and explicit
+current-scope pending-plan application. It keeps template origin through replan,
+retry, results follow-up and observed derivation; template edits do not rewrite
+existing plans. The service contains88 Python files. Template-specific native
+SQLite/PostgreSQL tests pass **58 cases in30.35s**; relevant template, next-plan,
+identity, dependency and goal suites pass **197 cases in142.69s**
+(`task-template-server-final.txt`, `task-template-related-tests.txt`).
+
+The original candidate loses template origin during replan and lets oversized
+application requests escape as server exceptions. Both fail in both backends
+before correction (`task-template-replan-before.txt`,
+`task-template-oversize-before.txt`) and pass in the final58-case suite. Tests also
+exercise atomic audit rollback for create/edit/archive/apply, changed scope,
+changed template/current role, stale revision, role boundaries, request replay,
+invalid authority-bearing defaults/overrides, fixed-default fresh scope,
+archival and disabled remote tool refusal without outbound requests.
+
+Frontend build succeeds and **98 Node checks pass** using Node22.18.0
+(`task-template-web-build.txt`, `task-template-web-tests.txt`). The initial system
+Node cannot run strip-types; that failed runner is not counted as a product test.
+Actual owned browser UI review confirms create/edit/history/archive/restore/apply,
+a two-tab409 with preserved draft, explicit latest-version comparison and saving,
+original version1 on the existing task after template version6, target requests0
+before approval and one GET after approval, and valid audit
+(`task-template-ui-review.json`). Its temporary fixture exits143; the exact owned
+workspace is then verified against the recorded task and removed. It does not
+establish graceful fixture shutdown. Main preview data and runtime remain untouched.
+Full mobile, failed-response replay across documents and remaining v1 gates remain
+open.
+
+The built wheel matches all88 frozen service files exactly. SHA-256:
+`ceb7b7473159d92cc6dda5ceb48f1cf4948b790f6fdb8acebb23a9ab5ba23c50`
+(`task-template-frozen-source.json`, `task-template-wheel-receipt.json`). Candidate
+public-source scan covers383 files and reports zero unignored candidates; it is
+not proof of secret absence. Installed-wheel and full-native runs were still
+pending when this candidate receipt was written. No public v1 release is claimed.

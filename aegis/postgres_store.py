@@ -12,6 +12,8 @@ from .store_util import now
 
 FIELDS = {
     'assets':('name','url','owner','tags'), 'tasks':('name','status','goal'),
+    'task_templates':('name','description','category','definition.goal'),
+    'task_template_history':('action','actor.name','snapshot.name'),
     'findings':('title','asset_name','check','severity','status'),
     'traffic':('url','method','status'), 'coverage':('check','status'),
     'observations':('url','title','asset_id','task_id'),

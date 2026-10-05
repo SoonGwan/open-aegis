@@ -3641,3 +3641,15 @@ pre,
 
 .remote-execution { min-width: 0; margin-block: 12px; padding: 12px; border: 2px solid var(--ink); background: var(--montage-background-normal-alternative); overflow-wrap: anywhere; }
 .remote-execution select { min-width: 0; max-width: 100%; width: 100%; }
+
+.template-toolbar { display:flex; flex-wrap:wrap; gap:16px; padding:20px; }
+.template-toolbar label { flex:1 1 220px; }
+.template-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:18px; padding:20px; }
+.template-card { border:var(--stroke) solid var(--ink); box-shadow:var(--shadow-small); padding:20px; min-width:0; overflow-wrap:anywhere; }
+.template-card h3 { margin:0 0 12px; }
+.template-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
+.template-history,.template-conflict { padding:16px; border:var(--stroke) solid var(--ink); margin-top:16px; overflow-wrap:anywhere; }
+
+.template-card p,.template-history p,.template-conflict p { margin-top:8px; }
+.template-toolbar label { display:grid; gap:8px; align-content:start; }
+.template-toolbar input { width:100%; padding:12px; border:var(--stroke) solid var(--ink); color:var(--ink); background:var(--panel); }

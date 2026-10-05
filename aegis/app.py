@@ -18,6 +18,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from .task_templates import Templates, TemplateInput, TemplateEdit, TemplateArchive, TemplateApply
 from . import __version__
 from .checks import CATALOG, CHECK_IDS
 from .tool_contracts import contracts_for
@@ -247,6 +248,7 @@ def create_app(data_dir=None, allow_private=None):
         engine.shutdown()
         if lease:lease.close()
         raise
+    task_templates = Templates(store, TaskInput)
     auth_lock = threading.Lock()
     chat_lock = threading.Lock()
     goal_lock = threading.Lock()
@@ -256,7 +258,7 @@ def create_app(data_dir=None, allow_private=None):
         with store.lock:
             return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None, goal_retest=None, goal_observation=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None, goal_retest=None, goal_observation=None, template_request=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
@@ -327,8 +329,11 @@ def create_app(data_dir=None, allow_private=None):
                     scope_snapshot=assets, retest_of=retest_of, schedule_id=schedule_id,
                     retest_triage_revision=triage_revision, retry_of=retry_of, execution_policy=engine.policy.public(),
                     tool_contracts=contracts_for(data.checks), replan_of=replacing['id'] if replacing else None)
+        if template_request:task['template_origin']=task_templates.origin(template_request)
         location_source = attempt_source or (followup[0] if followup else {}) or (
             (store.get('tasks', observation_request[0]) or {}) if observation_request else {})
+        if not template_request and location_source.get('template_origin'):
+            task['template_origin']=location_source['template_origin']
         task['remote_connection_id'] = data.remote_connection_id or location_source.get('remote_connection_id')
         if attempt_source:
             task.update(planning_history.metadata(attempt_source))
@@ -444,6 +449,9 @@ def create_app(data_dir=None, allow_private=None):
                 store.put_many(records, connection=db)
                 store.event(task['id'], '선택한 관찰 응답의 검증 계획 생성. 별도 실행 승인을 기다립니다.',
                     detail={'observation_ids': selection.observation_ids, 'source_task_id': source_id}, connection=db)
+        elif template_request:
+            with store.write_transaction() as db:
+                return task_templates.commit(template_request, task, records, assets, db)
         else:
             store.put_many(records)
             store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
@@ -857,6 +865,38 @@ def create_app(data_dir=None, allow_private=None):
             store.event(None, ('자산 보관: ' if data.archived else '자산 복원: ') + asset['name'],
                         detail={'asset_id': asset_id, 'paused_schedules': paused})
             return asset
+
+    @app.get('/api/task-templates', dependencies=auth)
+    def templates_list(limit: int=Query(25,ge=1,le=25),offset: int=Query(0,ge=0),snapshot: int|None=Query(None,ge=0),search: str=Query('',max_length=200),status: Literal['active','archived','all']='active'):
+        return store.page('task_templates',limit=limit,offset=offset,snapshot=snapshot,search=search,filters={'status':status} if status!='all' else {})
+
+    @app.post('/api/task-templates')
+    def template_create(data: TemplateInput, actor=Depends(operator)):
+        return task_templates.create(data,actor)
+
+    @app.get('/api/task-templates/{template_id}', dependencies=auth)
+    def template_detail(template_id: str):
+        return task_templates.get(template_id)
+
+    @app.put('/api/task-templates/{template_id}')
+    def template_edit(template_id: str,data: TemplateEdit,actor=Depends(operator)):
+        return task_templates.edit(template_id,data,actor)
+
+    @app.post('/api/task-templates/{template_id}/archive')
+    def template_archive(template_id: str,data: TemplateArchive,actor=Depends(operator)):
+        return task_templates.archive(template_id,data,actor)
+
+    @app.get('/api/task-templates/{template_id}/history', dependencies=auth)
+    def template_history(template_id: str,limit: int=Query(25,ge=1,le=25),offset: int=Query(0,ge=0),snapshot: int|None=Query(None,ge=0)):
+        task_templates.get(template_id)
+        return store.page('task_template_history',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':template_id})
+
+    @app.post('/api/task-templates/{template_id}/apply')
+    def template_apply(template_id: str,data: TemplateApply,actor=Depends(operator)):
+        with store.lock:
+            existing,definition,template_request=task_templates.application(template_id,data,actor)
+            if existing:return existing
+            return create_task_locked(TaskInput(**definition),planned_id=template_request['application_id'],template_request=template_request)
 
     @app.get('/api/tasks', dependencies=auth)
     def tasks(response: Response):

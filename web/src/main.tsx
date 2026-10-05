@@ -8,6 +8,7 @@ import { GoalDraftPanel, GoalPlanSummary, GoalProgress, GoalRetestOrigin, type G
 import { WorkerProcess } from "./WorkerProcess";
 import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
+import { TaskTemplates, TemplateOriginSummary, type TemplateOrigin } from "./TaskTemplates";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
 import {
@@ -97,6 +98,7 @@ type Asset = {
   archived_at?: number | null;
 };
 type Task = {
+  template_origin?: TemplateOrigin;
   goal_plan?: GoalPlan;
   goal_selection?: GoalSelection;
   goal_retest?: GoalRetestRef;
@@ -261,6 +263,7 @@ const pages = [
     group: "WORKSPACE",
   },
   { id: "tasks", name: "검증 작업", icon: Workflow },
+  { id: "templates", name: "작업 템플릿", icon: BookOpen },
   { id: "assets", name: "자산", icon: Globe2 },
   { id: "observations", name: "관찰 링크", icon: Link2 },
   { id: "processes", name: "실행 과정", icon: Terminal },
@@ -1184,6 +1187,7 @@ function App() {
                       overview:
                         "자산의 상태를 확인하고, 근거 있는 검증을 시작하세요.",
                       tasks: "목표를 정하고 실행부터 수정 확인까지 추적하세요.",
+                      templates: "반복 사용할 검사 설정을 저장하고 현재 자산으로 계획을 만드세요.",
                       processes: "여러 작업의 Worker 실행 기록을 검색하고 출처를 확인하세요.",
                       assets: "검증할 자산과 접근 범위를 한곳에서 관리하세요.",
                       observations:
@@ -1723,6 +1727,10 @@ function App() {
               </section>
             </>
           )}
+
+          {page === "templates" && <TaskTemplates tools={tools} canOperate={canOperate} search={search} onSearch={setSearch}
+            status={filter} onStatus={setFilter} position={list} onPositionChange={changeRecordPosition}
+            onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}
 
           {page === "tasks" && (
             <>
@@ -2831,6 +2839,7 @@ function App() {
                 <PolicySummary policy={selectedTask.execution_policy} />
               </details>
             )}
+            <TemplateOriginSummary origin={selectedTask.template_origin} />
             <ToolContracts snapshot={selectedTask.tool_contracts} current={settings?.tool_contracts}
               selected={selectedTask.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))}
               pending={selectedTask.status === "pending"} />

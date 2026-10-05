@@ -10,13 +10,14 @@ export type RemoteExecution = {
   profile: { ceiling: { target_rps: number; request_timeout: number; task_timeout: number } };
 };
 
-export function RemoteExecutionPicker({ disabled, onChecks, names }: {
+export function RemoteExecutionPicker({ disabled, onChecks, names, initialId = "" }: {
   disabled: boolean;
+  initialId?: string;
   onChecks: (checks: string[] | null) => void;
   names: Record<string, string>;
 }) {
   const [connections, setConnections] = useState<Executor[]>([]);
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState(initialId);
   const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,6 +40,9 @@ export function RemoteExecutionPicker({ disabled, onChecks, names }: {
       });
     return () => { controller.abort(); ++generation.current; };
   }, [revision]);
+  useEffect(() => {
+    onChecks(selected ? connections.find(row => row.id === selected)?.check_ids || [] : null);
+  }, [selected, connections, onChecks]);
   const connection = connections.find((row) => row.id === selected);
   return <section className="remote-execution" aria-label="검증 실행 위치">
     <label>실행 위치
