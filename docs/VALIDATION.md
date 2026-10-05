@@ -6551,3 +6551,21 @@ in [37373173305](https://github.com/SoonGwan/open-aegis/actions/runs/37373173305
 Only its unexecuted native job was rerun after the runner-allocation annotation; all
 other successful jobs were retained. This confirms the existing category main source
 and does not promote the newer notification draft or declare v1 readiness.
+
+
+The initial standalone90-module archive wheel
+`d35e2535efc3308ff88860047e6f839b47267b62d659b834aa42df706a863cd9` passes219
+installed related cases in105.43s outside the checkout; owned native/temp resources
+are removed. Archive source is then combined with notification candidate4ecf646 for
+integration review. Both routing groups, SQL fields, native CI cases, CSS and URL tests
+are retained when resolving additive merge conflicts. The combined94-module source
+passes164 native related cases in72.82s and two additional actual-receiver tests in
+3.42s confirming archive/restore never repeats the original terminal notification.
+The combined frontend build passes102 Node checks.
+
+The exact combined wheel is SHA256
+`d306f48198c792691786cff8a31ff183249874ecb3c9cded9455a87327bc345d`,94 Python
+modules byte-matching frozen source. Combined full native, installed and maintenance
+checks are running; prior90-module receipts are retained separately and not attributed
+to this hash. The combined browser/preview and hosted checks remain pending. No new
+archive record is created in the persistent main preview.

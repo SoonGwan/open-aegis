@@ -5,6 +5,7 @@ from tests.test_mcp_registry import client
 from tests.test_postgres_transfer import postgres
 from tests.test_validation import lab,register,task,finish
 from tests.test_identity import add,login
+from tests.test_notification_transport import receiver
 
 BASE='/api/tasks/archive-assignment'
 def request(tasks,**changes):
@@ -84,3 +85,21 @@ def test_invalid_batch_contract_creates_no_receipt(client,change):
     payload={'task_ids':['a'],'expected_revisions':{'a':0},'archived':True,'request_id':'owned-task-archive-001',**change}
     assert client.post(BASE,json=payload).status_code==422
     assert client.app.state.store.count('task_archive_operations')==0
+
+
+def test_archive_restore_never_repeats_terminal_notification(client,receiver,lab):
+    from tests.test_notifications_http import bind,wait_delivery
+    from tests.test_notification_channels import fields
+    handler=bind(client,receiver)
+    assert client.post('/api/notification-channels',json=fields(enabled=True,task_statuses=['rejected'],interval_seconds=1)).status_code==200
+    original=rejected(client,lab);delivery=wait_delivery(client)
+    assert delivery['status']=='delivered' and len(handler.requests)==1
+    notifications=client.app.state.notification_deliveries;notifications.close()
+    assert client.post(BASE,json=request([original])).status_code==200
+    archived=client.get('/api/tasks/'+original['id']).json()['task']
+    assert client.post(BASE,json=request([archived],archived=False,request_id='owned-task-restore-001')).status_code==200
+    for _ in range(200):
+        if not notifications.scan():break
+    else:pytest.fail('owned notification event cursor did not settle')
+    assert client.app.state.store.count('notification_deliveries')==1 and not notifications.dispatch_one()
+    assert len(handler.requests)==1 and not lab[1].requests and client.app.state.store.audit_integrity()['valid']
