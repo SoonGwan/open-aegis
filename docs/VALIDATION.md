@@ -6114,3 +6114,27 @@ files with zero unignored candidates; this is not a guarantee of secret absence.
 General plugin OS/egress isolation, durable remote cancellation after source
 process loss, remote runtime attestation and remaining full operational criteria
 are still open. This batch integration does not establish a v1 release.
+
+The full frozen native-backend suite passes **1,452 tests in1,012.25s** with
+actual PostgreSQL enabled (`mcp-observation-full-native.txt`). The source/wheel
+byte comparison is repeated after completion and still matches all86 files.
+Executable public commit: `2b1f10b28b58700651c6a389a767f571f5aa3fa5`. Its
+[hosted verification run](https://github.com/SoonGwan/open-aegis/actions/runs/37352687862)
+is tracked separately from these local results.
+
+Hosted run **37352687862** completes successfully for that executable commit:
+all six jobs pass. General Ubuntu tests pass936 cases and skip516 PostgreSQL
+cases in701.43s; the console passes97 tests and builds the same final asset names.
+The native PostgreSQL job separately passes385 storage cases,12 selection cases,
+42 observation cases,11 event cases and174 MCP integration cases. These sets
+overlap the full native suite and are not a combined test total.
+
+All10 nonempty rehearsal receipts have `valid=true`: installed runtime, SQLite
+goal recovery, native transfer, SQLite/native execution churn, native goal
+recovery, two image profiles and two actual Compose profiles. PostgreSQL uses
+16.15 on Ubuntu24.04. Owned recovery resources are removed. Application networks
+use ordinary bridges with no application egress firewall; this does not prove
+plugin/network isolation. The container profiles with a PostgreSQL driver still
+exercise SQLite HTTP storage; native HTTP storage is exercised by the PostgreSQL
+Compose and native installed recovery rehearsals. Logs and receipts are retained
+under `artifacts/mcp-observation-hosted-*`.

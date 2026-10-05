@@ -89,8 +89,8 @@ isolation, full accessibility/mobile journeys, production interoperability and
 the complete v1 release criteria remain open.
 
 Verification uses owned synthetic targets and disposable databases. The current
-frozen source passes 1,383 backend tests with native PostgreSQL. Its MCP
-integration passes 203 related tests from an isolated installed wheel with
+frozen source passes 1,452 backend tests with native PostgreSQL. Its MCP
+integration passes 272 related tests from an isolated installed wheel with
 SQLite and actual PostgreSQL. The console passes 97 tests. Hosted Ubuntu 24.04
 image and Compose rehearsals verify startup, authentication, retained data,
 backup/restore and clean shutdown. These checks do not constitute an independent
