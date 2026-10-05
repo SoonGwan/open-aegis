@@ -6397,3 +6397,24 @@ runner path (`task-category-full-native.txt`). Frozen service source remains the
 89-file installed wheel; later commits change documentation only. This result closes
 the candidate native regression check, while retained hosted run `37370424605` is still
 running. It does not substitute for the remaining hosted checks or whole-service v1 gates.
+
+Category functional head `480b9d9` now passes retained hosted run
+[37370424605](https://github.com/SoonGwan/open-aegis/actions/runs/37370424605) in **all six jobs**.
+Hosted verify reports **1,009 passed /590 skipped in785.52 s** and **99 frontend checks**.
+Native groups pass **385 in372.66 s**, **12 in25.84 s**, **42 in108.28 s**, **11 in16.57 s**,
+and **321 MCP/template/category cases in501.09 s**. Both container variants and both
+Compose variants pass. Exact job logs are retained locally in `task-category-hosted-full.txt`.
+Subsequent candidate commits change release/validation notes only.
+
+Installed SQLite backup/restore also passes the category pairing, exact category/history/
+receipt/task comparison, independently captured audit checkpoint and actual restored-session
+revocation (`task-category-installed-sqlite-restore.txt`). Together with the native receipt,
+this covers the owned category fixtures on both supported backends; it does not imply full
+mobile/accessibility or every release/environment combination.
+
+The previous template main source `e74c050` independently passes all six jobs in
+[37369068051](https://github.com/SoonGwan/open-aegis/actions/runs/37369068051).
+Two retry rounds were needed because unexecuted hosted jobs could not acquire runners;
+the annotations name runner allocation, with no failed test step. Successful jobs were
+retained and only cancelled/unexecuted jobs retried. Candidate functionality is validated;
+release `0.2.0a1` remains alpha and v1 readiness gates remain open.
