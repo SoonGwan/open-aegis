@@ -3,12 +3,13 @@ import hashlib
 import json
 import threading
 
-from . import next_plan, planning_history
+from . import next_plan, planning_history, observation_todos
 from .maintenance import WorkspaceBusy
 from .store_util import now
 
 STATE_ID = 'event-planner'
 FORMAT = 'aegis-event-planner-v1'
+AUTOMATION_REVISION = 'observed-failure-notes-v1'
 PAGE_SIZE = 25
 
 
@@ -73,6 +74,9 @@ class EventPlanner:
                       'execution_authorized': False, 'proposal': None}
             try:
                 review['proposal'] = next_plan.propose(self.store, id, policy, connection=db)
+                review['automatic_todo']=observation_todos.ensure(self.store,id,review['proposal'],db)
+                if review['automatic_todo']['status']=='created':
+                    review['proposal']=next_plan.propose(self.store,id,policy,connection=db)
                 review['status'] = 'ready' if review['proposal']['available'] else 'no_proposal'
             except (planning_history.PlanningConflict, LookupError):
                 review.update(status='blocked', reason='계획 근거·범위·공유 할 일을 확인하세요.')
@@ -81,7 +85,7 @@ class EventPlanner:
     def step(self):
         """Commit at most one event or25 asset-related tasks with its resume position."""
         policy = self.policy()
-        digest = hashlib.sha256(json.dumps(policy, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        digest = hashlib.sha256(json.dumps({'policy':policy,'automation_revision':AUTOMATION_REVISION}, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
         with self.store.read_transaction() as db:
             saved = self.store.get('planner_state', STATE_ID, connection=db)
             if (saved is not None and saved.get('format') == FORMAT and type(saved.get('after')) is int

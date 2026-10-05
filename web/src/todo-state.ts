@@ -1,5 +1,6 @@
 export type TodoStatus = "open" | "in_progress" | "done" | "cancelled";
 export type Todo = {
+  automatic_origin?:{format:string;source_task_id:string;root_task_id:string;cells:{observation_id:string;check:string}[];fingerprint:string};
   id: string;
   task_id: string;
   revision: number;

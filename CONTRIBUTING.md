@@ -189,3 +189,7 @@ Never approve that fixture's `.invalid` target. `--web-dir` can point at a separ
 built UI directory so visual iteration does not remove `web/dist/assets` while
 Python tests are running. Shutdown records target traffic/provider calls and
 removes the disposable workspace.
+
+관찰 미완료 자동 할 일의 생성·사람 결정 보존·롤백·이전 처리 위치 재개 검증은
+`tests/test_observation_todos.py`와 `tests/test_postgres_observation_todos.py`에 있습니다.
+후자는 `AEGIS_TEST_POSTGRES=1`과 로컬 PostgreSQL 실행 도구가 필요하며 소유한 임시 클러스터를 사용합니다.

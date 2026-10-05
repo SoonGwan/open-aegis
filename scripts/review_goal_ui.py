@@ -133,6 +133,7 @@ def main():
             for row in planned_slots(observed):
                 store.put('coverage',{**row,'status':'failed','targets':[{'observation_id':target['id'],
                     'url':target['url'],'status':'failed'} for target in execution['targets']]})
+            store.event(observed['id'],'합성 관찰 실패의 자동 할 일 검수 이벤트')
             print('Observed failure cells are synthetic; only review/create pending follow-ups, never approve.',flush=True)
             print(f'http://127.0.0.1:{args.port}/?page=tasks&detail=task&detail_id=owned-observed-round',flush=True)
         print('Owned goal QA: admin / owned-goal-password-only', flush=True)

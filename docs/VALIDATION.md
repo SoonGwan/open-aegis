@@ -5364,3 +5364,41 @@ Local evidence: `artifacts/goal-observation-retest-before.txt`,
 
 Evidence lives in ignored `artifacts/observation-rounds-*`; source tests are
 `tests/test_observation_rounds.py` and `tests/test_postgres_observation_rounds.py`.
+
+## Automatic shared notes for observed response failures — 2026-10-05
+
+- Final frozen-source full regression with native PostgreSQL enabled:
+  **1,143 passed in 695.09s**. No failed assertions or setup errors; only the
+  existing Starlette/httpx test-client deprecation warning remains.
+- Owned baseline reproduction from `073ab55` fails the new automatic-note test
+  because the completed failed observation has **0 notes**, rather than failing
+  import or collection. The temporary baseline checkout is removed.
+- Focused SQLite/native PostgreSQL checks: **18 passed in 32.01s**. Repeat events
+  create one note without tool requests or target traffic. Human edits and
+  open/done/cancelled decisions remain unchanged. New failed combinations create
+  distinct notes; an injected cursor-write crash rolls back notes, history,
+  review, cursor and audit together, and replay succeeds once.
+- Limits leave existing records intact and expose `limited`; a proposal reviewed
+  before note creation becomes stale. Damaged origin blocks preparation without
+  overwriting the note. A saved legacy policy fingerprint replays old failure
+  events after upgrade without target requests. Native CI includes the new cases;
+  this does not establish a hosted CI result.
+- Built-app desktop fixture seeds an explicitly synthetic failed observation.
+  The real event consumer creates its note, displays the automatic-origin notice
+  and **no requested checks**. An unapproved follow-up shares the note and its
+  source button returns to the original failed task. DOM/PNG inspected; tab and
+  temporary server removed. Shutdown records **0 provider calls, 0 target traffic**
+  and the pending child remains unapproved. Mobile/SR remains unverified.
+- Frontend **97 passed**; TypeScript/Vite build succeeds with `index-DVOFWd77.js`.
+  Frozen wheel SHA256 `1b6b250fd05015199be8730a90fcabd7c61e1bc521a75881de8028c8095f1c7d`
+  matches all **76 Python files**. Installed runtime outside checkout passes
+  authentication/UI/persistence/maintenance/release rehearsals with 0 target
+  requests. **9 installed feature tests pass in 15.65s** from an isolated
+  site-packages installation; temporary installation removed.
+- Main loopback preview is refreshed after confirming no active tasks. Existing
+  record counts and all four task states remain unchanged; health returns200.
+  Automatic notes do not imply vulnerability, successful validation or goal
+  achievement. Semantic interpretation and the remaining v1 gates remain open.
+
+Local evidence: `artifacts/observation-todos-*`; source tests:
+`tests/test_observation_todos.py`, `tests/test_postgres_observation_todos.py`.

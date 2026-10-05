@@ -296,6 +296,7 @@ function AutomaticPlanStatus({
           stale?: boolean;
           event_seq?: number;
           proposal?: { fingerprint: string } | null;
+          automatic_todo?:{status:string};
         }>(
           "/tasks/" + encodeURIComponent(taskId) + "/planner",
           "GET",
@@ -310,7 +311,7 @@ function AutomaticPlanStatus({
           throw new Error("다른 작업의 자동 계획 상태입니다. 다시 조회하세요.");
         setFailed(false);
         setNotice(
-          row.stale
+          (row.stale
             ? "자동 계획 근거가 변경되었습니다. 최신 제안을 조회해 검토하세요."
             : row.proposal &&
                 displayedFingerprint &&
@@ -324,7 +325,8 @@ function AutomaticPlanStatus({
                   ? "이벤트를 반영했습니다. 추가 제안이 없거나 이미 연결된 계획이 있습니다."
                   : row.status === "blocked"
                     ? "자동 계획 준비가 보류됐습니다. 계획 근거·범위·공유 할 일을 확인하세요."
-                    : "종료·변경 이벤트의 자동 계획 처리를 기다리고 있습니다.",
+                    : "종료·변경 이벤트의 자동 계획 처리를 기다리고 있습니다.") +
+          (row.automatic_todo?.status === "limited" ? " 공유 할 일 한도 때문에 새 실패 기록은 추가하지 않았습니다. 기존 할 일을 정리하세요." : ""),
         );
         timer = setTimeout(() => void read(), 4000);
       } catch (error) {

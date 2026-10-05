@@ -58,7 +58,7 @@ jobs:
       - run: python -m pytest -q tests/test_postgres_goal_selection.py
         env:
           AEGIS_TEST_POSTGRES: '1'
-      - run: python -m pytest -q tests/test_postgres_goal_observations.py tests/test_postgres_goal_observation_retests.py tests/test_postgres_observation_rounds.py
+      - run: python -m pytest -q tests/test_postgres_goal_observations.py tests/test_postgres_goal_observation_retests.py tests/test_postgres_observation_rounds.py tests/test_postgres_observation_todos.py
         env:
           AEGIS_TEST_POSTGRES: '1'
       - run: python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-wheel

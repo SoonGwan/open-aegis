@@ -18,6 +18,8 @@ def failed_round(client,lab,monkeypatch):
     monkeypatch.setattr(engine,'run_check',fault)
     assert client.post('/api/tasks/'+plan['id']+'/approve').status_code==200
     result=finish(client,plan['id']);monkeypatch.setattr(engine,'run_check',original)
+    from tests.test_event_planner import wait_review
+    wait_review(client.app.state.store,plan['id'],lambda row:row['status']=='ready' and row.get('automatic_todo',{}).get('status') in ('created','existing'))
     target=next(row for row in plan['observation_execution']['targets'] if row['url']==lab[0]+'login')
     return plan,target,result
 
@@ -130,6 +132,8 @@ def test_observation_goal_followup_preserves_objective_without_changing_goal_pro
     monkeypatch.setattr(engine,'run_check',fault)
     assert client.post('/api/tasks/'+plan['id']+'/approve').status_code==200
     finish(client,plan['id']);monkeypatch.setattr(engine,'run_check',original)
+    from tests.test_event_planner import wait_review
+    wait_review(store,plan['id'],lambda row:row['status']=='ready' and row.get('automatic_todo',{}).get('status') in ('created','existing'))
     progress=client.get('/api/tasks/'+goal['id']+'/goal-progress').json()
     route='/api/tasks/'+plan['id']+'/next-plan';proposal=client.get(route);assert proposal.status_code==200,proposal.text
     proposal=proposal.json();pending=client.post(route,json={'fingerprint':proposal['fingerprint']})

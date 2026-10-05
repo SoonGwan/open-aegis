@@ -521,6 +521,7 @@ export function SharedTodos({
   captureView,
   state,
   onChange,
+  onTask,
 }: {
   taskId: string;
   actorId: string;
@@ -529,6 +530,7 @@ export function SharedTodos({
   captureView: () => () => boolean;
   state: TaskTodoState;
   onChange: (changes: Partial<TaskTodoState>, mode?: HistoryMode) => void;
+  onTask?:(id:string)=>void;
 }) {
   const [loadedTodo, setSelected] = useState<Todo | null>(null),
     [editing, setEditing] = useState(false);
@@ -837,6 +839,10 @@ export function SharedTodos({
         <section className="todo-detail" aria-label="선택한 할 일">
           <h5>{selected.title}</h5>
           <p>{selected.description || "설명 없음"}</p>
+          {selected.automatic_origin && <section aria-label="자동 관찰 할 일의 출처">
+            <p>관찰 검사 미완료 결과에서 자동 기록한 할 일입니다. 사람이 수정하거나 완료한 내용은 자동으로 덮어쓰지 않습니다. 실행 승인이나 검증 성공 판정은 별도입니다.</p>
+            {onTask && <button type="button" onClick={()=>onTask(selected.automatic_origin!.source_task_id)}>원본 관찰 검사 작업 열기</button>}
+          </section>}
           <p>
             {statuses[selected.status]} · {selected.assignee_name || "미지정"} ·
             버전 {selected.revision}

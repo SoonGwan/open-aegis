@@ -2901,7 +2901,8 @@ function App() {
               assets={selectedTask.scope_snapshot} tools={tools} state={navigation.taskWorker} onChange={navigation.updateTaskWorker} />
             {auth.user && <SharedTodos key={`todos-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id}
               actorId={auth.user.id} canOperate={canOperate} captureView={captureActionView}
-              state={navigation.taskTodos} onChange={navigation.updateTaskTodos} choices={tools} />}
+              state={navigation.taskTodos} onChange={navigation.updateTaskTodos} choices={tools}
+              onTask={id=>navigation.openDetail({kind:"task",id})} />}
             <TaskRecords
               key={`task-records-${selectedTask.id}`}
               taskId={selectedTask.id}
