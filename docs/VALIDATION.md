@@ -5809,3 +5809,59 @@ Read-only snapshots of exactly `preview-data/aegis.db` preserve all record-kind
 counts and four task states; no plan was approved or target executed. Receipts:
 `mcp-execution-preview-{baseline,after}.json`. After the final full run and
 preview restart, all83 service files still byte-match the final installed wheel.
+
+## Atomic scoped MCP result admission foundation
+
+An internal admission function now validates the complete remote result and
+reconstructs the exact task-derived signed grant before any write. It freezes
+the caller's task JSON and rechecks current running status, approval/scope/tool/
+policy contracts, live asset revision/URL and coverage identity under one write
+transaction. Findings, evidence/history, observed links, sanitized traffic,
+completed/skipped coverage, one admission receipt and its audit event share that
+connection. Known signing-key/grant/additional-secret reflection is refused.
+An identical valid replay returns the original receipt; a changed response or
+approval contract is refused. Receipts describe local validated admission, not
+remote runtime attestation.
+
+Owned real GET results verify success, observation and skipped admission on
+SQLite and actual disposable native PostgreSQL. Injected failure after audit
+append proves every result record and audit-chain state roll back, with retry
+still possible. Concurrent identical admission creates only one receipt and
+one evidence/traffic set. Changed current approval, scope, policy, stopping
+status, asset revision, terminal coverage or mismatched stored coverage ID
+produce no result writes. Caller mutation during validation cannot bind an old
+result to a new approval. Existing finding/triage/observation helper paths remain
+covered. The remote server's base response now follows the local Worker's 2xx
+requirement; 401/404/429/500 cannot complete a check or revive the consumed grant.
+
+The final related execution/client/registry/admission/core subset passed200 in
+115.81s. A separately installed wheel outside checkout passed159 related tests
+in103.02s, including actual PostgreSQL and supervised child imports. The owned
+installation/cluster resources were removed. Installed HTTP/UI/authentication,
+persistence, maintenance and signed-release smoke pass with0 target requests.
+Final wheel SHA256 is
+`e3bb9aa29968ee50eeb8b63405a3bb00c4a015a65e1601bf6d14439dcc2aa922`;
+all84 service Python files byte-match frozen source. The only subset warning is
+the existing TestClient httpx deprecation.
+
+Receipts are ignored `artifacts/mcp-admission-v3-{targeted-tests,installed-tests,installed-runtime}.txt`,
+`mcp-admission-v3-frozen-source.json`, `mcp-admission-v3-wheel-receipt.json` and
+`mcp-admission-v3-wheel/`. Installed reproduction is
+`artifacts/review_installed_mcp_admission_v3.py`. Superseded/interrupted earlier
+runs are not final validation evidence. No frontend source changed.
+
+The idle preview restarted gracefully with health200 at127.0.0.1:8790.
+Read-only snapshots of exactly `preview-data/aegis.db` preserve all record-kind
+counts and the four task states (`mcp-admission-preview-{baseline,after}.json`).
+No plan was approved or existing target executed. This internal function is
+not yet wired to API/Worker execution, so main remote execution, administrative
+execution-contract review, cancellation/isolation and v1 deployment gates
+remain open.
+
+The final frozen full regression, including actual disposable nativePostgreSQL,
+passed1339 tests in821.52s, exit0, with only the existing TestClient httpx
+deprecation warning (`mcp-admission-v3-full-tests.txt`). All84 service files
+remained unchanged and byte-match the installed wheel after the run and preview
+restart. CI now includes native MCP registry/admission tests and allows25 minutes
+for verification/storage jobs; the workflow YAML parses locally. Hosted CI,
+Linux/amd64 production proof and main Worker integration remain unverified.

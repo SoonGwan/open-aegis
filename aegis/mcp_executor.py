@@ -96,7 +96,7 @@ class Runner:
                                   record=record, control=control, policy=limits.execution_policy(),
                                   limiter=self.limiter)
             response = transport.get()
-            if response['status'] >= 500 or response['status'] == 429:
+            if not 200 <= response['status'] < 300:
                 raise ExecutionRejected('target_unconfirmed')
             result = validate_result(claim.check_id, asset, run_check(claim.check_id, asset, transport, response))
             control.check()

@@ -16,13 +16,14 @@ def observation_id(task_id, asset_id, check, url):
     return hashlib.sha256(payload).hexdigest()
 
 
-def record_link(store, task, asset, check, url):
+def record_link(store, task, asset, check, url, *, connection=None):
     tool=next(tool for tool in task['tool_contracts']['checks'] if tool['id']==check)
     record={'id':observation_id(task['id'],asset['id'],check,url), 'format':FORMAT,
             'asset_id':asset['id'], 'task_id':task['id'], 'worker_id':task['id']+':'+asset['id'],
             'check':check, 'tool_version':tool['version'], 'url':url, 'scope_url':asset['url'], 'scope_revision':asset.get('revision',1),
             'package_sha256':task['tool_contracts']['package_sha256'], 'created_at':now(), 'verified':False}
-    return store.put('observations',record)
+    store.put_many([('observations', record)], connection=connection)
+    return record
 
 
 def provenance(record, task):

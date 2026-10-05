@@ -1,5 +1,6 @@
 """Finding observations and human decisions share one serialized, atomic write path."""
 import hashlib
+from contextlib import nullcontext
 from .store_util import identifier, now
 
 
@@ -61,9 +62,9 @@ def update_triage(store, finding_id, changes, user):
         return after
 
 
-def record_observation(store, task, asset, item):
+def record_observation(store, task, asset, item, *, connection=None):
     fingerprint = hashlib.sha256(f"{asset['id']}:{item['check']}:{item['code']}".encode()).hexdigest()
-    with store.lock, store.write_transaction() as db:
+    with store.lock, (nullcontext(connection) if connection is not None else store.write_transaction()) as db:
         previous = store.finding_by_fingerprint(fingerprint,connection=db)
         proof = {'id':identifier(),'task_id':task['id'],'asset_id':asset['id'],'check':item['check'],
                  'observation':item['evidence'],'created_at':now(),'fingerprint':fingerprint}

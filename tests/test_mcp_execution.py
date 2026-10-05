@@ -242,6 +242,19 @@ def test_observed_links_are_scoped_and_do_not_create_requests(tmp_path, target):
     assert state['requests'] == [('/approved', None)]
 
 
+@pytest.mark.parametrize('status', [401, 404, 429, 500])
+def test_non_success_base_response_cannot_complete_validation(tmp_path, target, status):
+    url, state = target
+    state['status'] = status
+    token = grant(approved_task(url))
+    runner = Runner('owned-server', KEY, tmp_path / 'consumed.db', allow_private=True)
+    with pytest.raises(ExecutionRejected, match='target_unconfirmed'):
+        runner.execute('validate_security_headers', {'grant': token})
+    assert state['requests'] and all(path == '/approved' for path, _ in state['requests'])
+    with pytest.raises(ExecutionRejected, match='scope_grant_consumed'):
+        runner.execute('validate_security_headers', {'grant': token})
+
+
 def test_test_credentials_require_execution_server_allowlist(tmp_path, target, monkeypatch):
     url, state = target
     monkeypatch.setenv('AEGIS_TEST_READER', 'Bearer owned-test-secret')
