@@ -5700,3 +5700,66 @@ approved or target executed. Receipts are `remote-mcp-preview-{baseline,after}.j
 Application registration, actor authorization/audit, isolated execution, remote
 scope enforcement and interoperability gates remain open; see
 [the supported contract and limitations](REMOTE-MCP.md).
+
+### Administrator MCP metadata registration — 2026-10-05
+
+Added configured connections and administrator-only HTTP/UI discovery, reviewed
+metadata registration, paged summaries, individual saved definitions and
+revision-checked disabling. Registration refreshes the remote catalog and
+checks connection/credential/catalog fingerprints and the registration revision
+observed at review creation. Actor ownership, response-loss replay and audit
+failure rollback are verified on SQLite and actual disposable nativePostgreSQL.
+A reused registration receipt does not re-enable a subsequently disabled tool.
+No registration is added to Worker checks, tasks, findings or coverage.
+
+Service discovery runs fixed client code in a supervised POSIX child with
+minimal environment, bounded file output, CPU/FD limits and parent deadline.
+Owned tests prove unrelated secrets are not forwarded, hanging/stopped children
+are killed and reaped, temporary work directories are removed, and trusted TLS
+can register while untrusted/wrong-host fixtures receive no HTTP credentials.
+Known credential reflection in metadata is rejected. Linux address-space
+limits are implemented but their operating verification remains open; the
+actual process tests here run on macOS and do not establish a hard RSS limit or
+filesystem/egress sandbox. Server-side effects remain outside the client proof.
+
+Final client/registry subset passed85 tests in51.12s. A separate installed wheel
+environment outside checkout, with locked development/nativePostgreSQL
+dependencies, passed the same85 tests in53.19s, including real supervised child
+imports from installed site-packages. Temporary installation/cluster resources
+were removed. Installed runtime HTTP/UI/authentication/persistence/maintenance
+and release smoke checks also pass with0 target requests.
+
+Frozen wheel SHA256 is
+`8d5fd8f57f4bb470ef4e991db534bedef6c1763daae37fae9f3244d73a6e08af`;
+all79 service Python files byte-match source. Receipts are ignored
+`artifacts/mcp-registry-{final-targeted-tests,installed-feature-tests,installed-runtime}.txt`,
+`mcp-registry-frozen-source.json`, and `mcp-registry-frozen-wheel/`. The installed
+reproduction is `artifacts/review_installed_mcp_registry.py`.
+The full frozen regression, including actual disposable nativePostgreSQL,
+passed1265 tests in771.93s with exit0. The only warning is the existing
+TestClient httpx deprecation (`mcp-registry-frozen-full-tests.txt`). All79
+service Python files stayed unchanged and byte-match the wheel after the run.
+No execution-load/SLO claims are inferred from this metadata registration change.
+
+Frontend97 tests pass and the production build succeeds. Final assets are
+`index-yioyrHvJ.js` and `index-BhB7wk0w.css`. Actual Browser desktop checks cover
+explicit connection selection, definition expansion and selection/confirmation
+gating, registration/saved definition, changed catalog rejection/new review,
+disabling, settings navigation/reentry and HTTP failure followed by explicit
+recovery retry. Screenshot layout was inspected. Enter submission completed;
+the next selector attempt found the removed registration control. This is not
+a verified simultaneous browser double-submission race or a full mobile/screen
+reader journey. The owned peer saw8 initialize,7 initialized notifications and
+7 tools/list requests, with0 tools/call. Evidence is
+`mcp-registry-browser-review.json`; the fixture reproduction is
+`artifacts/review_mcp_registry_ui.py`. The first owned UI process exited143;
+its exactly identified synthetic workspace was explicitly removed. A corrected
+fixture cleanup rehearsal returned health200, exited0 after SIGTERM and
+removed its owned workspace/servers (`mcp-registry-ui-cleanup-rehearsal.txt`).
+
+The main idle preview restarted gracefully with the final service source at
+127.0.0.1:8790 and returns health200. Read-only snapshots of exactly
+`preview-data/aegis.db` match all record counts and four task states before/after;
+no plan was approved or target executed (`mcp-registry-preview-{baseline,after}.json`).
+Execution registration/authorization/audit, remote scope enforcement and
+isolated Worker execution gates remain open.

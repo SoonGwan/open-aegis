@@ -44,6 +44,7 @@ from .conversation import summarize_task
 from . import conversation_ai, call_ledger
 from .runtime import TaskControl
 from .scopesentry_remote import Sources, PageInput
+from .mcp_registry import Registry, PreviewInput as MCPPreviewInput, RegisterInput as MCPRegisterInput, DisableInput as MCPDisableInput
 from .http_queries import SQLiteHTTP,PostgresHTTP
 from .worker_observations import task_page as observation_page
 from . import worker_process, worker_dependencies, next_plan, planning_history
@@ -236,6 +237,7 @@ def create_app(data_dir=None, allow_private=None):
     shutdown_requested = threading.Event()
     try:
         source_connections = Sources.from_env(store, shutdown_requested)
+        mcp_registry = Registry.from_env(store, shutdown_requested)
     except BaseException:
         engine.shutdown()
         if lease:lease.close()
@@ -474,6 +476,7 @@ def create_app(data_dir=None, allow_private=None):
     app.state.event_planner = event_planner
     app.state.exports = exports
     app.state.source_connections = source_connections
+    app.state.mcp_registry = mcp_registry
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
         # Pydantic's default error payload includes the invalid input. Never echo
@@ -698,6 +701,30 @@ def create_app(data_dir=None, allow_private=None):
     @app.get('/api/integrations/scopesentry/connections', dependencies=operations)
     def scopesentry_connections():
         return source_connections.public()
+
+    @app.get('/api/integrations/mcp/connections', dependencies=admins)
+    def mcp_connections():
+        return mcp_registry.public_connections()
+
+    @app.post('/api/integrations/mcp/previews')
+    def mcp_preview(data: MCPPreviewInput, actor=Depends(administrator)):
+        return mcp_registry.preview(data, actor['id'])
+
+    @app.post('/api/integrations/mcp/previews/{preview_id}/register')
+    def mcp_register(preview_id: str, data: MCPRegisterInput, actor=Depends(administrator)):
+        return mcp_registry.register(preview_id, data, actor['id'])
+
+    @app.get('/api/integrations/mcp/tools', dependencies=admins)
+    def mcp_tools(limit: int = Query(default=25, ge=1, le=100), offset: int = Query(default=0, ge=0, le=10_000_000)):
+        return mcp_registry.tools(limit, offset)
+
+    @app.get('/api/integrations/mcp/tools/{tool_id}', dependencies=admins)
+    def mcp_tool(tool_id: str):
+        return mcp_registry.detail(tool_id)
+
+    @app.post('/api/integrations/mcp/tools/{tool_id}/disable')
+    def mcp_disable(tool_id: str, data: MCPDisableInput, actor=Depends(administrator)):
+        return mcp_registry.disable(tool_id, data, actor['id'])
 
     @app.post('/api/integrations/scopesentry/remote/preview')
     def scopesentry_remote(data: PageInput, actor=Depends(operator)):

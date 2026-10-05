@@ -64,6 +64,7 @@ import { TaskRecords } from "./task-records";
 import { ChatPanel } from "./chat-panel";
 import { SharedTodos } from "./shared-todos";
 import { ScopeSentryImport, AssetSources } from "./ScopeSentryImport";
+import { MCPRegistryPanel } from "./MCPRegistry";
 import { ToolContracts } from "./ToolContracts";
 import { toolContractsMatch, type ToolManifest } from "./tool-contract-state";
 import {
@@ -2400,6 +2401,7 @@ function App() {
               />
               <RuntimePanel />
               {auth.user?.role === "admin" && <AuditPanel />}
+              {auth.user?.role === "admin" && <MCPRegistryPanel />}
               <section className="panel settings-panel">
                 <div className="panel-head">
                   <h3>실행 정책</h3>

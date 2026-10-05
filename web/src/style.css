@@ -3629,3 +3629,12 @@ pre,
 .automatic-plan-status button { margin-top: 8px; }
 
 .goal-objective-evidence button { margin: 4px 8px 4px 0; }
+.mcp-registry { padding: 20px; }
+.mcp-registry p { line-height: 1.6; }
+.mcp-registry h4 { margin-top: 24px; }
+.mcp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; }
+.mcp-actions label { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.mcp-actions select { max-width: 100%; }
+.mcp-tool { margin: 12px 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); overflow-wrap: anywhere; }
+.mcp-registry pre { overflow: auto; max-height: 280px; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: var(--bg); }
+.mcp-endpoint { overflow-wrap: anywhere; }
