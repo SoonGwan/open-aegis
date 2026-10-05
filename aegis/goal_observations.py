@@ -81,3 +81,28 @@ def require(task):
             raise ValueError()
     except (ValueError,KeyError,TypeError):
         raise PlanningConflict('관찰 응답 계획의 원래 목표 과제·선택 참조를 확인하세요.') from None
+
+
+def finding_origin(store, finding, *, connection=None):
+    """Resolve the latest observed proof's approved task, never a guessed ancestor."""
+    try:
+        proof=store.get('evidence',finding['evidence_ids'][-1],connection=connection)
+        source=store.get('tasks',proof['task_id'],connection=connection) if proof else None
+        if (not source or source['id'] not in finding['task_ids']
+                or not goal_planner.has_execution_approval(source)
+                or source['status'] not in ('completed','failed','stopped','interrupted')
+                or proof['fingerprint']!=finding['fingerprint']
+                or proof['asset_id']!=finding['asset_id'] or proof['check']!=finding['check']
+                or proof['observation']['observation_id']!=finding['observation_id']):
+            raise ValueError()
+        observation_execution.require(source,approved=True)
+        targets=source['observation_execution']['targets']
+        target=next(row for row in targets if row['id']==finding['observation_id'])
+        if (target['asset_id']!=finding['asset_id']
+                or proof['observation']['requested_url']!=target['url']
+                or source['observation_execution']['source_task_id']!=finding['observation_source_task_id']
+                or finding['check'] not in source['checks']):
+            raise ValueError()
+        return source.get('goal_observation')
+    except (ValueError,KeyError,TypeError,IndexError,StopIteration):
+        raise PlanningConflict('발견의 원본 관찰 증거와 승인된 검사 출처를 확인하세요.') from None

@@ -3894,7 +3894,7 @@ on 390×844 has no document overflow.
 - Final installed wheel SHA256
   `ab5bfb494fc70f33aabeb02956b00d97ebdcfabcb8b6236e6f18a0a5de07f119`;
   all65 service files match (`...final-source-proof.json`). Installed default
-  runtime review valid with0 target requests. Installed native review valid:
+  runtime review valid with 0 target requests. Installed native review valid:
   replacement retains round/parent/fingerprint and current attempt survives
   real backup/restore;3 owned target requests,1 owned source request,0 external
   requests. The first reviewer attempt mistakenly used GET for replan; corrected
@@ -4018,7 +4018,7 @@ on 390×844 has no document overflow.
   review valid: actual owned execution history searched over HTTP and MCP stdio,
   source available/matched and execution_authorized=false. Existing owned target
   request count remains3, owned source1, external requests0. Default installed
-  runtime review rerun against final static assets valid with0 target requests
+  runtime review rerun against final static assets valid with 0 target requests
   (`...installed-postgres.json`, `...installed-runtime-final.json`). Earlier default
   result before final padding styles is retained separately, not final UI evidence.
 - Built UI now has 실행 과정 page,25-row search/page URL state and source Worker
@@ -4089,7 +4089,7 @@ on 390×844 has no document overflow.
   replacement, updates manually, restores done decision and two history entries
   through real backup/restore, and queries both via MCP stdio. Existing owned target
   requests3, owned source1, external0; no new target execution caused by todos.
-  Default installed review valid with0 target requests (`...installed-postgres.json`,
+  Default installed review valid with 0 target requests (`...installed-postgres.json`,
   `...installed-runtime.json`). First wheel0521995b... and its successful reviews
   precede terminal-note guard and are retained as historical evidence only.
 - Frontend unchanged: prior78 tests/build are historical, not rerun or claimed to
@@ -4146,7 +4146,7 @@ on 390×844 has no document overflow.
   all66 recursive service files exactly match (`...ui-wheel-source-proof.json`).
   Actual installed native backup/restore/todo/MCP review valid:3 owned target and1
   owned source requests, external0. Default installed runtime review repeated after
-  final CSS build and valid with0 target requests (`...ui-installed-postgres.json`,
+  final CSS build and valid with 0 target requests (`...ui-installed-postgres.json`,
   `...ui-installed-runtime.json`). New point GET is exercised by HTTP tests; the
   installed native review continues to exercise the existing todo/history APIs.
 - Preview restarted fromPID53876 to98945 preserving data, final health/static HTML
@@ -5268,3 +5268,42 @@ on 390×844 has no document overflow.
 
 Local ignored evidence: `artifacts/goal-observation-*`; source tests are
 `tests/test_goal_observations.py` and `tests/test_postgres_goal_observations.py`.
+
+## Observed finding retests retain goal objective origin — 2026-10-05
+
+- Frozen source/assets full regression with native PostgreSQL enabled:
+  **1,103 passed** in **612.46s**, no setup errors or failed assertions. The
+  sole warning is the existing Starlette/httpx test-client deprecation.
+- Before reproduction from `c28e5d7`: an owned goal observation finding's general
+  retest becomes pending but has no `goal_observation` reference. The focused
+  regression fails on that missing reference, not on imports or collection.
+- Targeted SQLite/native PostgreSQL regression: **66 passed** across existing
+  observation execution, objective selection and the new retest tests. Tests seed
+  a provenance-bearing `/login` observation in the owned fixture, then make real
+  loopback GETs; hardened 2xx responses resolve the finding while retaining source
+  evidence and independent base goal progress. Original `/api/account` hardened
+  responses return403 and existing tests preserve the inconclusive conclusion.
+- Latest proof's approved execution contract, task/finding/check/asset identity,
+  observation ID and requested URL must match before inheriting the objective.
+  Changed objective, proof URL/task, numeric approval, removed origin and damaged
+  active replay are rejected without target requests. Final-write proof mutation
+  rolls back task/coverage/proof changes on both backends. Replacement keeps
+  origin, replay returns the same active retest, and completion stores origin in
+  the retest result. A newer ordinary observation proof does not inherit a guessed
+  historical objective.
+- Wheel `9c92c7326655ead3df90cb16744aadf21ebc2e768c5f3d95c949c934e6ef4896`: all
+  **74 Python files** match frozen source. Separate installed runtime rehearsal
+  passes with 0 target requests; **9 focused retest tests pass in 16.81s** from an
+  isolated installation outside checkout. Fixtures/tests are copied separately;
+  `aegis` is imported from the installation's site-packages. The temporary
+  environment is removed at completion.
+- No frontend source change this round; the existing task detail already displays
+  `goal_observation` origin and the original-task navigation. This round does not
+  establish a new mobile/SR or complete browser journey result. Automatic
+  observation interpretation/follow-up/shared todos and all other open v1 gates
+  remain incomplete.
+
+Local evidence: `artifacts/goal-observation-retest-before.txt`,
+`goal-observation-retests-expanded.txt`, `goal-observation-retests-installed-*`,
+`goal-observation-retests-package-proof.json`. Source/native tests:
+`tests/test_goal_observation_retests.py`, `tests/test_postgres_goal_observation_retests.py`.

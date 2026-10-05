@@ -177,3 +177,8 @@ completed endpoint inventory with one observation for objective-specific picker
 review. Build the console first; create only a pending plan in this fixture. Do
 not approve the seeded `.invalid` target. The fixture logs target traffic and
 provider calls at shutdown and removes its disposable workspace.
+
+Finish frontend builds before starting the Python regression suite: `create_app`
+mounts `web/dist/assets`, and Vite temporarily removes that directory during a
+rebuild. Freeze `aegis/**/*.py` during the run as package fingerprints are captured
+at import; a mid-run backend edit invalidates approval/provenance checks.

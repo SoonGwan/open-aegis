@@ -1,0 +1,9 @@
+from tests.test_postgres_transfer import postgres,schema
+from tests.test_postgres_http import configured,client
+from tests.test_validation import lab
+from tests.test_goal_observation_retests import (
+    test_observed_retest_inherits_objective_executes_same_url_and_keeps_original_evidence as test_native_observed_retest_origin,
+    test_observed_retest_final_write_rechecks_proof_and_rolls_back as test_native_observed_retest_race,
+    test_latest_general_observed_proof_does_not_invent_old_goal_origin as test_native_general_observed_proof,
+    test_changed_or_damaged_observed_retest_origin_cannot_create_or_request as test_native_observed_retest_refusal,
+)

@@ -289,6 +289,12 @@ def create_app(data_dir=None, allow_private=None):
                 if replacing or resuming:raise HTTPException(409, '같은 발견의 다른 재검증 계획이 진행 중입니다.')
                 if goal_retest and related.get('goal_retest')!=goal_retest:
                     raise HTTPException(409,'같은 발견의 다른 재검증 계획이 진행 중입니다. 기존 계획을 확인하세요.')
+                if goal_observation:
+                    try:observation_execution.require(related,approved=goal_planner.has_execution_approval(related))
+                    except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+                    origin=related.get('goal_observation')
+                    if not origin or any(origin[key]!=goal_observation[key] for key in goal_observations.ORIGIN):
+                        raise HTTPException(409,'같은 발견의 다른 목표 과제 재검증이 진행 중입니다.')
                 return related
             triage_revision = finding.get('triage_revision', 1)
         if store.count('tasks', statuses=['pending','queued','running','stopping']) - (1 if replacing else 0) >= engine.policy.pending_limit:
@@ -401,6 +407,11 @@ def create_app(data_dir=None, allow_private=None):
                     if goal_observation:
                         fresh_context,fresh_execution,fresh_origin=goal_observations.prepare(store,source_id,goal_observation['objective_id'],selection,connection=db)
                         if fresh_origin!=goal_observation:raise planning_history.PlanningConflict('목표 과제 참조가 변경되었습니다.')
+                        if retest_of:
+                            current_finding=store.get('findings',retest_of,connection=db)
+                            proof_origin=goal_observations.finding_origin(store,current_finding,connection=db)
+                            if not proof_origin or any(proof_origin[key]!=goal_observation[key] for key in goal_observations.ORIGIN):
+                                raise planning_history.PlanningConflict('발견의 원래 목표 과제 출처가 변경되었습니다.')
                     else:fresh_context, fresh_execution = observation_execution.prepare(store, source_id, selection, connection=db)
                 except (planning_history.PlanningConflict, LookupError) as exc:raise HTTPException(409, str(exc)) from exc
                 if (fresh_execution != execution or
@@ -1288,14 +1299,21 @@ def create_app(data_dir=None, allow_private=None):
                          checks=[finding['check']], workers=1)
         if finding.get('observation_id'):
             with engine.lock, store.lock:
-                source_id = finding['observation_source_task_id']
+                source_id = finding.get('observation_source_task_id')
                 try:
-                    context = observation_execution.preview(store, source_id)['context']
-                    selection = observation_execution.Selection(fingerprint=context['fingerprint'],
+                    origin=goal_observations.finding_origin(store,finding)
+                    reviewed=goal_observations.preview(store,source_id,origin['objective_id']) if origin else observation_execution.preview(store,source_id)
+                    context=reviewed['context']
+                    selection = observation_execution.Selection(fingerprint=reviewed.get('fingerprint',context['fingerprint']),
                         observation_ids=[finding['observation_id']], checks=data.checks, request_id=identifier()+identifier())
+                    if origin:
+                        _,_,fresh_origin=goal_observations.prepare(store,source_id,origin['objective_id'],selection)
+                        if any(fresh_origin[key]!=origin[key] for key in goal_observations.ORIGIN):
+                            raise planning_history.PlanningConflict('원래 목표 과제가 변경되었습니다. 새 관찰 계획을 검토하세요.')
+                        origin=fresh_origin
                 except (planning_history.PlanningConflict, LookupError, ValueError) as exc:
                     raise HTTPException(409, str(exc)) from exc
-                return create_task_locked(data, retest_of=finding_id, observation_request=(source_id, selection))
+                return create_task_locked(data, retest_of=finding_id, observation_request=(source_id, selection),goal_observation=origin)
         return create_task(data, retest_of=finding_id)
 
     @app.get('/api/traffic', dependencies=auth)

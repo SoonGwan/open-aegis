@@ -114,6 +114,7 @@ def apply_retest(store, task, conclusion):
         retest = {'id':identifier(),'finding_id':before['id'],'task_id':task['id'],'conclusion':conclusion,
                   'created_at':now(),'triage_effect':effect,'state_note':note}
         if task.get('goal_retest'):retest['goal_retest']=task['goal_retest']
+        if task.get('goal_observation'):retest['goal_observation']=task['goal_observation']
         entry = history(after,'retest',public_actor(task_id=task['id']),before,after,note,
                         task_id=task['id'],retest_id=retest['id'],conclusion=conclusion,triage_effect=effect)
         store.put_many([('findings',after),('retests',retest),('finding_history',entry)],connection=db)
