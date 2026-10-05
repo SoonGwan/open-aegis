@@ -229,5 +229,8 @@ replan still returns the same pending child through the existing duplicate guard
 An explicit current-version classification of that child works, and a subsequent new
 replan inherits the newly reviewed category with a fresh membership revision and origin.
 Rollback is therefore conditional on avoiding old-version derived-plan writes when
-complete classification provenance is required. This pairing covers SQLite only; it
-is not a native PostgreSQL version-pair or backup/restore receipt.
+complete classification provenance is required. The same boundary is reproduced with
+installed native PostgreSQL writers. Installed backup/restore into a fresh native schema
+also preserves every category/history/receipt/task record, validates the independently
+captured audit checkpoint and revokes restored sessions. These owned fixtures do not
+cover every earlier release or a mixed-version production deployment.

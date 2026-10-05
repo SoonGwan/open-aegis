@@ -6379,3 +6379,14 @@ Candidate pull request [2](https://github.com/SoonGwan/open-aegis/pull/2) remain
 full native and hosted checks run. Functional head `480b9d9` matches the frozen 89-file
 installed wheel. The duplicate push run `37370339038` was cancelled deliberately; the
 pull-request run `37370424605` is the retained candidate hosted validation.
+
+The same installed 89→88→89 pairing also passes against actual owned PostgreSQL
+(`task-category-native-version-pair-review.txt`). The old-writer classification omission
+and retained-child behavior match the SQLite boundary. Installed `aegis.cli.backup` and
+`aegis.cli.restore` then restore to a fresh PostgreSQL schema with an independently
+captured trusted audit checkpoint. Category definitions, versions, membership history,
+operation receipts and complete task records compare exactly before/after. An actual
+source login creates sessions, and the restored session table is empty. The fixture
+records zero target GETs and removes its cluster, server and temporary installation
+(`task-category-installed-native-restore.txt`). This is a category-scoped native pairing
+and backup/restore receipt, not coverage of every earlier release or mixed-version deployment.
