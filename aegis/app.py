@@ -475,6 +475,7 @@ def create_app(data_dir=None, allow_private=None):
         thread = threading.Thread(target=scheduler, name='aegis-scheduler', daemon=True)
         thread.start()
         event_planner.start()
+        mcp_executors.revocations.start()
         try:
             yield
         finally:

@@ -6138,3 +6138,56 @@ plugin/network isolation. The container profiles with a PostgreSQL driver still
 exercise SQLite HTTP storage; native HTTP storage is exercised by the PostgreSQL
 Compose and native installed recovery rehearsals. Logs and receipts are retained
 under `artifacts/mcp-observation-hosted-*`.
+
+
+## 2026-10-06 — durable cancellation-only recovery
+
+Adds a transactional `mcp_revocations` outbox containing unsigned claim data,
+original grant hash and endpoint/key fingerprints. Signed tokens, signing keys
+and Bearer values are not persisted. Dispatch intent is dormant while execution
+is live; admission removes it atomically with proof. An unconfirmed dispatch
+activates it, and startup additionally recovers dormant intent independently of
+the task's terminal status. Cleanup reconstructs only the original grant and
+uses the fixed cancellation method; it never replays execution or target GETs.
+
+Two observable defects were reproduced before fixes: a delayed acknowledgement
+could overwrite a changed attempt, and a task already marked failed could hide
+dormant cleanup intent from unfinished-task recovery. Each fails on SQLite and
+actual PostgreSQL before its fix (`mcp-revocation-stale-ack-before.txt`,
+`mcp-revocation-terminal-task-before.txt`). Current targeted recovery tests pass
+**39 cases in43.65s** (`mcp-revocation-recovery-final.txt`). An earlier related
+255-case suite passes before the last startup-helper fix; it is not claimed as
+validation of that final helper (`mcp-revocation-settled-related.txt`).
+
+Recovery tests include real source SIGKILL with a remote call already waiting
+on its first owned GET, followed by actual HTTP app restart and acknowledged
+remote revocation, no repeated GET and no unconfirmed proof admission. Both
+SQLite and native PostgreSQL variants verify interrupted task state, valid audit,
+released remote gate and graceful second-source lifespan/ownership cleanup. The
+initial test incorrectly assumed SIGTERM exit0; Uvicorn restores the signal and
+exits-15 after cleanup. The final test checks its completed lifespan marker and
+released workspace/database ownership, while allowing0/-15.
+
+Other cases cover confirmation loss with identical-token retry, false
+acknowledgement, retry limit, expiry/endpoint/Bearer/key/claim/hash/attempt changes
+refused before outbound cancellation, dormant live intent, normal admission
+removal, dispatch/admission/audit rollback, bounded due-row SQL without Store.all,
+shutdown during cleanup and lost native ownership. Confirmation and queue removal
+share the audit transaction; confirmation loss/storage failure remain retryable.
+Execution remains `unconfirmed` even when cancellation is acknowledged. Old
+queue-free attempts, expiry, configuration changes and persistent failure cannot
+be converted into confirmed cancellation. OS/egress isolation and full v1 gates
+remain open.
+
+The frozen wheel contains87 service Python files, all byte-identical to current
+source. SHA-256:
+`b8578f4465b63806b0c5f740f1470e0f017f3952a4cbe30c6191b8591a8bd668`.
+Independent installed-wheel tests outside the checkout pass **311 related cases
+in337.65s** with actual PostgreSQL enabled (`mcp-revocation-installed-tests.txt`).
+This validates the final startup helper as well as the existing signed execution,
+observation batch, registry, admission, cancellation and SDK contracts. The
+installed locked-runtime/maintenance/release review also passes with zero target
+requests (`mcp-revocation-installed-runtime.txt`). Main preview health is200/0.2.0a1
+and all existing counts and task states match before/after restart. The public
+source scan covers379 files with zero unignored candidates; it is not proof of
+secret absence.

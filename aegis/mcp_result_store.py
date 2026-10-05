@@ -184,6 +184,8 @@ receipt is proof of local admission, not remote runtime or target attestation.
             records.append(('coverage', coverage))
         records.append(('mcp_execution_receipts', receipt))
         if attempt:
+            from .mcp_revocations import remove
+            remove(store, attempt_id, db)
             receipt['attempt_id'] = attempt_id
             records.append(('mcp_execution_attempts', {**attempt, 'state': 'admitted',
                 'receipt_id': receipt_id, 'finished_at': timestamp}))

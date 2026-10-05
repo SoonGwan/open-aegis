@@ -83,14 +83,16 @@ general traffic interception proxy. Remote stop prevents later dispatch and loca
 result admission, requests signed revocation, and records whether the server
 acknowledges it. The server interrupts response waits and rejects later use of
 the revoked grant. Already-transmitted requests cannot be undone; cancellation
-acknowledgement after connection/process loss remains unfinished. Selected
+acknowledgement after connection/process loss is recovered by a bounded durable
+cancellation-only outbox when the original endpoint/key and authority still match.
+Expiry, configuration changes and persistent failures remain unconfirmed. Selected
 observed-response jobs use the fixed batch adapter. General plugin OS/egress
 isolation, full accessibility/mobile journeys, production interoperability and
 the complete v1 release criteria remain open.
 
-Verification uses owned synthetic targets and disposable databases. The current
-frozen source passes 1,452 backend tests with native PostgreSQL. Its MCP
-integration passes 272 related tests from an isolated installed wheel with
+Verification uses owned synthetic targets and disposable databases. The cancellation-recovery change
+passes 39 cases with SQLite and actual PostgreSQL. Its related MCP
+integration passes 311 tests from an isolated installed wheel with
 SQLite and actual PostgreSQL. The console passes 97 tests. Hosted Ubuntu 24.04
 image and Compose rehearsals verify startup, authentication, retained data,
 backup/restore and clean shutdown. These checks do not constitute an independent

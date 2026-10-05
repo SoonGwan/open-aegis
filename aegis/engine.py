@@ -50,6 +50,8 @@ class Engine:
                     finish_remaining(store, task, 'interrupted', '서버 재시작으로 실행 결과를 확인할 수 없습니다.')
                     store.patch('tasks', task['id'], status='interrupted', finished_at=now())
                     store.event(task['id'], '서버 재시작으로 작업이 중단되었습니다. 새 승인 작업으로 다시 실행하세요.', 'warning')
+            from .mcp_revocations import recover_pending
+            recover_pending(store)
             self.queue_thread = threading.Thread(target=self.watch_queue,daemon=True,name='aegis-queue-deadline')
             self.queue_thread.start()
         except BaseException:
@@ -62,6 +64,7 @@ class Engine:
         return {'policy':self.policy.public(),'tasks':recorded['tasks'],'oldest_queue_seconds':max(0,now()-oldest) if oldest else 0,
                 'timeouts':recorded['timeouts'],'requests':self.limiter.snapshot(),'dns':resolver().snapshot(),
                 'queue_watchdog':{'alive':self.queue_thread.is_alive(),'errors':self.queue_errors,'last_error_at':self.queue_last_error_at},
+                'remote_cancellation_recovery':self.remote.revocations.metrics() if self.remote else None,
                 'generated_at':now(),'counter_scope':'server_process'}
 
     def watch_queue(self):
@@ -468,6 +471,7 @@ class Engine:
         finally:
             with self.lock:
                 self.stops.clear();self.futures.clear()
+            if self.remote:self.remote.revocations.close()
             if self.owner:self.owner.close()
 
     def _shutdown(self):

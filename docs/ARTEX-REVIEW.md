@@ -51,7 +51,7 @@ HTTP 등록·화면 진입점과 선택한 하위 시스템을 추가로 읽고
 | 발견·조치 | [TRIAGE.md](TRIAGE.md) | 담당자·사유·수정 충돌·상태 보존 |
 | 사람과 대화 | [chat-panel.tsx](../web/src/chat-panel.tsx) | 기록/관찰 출처 인용·선택적 AI 초안·잘못된 인용의 규칙 복구·원자적 사용량 저장; AI 실행 개입 없음 |
 | 실행 과정 | [WORKER-PROCESS.md](WORKER-PROCESS.md) | 작업/자산별 근거와 여러 작업의 Worker 실행 기록 검색 HTTP/MCP/UI; 공유 할 일 저장·HTTP/MCP 조회 구현; 편집 UI·명시적 도구 요청·변경 이벤트 기반 제안 준비·관찰 미완료 조합의 자동 기록/사람 결정 보존([계약](OBSERVATION-TODOS.md)) 구현; 의미적 관찰 소비는 남아 있음 |
-| 읽기 연동 | [MCP.md](MCP.md), [REMOTE-MCP.md](REMOTE-MCP.md) | 로컬 stdio 조회; 원격 클라이언트 기반의 연결·목록·명시적 호출과 관리자 API/UI의 메타데이터 검토 등록·비활성화/감사 구현, 구성된 고정 GET 어댑터의 작업 승인·Worker·원자적 결과 저장 연결; 서명 권한 취소·확인 상태 기록 연결; 선택 관찰 응답 원격 배치·재검증·후속 계획 연결; 일반 플러그인 격리·장애 후 취소 확인은 남아 있음 |
+| 읽기 연동 | [MCP.md](MCP.md), [REMOTE-MCP.md](REMOTE-MCP.md) | 로컬 stdio 조회; 원격 클라이언트 기반의 연결·목록·명시적 호출과 관리자 API/UI의 메타데이터 검토 등록·비활성화/감사 구현, 구성된 고정 GET 어댑터의 작업 승인·Worker·원자적 결과 저장 연결; 서명 권한 취소·확인 상태 기록 연결; 선택 관찰 응답 원격 배치·재검증·후속 계획 연결; 영속 취소 복구 연결; 일반 플러그인 격리는 남아 있음 |
 | 무결성 | [AUDIT.md](AUDIT.md), [AuditPanel.tsx](../web/src/AuditPanel.tsx) | 관리자 수동 연결 검증; 독립 보관 자동화 없음 |
 | 설치·복구 | [OPERATIONS.md](OPERATIONS.md) | SQLite·네이티브 PostgreSQL·설치 패키지·실제 Linux 이미지/Compose 검증; 전체 운영 호환·장시간 부하는 남아 있음 |
 

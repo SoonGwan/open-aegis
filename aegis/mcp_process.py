@@ -31,10 +31,10 @@ def invoke(connection, name, arguments, catalog_sha, definition_sha, control):
         'call_main', control.stop, timeout)
 
 
-def cancel(connection, token):
+def cancel(connection, token, *, stop=None):
     # Cancellation has its own short cleanup deadline after source stop/timeout.
     return _supervise(connection, {'connection': connection.model_dump(), 'arguments': {'grant': token}},
-                      'cancel_main', None, 3)
+                      'cancel_main', stop, 3)
 
 
 def _supervise(connection, payload, child_function, stop, timeout):

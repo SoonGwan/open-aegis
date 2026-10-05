@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from . import mcp_revocations
 from .coverage import slot
 from .mcp_execution_server import tools_for
 from .mcp_process import cancel, discover, invoke
@@ -33,6 +34,7 @@ class Executors:
     def __init__(self, registry, configurations):
         self.registry, self.store = registry, registry.store
         self.configurations, self.gates = {}, {}
+        self.revocations = mcp_revocations.Recovery(self)
         if not isinstance(configurations, list) or len(configurations) > 10:
             raise ValueError('executor_configuration')
         for value in configurations:
@@ -209,7 +211,8 @@ class Executors:
                     attempt = {'id': attempt_id, 'task_id': task['id'], 'asset_id': asset['id'], 'check': check,
                         'server_id': server_id, 'state': 'dispatching', 'created_at': now(),
                         'grant_sha256': grant_sha, 'contract_sha256': _digest(contract), 'request_budget': budget}
-                    self.store.put_many([('mcp_execution_attempts', attempt)] +
+                    revocation = mcp_revocations.prepare(attempt, token, key, contract)
+                    self.store.put_many([('mcp_execution_attempts', attempt), (mcp_revocations.KIND, revocation)] +
                         [('coverage', {**slot(task, asset, actual), 'status': 'running', 'started_at': now()})
                          for actual in (checks if check == OBSERVATION_CHECK else [check])], connection=db)
                     self.store.event(task['id'], '승인된 원격 검증 전송을 기록했습니다.', detail={
@@ -246,6 +249,10 @@ class Executors:
                     if attempt and attempt['state'] == 'dispatching':
                         self.store.put_many([('mcp_execution_attempts', {**attempt, 'state': 'unconfirmed',
                             'finished_at': now(), **({'cancellation': cancellation} if cancellation else {})})], connection=db)
+                        if cancellation and cancellation['state'] == 'acknowledged':
+                            mcp_revocations.remove(self.store, attempt_id, db)
+                        else:
+                            mcp_revocations.activate(self.store, attempt, db)
                     for remaining_check in (checks if check == OBSERVATION_CHECK else checks[checks.index(check):]):
                         self.store.put_many([('coverage', {**slot(task, asset, remaining_check),
                             'status': 'cancelled' if control.stop.is_set() else 'failed',
@@ -278,6 +285,7 @@ def recover_attempts(store, task):
                 attempt_id = _digest([task['id'], asset['id'], check, server_id])
                 attempt = store.get('mcp_execution_attempts', attempt_id, connection=db)
                 if attempt and attempt.get('state') == 'dispatching':
+                    mcp_revocations.activate(store, attempt, db)
                     records.append(('mcp_execution_attempts', {**attempt, 'state': 'unconfirmed',
                         'finished_at': now(), 'termination_reason': 'source_restart'}))
         if records:
