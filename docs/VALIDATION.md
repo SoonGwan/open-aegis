@@ -6532,3 +6532,13 @@ is terminal with all six jobs successful on functional source `7e3dd0c7e90acc3a8
 Documentation-only follow-ups preserve its frozen93 Python modules. Full native1,679,
 installed205, frontend101 and both-backend installed pairing/backup receipts above
 apply to this source. This permits merging notification PR3; alpha remains0.2.0a1.
+
+
+Notification main merge `d048337ec3f7210f15ecc09b06d3e4ac68dbdbf6` is installed in
+the owned persistent loopback preview at127.0.0.1:8790. All93 Python modules match
+the validated frozen candidate. The Node22 frontend build passes; served HTML and
+assets compare byte-for-byte with build output. The original11 selected collection
+counts and four task states remain identical across the idle restart. Health is200
+at0.2.0a1; template/category/channel/delivery reads return401 unauthenticated.
+No notification fixture or target request is added to the persistent workspace.
+Main hosted run37379865635 remains pending; prior PR all-six success is distinct.
