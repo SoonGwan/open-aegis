@@ -5402,3 +5402,59 @@ Evidence lives in ignored `artifacts/observation-rounds-*`; source tests are
 
 Local evidence: `artifacts/observation-todos-*`; source tests:
 `tests/test_observation_todos.py`, `tests/test_postgres_observation_todos.py`.
+
+## Execution/read churn exposes and repairs event-planner lag — 2026-10-05
+
+- Final frozen-source full regression with native PostgreSQL enabled:
+  **1,151 passed in720.32s**. No failed assertions/setup errors; only the existing
+  Starlette/httpx test-client deprecation warning remains.
+- New owned HTTP rehearsal performs real approved header/cookie/link checks,
+  human acceptance, real503 inconclusive retests and hardened-response resolved
+  retests while two clients read bounded lists, overview/runtime and full reports.
+  It then admits six concurrent jobs, SIGKILLs two running/two queued jobs,
+  restarts, verifies four interrupted plus one never-approved pending job and
+  no automatic target requests, and explicitly approves a fresh retry.
+- Before repair, **both SQLite and native PostgreSQL 300s runs fail** at
+  `planner_catchup`: the restarted retry's automatic proposal does not become
+  ready within10s. An owned SQLite live snapshot has event8051 vs position3524.
+  Each event independently prepared a current-state proposal and incurred the
+  watch delay. This is actual workload/recovery evidence, not a reduced timeout.
+- The consumer now atomically processes a prefix of at most25 events, prepares
+  each task once at its last trigger, and orders those last triggers by sequence.
+  It stops before an asset event and completes that event's25-task pages before
+  proceeding. Original audit events remain intact; approvals are unchanged.
+- **8 focused SQLite/native tests pass in7.21s** for latest triggers, all-review/
+  cursor/audit rollback, asset boundaries with restart, and the bounded durable
+  prefix. Corrected baseline checkout fails explicitly because its independent
+  affected task has no prepared review. The temporary checkout is removed.
+  The first new-test fixture copied the pending response returned by an existing
+  helper; it now reads that helper's actual completed record before cloning.
+- Final300s runs both pass with the corrected consumer and identical Python
+  source fingerprint `fd771d3f7a88a88cf3a6d75846decdbd1632bd7bb7a9b008aa0d25bf584042df`.
+  SQLite: **474 cycles,1,422 churn tasks,1,430 target GETs,2,129 read responses**;
+  PostgreSQL: **232 cycles,696 churn tasks,704 target GETs,2,809 read responses**.
+  Each run additionally completes six burst tasks and one fresh recovery retry;
+  target totals include burst and the held interrupted request. Expected503
+  failed retests remain recorded, rather than being counted as successful checks.
+- Both recover **2 running+2 queued→4 interrupted**, preserve the unapproved
+  control, issue **0 automatic target requests**, finish the separately approved
+  retry and verify the complete audit chain (SQLite18,601 events; PG9,163).
+  Queue/event watchdog errors0, clean lifespan markers and real lease reacquisition
+  pass; disposable services/targets/PG cluster/data are removed.
+- Sample peak server RSS: SQLite87,936KiB (baseline61,888/end73,024), nativePG
+  70,688KiB (baseline68,960/end68,864). Last2,000-query p50/p95: SQLite0.0144/1.8572s,
+  PG0.0336/1.2125s. These runs overlap each other and the full regression on the
+  same Mac arm64 host. They are scenario observations, not comparable production
+  throughput/SLO certification. PostgreSQL/parent memory and disk retention are
+  not measured; long-duration/production/mobile gates remain open.
+- Frozen wheel `b8fc562e9c38d01016780fe1ff036ac7c5a69b763a8e249709ccca1410b88a66`
+  matches all **76 Python files**. Installed runtime outside checkout passes
+  HTTP/UI/auth/persistence/maintenance/release rehearsals with0 target requests;
+  **4 installed feature tests pass in3.83s**; the temporary installation is removed.
+  Frontend source/build is unchanged this round. Main loopback preview refresh
+  preserves all existing counts/states and health200. CI adds short execution
+  rehearsals and native batch tests; hosted execution remains unverified.
+
+Evidence: ignored `artifacts/execution-load-*`, `artifacts/event-batches-*`;
+source: `scripts/review_execution_load.py`, `tests/test_event_planner_batches.py`,
+`tests/test_postgres_event_planner_batches.py`.

@@ -11,6 +11,12 @@ STATE_ID = 'event-planner'
 FORMAT = 'aegis-event-planner-v1'
 AUTOMATION_REVISION = 'observed-failure-notes-v1'
 PAGE_SIZE = 25
+EVENT_BATCH_SIZE = 25
+
+
+def asset_trigger(event):
+    return (not event.get('task_id') and isinstance(event.get('detail'),dict)
+            and isinstance(event['detail'].get('asset_id'),str))
 
 
 class EventPlanner:
@@ -83,7 +89,7 @@ class EventPlanner:
             self.store.put_many([('plan_reviews', review)], connection=db)
 
     def step(self):
-        """Commit at most one event or25 asset-related tasks with its resume position."""
+        """Commit a bounded event prefix or one asset fanout page atomically."""
         policy = self.policy()
         digest = hashlib.sha256(json.dumps({'policy':policy,'automation_revision':AUTOMATION_REVISION}, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
         with self.store.read_transaction() as db:
@@ -100,17 +106,28 @@ class EventPlanner:
             if state is None or state.get('policy_fingerprint') != digest:
                 state = {'id': STATE_ID, 'format': FORMAT, 'after': 0,
                          'policy_fingerprint': digest, 'fanout': None}
-            events = self.store.events(after=state['after'], limit=1, connection=db)
+            events = self.store.events(after=state['after'], limit=EVENT_BATCH_SIZE, connection=db)
             if not events:
                 # Persist an empty initial position too, but do not write every idle poll.
                 if self.store.get('planner_state', STATE_ID, connection=db) != state:
                     self.store.put_many([('planner_state', state)], connection=db)
                 return False
             event = events[0]
-            if event.get('task_id'):
-                self.prepare(event['task_id'], event, policy, db)
-                state['fanout'] = None
-            elif isinstance(event.get('detail'), dict) and isinstance(event['detail'].get('asset_id'), str):
+            if not asset_trigger(event):
+                # Proposals read current committed state, not historical event
+                # payloads. Repeated task triggers in this bounded prefix need
+                # one preparation, with the latest relevant trigger kept.
+                latest={};prefix=[]
+                for candidate in events:
+                    if asset_trigger(candidate):break
+                    prefix.append(candidate)
+                    if candidate.get('task_id'):latest[candidate['task_id']]=candidate
+                for candidate in sorted(latest.values(),key=lambda item:item['seq']):
+                    self.prepare(candidate['task_id'],candidate,policy,db)
+                state.update(after=prefix[-1]['seq'],fanout=None)
+                self.store.put_many([('planner_state',state)],connection=db)
+                return True
+            else:
                 fanout = state.get('fanout') or {'event_seq': event['seq'], 'offset': 0, 'snapshot': None}
                 if (fanout.get('event_seq') != event['seq'] or type(fanout.get('offset')) is not int
                         or fanout['offset'] < 0 or (fanout.get('snapshot') is not None
@@ -124,8 +141,6 @@ class EventPlanner:
                                        'snapshot': page['snapshot']}
                     self.store.put_many([('planner_state', state)], connection=db)
                     return True
-                state['fanout'] = None
-            else:
                 state['fanout'] = None
             state['after'] = event['seq']
             self.store.put_many([('planner_state', state)], connection=db)

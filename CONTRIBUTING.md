@@ -193,3 +193,8 @@ removes the disposable workspace.
 관찰 미완료 자동 할 일의 생성·사람 결정 보존·롤백·이전 처리 위치 재개 검증은
 `tests/test_observation_todos.py`와 `tests/test_postgres_observation_todos.py`에 있습니다.
 후자는 `AEGIS_TEST_POSTGRES=1`과 로컬 PostgreSQL 실행 도구가 필요하며 소유한 임시 클러스터를 사용합니다.
+
+실제 승인 검사·재검증과 조회 부하·실행/대기 중 프로세스 장애를 함께 검수하는
+명령은 [실행 부하 리허설](docs/EXECUTION-LOAD.md)을 따릅니다. 이벤트 묶음의 작업별
+마지막 변경·원자 롤백·자산 페이지 경계·처리 한도는 `tests/test_event_planner_batches.py`와
+`tests/test_postgres_event_planner_batches.py`에서 확인합니다.

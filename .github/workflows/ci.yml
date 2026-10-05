@@ -31,6 +31,8 @@ jobs:
       - run: npm run build
         working-directory: web
       - run: python -m pytest -q
+      - name: Rehearse owned execution churn and process-loss recovery
+        run: python scripts/review_execution_load.py --duration 10 --clients 2 --output artifacts/execution-load-sqlite.json
       - run: python -m pip wheel --no-deps . --wheel-dir artifacts/ci-wheel
       - name: Rehearse installed runtime and maintenance commands
         run: python scripts/review_runtime_package.py --wheel-dir artifacts/ci-wheel --web-dir web/dist --runtime-lock requirements.lock
@@ -62,6 +64,12 @@ jobs:
         env:
           AEGIS_TEST_POSTGRES: '1'
       - run: python scripts/review_postgres_transfer.py --wheel-dir artifacts/postgres-wheel
+      - name: Rehearse native execution churn and process-loss recovery
+        run: python scripts/review_execution_load.py --postgres --duration 10 --clients 2 --output artifacts/execution-load-postgres.json
+      - name: Verify native event batching, rollback and asset ordering
+        run: python -m pytest -q tests/test_postgres_event_planner_batches.py
+        env:
+          AEGIS_TEST_POSTGRES: '1'
       - name: Rehearse installed native goal plan recovery and fresh approvals
         run: python scripts/review_goal_recovery.py --wheel artifacts/postgres-wheel/*.whl --backend postgres --crash --database-crash --database-crash-in-flight --database-crash-write --database-crash-audit
 
