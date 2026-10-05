@@ -6418,3 +6418,15 @@ Two retry rounds were needed because unexecuted hosted jobs could not acquire ru
 the annotations name runner allocation, with no failed test step. Successful jobs were
 retained and only cancelled/unexecuted jobs retried. Candidate functionality is validated;
 release `0.2.0a1` remains alpha and v1 readiness gates remain open.
+
+PR [2](https://github.com/SoonGwan/open-aegis/pull/2) is merged as main `f370d91`.
+The main service matches all 89 frozen installed-wheel Python files. Rebuilt preview
+assets are `/assets/index-BJd00qKd.js` and `/assets/index-YYjuvzvz.css`; HTTP responses
+match their built bytes. Health reports `0.2.0a1`, and both category and template APIs
+require authentication. Exact read-only snapshots before/after the owned restart keep
+all 11 record-family counts and the four task states unchanged; no fixture category
+records enter the main workspace (`task-category-main-preview-receipt.json`). The old
+preview exits143 on SIGTERM, not a claimed exit0; the restarted service is healthy.
+The merge-triggered main hosted run `37373173305` is pending, while the exact functional
+candidate has already passed all six hosted jobs. No v1 tag or production-console
+release is implied by this local development-preview update.
