@@ -5660,3 +5660,43 @@ of exactly `preview-data/aegis.db` matched record counts and all four task state
 (one pending, two completed, one failed), with no task approval/target execution.
 This does not complete remaining v1 UI, retention/SLO, extension, deployment and
 other unchecked gates.
+
+### Remote MCP client foundation — 2026-10-05
+
+Added a separate Streamable HTTP client library, without wiring external calls
+into the HTTP app, Planner or Worker. Owned loopback JSON/SSE and HTTPS fixtures
+verify initialization/version/session negotiation, pagination, exact-input
+one-use grants, fresh metadata review, credential rotation, list-change
+revocation, no call replay, safe RPC errors, response/argument budgets, schema
+reference restrictions, admission/network deadlines and caller input mutation.
+Trusted certificates complete a real tool call; untrusted and wrong-host TLS
+fixtures receive no HTTP requests or credentials. The result error flag is
+preserved rather than interpreted as successful validation.
+
+The initial remote/runtime/local-MCP subset passed68 tests in31.09s. After
+adding schema-expansion and SSE framing cases, the final remote subset passed44
+tests in20.30s. A separate installed-wheel environment outside checkout imports
+its own site-packages and passes the same44 tests in20.27s; temporary fixtures
+and installation resources were removed. The installed runtime HTTP/UI/auth,
+persistence, maintenance and release rehearsal also passes with0 target requests.
+
+Frozen wheel `open_aegis-0.2.0a1-py3-none-any.whl` SHA256 is
+`f00d9629ed396e4ac28374129befdb047579d956afba4fb542f8d237177e98df`;
+all77 service Python files byte-match the working source. Receipts are ignored
+`artifacts/remote-mcp-{targeted-tests,installed-feature-tests,installed-runtime}.txt`,
+`remote-mcp-frozen-source.json`, and `remote-mcp-frozen-wheel/`. The independent
+installation reproduction is `artifacts/review_installed_remote_mcp.py`.
+The frozen full regression, including actual disposable nativePostgreSQL,
+passed1224 tests in739.22s with exit0. Its only warning is the existing
+TestClient httpx deprecation (`remote-mcp-frozen-full-tests.txt`). All77 service
+Python files stayed unchanged throughout the full run and byte-match the wheel.
+The frontend source and built bundle were unchanged; no new execution-load or
+UI-flow claims are inferred from this standalone client change.
+
+The owned idle preview restarted gracefully (old process exit143) and returns
+HTTP200 at127.0.0.1:8790. Read-only snapshots of exactly `preview-data/aegis.db`
+match all record counts and four task states before/after restart; no plan was
+approved or target executed. Receipts are `remote-mcp-preview-{baseline,after}.json`.
+Application registration, actor authorization/audit, isolated execution, remote
+scope enforcement and interoperability gates remain open; see
+[the supported contract and limitations](REMOTE-MCP.md).
