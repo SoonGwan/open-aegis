@@ -6752,3 +6752,11 @@ functional source178ce3eba1c767a02b6951ab30c3222e9961a904. Subsequent branch cha
 are validation documentation only; the95 production modules exactly match the
 installed32-case wheel receipt. This closes the native report deadline correction;
 prior main run37385598230 remains honestly recorded as failed.
+
+Report correction mainf7765f0 now runs at the existing local preview
+http://127.0.0.1:8790. Verified owned oldPID57246 was terminated gracefully;
+all59 record bodies retain SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c
+and original pending/completed/failed task states. Exact95-module source matches
+the installed report wheel; existing UI assets remain byte-exact and unauthenticated
+reads return401. Version is0.2.0a1. This is not an external deployment.
+Main hosted run37389130077 remains pending; PR6's six-job success is retained separately.
