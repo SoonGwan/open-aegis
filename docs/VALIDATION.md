@@ -6640,3 +6640,12 @@ Later main merges/documentation preserve all94 frozen Python modules and executa
 UI source. The duplicate push run37379267778 was cancelled intentionally and is not
 all-job success evidence. Full native1,711, installed301, Node102, both-store
 maintenance and combined browser evidence now permit merging archive PR4.
+
+
+After integrating verified archive main26a1e8a, the prompt candidate passes173 related
+native/backend cases in59.39s, frontend build and102 Node checks. The independently
+packaged95 Python modules exactly match frozen source; wheel SHA256
+`bf22cf5ed105f2587f7c2e954f2160eab3f8273b26c08a7fac5f9ccb01622ce8`.
+Official public-source Gitleaks scan covers405 tracked/unignored files with0 candidates.
+The additive app/SQL/CI/documentation merge retains both prompt and archive contracts.
+Final full native, installed and95→94→95/backup receipts remain pending.
