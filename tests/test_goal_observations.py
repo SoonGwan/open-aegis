@@ -52,7 +52,7 @@ def test_goal_observation_filters_asset_and_declared_checks_then_executes_only_s
     assert execution['coverage'][0]['targets'][0]['status']=='completed'
     assert client.get('/api/tasks/'+goal['id']+'/goal-progress').json()==before_progress
     assert client.get('/api/overview').json()['coverage_summary']==before_coverage
-    assert client.get('/api/tasks/'+pending['id']+'/next-plan').status_code==409
+    assert client.get('/api/tasks/'+pending['id']+'/next-plan').json()['reason']=='no_remaining_observation_checks'
 
 
 @pytest.mark.parametrize('damage',['other_asset','undeclared_check','source_approval','goal_title','scope','missing_objective'])

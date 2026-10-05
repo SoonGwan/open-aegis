@@ -73,12 +73,15 @@ def approval_contract(task):
         'execution': task['observation_execution'], 'checks': task['checks'],
         'scope_snapshot': task['scope_snapshot']}
     if task.get('goal_observation') is not None:basis['goal_observation']=task['goal_observation']
+    if task.get('observation_cells') is not None:basis['observation_cells']=task['observation_cells']
     return {'format': FORMAT, 'fingerprint': digest(basis)}
 
 
 def require(task, *, approved=False):
     from . import goal_observations
     goal_observations.require(task)
+    from . import observation_rounds
+    observation_rounds.require(task)
     execution = task.get('observation_execution')
     if execution is None:
         if task.get('observation_execution_contract') is not None:

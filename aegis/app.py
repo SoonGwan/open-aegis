@@ -324,6 +324,7 @@ def create_app(data_dir=None, allow_private=None):
             task.update(planning_history.metadata(attempt_source))
             if attempt_source.get('goal_plan'):task['goal_plan']=attempt_source['goal_plan']
             if attempt_source.get('goal_selection'):task['goal_selection']=attempt_source['goal_selection']
+            if attempt_source.get('observation_cells'):task['observation_cells']=attempt_source['observation_cells']
             if attempt_source.get('goal_retest'):task['goal_retest']=attempt_source['goal_retest']
             try:task['shared_todo_context']=todos.planning_context(store,attempt_source['id'])
             except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
@@ -336,6 +337,11 @@ def create_app(data_dir=None, allow_private=None):
             task['worker_observation_context']=proposal['worker_observation_context']
             if proposal.get('goal_plan'):task['goal_plan']=proposal['goal_plan']
             if proposal.get('goal_selection'):task['goal_selection']=proposal['goal_selection']
+            if proposal.get('observation_execution'):
+                for field in ('observation_execution','observation_selection','observation_cells','goal_observation'):
+                    if proposal.get(field) is not None:task[field]=proposal[field]
+                try:observation_execution.require(task)
+                except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         if observation_request:
             source_id, selection = observation_request
             try:

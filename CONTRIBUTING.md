@@ -182,3 +182,10 @@ Finish frontend builds before starting the Python regression suite: `create_app`
 mounts `web/dist/assets`, and Vite temporarily removes that directory during a
 rebuild. Freeze `aegis/**/*.py` during the run as package fingerprints are captured
 at import; a mid-run backend edit invalidates approval/provenance checks.
+
+`review_goal_ui.py --observation-rounds` seeds explicitly synthetic failed observed
+URL results for reviewing selected follow-up cells and creating a pending child.
+Never approve that fixture's `.invalid` target. `--web-dir` can point at a separate
+built UI directory so visual iteration does not remove `web/dist/assets` while
+Python tests are running. Shutdown records target traffic/provider calls and
+removes the disposable workspace.

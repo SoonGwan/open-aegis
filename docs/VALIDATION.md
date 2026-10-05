@@ -4004,7 +4004,7 @@ on 390×844 has no document overflow.
   and HTTP anonymous/viewer/operator checks cover the new route. Extended the actual
   native ordinary SELECT-role test to call workspace search while writes/users
   remain denied. Native CI selection includes new history test file; hosted CI not run.
-- Initial targeted25 passed5.66s. First full:736 passed,1 failed252.32s because the
+- Initial targeted25 passed5.66s. First full:736 passed, 1 failed252.32s because the
   MCP stdio catalog assertion still expected11 tools; new catalog has12. Updated
   explicit expected tool set without removing catalog/no-mutation assertions.
   Preserved first failure (`artifacts/worker-history-backend-first.txt`). Final full
@@ -5307,3 +5307,60 @@ Local evidence: `artifacts/goal-observation-retest-before.txt`,
 `goal-observation-retests-expanded.txt`, `goal-observation-retests-installed-*`,
 `goal-observation-retests-package-proof.json`. Source/native tests:
 `tests/test_goal_observation_retests.py`, `tests/test_postgres_goal_observation_retests.py`.
+
+## Selective observed URL response follow-up rounds — 2026-10-05
+
+- Final frozen-source/asset full regression with native PostgreSQL enabled:
+  **1,125 passed** in **664.39s**, no failed assertions or setup errors. Only
+  the existing Starlette/httpx test-client deprecation warning remains.
+- Before reproduction from `4e9c7da`: the same owned two-URL/two-check partial
+  failure returns409 at observed follow-up preview; the focused test fails on
+  that API response, not imports/collection.
+- Targeted run: **35 passed** for initial selection/compatibility, then **100
+  passed** across SQLite/native PostgreSQL follow-up, objective retest and
+  existing base planning scenarios. An owned failed `/login` header cell creates
+  a pending child with one URL/check pair; explicit approval produces one real
+  `/login` GET and one target result. Completed `/api/account` and cookie pairs
+  remain reusable in the next proposal; base coverage/goal progress are unchanged.
+- New selected-cell contracts are pinned by approval, reject removal/duplication/
+  out-of-scope IDs/parent mismatch, and survive replacement/retry. The durable
+  event planner prepares the same fresh proposal without target requests or
+  creating a task. Shared todos can repeat existing selected checks; new tools
+  require a fresh observation selection. Acceptance rechecks coverage/todos/
+  scope/context in its final transaction and rolls back source/child/coverage
+  together on injected change.
+- Actual loopback execution repeats a persistent selected failure for eight
+  separately approved rounds, then refuses a ninth. A separate two-real-attempt
+  test lowers only the module's history cap to 2 to exercise the history boundary
+  and distinct reason; the production history cap remains 32.
+- First broad run: **1,122 passed, 1 failed** in 660.93s. The existing retest race
+  injector mutated every connected prepare call, including the newly supported
+  background observation planner. An instrumented experiment confirms injection
+  in `aegis-event-planner` as well as the HTTP worker. It now captures the HTTP
+  retest's reviewed request ID and injects exactly once only in that request's
+  final write; **both backend retests passed** with proof rollback and no GETs.
+  The production event consumer remains running during this test.
+- Desktop built-app fixture explicitly seeds a synthetic failed observed result:
+  selection and corrected execution wording display in the proposal; acceptance
+  opens a pending child with the selected URL/check, original objective and
+  original-task navigation. DOM/PNG reviewed; fixture and browser tab removed.
+  Shutdown confirms **0 target traffic records**, **0 provider calls**, and an
+  unapproved pending child. This is not mobile/SR or real target execution proof.
+- Final frontend: **97 passed**, TypeScript/Vite build successful,
+  `index-X1SP_7_K.js`. The later eligibility correction preserves the original
+  general finding-retest next-plan UI and excludes only observed finding retests.
+  UI iteration used a separate output directory while the
+  Python suite mounted unchanged `web/dist/assets`. The fresh full-suite run
+  used the corrected selection wording; final normal build/97 frontend tests
+  completed after it for the general-retest eligibility correction. Python
+  source and final wheel remained unchanged.
+- Frozen wheel `f17ccb20308bba2216dabdbd8b89f1af6447a1e56dc9ccfb871d6490cd64df1c`: all
+  **75 Python files** match current source. Installed runtime outside checkout
+  passes HTTP/UI/auth/persistence/maintenance/release rehearsals with 0 target
+  requests. **11 focused feature tests pass in 26.19s** from the installed package
+  outside checkout, including selected real GETs, eight actual rounds and the
+  separate history-boundary reason. Temporary installation removed at completion.
+  Remaining v1 criteria retain their unchecked status.
+
+Evidence lives in ignored `artifacts/observation-rounds-*`; source tests are
+`tests/test_observation_rounds.py` and `tests/test_postgres_observation_rounds.py`.

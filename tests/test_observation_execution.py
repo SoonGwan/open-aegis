@@ -47,7 +47,7 @@ def test_selected_requests_are_approval_gated_frozen_once_and_distinct_from_base
     findings = [f for f in result['findings'] if f['check'] == 'security_headers']
     assert findings and all(f['code'].startswith('observed-') for f in findings)
     assert {store.get('evidence', store.get('findings', f['id'])['evidence_ids'][-1])['observation']['requested_url'] for f in findings} == {lab[0]+'login', lab[0]+'api/account'}
-    assert client.get('/api/tasks/'+plan['id']+'/next-plan').status_code == 409
+    assert client.get('/api/tasks/'+plan['id']+'/next-plan').json()['reason'] == 'no_remaining_observation_checks'
     coverage = client.get('/api/overview').json()['coverage_summary']
     assert coverage['completed'] == 1  # Only original endpoint inventory, no base-response claim.
 

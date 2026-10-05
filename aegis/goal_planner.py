@@ -46,6 +46,9 @@ def fingerprint(value):
 def execution_checks(task, asset_id, ordered=None):
     """Legacy plans keep their approved matrix; new plans execute declared pairs."""
     ordered = task.get('checks', []) if ordered is None else ordered
+    if task.get('observation_cells'):
+        from . import observation_rounds
+        ordered=observation_rounds.checks_for(task,asset_id,ordered)
     plan = task.get('goal_plan')
     if not plan or 'execution' not in plan:return list(ordered)
     if plan['execution'] != 'objective_pairs':raise PlanningConflict('목표 실행 계약을 확인하세요.')

@@ -26,7 +26,8 @@ def propose(store, task_id, policy, *, connection=None):
                 or source.get('status') not in TERMINAL or not goal_planner.has_execution_approval(source)):
             raise NextPlanConflict('승인되어 종료된 작업의 결과에서만 다음 계획을 제안할 수 있습니다.')
         if source.get('observation_execution'):
-            raise NextPlanConflict('관찰 응답 계획은 출처 작업의 관찰 목록에서 새 선택 계획을 만드세요. 기본 자산 검증의 완료 근거로 사용하지 않습니다.')
+            from . import observation_rounds
+            return observation_rounds.propose(store,source,policy,connection=db)
         if source.get('goal_retest'):
             raise NextPlanConflict('목표 발견 재검증은 원래 과제의 발견에서 새 재검증 계획을 만드세요.')
         goal_planner.require_task(source)

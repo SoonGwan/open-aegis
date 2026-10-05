@@ -375,7 +375,8 @@ class Engine:
             try:
                 if targets:
                     target_results = []
-                    for target in targets:
+                    from . import observation_rounds
+                    for target in observation_rounds.targets_for(task,targets,check):
                         try:
                             control.check()
                             if target['id'] not in responses:

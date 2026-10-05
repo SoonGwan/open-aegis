@@ -70,10 +70,25 @@ export function GoalObservationOrigin({origin,onTask}:{origin?:GoalObservationRe
   </section>;
 }
 
+export type ObservationCells = {format:string;source_task_id:string;cells:{observation_id:string;check:string}[];fingerprint:string};
+export function ObservationCellsSummary({selection,execution,names}:{selection?:ObservationCells;execution?:ObservationExecution;names:Record<string,string>}) {
+  if(!selection || !execution)return null;
+  return <section className="next-plan" aria-label="이번 관찰 회차의 URL과 검사">
+    <h4>이번 회차에 다시 검사할 관찰</h4>
+    <p>표시한 URL과 검사 조합만 새 승인 후 실행합니다. 선택하지 않은 URL의 이전 결과를 유지하며 기본 자산 응답 완료율과 별도로 기록합니다.</p>
+    {selection.cells.map(row=><article key={row.observation_id+":"+row.check}>
+      <code className="observation-url">{execution.targets.find(target=>target.id===row.observation_id)?.url || row.observation_id}</code>
+      <p>{names[row.check] || row.check}</p>
+    </article>)}
+  </section>;
+}
+
 export function ObservationExecutionBasis({
   execution,
+  selection,
 }: {
   execution?: ObservationExecution;
+  selection?: ObservationCells;
 }) {
   if (!execution) return null;
   return (
@@ -84,7 +99,7 @@ export function ObservationExecutionBasis({
         승인이 필요합니다. URL별 결과를 기록하며 기본 자산 응답의 완료율에는
         포함하지 않습니다.
       </p>
-      {execution.targets.map((row) => (
+      {execution.targets.filter(row=>!selection || selection.cells.some(cell=>cell.observation_id===row.id)).map((row) => (
         <article key={row.id}>
           <code className="observation-url">{row.url}</code>
           <p>

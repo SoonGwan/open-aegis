@@ -46,6 +46,9 @@ def record(store, id, db):
     forwards = [key for key in ('next_plan_id', 'retry_successor', 'replaced_by') if task.get(key)]
     from .goal_planner import require_task
     require_task(task)
+    if task.get('observation_execution') or task.get('observation_cells') or task.get('observation_execution_contract'):
+        from . import observation_execution
+        observation_execution.require(task,approved=has_execution_approval(task))
     if (len(forwards) > 1
             or (task.get('next_plan_id') and (task['status'] not in TERMINAL or not has_execution_approval(task)))
             or (task.get('retry_successor') and task['status'] not in {'failed', 'interrupted', 'stopped'})
@@ -72,6 +75,7 @@ def _same_round(parent, child):
     if (metadata(parent) != metadata(child) or parent['asset_ids'] != child['asset_ids']
             or parent['checks'] != child['checks']
             or parent.get('goal_selection') != child.get('goal_selection')
+            or parent.get('observation_cells') != child.get('observation_cells')
             or json.dumps(parent.get('worker_dependencies', {}), sort_keys=True)
             != json.dumps(child.get('worker_dependencies', {}), sort_keys=True)):
         raise PlanningConflict('교체·재실행의 회차·범위·검증 관계가 일치하지 않습니다.')

@@ -24,7 +24,10 @@ def main():
     parser.add_argument('--unconfigured', action='store_true', help='Exercise the real missing-provider configuration error')
     parser.add_argument('--selective-round', action='store_true', help='Seed synthetic completed/failed goal cells for follow-up review; never execute targets')
     parser.add_argument('--objective-observations', action='store_true', help='Seed objective observations for pending-plan UI review; no target execution')
+    parser.add_argument('--observation-rounds', action='store_true', help='Seed a failed observed URL cell for follow-up UI review; never approve targets')
+    parser.add_argument('--web-dir',type=Path,default=ROOT/'web/dist',help='Separately built frontend assets for review')
     args = parser.parse_args()
+    if args.observation_rounds:args.objective_observations=True
     if not 1 <= args.port <= 65535:
         parser.error('port must be 1..65535')
     for key in list(os.environ):
@@ -68,7 +71,7 @@ def main():
             if line.strip() == 'release':
                 release.set()
     threading.Thread(target=commands, daemon=True).start()
-    os.environ['AEGIS_WEB_DIR'] = str(ROOT / 'web/dist')
+    os.environ['AEGIS_WEB_DIR'] = str(args.web_dir.resolve(strict=True))
     if not args.unconfigured:
         os.environ.update(AEGIS_LLM_MODEL='owned-goal-ui-model', AEGIS_LLM_API_KEY='owned-goal-ui-key',
                           AEGIS_LLM_BASE_URL='http://127.0.0.1:' + str(provider.server_port) + '/v1')
@@ -113,6 +116,25 @@ def main():
             from aegis.worker_observations import record_link
             record_link(store,task,asset,'endpoint_inventory',asset['url']+'account')
             print('Objective observations are synthetic; only create pending plans, never approve this fixture.',flush=True)
+        if args.observation_rounds:
+            from aegis import goal_observations,observation_execution
+            reviewed=goal_observations.preview(store,task['id'],'g1')
+            selection=observation_execution.Selection(fingerprint=reviewed['fingerprint'],
+                observation_ids=[row['id'] for row in reviewed['context']['items']],checks=['security_headers'],request_id='b'*32)
+            context,execution,origin=goal_observations.prepare(store,task['id'],'g1',selection)
+            observed={**TaskInput(name='합성 관찰 후속 회차 검수',goal='합성 실패 셀의 새 승인 대기 계획만 검토',
+                asset_ids=[asset['id']],checks=['security_headers']).model_dump(),
+                'id':'owned-observed-round','status':'failed','created_at':timestamp,'approved_at':timestamp,
+                'done':1,'errors':1,'scope_snapshot':[asset],'tool_contracts':contracts_for(['security_headers']),
+                'observation_execution':execution,'worker_observation_context':context,
+                'observation_selection':selection.model_dump(),'goal_observation':origin}
+            observed['observation_execution_contract']=observation_execution.approval_contract(observed)
+            store.put('tasks',observed)
+            for row in planned_slots(observed):
+                store.put('coverage',{**row,'status':'failed','targets':[{'observation_id':target['id'],
+                    'url':target['url'],'status':'failed'} for target in execution['targets']]})
+            print('Observed failure cells are synthetic; only review/create pending follow-ups, never approve.',flush=True)
+            print(f'http://127.0.0.1:{args.port}/?page=tasks&detail=task&detail_id=owned-observed-round',flush=True)
         print('Owned goal QA: admin / owned-goal-password-only', flush=True)
         print('Goal text containing 대기 holds the owned provider; type release to complete it.', flush=True)
         print(f'http://127.0.0.1:{args.port}/?page=tasks&detail=task&detail_id=owned-goal-task', flush=True)

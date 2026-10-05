@@ -75,15 +75,22 @@ def test_observed_retest_final_write_rechecks_proof_and_rolls_back(client,lab,mo
     proof=store.get('evidence',finding['evidence_ids'][-1]);before=list(lab[1].requests)
     count=store.count('tasks');cells=store.count('coverage')
     original=goal_observations.prepare
+    reviewed_request=None;injected=[]
     def race(*args,**kwargs):
-        db=kwargs.get('connection')
-        if db is not None:
+        nonlocal reviewed_request
+        db=kwargs.get('connection');selection=args[3]
+        # Scope this mutation to the HTTP retest's reviewed request, not the
+        # independent event planner's connected read/prepare calls.
+        if db is None:reviewed_request=selection.request_id
+        if db is not None and selection.request_id==reviewed_request:
+            injected.append(selection.request_id)
             changed=copy.deepcopy(proof);changed['observation']['requested_url']=lab[0]+'other/'
             store.put_many([('evidence',changed)],connection=db)
         return original(*args,**kwargs)
     monkeypatch.setattr(goal_observations,'prepare',race)
     assert client.post('/api/findings/'+finding['id']+'/retest').status_code==409
     assert store.count('tasks')==count and store.count('coverage')==cells
+    assert injected==[reviewed_request]
     assert store.get('evidence',proof['id'])==proof and lab[1].requests==before
 
 

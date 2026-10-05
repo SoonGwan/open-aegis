@@ -4,9 +4,11 @@ import { PolicySummary, type ExecutionPolicy } from "./runtime";
 import { ToolContracts } from "./ToolContracts";
 import type { ToolManifest } from "./tool-contract-state";
 import { GoalPlanSummary, type GoalPlan, type GoalSelection } from "./GoalPlan";
+import { ObservationCellsSummary, type ObservationCells, type ObservationExecution } from "./ObservationExecution";
 import { WorkerDependencies } from "./WorkerDependencies";
 
 type Cell = {
+  url?:string;
   id: string;
   asset_id: string;
   asset_revision: number;
@@ -192,6 +194,8 @@ export function TodoPlanBasis({
   );
 }
 type Proposal = {
+  observation_cells?:ObservationCells;
+  observation_execution?:ObservationExecution;
   worker_observation_context?: ObservationPlanContext;
   format: "aegis-next-plan-v1";
   source_task_id: string;
@@ -243,6 +247,8 @@ type Proposal = {
   accepted_kind?: "followup" | "retry" | null;
 };
 const reasons: Record<string, string> = {
+  no_remaining_observation_checks:"선택한 관찰 응답에 추가·재시도 요청이 없습니다. 취약점이 없거나 목표를 달성했다는 판정은 아닙니다.",
+  observation_scope_change_required:"공유 할 일의 요청이 원래 관찰 검사를 벗어납니다. 출처 관찰에서 새 선택 계획을 검토하세요.",
   already_accepted: "이 결과에서 이미 연결된 계획을 만들었습니다.",
   round_limit:
     "후속 계획 회차 한도에 도달했습니다. 결과와 실패 원인을 검토하세요.",
@@ -503,6 +509,7 @@ export function NextPlan({
                 : "이미 만든 후속 계획 보기"}
             </button>
           )}
+          <ObservationCellsSummary selection={proposal.observation_cells} execution={proposal.observation_execution} names={names} />
           {proposal.goal_plan && <>
             <GoalPlanSummary plan={proposal.goal_plan} selection={proposal.goal_selection} names={names} assets={proposal.scope_snapshot} />
             <p>{proposal.goal_selection ? "원래 과제와 Worker 의존 관계를 유지하며 이번 회차에 표시한 조합만 다시 검사합니다. 선행 Worker나 공유 할 일 요청으로 반복하는 완료 검사는 아래 근거에서 확인하고 새로 승인합니다." : "목표 후속 회차는 원래 과제의 전체 선택 조합과 Worker 의존 관계를 유지해 다시 검사합니다. 완료된 검사도 포함되며 아래 반복 근거를 검토한 뒤 새로 승인합니다."}</p>
@@ -591,7 +598,9 @@ export function NextPlan({
                 pending={false}
               />
               <p className="subtle">
-                {proposal.goal_plan
+                {proposal.observation_cells
+                  ? "표시한 관찰 URL과 검사 조합만 실행합니다. 공유 할 일에서 요청한 기존 검사는 완료 조합도 새 승인 후 반복할 수 있습니다."
+                  : proposal.goal_plan
                   ? "원래 과제별 자산·검사 조합에서 수행합니다. 완료된 선택 검사도 반복될 수 있습니다."
                   : "한 도구를 선택하면 모든 선택 자산에서 수행합니다. 다른 자산의 완료 검증도 반복될 수 있습니다."}
               </p>
@@ -635,7 +644,7 @@ export function NextPlan({
               return (
                 <div className="finding-record" key={cell.id}>
                   <strong>
-                    {assetName(cell.asset_id)} ·{" "}
+                    {assetName(cell.asset_id)}{cell.url && <> · <code className="observation-url">{cell.url}</code></>} ·{" "}
                     {names[cell.check] || cell.check}
                   </strong>
                   <p>
