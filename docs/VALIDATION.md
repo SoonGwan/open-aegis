@@ -6278,3 +6278,35 @@ Installed task-template wheel verification outside the checkout now passes
 the temporary venv's site-packages (`task-template-installed-tests.txt`). Its owned
 venv/test resources are removed. The full native candidate suite remains running;
 this installed related-suite result is not a full v1 release gate.
+
+The rendered template application lost-response review commits the server response
+but sends503 to the browser once. The actual UI retains its error and task-name
+draft, then reuses the same request ID and restores the existing pending task.
+Both server submissions return200; browser statuses are503 then200; exactly one
+task/application and zero target requests remain, with valid audit. The corrected
+owned response intermediary exits0 and removes its temporary workspace
+(`task-template-response-loss-ui-review.json`,
+`task-template-response-loss-ui-process.txt`). Its first wrapper omitted the
+application shutdown state and failed at cleanup; that fixture error is corrected
+and the sequence repeated rather than claiming its first exit as graceful.
+
+A stopped installed-wheel SQLite sequence (88-file write,87-file reader/writer,
+88-file recovery) preserves original templates/history/task origin, but the old
+writer drops origin on its new replan; the new reader does not automatically
+repair that child. New current-template application works after recovery, audit
+remains valid, target requests are zero and owned resources are removed
+(`task-template-version-pair-review.txt`). Rollback is conditional on suppressing
+old-version mutations when template provenance must remain complete; see
+[release ordering](RELEASES.md). Native old/new runtime pairing remains untested.
+
+The first candidate full native invocation finishes **1,515 passed and36 setup
+errors in1,098.52s**, not a pass (`task-template-full-native.txt`). Its explicit
+worktree shell selects macOS LibreSSL3.3.6, and every error occurs while generating
+an Ed25519 fixture key in the two release modules. The same36 release cases pass
+in4.54s when PATH selects required OpenSSL3.x
+(`task-template-release-correct-runner.txt`). Production code is unchanged. A new
+full native invocation with explicit OpenSSL3/PostgreSQL16 PATH is running
+(`task-template-full-supported-native.txt`); it must finish before claiming a clean
+full candidate result. PR1's hosted candidate run37363828003 is also still running.
+The duplicate push run37363822445 for the exact same83433f0 source was cancelled to
+avoid duplicating hosted work; it is not a failed product validation.
