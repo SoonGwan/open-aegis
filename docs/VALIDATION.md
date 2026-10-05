@@ -6496,3 +6496,22 @@ complete assertion report; it is not a successful full run. The unchanged source
 case then passes both backend variants in4.19s in isolation. The cause is unresolved;
 no timing fix or weakened assertion is inferred. The current full run stops on the
 first failure to retain its precise assertion and investigate if it recurs.
+
+
+The request-budget-corrected exact wheel
+`c2ac9559f3af699823f00301f53fbdb621dfc3075547752cfc6fb014ca7b3004` now passes
+205 installed related cases in90.21s outside the checkout and repeats the installed
+93→89→93 pairing and offline backup/restore on SQLite/native PostgreSQL with exact
+selected rows, valid independent checkpoint, restored sessions0, only two intentional
+test POSTs and removed owned resources. Retained latest-source hosted PR run is
+[37377405131](https://github.com/SoonGwan/open-aegis/actions/runs/37377405131).
+The obsolete5485037 run was automatically cancelled by the later source update; its
+container/Compose jobs passed but its verify/native jobs were cancelled. Duplicate
+push run37377400210 was cancelled intentionally for the same latest source, retaining
+the PR run. Cancelled runs are not all-job success evidence. Full native remains running.
+
+The independent category main merge `f370d91` now passes all six retained hosted jobs
+in [37373173305](https://github.com/SoonGwan/open-aegis/actions/runs/37373173305).
+Only its unexecuted native job was rerun after the runner-allocation annotation; all
+other successful jobs were retained. This confirms the existing category main source
+and does not promote the newer notification draft or declare v1 readiness.
