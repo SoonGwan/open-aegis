@@ -6784,3 +6784,11 @@ settings-to-model-review navigation. No actual provider POST or target traffic i
 used for this display fixture, audit verifies and its tab/workspace are removed.
 This frontend-only change preserves all frozen96 Python module hashes. Build and
 103 Node checks pass. Task/agent pins and connectivity/model-list/failover remain open.
+
+Final wheel5eb52b28 passes484 installed checks in188.24s outside the checkout,
+including native/backend model profiles and report deadlines, with installation/
+cluster cleanup. Final local full native and retained hosted run37387988876 at
+65235660b1af344d369e4fb95853636cfe434c88 remain pending. Duplicate push run
+37387983785 is intentionally cancelled and is not success evidence. Earlier model
+hosted heads21b1bfb and3d9c1a9 are superseded/cancelled. Environment examples below
+are operator documentation; all96 frozen production modules remain exact.
