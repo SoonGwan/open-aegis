@@ -6726,3 +6726,29 @@ including the original pending/completed/failed task states. Served HTML/assets
 match the fresh frontend build byte for byte; health reports0.2.0a1 and unauthenticated
 prompt/channel/category/template reads return401. This is a local preview,
 not an external production deployment. Main hosted run37385598230 remains pending.
+
+Prompt main hosted run37385598230 fails the native report deadline case with
+QueryCanceled(statement timeout), while384 other native checks pass. The actual
+new native boundary regression fails before the fix: PostgreSQL is configured for
+9.998s despite a9.998767958022654s remaining export budget. Truncating milliseconds
+can trigger SQL cancellation before the monotonic permit expires, allowing the raw
+exception to escape. Rounding up milliseconds preserves the budget; unchanged
+regression and existing reports/disconnect/deadline/export checks pass32 cases
+in12.95s. No sleeps/retries, deadline increases or exception suppression are added.
+This demonstrates the controlled rounding mechanism, not the unrecorded exact
+remaining value on the hosted failure. Prior95-module wheel remains prior source;
+the one production module change requires a new package receipt.
+
+Report deadline wheel has95 modules and changes only aegis/postgres_streams.py
+from the prior prompt freeze. SHA256a059c78cd3e7e8f618d7662943709879aa6d4302d5b38e384652f9a936b8eff8.
+All32 report/export checks also pass in17.28s on the installed wheel outside checkout,
+including native SQL deadline/disconnect cleanup; temporary resources are removed.
+Retained PR6 hosted run37387185260 remains pending; its duplicate push37387178574
+was intentionally cancelled. The original main run37385598230 is terminal with five
+successful jobs and one native report failure, not six-job success.
+
+Retained PR6 hosted run37387185260 is terminal with all six jobs successful at
+functional source178ce3eba1c767a02b6951ab30c3222e9961a904. Subsequent branch changes
+are validation documentation only; the95 production modules exactly match the
+installed32-case wheel receipt. This closes the native report deadline correction;
+prior main run37385598230 remains honestly recorded as failed.
