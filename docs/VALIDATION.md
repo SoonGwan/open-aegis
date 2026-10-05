@@ -6813,3 +6813,11 @@ and original pending/completed/failed task states. Exact95-module source matches
 the installed report wheel; existing UI assets remain byte-exact and unauthenticated
 reads return401. Version is0.2.0a1. This is not an external deployment.
 Main hosted run37389130077 remains pending; PR6's six-job success is retained separately.
+
+Final frozen96-module model source passes the complete native/backend suite:
+1,812 passed in1,217.29s (20:17), with the strict failure stop retained. Installed484,
+frontend build/Node103, owned browser, both-store96→95→96/backup restore and public
+scan receipts apply to the same production module hashes. Current hosted source
+run37387988876 still awaits its PostgreSQL job; five other jobs are successful.
+Subsequent main merges and documentation commits change no production/UI execution
+source. The earlier340-pass interrupted run is not substituted for this full result.
