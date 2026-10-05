@@ -6224,6 +6224,15 @@ The correction is published in7d96ecd; hosted run
 [37361283266](https://github.com/SoonGwan/open-aegis/actions/runs/37361283266)
 was still in progress when this local receipt was recorded.
 
+Hosted correction run
+[37361283266](https://github.com/SoonGwan/open-aegis/actions/runs/37361283266)
+for7d96ecd is now terminal **success in all six jobs**, including both container
+and both Compose variants, verify and native PostgreSQL. The formerly failing
+observed partial-followup test passes in the native MCP suite. This closes the
+hosted validation of the automatic-note test timing correction and the unchanged
+87-file durable revocation service; it does not validate the separate88-file
+task-template candidate or close remaining v1 gates.
+
 ## Versioned task templates — candidate branch
 
 The isolated task-template candidate adds CRUD, revision history, archive/restore,
