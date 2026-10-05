@@ -3,7 +3,7 @@
 **An open source security validation workspace connecting assets, approvals,
 evidence, remediation and independent retests.**
 
-[한국어](README.md) · [Feature status](docs/FEATURES.md) ·
+[한국어](README.md) · [Feature status](docs/FEATURES.md) · [ARTEX inventory](docs/ARTEX-INVENTORY.md) ·
 [Release criteria](docs/V1-READINESS.md) · [Security policy](SECURITY.md)
 
 ![Dashboard from an owned synthetic test service](docs/images/dashboard.jpg)

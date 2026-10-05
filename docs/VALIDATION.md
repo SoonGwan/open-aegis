@@ -6019,3 +6019,48 @@ crash-recovery cancellation outbox, observed-response adapter and general plugin
 OS/egress isolation remain open v1 work. Hosted checks for this changed source
 are pending until its next Verify run completes; previous hosted success applies
 to the preceding executable commit.
+
+
+### Hosted cancellation source and expanded ARTEX inventory
+
+All six jobs of [Verify37347216353](https://github.com/SoonGwan/open-aegis/actions/runs/37347216353)
+pass for executable source `bf0326d62f8fce6a3e49b0c0471d563ff19d6411`.
+The general Linux suite passes906 tests with486 native PostgreSQL cases skipped
+as expected in that job (603.28s); the separate native job passes385/12/42/11
+cases in its respective subsets and114 in the MCP review/admission/Worker/
+cancellation step (121.56s). These overlapping subsets are not added to the
+local1,392-test total. Both actual image variants and both Compose variants pass,
+including setup/UI, retained volumes, authenticated restart, backup/restore and
+owned resource cleanup. Ordinary bridge egress remains unblocked. All ten
+extracted rehearsal receipts across the six jobs are valid, including installed
+runtime, execution churn and installed native process/database/write/audit
+recovery. Logs and parsed receipts are retained as
+`artifacts/mcp-cancellation-hosted-*`. No production/PITR/multiarchitecture or
+remote-runtime attestation claim is made.
+
+The local preview was restarted with the changed executable source. Direct
+loopback health is200/version0.2.0a1; all existing record counts and four task
+states are exactly preserved. No existing pending task was approved. Public
+source audit with Gitleaks8.30.1 scanned373 current files and148 history commits;
+zero unignored candidates remained. The single reviewed historical prose
+fingerprint stays narrowly listed in `.gitleaksignore`; scans are not a guarantee
+of secret absence.
+
+The desktop Stop fixture's wrapper did not initially expose `app.state`, so its
+SIGTERM handler exited1 even though finally/TemporaryDirectory cleanup removed
+its resources. Its retained receipt records this limitation; it proves explicit
+Stop and revocation, not graceful fixture shutdown. Clean installed/container/
+Compose shutdown is established by the separate successful rehearsals above.
+
+The newest ARTEX source snapshot
+`b55ceb1fdd84a813d77de09a06af83d323a81f85` was fetched read-only and not executed.
+[Its inventory](ARTEX-INVENTORY.md) includes261 unique HTTP registrations (243
+literal main registrations plus18 reviewed helper expansions),27 page entry
+points and49 named literal tool-constructor occurrences in agent/server source.
+Each recorded literal source location and local documentation reference was
+checked. These are static inventory counts, not verified runtime feature counts;
+SDK/dynamic/MCP/skill tools are outside the constructor count. Newly identified
+templates/categories/archives/notifications/model failover/prompt versioning are
+tracked as incomplete. No upstream source, prompts or skills were copied into
+the independently implemented service. The source remains0.2.0a1 and the full v1
+gate is open.

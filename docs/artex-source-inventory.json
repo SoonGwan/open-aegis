@@ -1,0 +1,2167 @@
+{
+  "source_repository": "https://github.com/Autumn-27/ARTEX",
+  "source_commit": "b55ceb1fdd84a813d77de09a06af83d323a81f85",
+  "review_date": "2026-10-06",
+  "review_scope": "static public HTTP registrations and frontend page entry points; selected subsystem reading; no execution or security audit",
+  "counts": {
+    "http_registrations": 261,
+    "literal_main_registrations": 243,
+    "expanded_helper_registrations": 18,
+    "frontend_page_entry_points": 27,
+    "literal_tool_definition_occurrences": 49
+  },
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/active",
+      "handler": "setActive",
+      "source": "server/server.go",
+      "line": 735
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents",
+      "handler": "pgListAgents",
+      "source": "server/server.go",
+      "line": 835
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents",
+      "handler": "pgCreateAgent",
+      "source": "server/server.go",
+      "line": 836
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/agents/{key}",
+      "handler": "pgDeleteAgent",
+      "source": "server/server.go",
+      "line": 839
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents/{key}",
+      "handler": "pgGetAgent",
+      "source": "server/server.go",
+      "line": 837
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/agents/{key}",
+      "handler": "pgUpdateAgent",
+      "source": "server/server.go",
+      "line": 838
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agents/{key}/config",
+      "handler": "pgSaveAgentConfig",
+      "source": "server/server.go",
+      "line": 840
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agents/{key}/prompt",
+      "handler": "pgSavePrompt",
+      "source": "server/server.go",
+      "line": 841
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/{key}/prompt/preview",
+      "handler": "pgPreviewPrompt",
+      "source": "server/server.go",
+      "line": 853
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/{key}/prompt/reset",
+      "handler": "pgResetPrompt",
+      "source": "server/server.go",
+      "line": 842
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents/{key}/prompts",
+      "handler": "pgListPromptVersions",
+      "source": "server/server.go",
+      "line": 851
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents/{key}/triggers",
+      "handler": "pgListTriggers",
+      "source": "server/server.go",
+      "line": 847
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/{key}/triggers",
+      "handler": "pgCreateTrigger",
+      "source": "server/server.go",
+      "line": 848
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents/{key}/variables",
+      "handler": "pgPromptVars",
+      "source": "server/server.go",
+      "line": 852
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents/{key}/visibility",
+      "handler": "pgGetAgentVisibility",
+      "source": "server/server.go",
+      "line": 854
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agents/{key}/visibility",
+      "handler": "pgSetAgentVisibility",
+      "source": "server/server.go",
+      "line": 855
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agents/{key}/wrapup",
+      "handler": "pgSaveWrapup",
+      "source": "server/server.go",
+      "line": 843
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/{key}/wrapup/reset",
+      "handler": "pgResetWrapup",
+      "source": "server/server.go",
+      "line": 844
+    },
+    {
+      "method": "PUT",
+      "path": "/api/agents/{key}/wrapup/task-timeout",
+      "handler": "pgSaveTaskTimeoutWrapup",
+      "source": "server/server.go",
+      "line": 845
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/{key}/wrapup/task-timeout/reset",
+      "handler": "pgResetTaskTimeoutWrapup",
+      "source": "server/server.go",
+      "line": 846
+    },
+    {
+      "method": "GET",
+      "path": "/api/asset-intercept/rules",
+      "handler": "assetInterceptListRules",
+      "source": "server/server.go",
+      "line": 916
+    },
+    {
+      "method": "POST",
+      "path": "/api/asset-intercept/rules",
+      "handler": "assetInterceptCreateRule",
+      "source": "server/server.go",
+      "line": 917
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/asset-intercept/rules/{id}",
+      "handler": "assetInterceptDeleteRule",
+      "source": "server/server.go",
+      "line": 919
+    },
+    {
+      "method": "PUT",
+      "path": "/api/asset-intercept/rules/{id}",
+      "handler": "assetInterceptUpdateRule",
+      "source": "server/server.go",
+      "line": 918
+    },
+    {
+      "method": "POST",
+      "path": "/api/asset-intercept/rules/{id}/toggle",
+      "handler": "assetInterceptToggleRule",
+      "source": "server/server.go",
+      "line": 920
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/assets",
+      "handler": "deleteAssets",
+      "source": "server/server.go",
+      "line": 745
+    },
+    {
+      "method": "GET",
+      "path": "/api/assets",
+      "handler": "listAssets",
+      "source": "server/server.go",
+      "line": 742
+    },
+    {
+      "method": "POST",
+      "path": "/api/assets",
+      "handler": "insertAssets",
+      "source": "server/server.go",
+      "line": 744
+    },
+    {
+      "method": "GET",
+      "path": "/api/assets/counts",
+      "handler": "assetCounts",
+      "source": "server/server.go",
+      "line": 743
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit",
+      "handler": "getAudit",
+      "source": "server/server.go",
+      "line": 784
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/change-password",
+      "handler": "authChangePassword",
+      "source": "server/server.go",
+      "line": 658
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/init",
+      "handler": "authInit",
+      "source": "server/server.go",
+      "line": 656
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "handler": "authLogin",
+      "source": "server/server.go",
+      "line": 657
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/status",
+      "handler": "authStatus",
+      "source": "server/server.go",
+      "line": 655
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat",
+      "handler": "chat",
+      "source": "server/server.go",
+      "line": 815
+    },
+    {
+      "method": "GET",
+      "path": "/api/chat/mentions",
+      "handler": "searchChatMentions",
+      "source": "server/server.go",
+      "line": 814
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat/upload",
+      "handler": "chatUpload",
+      "source": "server/server.go",
+      "line": 816
+    },
+    {
+      "method": "GET",
+      "path": "/api/commands",
+      "handler": "pgListCommands",
+      "source": "server/server.go",
+      "line": 793
+    },
+    {
+      "method": "GET",
+      "path": "/api/commands/stats",
+      "handler": "pgToolStats",
+      "source": "server/server.go",
+      "line": 794
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies",
+      "handler": "listCompanies",
+      "source": "server/server.go",
+      "line": 748
+    },
+    {
+      "method": "POST",
+      "path": "/api/companies",
+      "handler": "createCompany",
+      "source": "server/server.go",
+      "line": 749
+    },
+    {
+      "method": "POST",
+      "path": "/api/companies/reattribute",
+      "handler": "reattribute",
+      "source": "server/server.go",
+      "line": 753
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/companies/{id}",
+      "handler": "deleteCompany",
+      "source": "server/server.go",
+      "line": 751
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/{id}",
+      "handler": "getCompany",
+      "source": "server/server.go",
+      "line": 750
+    },
+    {
+      "method": "POST",
+      "path": "/api/companies/{id}/scope",
+      "handler": "addCompanyScope",
+      "source": "server/server.go",
+      "line": 752
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations",
+      "handler": "pgListConversations",
+      "source": "server/server.go",
+      "line": 824
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations",
+      "handler": "pgCreateConversation",
+      "source": "server/server.go",
+      "line": 825
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations/delete/batch",
+      "handler": "pgDeleteConversationsBatch",
+      "source": "server/server.go",
+      "line": 826
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/conversations/{id}",
+      "handler": "pgDeleteConversation",
+      "source": "server/server.go",
+      "line": 829
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/conversations/{id}",
+      "handler": "pgRenameConversation",
+      "source": "server/server.go",
+      "line": 827
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/{id}/messages",
+      "handler": "pgConversationMessages",
+      "source": "server/server.go",
+      "line": 830
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations/{id}/messages",
+      "handler": "pgSendConversationMessage",
+      "source": "server/server.go",
+      "line": 831
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/{id}/messages/{seq}",
+      "handler": "pgConversationMsgDetail",
+      "source": "server/server.go",
+      "line": 833
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/conversations/{id}/profile",
+      "handler": "pgUpdateConversation",
+      "source": "server/server.go",
+      "line": 828
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/conversations/{id}/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations/{id}/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations/{id}/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "POST",
+      "path": "/api/conversations/{id}/stop",
+      "handler": "pgStopConversation",
+      "source": "server/server.go",
+      "line": 832
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/activity",
+      "handler": "activity",
+      "source": "server/server.go",
+      "line": 773
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/activity/history",
+      "handler": "activityHistory",
+      "source": "server/server.go",
+      "line": 774
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/activity/stream",
+      "handler": "streamActivity",
+      "source": "server/server.go",
+      "line": 777
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/activity/{seq}",
+      "handler": "activityDetail",
+      "source": "server/server.go",
+      "line": 778
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings",
+      "handler": "findings",
+      "source": "server/server.go",
+      "line": 756
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/asset-tree",
+      "handler": "findingAssetTree",
+      "source": "server/server.go",
+      "line": 758
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/export",
+      "handler": "findingsExport",
+      "source": "server/server.go",
+      "line": 760
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/groups",
+      "handler": "findingGroups",
+      "source": "server/server.go",
+      "line": 757
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/retests/active",
+      "handler": "listActiveFindingRetests",
+      "source": "server/server.go",
+      "line": 766
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/stats",
+      "handler": "findingStats",
+      "source": "server/server.go",
+      "line": 759
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/exploration/findings/{id}",
+      "handler": "deleteFinding",
+      "source": "server/server.go",
+      "line": 769
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/{id}",
+      "handler": "getFinding",
+      "source": "server/server.go",
+      "line": 762
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/exploration/findings/{id}",
+      "handler": "patchFinding",
+      "source": "server/server.go",
+      "line": 768
+    },
+    {
+      "method": "POST",
+      "path": "/api/exploration/findings/{id}/deepen",
+      "handler": "deepenFinding",
+      "source": "server/server.go",
+      "line": 764
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/{id}/lineage",
+      "handler": "findingLineage",
+      "source": "server/server.go",
+      "line": 763
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/{id}/retests",
+      "handler": "listFindingRetests",
+      "source": "server/server.go",
+      "line": 765
+    },
+    {
+      "method": "POST",
+      "path": "/api/exploration/findings/{id}/retests",
+      "handler": "startFindingRetest",
+      "source": "server/server.go",
+      "line": 767
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/{id}/traffic",
+      "handler": "getFindingTraffic",
+      "source": "server/finding_traffic.go",
+      "registration": "registerFindingTraffic: reviewed base expansion"
+    },
+    {
+      "method": "POST",
+      "path": "/api/exploration/findings/{id}/traffic",
+      "handler": "bindFindingTraffic",
+      "source": "server/finding_traffic.go",
+      "registration": "registerFindingTraffic: reviewed base expansion"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/exploration/findings/{id}/traffic/order",
+      "handler": "editFindingTraffic",
+      "source": "server/finding_traffic.go",
+      "registration": "registerFindingTraffic: reviewed base expansion"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/exploration/findings/{id}/traffic/{binding_id}",
+      "handler": "editFindingTraffic",
+      "source": "server/finding_traffic.go",
+      "registration": "registerFindingTraffic: reviewed base expansion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/{id}/traffic/{binding_id}",
+      "handler": "getFindingTrafficDetail",
+      "source": "server/finding_traffic.go",
+      "registration": "registerFindingTraffic: reviewed base expansion"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/exploration/findings/{id}/traffic/{binding_id}",
+      "handler": "editFindingTraffic",
+      "source": "server/finding_traffic.go",
+      "registration": "registerFindingTraffic: reviewed base expansion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/findings/{id}/traffic/{binding_id}/body",
+      "handler": "getFindingTrafficBody",
+      "source": "server/finding_traffic.go",
+      "registration": "registerFindingTraffic: reviewed base expansion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/frontier",
+      "handler": "frontier",
+      "source": "server/server.go",
+      "line": 755
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/graph",
+      "handler": "explorationGraph",
+      "source": "server/server.go",
+      "line": 771
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/intents",
+      "handler": "intents",
+      "source": "server/server.go",
+      "line": 770
+    },
+    {
+      "method": "POST",
+      "path": "/api/exploration/main-session/new",
+      "handler": "newMainSession",
+      "source": "server/server.go",
+      "line": 776
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/main-sessions",
+      "handler": "mainSessions",
+      "source": "server/server.go",
+      "line": 775
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/nodes",
+      "handler": "explorationNodes",
+      "source": "server/server.go",
+      "line": 772
+    },
+    {
+      "method": "GET",
+      "path": "/api/exploration/tokens",
+      "handler": "tokenStats",
+      "source": "server/server.go",
+      "line": 779
+    },
+    {
+      "method": "POST",
+      "path": "/api/gc",
+      "handler": "gc",
+      "source": "server/server.go",
+      "line": 785
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "handler": "health",
+      "source": "server/server.go",
+      "line": 660
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/history",
+      "handler": "interceptHistory",
+      "source": "server/server.go",
+      "line": 925
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/history/{id}",
+      "handler": "interceptDetail",
+      "source": "server/server.go",
+      "line": 926
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/history/{id}/execution",
+      "handler": "interceptExecution",
+      "source": "server/server.go",
+      "line": 927
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/judge",
+      "handler": "interceptGetJudgeConfig",
+      "source": "server/server.go",
+      "line": 931
+    },
+    {
+      "method": "PUT",
+      "path": "/api/intercept/judge",
+      "handler": "interceptSetJudgeConfig",
+      "source": "server/server.go",
+      "line": 932
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/judge/usage",
+      "handler": "interceptJudgeUsage",
+      "source": "server/server.go",
+      "line": 933
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/pending",
+      "handler": "interceptListPending",
+      "source": "server/server.go",
+      "line": 922
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/pending/{id}",
+      "handler": "interceptGetOne",
+      "source": "server/server.go",
+      "line": 923
+    },
+    {
+      "method": "POST",
+      "path": "/api/intercept/pending/{id}/decide",
+      "handler": "interceptDecide",
+      "source": "server/server.go",
+      "line": 924
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/rules",
+      "handler": "interceptListRules",
+      "source": "server/server.go",
+      "line": 909
+    },
+    {
+      "method": "POST",
+      "path": "/api/intercept/rules",
+      "handler": "interceptCreateRule",
+      "source": "server/server.go",
+      "line": 910
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/intercept/rules/{id}",
+      "handler": "interceptDeleteRule",
+      "source": "server/server.go",
+      "line": 912
+    },
+    {
+      "method": "PUT",
+      "path": "/api/intercept/rules/{id}",
+      "handler": "interceptUpdateRule",
+      "source": "server/server.go",
+      "line": 911
+    },
+    {
+      "method": "POST",
+      "path": "/api/intercept/rules/{id}/toggle",
+      "handler": "interceptToggleRule",
+      "source": "server/server.go",
+      "line": 913
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/task/{taskID}",
+      "handler": "interceptListTaskItems",
+      "source": "server/server.go",
+      "line": 928
+    },
+    {
+      "method": "GET",
+      "path": "/api/intercept/tool-config",
+      "handler": "interceptGetToolConfig",
+      "source": "server/server.go",
+      "line": 929
+    },
+    {
+      "method": "PUT",
+      "path": "/api/intercept/tool-config",
+      "handler": "interceptSetToolConfig",
+      "source": "server/server.go",
+      "line": 930
+    },
+    {
+      "method": "GET",
+      "path": "/api/llm",
+      "handler": "getLLM",
+      "source": "server/server.go",
+      "line": 737
+    },
+    {
+      "method": "POST",
+      "path": "/api/llm",
+      "handler": "setLLM",
+      "source": "server/server.go",
+      "line": 738
+    },
+    {
+      "method": "POST",
+      "path": "/api/llm/models",
+      "handler": "pgListModels",
+      "source": "server/server.go",
+      "line": 906
+    },
+    {
+      "method": "GET",
+      "path": "/api/llm/pool",
+      "handler": "pgLLMPoolStatus",
+      "source": "server/server.go",
+      "line": 904
+    },
+    {
+      "method": "POST",
+      "path": "/api/llm/pool/reset",
+      "handler": "pgLLMPoolReset",
+      "source": "server/server.go",
+      "line": 905
+    },
+    {
+      "method": "GET",
+      "path": "/api/llm/profiles",
+      "handler": "pgListProfiles",
+      "source": "server/server.go",
+      "line": 898
+    },
+    {
+      "method": "POST",
+      "path": "/api/llm/profiles",
+      "handler": "pgSaveProfile",
+      "source": "server/server.go",
+      "line": 899
+    },
+    {
+      "method": "POST",
+      "path": "/api/llm/profiles/active",
+      "handler": "pgActivateProfile",
+      "source": "server/server.go",
+      "line": 901
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/llm/profiles/{id}",
+      "handler": "pgDeleteProfile",
+      "source": "server/server.go",
+      "line": 900
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/llm/records",
+      "handler": "pgDeleteLLMRecords",
+      "source": "server/server.go",
+      "line": 796
+    },
+    {
+      "method": "GET",
+      "path": "/api/llm/records",
+      "handler": "pgListLLMRecords",
+      "source": "server/server.go",
+      "line": 795
+    },
+    {
+      "method": "GET",
+      "path": "/api/llm/records/by-model",
+      "handler": "pgTokenByModel",
+      "source": "server/server.go",
+      "line": 798
+    },
+    {
+      "method": "GET",
+      "path": "/api/llm/records/tasks",
+      "handler": "pgLLMTasks",
+      "source": "server/server.go",
+      "line": 797
+    },
+    {
+      "method": "GET",
+      "path": "/api/llm/records/{id}",
+      "handler": "pgGetLLMRecord",
+      "source": "server/server.go",
+      "line": 799
+    },
+    {
+      "method": "GET",
+      "path": "/api/llm/retry-policy",
+      "handler": "pgGetLLMRetryPolicy",
+      "source": "server/server.go",
+      "line": 902
+    },
+    {
+      "method": "POST",
+      "path": "/api/llm/retry-policy",
+      "handler": "pgSaveLLMRetryPolicy",
+      "source": "server/server.go",
+      "line": 903
+    },
+    {
+      "method": "POST",
+      "path": "/api/llm/test",
+      "handler": "testLLM",
+      "source": "server/server.go",
+      "line": 739
+    },
+    {
+      "method": "GET",
+      "path": "/api/logs",
+      "handler": "getLogs",
+      "source": "server/server.go",
+      "line": 662
+    },
+    {
+      "method": "GET",
+      "path": "/api/logs/history",
+      "handler": "getLogsHistory",
+      "source": "server/server.go",
+      "line": 663
+    },
+    {
+      "method": "GET",
+      "path": "/api/logs/stream",
+      "handler": "streamLogs",
+      "source": "server/server.go",
+      "line": 664
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp",
+      "handler": "pgListMCP",
+      "source": "server/server.go",
+      "line": 866
+    },
+    {
+      "method": "POST",
+      "path": "/api/mcp",
+      "handler": "pgSaveMCP",
+      "source": "server/server.go",
+      "line": 867
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/mcp/{id}",
+      "handler": "pgDeleteMCP",
+      "source": "server/server.go",
+      "line": 868
+    },
+    {
+      "method": "POST",
+      "path": "/api/mcp/{id}/refresh",
+      "handler": "pgRefreshMCP",
+      "source": "server/server.go",
+      "line": 870
+    },
+    {
+      "method": "GET",
+      "path": "/api/mcp/{id}/tools",
+      "handler": "pgMCPTools",
+      "source": "server/server.go",
+      "line": 869
+    },
+    {
+      "method": "GET",
+      "path": "/api/notify/channels",
+      "handler": "notifyListChannels",
+      "source": "server/server.go",
+      "line": 805
+    },
+    {
+      "method": "POST",
+      "path": "/api/notify/channels",
+      "handler": "notifyCreateChannel",
+      "source": "server/server.go",
+      "line": 806
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/notify/channels/{id}",
+      "handler": "notifyDeleteChannel",
+      "source": "server/server.go",
+      "line": 808
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/notify/channels/{id}",
+      "handler": "notifyUpdateChannel",
+      "source": "server/server.go",
+      "line": 807
+    },
+    {
+      "method": "POST",
+      "path": "/api/notify/channels/{id}/test",
+      "handler": "notifyTestChannel",
+      "source": "server/server.go",
+      "line": 809
+    },
+    {
+      "method": "GET",
+      "path": "/api/notify/deliveries",
+      "handler": "notifyListDeliveries",
+      "source": "server/server.go",
+      "line": 810
+    },
+    {
+      "method": "POST",
+      "path": "/api/notify/deliveries/{id}/retry",
+      "handler": "notifyRetryDelivery",
+      "source": "server/server.go",
+      "line": 811
+    },
+    {
+      "method": "GET",
+      "path": "/api/notify/meta",
+      "handler": "notifyMeta",
+      "source": "server/server.go",
+      "line": 804
+    },
+    {
+      "method": "GET",
+      "path": "/api/report",
+      "handler": "getReport",
+      "source": "server/server.go",
+      "line": 813
+    },
+    {
+      "method": "GET",
+      "path": "/api/settings",
+      "handler": "getSettings",
+      "source": "server/server.go",
+      "line": 800
+    },
+    {
+      "method": "PUT",
+      "path": "/api/settings",
+      "handler": "putSettings",
+      "source": "server/server.go",
+      "line": 801
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/python/detect",
+      "handler": "pgDetectPython",
+      "source": "server/server.go",
+      "line": 863
+    },
+    {
+      "method": "POST",
+      "path": "/api/settings/web-search/test",
+      "handler": "testWebSearch",
+      "source": "server/server.go",
+      "line": 812
+    },
+    {
+      "method": "POST",
+      "path": "/api/side-questions/{requestID}/cancel",
+      "handler": "cancelSideRequest",
+      "source": "server/side_questions.go"
+    },
+    {
+      "method": "GET",
+      "path": "/api/side-questions/{requestID}/events",
+      "handler": "sideEvents",
+      "source": "server/side_questions.go"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills",
+      "handler": "fsListSkills",
+      "source": "server/server.go",
+      "line": 878
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills",
+      "handler": "fsCreateSkill",
+      "source": "server/server.go",
+      "line": 879
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/missing",
+      "handler": "fsMissingSkills",
+      "source": "server/server.go",
+      "line": 882
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/upload",
+      "handler": "fsUploadSkill",
+      "source": "server/server.go",
+      "line": 880
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/skills/{name}",
+      "handler": "fsDeleteSkill",
+      "source": "server/server.go",
+      "line": 881
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills/{name}/dirs",
+      "handler": "fsCreateDir",
+      "source": "server/server.go",
+      "line": 885
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/{name}/files",
+      "handler": "fsListFiles",
+      "source": "server/server.go",
+      "line": 886
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/skills/{name}/files/{file...}",
+      "handler": "fsDeletePath",
+      "source": "server/server.go",
+      "line": 890
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/{name}/files/{file...}",
+      "handler": "fsReadFile",
+      "source": "server/server.go",
+      "line": 888
+    },
+    {
+      "method": "PUT",
+      "path": "/api/skills/{name}/files/{file...}",
+      "handler": "fsWriteFile",
+      "source": "server/server.go",
+      "line": 889
+    },
+    {
+      "method": "PUT",
+      "path": "/api/skills/{name}/meta",
+      "handler": "fsUpdateSkillMeta",
+      "source": "server/server.go",
+      "line": 884
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills/{name}/usage",
+      "handler": "fsSkillUsage",
+      "source": "server/server.go",
+      "line": 883
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats",
+      "handler": "stats",
+      "source": "server/server.go",
+      "line": 661
+    },
+    {
+      "method": "POST",
+      "path": "/api/sync/scopesentry/datasource",
+      "handler": "syncSSDatasource",
+      "source": "server/server.go",
+      "line": 873
+    },
+    {
+      "method": "GET",
+      "path": "/api/sync/scopesentry/projects",
+      "handler": "syncSSProjects",
+      "source": "server/server.go",
+      "line": 874
+    },
+    {
+      "method": "GET",
+      "path": "/api/sync/scopesentry/status",
+      "handler": "syncSSStatus",
+      "source": "server/server.go",
+      "line": 872
+    },
+    {
+      "method": "POST",
+      "path": "/api/sync/scopesentry/sync",
+      "handler": "syncSSRun",
+      "source": "server/server.go",
+      "line": 876
+    },
+    {
+      "method": "GET",
+      "path": "/api/sync/scopesentry/tasks",
+      "handler": "syncSSTasks",
+      "source": "server/server.go",
+      "line": 875
+    },
+    {
+      "method": "GET",
+      "path": "/api/task-archives",
+      "handler": "listTaskArchives",
+      "source": "server/server.go",
+      "line": 694
+    },
+    {
+      "method": "POST",
+      "path": "/api/task-archives/delete/batch",
+      "handler": "deleteTaskArchivesBatch",
+      "source": "server/server.go",
+      "line": 701
+    },
+    {
+      "method": "POST",
+      "path": "/api/task-archives/restore/batch",
+      "handler": "restoreTaskArchivesBatch",
+      "source": "server/server.go",
+      "line": 699
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/task-archives/{id}",
+      "handler": "queueTaskArchiveDelete",
+      "source": "server/server.go",
+      "line": 700
+    },
+    {
+      "method": "GET",
+      "path": "/api/task-archives/{id}",
+      "handler": "getTaskArchive",
+      "source": "server/server.go",
+      "line": 695
+    },
+    {
+      "method": "POST",
+      "path": "/api/task-archives/{id}/restore",
+      "handler": "queueTaskArchiveRestore",
+      "source": "server/server.go",
+      "line": 698
+    },
+    {
+      "method": "GET",
+      "path": "/api/task-categories",
+      "handler": "pgListTaskCategories",
+      "source": "server/server.go",
+      "line": 675
+    },
+    {
+      "method": "POST",
+      "path": "/api/task-categories",
+      "handler": "pgCreateTaskCategory",
+      "source": "server/server.go",
+      "line": 676
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/task-categories/{id}",
+      "handler": "pgDeleteTaskCategory",
+      "source": "server/server.go",
+      "line": 678
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/task-categories/{id}",
+      "handler": "pgRenameTaskCategory",
+      "source": "server/server.go",
+      "line": 677
+    },
+    {
+      "method": "GET",
+      "path": "/api/task-templates",
+      "handler": "pgListTaskTemplates",
+      "source": "server/server.go",
+      "line": 680
+    },
+    {
+      "method": "POST",
+      "path": "/api/task-templates",
+      "handler": "pgCreateTaskTemplate",
+      "source": "server/server.go",
+      "line": 681
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/task-templates/{id}",
+      "handler": "pgDeleteTaskTemplate",
+      "source": "server/server.go",
+      "line": 683
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/task-templates/{id}",
+      "handler": "pgUpdateTaskTemplate",
+      "source": "server/server.go",
+      "line": 682
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks",
+      "handler": "listTasks",
+      "source": "server/server.go",
+      "line": 673
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks",
+      "handler": "createTask",
+      "source": "server/server.go",
+      "line": 674
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/archive/batch",
+      "handler": "queueTaskArchivesBatch",
+      "source": "server/server.go",
+      "line": 697
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/category/batch",
+      "handler": "updateTasksCategoryBatch",
+      "source": "server/server.go",
+      "line": 679
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/control/batch",
+      "handler": "controlTasksBatch",
+      "source": "server/server.go",
+      "line": 693
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{id}",
+      "handler": "pgDeleteTask",
+      "source": "server/server.go",
+      "line": 821
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}",
+      "handler": "getTask",
+      "source": "server/server.go",
+      "line": 684
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/{id}",
+      "handler": "updateTaskMetadata",
+      "source": "server/server.go",
+      "line": 685
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/archive",
+      "handler": "queueTaskArchive",
+      "source": "server/server.go",
+      "line": 696
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/asset-refs",
+      "handler": "taskAssetRefs",
+      "source": "server/server.go",
+      "line": 704
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/assets",
+      "handler": "attachTaskAssets",
+      "source": "server/server.go",
+      "line": 705
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{id}/assets/{assetID}",
+      "handler": "detachTaskAsset",
+      "source": "server/server.go",
+      "line": 706
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/{id}/category",
+      "handler": "updateTaskCategory",
+      "source": "server/server.go",
+      "line": 686
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{id}/chat/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/chat/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/chat/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/chat/status",
+      "handler": "taskChatStatus",
+      "source": "server/server.go",
+      "line": 817
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/chat/stop",
+      "handler": "stopChat",
+      "source": "server/server.go",
+      "line": 818
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/constraints",
+      "handler": "listConstraints",
+      "source": "server/server.go",
+      "line": 724
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/constraints",
+      "handler": "addConstraint",
+      "source": "server/server.go",
+      "line": 725
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{id}/constraints/{cid}",
+      "handler": "deleteConstraint",
+      "source": "server/server.go",
+      "line": 727
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/{id}/constraints/{cid}",
+      "handler": "editConstraint",
+      "source": "server/server.go",
+      "line": 726
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/control",
+      "handler": "control",
+      "source": "server/server.go",
+      "line": 728
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/coverage",
+      "handler": "taskCoverage",
+      "source": "server/server.go",
+      "line": 702
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/coverage-graph",
+      "handler": "taskCoverageGraph",
+      "source": "server/server.go",
+      "line": 703
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/goals",
+      "handler": "listGoals",
+      "source": "server/server.go",
+      "line": 720
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/goals",
+      "handler": "addGoal",
+      "source": "server/server.go",
+      "line": 721
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{id}/goals/{gid}",
+      "handler": "deleteGoal",
+      "source": "server/server.go",
+      "line": 723
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/{id}/goals/{gid}",
+      "handler": "editGoal",
+      "source": "server/server.go",
+      "line": 722
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/intent-assets",
+      "handler": "taskIntentAssets",
+      "source": "server/server.go",
+      "line": 707
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/intents/rerun-blocked",
+      "handler": "rerunBlocked",
+      "source": "server/server.go",
+      "line": 734
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/intents/{iid}/control",
+      "handler": "controlIntent",
+      "source": "server/server.go",
+      "line": 731
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/intents/{iid}/messages",
+      "handler": "sendWorkerMessage",
+      "source": "server/server.go",
+      "line": 732
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/intents/{iid}/rerun",
+      "handler": "rerunIntent",
+      "source": "server/server.go",
+      "line": 733
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{id}/intents/{iid}/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/intents/{iid}/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/intents/{iid}/side-questions",
+      "handler": "handleSideQuestions",
+      "source": "server/side_questions.go",
+      "registration": "registerSideRoutes: reviewed loop expansion"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/intercept-rules",
+      "handler": "taskInterceptListRules",
+      "source": "server/server.go",
+      "line": 688
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/intercept-rules",
+      "handler": "taskInterceptCreateRule",
+      "source": "server/server.go",
+      "line": 689
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{id}/intercept-rules/{rid}",
+      "handler": "taskInterceptDeleteRule",
+      "source": "server/server.go",
+      "line": 691
+    },
+    {
+      "method": "PUT",
+      "path": "/api/tasks/{id}/intercept-rules/{rid}",
+      "handler": "taskInterceptUpdateRule",
+      "source": "server/server.go",
+      "line": 690
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/intercept-rules/{rid}/toggle",
+      "handler": "taskInterceptToggleRule",
+      "source": "server/server.go",
+      "line": 692
+    },
+    {
+      "method": "PUT",
+      "path": "/api/tasks/{id}/llm",
+      "handler": "updateTaskLLMProfiles",
+      "source": "server/server.go",
+      "line": 729
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/llm/resolution",
+      "handler": "taskLLMResolutionHandler",
+      "source": "server/server.go",
+      "line": 730
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{id}/scope",
+      "handler": "taskScopeList",
+      "source": "server/server.go",
+      "line": 717
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{id}/scope",
+      "handler": "taskScopeAdd",
+      "source": "server/server.go",
+      "line": 718
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{id}/scope/{sid}",
+      "handler": "taskScopeDelete",
+      "source": "server/server.go",
+      "line": 719
+    },
+    {
+      "method": "GET",
+      "path": "/api/tokens/conversations",
+      "handler": "conversationTokens",
+      "source": "server/server.go",
+      "line": 781
+    },
+    {
+      "method": "GET",
+      "path": "/api/tokens/daily",
+      "handler": "tokenDailyStats",
+      "source": "server/server.go",
+      "line": 780
+    },
+    {
+      "method": "GET",
+      "path": "/api/tokens/usage",
+      "handler": "pgUsageStats",
+      "source": "server/server.go",
+      "line": 782
+    },
+    {
+      "method": "GET",
+      "path": "/api/tools",
+      "handler": "pgListTools",
+      "source": "server/server.go",
+      "line": 857
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/custom",
+      "handler": "pgCreateCustomTool",
+      "source": "server/server.go",
+      "line": 859
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/custom/test",
+      "handler": "pgTestCustomTool",
+      "source": "server/server.go",
+      "line": 860
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tools/custom/{key}",
+      "handler": "pgDeleteCustomTool",
+      "source": "server/server.go",
+      "line": 862
+    },
+    {
+      "method": "PUT",
+      "path": "/api/tools/custom/{key}",
+      "handler": "pgUpdateCustomTool",
+      "source": "server/server.go",
+      "line": 861
+    },
+    {
+      "method": "PUT",
+      "path": "/api/tools/{key}",
+      "handler": "pgUpdateTool",
+      "source": "server/server.go",
+      "line": 858
+    },
+    {
+      "method": "POST",
+      "path": "/api/tools/{key}/reset",
+      "handler": "pgResetTool",
+      "source": "server/server.go",
+      "line": 864
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/traffic",
+      "handler": "deleteTraffic",
+      "source": "server/server.go",
+      "line": 788
+    },
+    {
+      "method": "GET",
+      "path": "/api/traffic",
+      "handler": "getTraffic",
+      "source": "server/server.go",
+      "line": 786
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/traffic/all",
+      "handler": "deleteAllTraffic",
+      "source": "server/server.go",
+      "line": 790
+    },
+    {
+      "method": "GET",
+      "path": "/api/traffic/blob",
+      "handler": "getTrafficBlob",
+      "source": "server/server.go",
+      "line": 792
+    },
+    {
+      "method": "GET",
+      "path": "/api/traffic/exchange",
+      "handler": "getTrafficExchange",
+      "source": "server/server.go",
+      "line": 791
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/traffic/hosts",
+      "handler": "deleteTrafficHosts",
+      "source": "server/server.go",
+      "line": 789
+    },
+    {
+      "method": "GET",
+      "path": "/api/traffic/hosts",
+      "handler": "getTrafficHosts",
+      "source": "server/server.go",
+      "line": 787
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/triggers/{id}",
+      "handler": "pgDeleteTrigger",
+      "source": "server/server.go",
+      "line": 850
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/triggers/{id}",
+      "handler": "pgUpdateTrigger",
+      "source": "server/server.go",
+      "line": 849
+    },
+    {
+      "method": "POST",
+      "path": "/api/update/apply",
+      "handler": "updateApply",
+      "source": "server/server.go",
+      "line": 669
+    },
+    {
+      "method": "GET",
+      "path": "/api/update/check",
+      "handler": "updateCheck",
+      "source": "server/server.go",
+      "line": 668
+    },
+    {
+      "method": "POST",
+      "path": "/api/update/rollback",
+      "handler": "updateRollback",
+      "source": "server/server.go",
+      "line": 670
+    },
+    {
+      "method": "GET",
+      "path": "/api/update/stream",
+      "handler": "updateStream",
+      "source": "server/server.go",
+      "line": 671
+    },
+    {
+      "method": "POST",
+      "path": "/api/visibility/skill/toggle",
+      "handler": "pgToggleSkillVisibility",
+      "source": "server/server.go",
+      "line": 896
+    },
+    {
+      "method": "GET",
+      "path": "/api/visibility/skill/{name}",
+      "handler": "pgSkillVisibility",
+      "source": "server/server.go",
+      "line": 895
+    },
+    {
+      "method": "POST",
+      "path": "/api/visibility/toggle",
+      "handler": "pgToggleVisibility",
+      "source": "server/server.go",
+      "line": 893
+    },
+    {
+      "method": "GET",
+      "path": "/api/visibility/{kind}/{id}",
+      "handler": "pgResourceVisibility",
+      "source": "server/server.go",
+      "line": 892
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workspace/delete",
+      "handler": "wsDelete",
+      "source": "server/server.go",
+      "line": 714
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspace/download",
+      "handler": "wsDownload",
+      "source": "server/server.go",
+      "line": 715
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspace/list",
+      "handler": "wsList",
+      "source": "server/server.go",
+      "line": 710
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspace/mkdir",
+      "handler": "wsMkdir",
+      "source": "server/server.go",
+      "line": 713
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspace/read",
+      "handler": "wsRead",
+      "source": "server/server.go",
+      "line": 711
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspace/upload",
+      "handler": "wsUpload",
+      "source": "server/server.go",
+      "line": 716
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspace/write",
+      "handler": "wsWrite",
+      "source": "server/server.go",
+      "line": 712
+    }
+  ],
+  "frontend_pages": [
+    "web/src/app/(auth)/login/page.tsx",
+    "web/src/app/(auth)/setup/page.tsx",
+    "web/src/app/(external)/page.tsx",
+    "web/src/app/(main)/chat/page.tsx",
+    "web/src/app/(main)/dashboard/page.tsx",
+    "web/src/app/(main)/function/assets/page.tsx",
+    "web/src/app/(main)/function/commands/page.tsx",
+    "web/src/app/(main)/function/findings/detail/page.tsx",
+    "web/src/app/(main)/function/findings/page.tsx",
+    "web/src/app/(main)/function/llm-records/page.tsx",
+    "web/src/app/(main)/function/sync/page.tsx",
+    "web/src/app/(main)/function/tasks/detail/page.tsx",
+    "web/src/app/(main)/function/tasks/page.tsx",
+    "web/src/app/(main)/function/traffic/page.tsx",
+    "web/src/app/(main)/function/workspace/page.tsx",
+    "web/src/app/(main)/system/agents/detail/page.tsx",
+    "web/src/app/(main)/system/agents/page.tsx",
+    "web/src/app/(main)/system/intercept/approvals/page.tsx",
+    "web/src/app/(main)/system/intercept/assets/page.tsx",
+    "web/src/app/(main)/system/intercept/page.tsx",
+    "web/src/app/(main)/system/llm/page.tsx",
+    "web/src/app/(main)/system/logs/page.tsx",
+    "web/src/app/(main)/system/mcp/page.tsx",
+    "web/src/app/(main)/system/notify/page.tsx",
+    "web/src/app/(main)/system/settings/page.tsx",
+    "web/src/app/(main)/system/skills/page.tsx",
+    "web/src/app/(main)/system/tools/page.tsx"
+  ],
+  "runtime_verification": false,
+  "literal_tool_definitions": [
+    {
+      "name": "graph_overview",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 342
+    },
+    {
+      "name": "list_findings",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 902
+    },
+    {
+      "name": "list_facts",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 940
+    },
+    {
+      "name": "node_detail",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 993
+    },
+    {
+      "name": "add_intent",
+      "constructor": "writeExpTool",
+      "source": "agent/tools.go",
+      "line": 1092
+    },
+    {
+      "name": "list_goals",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 1149
+    },
+    {
+      "name": "prove_goal",
+      "constructor": "writeExpTool",
+      "source": "agent/tools.go",
+      "line": 1158
+    },
+    {
+      "name": "goal_met",
+      "constructor": "writeTool",
+      "source": "agent/tools.go",
+      "line": 1206
+    },
+    {
+      "name": "report_finding",
+      "constructor": "writeTool",
+      "source": "agent/tools.go",
+      "line": 1220
+    },
+    {
+      "name": "record_fact",
+      "constructor": "writeExpTool",
+      "source": "agent/tools.go",
+      "line": 1354
+    },
+    {
+      "name": "set_goals",
+      "constructor": "writeTool",
+      "source": "agent/tools.go",
+      "line": 1475
+    },
+    {
+      "name": "set_constraints",
+      "constructor": "writeTool",
+      "source": "agent/tools.go",
+      "line": 1568
+    },
+    {
+      "name": "add_hint",
+      "constructor": "writeExpTool",
+      "source": "agent/tools.go",
+      "line": 1617
+    },
+    {
+      "name": "kill_work",
+      "constructor": "writeExpTool",
+      "source": "agent/tools.go",
+      "line": 1677
+    },
+    {
+      "name": "steer_work",
+      "constructor": "writeExpTool",
+      "source": "agent/tools.go",
+      "line": 1707
+    },
+    {
+      "name": "get_worker_output",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 1741
+    },
+    {
+      "name": "get_worker_trace",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 1822
+    },
+    {
+      "name": "search_all_worker_traces",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 1931
+    },
+    {
+      "name": "list_worker_traces",
+      "constructor": "readExpTool",
+      "source": "agent/tools.go",
+      "line": 1980
+    },
+    {
+      "name": "expand_digest",
+      "constructor": "writeExpTool",
+      "source": "agent/tools_digest.go",
+      "line": 121
+    },
+    {
+      "name": "insert_assets",
+      "constructor": "writeTool",
+      "source": "agent/tools_insert.go",
+      "line": 123
+    },
+    {
+      "name": "add_company_scope",
+      "constructor": "writeTool",
+      "source": "agent/tools_insert.go",
+      "line": 378
+    },
+    {
+      "name": "add_task_scope",
+      "constructor": "writeTool",
+      "source": "agent/tools_insert.go",
+      "line": 432
+    },
+    {
+      "name": "list_untested_assets",
+      "constructor": "readTool",
+      "source": "agent/tools_insert.go",
+      "line": 488
+    },
+    {
+      "name": "list_assets",
+      "constructor": "readTool",
+      "source": "agent/tools_insert.go",
+      "line": 531
+    },
+    {
+      "name": "list_companies",
+      "constructor": "readTool",
+      "source": "agent/tools_insert.go",
+      "line": 588
+    },
+    {
+      "name": "get_finding_retest_context",
+      "constructor": "roTool",
+      "source": "server/finding_retests.go",
+      "line": 146
+    },
+    {
+      "name": "record_finding_retest_result",
+      "constructor": "wrTool",
+      "source": "server/finding_retests.go",
+      "line": 170
+    },
+    {
+      "name": "get_finding_traffic",
+      "constructor": "roTool",
+      "source": "server/finding_traffic.go",
+      "line": 369
+    },
+    {
+      "name": "bind_finding_traffic",
+      "constructor": "wrTool",
+      "source": "server/finding_workflow.go",
+      "line": 146
+    },
+    {
+      "name": "list_tasks",
+      "constructor": "roTool",
+      "source": "server/orchestration.go",
+      "line": 177
+    },
+    {
+      "name": "list_llm_profiles",
+      "constructor": "roTool",
+      "source": "server/orchestration.go",
+      "line": 223
+    },
+    {
+      "name": "spawn_task",
+      "constructor": "wrTool",
+      "source": "server/orchestration.go",
+      "line": 242
+    },
+    {
+      "name": "pause_task",
+      "constructor": "wrTool",
+      "source": "server/orchestration.go",
+      "line": 332
+    },
+    {
+      "name": "get_task_graph",
+      "constructor": "roTool",
+      "source": "server/orchestration.go",
+      "line": 351
+    },
+    {
+      "name": "list_task_findings",
+      "constructor": "roTool",
+      "source": "server/orchestration.go",
+      "line": 359
+    },
+    {
+      "name": "add_task_hint",
+      "constructor": "wrTool",
+      "source": "server/orchestration.go",
+      "line": 367
+    },
+    {
+      "name": "get_task_worker_trace",
+      "constructor": "roTool",
+      "source": "server/orchestration.go",
+      "line": 382
+    },
+    {
+      "name": "list_task_worker_traces",
+      "constructor": "roTool",
+      "source": "server/orchestration.go",
+      "line": 395
+    },
+    {
+      "name": "search_task_worker_traces",
+      "constructor": "roTool",
+      "source": "server/orchestration.go",
+      "line": 403
+    },
+    {
+      "name": "get_task_node_detail",
+      "constructor": "roTool",
+      "source": "server/orchestration.go",
+      "line": 411
+    },
+    {
+      "name": "update_finding_report",
+      "constructor": "wrTool",
+      "source": "server/orchestration.go",
+      "line": 427
+    },
+    {
+      "name": "delete_assets_by_host",
+      "constructor": "wrTool",
+      "source": "server/platform_tools.go",
+      "line": 43
+    },
+    {
+      "name": "create_skill",
+      "constructor": "wrTool",
+      "source": "server/platform_tools.go",
+      "line": 82
+    },
+    {
+      "name": "update_skill_file",
+      "constructor": "wrTool",
+      "source": "server/platform_tools.go",
+      "line": 124
+    },
+    {
+      "name": "create_custom_tool",
+      "constructor": "wrTool",
+      "source": "server/platform_tools.go",
+      "line": 198
+    },
+    {
+      "name": "update_custom_tool",
+      "constructor": "wrTool",
+      "source": "server/platform_tools.go",
+      "line": 224
+    },
+    {
+      "name": "create_mcp",
+      "constructor": "wrTool",
+      "source": "server/platform_tools.go",
+      "line": 295
+    },
+    {
+      "name": "update_mcp",
+      "constructor": "wrTool",
+      "source": "server/platform_tools.go",
+      "line": 313
+    }
+  ],
+  "tool_definition_scope": "Named literal constructors in agent/*.go and server/*.go excluding tests; not an evaluated runtime catalog. SDK, dynamic, MCP and skill-provided tools are excluded."
+}

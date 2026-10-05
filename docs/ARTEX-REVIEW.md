@@ -4,7 +4,9 @@
 [`d0033724a63aefbbcc1ed022b0faf4dc4a1fce51`](https://github.com/Autumn-27/ARTEX/commit/d0033724a63aefbbcc1ed022b0faf4dc4a1fce51)이다.
 [고정 README](https://github.com/Autumn-27/ARTEX/blob/d0033724a63aefbbcc1ed022b0faf4dc4a1fce51/README.md)의
 설명과 현재 Open Aegis 구현을 대조했다. 아래 원본 설명은 문서상 기능이며,
-ARTEX를 실행하거나 전체 코드를 감사한 결과가 아니다. 특정 국가·조직의 공격,
+ARTEX를 실행하거나 전체 코드를 감사한 결과가 아니다. 2026-10-06에는 최신 고정 커밋의
+HTTP 등록·화면 진입점과 선택한 하위 시스템을 추가로 읽고
+[전체 기능 추적 목록](ARTEX-INVENTORY.md)을 작성했다. 특정 국가·조직의 공격,
 실제 침해나 정보 유출에 이 도구가 사용됐다는 주장도 확인하지 않았다.
 
 ## 원본의 기능 구조
