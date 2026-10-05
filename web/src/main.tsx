@@ -8,6 +8,7 @@ import { GoalDraftPanel, GoalPlanSummary, GoalProgress, GoalRetestOrigin, type G
 import { WorkerProcess } from "./WorkerProcess";
 import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
+import { TaskCategories } from "./TaskCategories";
 import { TaskTemplates, TemplateOriginSummary, type TemplateOrigin } from "./TaskTemplates";
 import { CallHistory } from "./CallHistory";
 import { UsageSummary } from "./UsageSummary";
@@ -98,6 +99,9 @@ type Asset = {
   archived_at?: number | null;
 };
 type Task = {
+  category_ref?: {id:string;name:string;revision:number} | null;
+  category_revision?:number;
+  category_origin_task_id?:string;
   template_origin?: TemplateOrigin;
   goal_plan?: GoalPlan;
   goal_selection?: GoalSelection;
@@ -263,6 +267,7 @@ const pages = [
     group: "WORKSPACE",
   },
   { id: "tasks", name: "검증 작업", icon: Workflow },
+  { id: "categories", name: "작업 분류", icon: Layers3 },
   { id: "templates", name: "작업 템플릿", icon: BookOpen },
   { id: "assets", name: "자산", icon: Globe2 },
   { id: "observations", name: "관찰 링크", icon: Link2 },
@@ -1187,6 +1192,7 @@ function App() {
                       overview:
                         "자산의 상태를 확인하고, 근거 있는 검증을 시작하세요.",
                       tasks: "목표를 정하고 실행부터 수정 확인까지 추적하세요.",
+                      categories: "작업을 분류하고 여러 작업의 분류를 한 번에 변경하세요.",
                       templates: "반복 사용할 검사 설정을 저장하고 현재 자산으로 계획을 만드세요.",
                       processes: "여러 작업의 Worker 실행 기록을 검색하고 출처를 확인하세요.",
                       assets: "검증할 자산과 접근 범위를 한곳에서 관리하세요.",
@@ -1732,6 +1738,10 @@ function App() {
             status={filter} onStatus={setFilter} position={list} onPositionChange={changeRecordPosition}
             onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}
 
+          {page === "categories" && <TaskCategories canOperate={canOperate} search={search} onSearch={setSearch}
+            status={filter} onStatus={setFilter} position={list} onPositionChange={changeRecordPosition}
+            onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}
+
           {page === "tasks" && (
             <>
               <Toolbar
@@ -1792,6 +1802,7 @@ function App() {
                                       ? "AI Planner"
                                       : "Rule-based Planner"}{" "}
                                     · {t.workers} workers
+                                    {t.category_ref && <> · {t.category_ref.name}</>}
                                   </small>
                                 </div>
                               </button>
@@ -2840,6 +2851,7 @@ function App() {
               </details>
             )}
             <TemplateOriginSummary origin={selectedTask.template_origin} />
+            {(selectedTask.category_ref || selectedTask.category_revision) && <p>작업 분류: <strong>{selectedTask.category_ref?.name || "미분류"}</strong> · 변경 버전 {selectedTask.category_revision || 0}{selectedTask.category_origin_task_id && " · 이전 작업에서 이어받음"} · 이름은 지정 당시 기록입니다.</p>}
             <ToolContracts snapshot={selectedTask.tool_contracts} current={settings?.tool_contracts}
               selected={selectedTask.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))}
               pending={selectedTask.status === "pending"} />

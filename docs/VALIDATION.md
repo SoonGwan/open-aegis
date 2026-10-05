@@ -6310,3 +6310,40 @@ full native invocation with explicit OpenSSL3/PostgreSQL16 PATH is running
 full candidate result. PR1's hosted candidate run37363828003 is also still running.
 The duplicate push run37363822445 for the exact same83433f0 source was cancelled to
 avoid duplicating hosted work; it is not a failed product validation.
+
+## Task category candidate — 2026-10-06
+
+The independent category implementation is a development candidate. It adds versioned
+CRUD/archive/restore, immutable category and per-task membership history, bounded SQL
+membership filtering, and an operator UI for atomic changes to 1–25 tasks. Classification
+preserves execution fields; derived plans inherit classification with a fresh membership
+revision. This entry does not close the v1 readiness gates.
+
+- Dual SQLite/native PostgreSQL category tests: **48 passed in 23.77 s**. Coverage includes
+  whole-batch stale/missing-member rejection, audit-fault rollback, immutable replay,
+  revoked role/disabled-user checks, worker updates and real in-flight request completion,
+  inherited-origin replacement, and SQL counts/pagination without `Store.all`.
+- A test fixture initially sent a Boolean into PostgreSQL's integer `users.disabled`
+  column; it now uses the schema's integer representation. SQL filter fixture setup was
+  corrected to pass the lab URL and explicit checks to the existing test helpers. Those
+  fixture failures were retained in local evidence and are not product regressions.
+- Exact wheel/source equality: **89 Python files**, wheel SHA-256
+  `8242a9f203c3c9a3e3881f8742c5e921a6bff7e3c63b0c914f0908a51e9db152`.
+  An isolated install outside the checkout passed **245 related tests in 171.00 s** with
+  native PostgreSQL. The import originated in the temporary virtual environment's
+  `site-packages`, and owned temporary resources were removed.
+- Frontend production build and **99 Node checks** passed. Build retains Vite's warning
+  about the main JavaScript chunk exceeding 500 kB. A missing JSX closing brace in the
+  new detail summary was caught by the build and corrected before the successful build.
+- Actual owned desktop browser: create, version history, archive/restore, archived
+  membership lookup by stable ID, stale edit draft retention and explicit latest-version
+  review. Two tasks were classified atomically; the first committed response was replaced
+  by controlled HTTP 503. Retrying the real form sent the identical request ID/body and
+  returned HTTP 200 with **one operation and two member-history rows**. Original task
+  execution fields were unchanged, no target GET occurred, and audit integrity passed.
+  All owned tabs, server and temporary data were removed with fixture exit 0. Layout was
+  reviewed again after search/card spacing adjustments. No mobile or screen-reader claim.
+- Full native regression is running on the frozen service source with OpenSSL 3 and
+  PostgreSQL 16 on the runner path. Hosted candidate and cross-version reviews are still
+  pending at the time of this entry. The main preview remains on the verified template
+  feature and does not contain this candidate's fixture data.

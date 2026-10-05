@@ -279,3 +279,18 @@ test("template bookmarks restore archive/search/page and preserve task navigatio
   const all=updateListQuery(active,allowed,{filter:"all"});assert.equal(readNavigation(all,allowed).list.filter,"all");
   assert.equal(readNavigation("page=templates&templates_status=invalid",allowed).list.filter,"active");
 });
+
+
+test("category bookmarks retain state and reject unsupported filters", () => {
+  const allowed = [...pages, "categories"];
+  const bookmarked = "?page=categories&categories_q=검토&categories_status=archived&categories_offset=25&categories_snapshot=80";
+  const state = readNavigation(bookmarked, allowed);
+  assert.equal(state.page, "categories");
+  assert.equal(state.list.filter, "archived");
+  assert.equal(state.list.search, "검토");
+  assert.equal(state.list.offset, 25);
+  const edited = updateListQuery(bookmarked, allowed, {filter:"all"});
+  assert.equal(readNavigation(edited, allowed).list.filter, "all");
+  assert.equal(readNavigation(edited, allowed).list.offset, 0);
+  assert.equal(readNavigation("?page=categories&categories_status=running",allowed).list.filter,"active");
+});

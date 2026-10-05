@@ -12,6 +12,9 @@ from .store_util import now
 
 FIELDS = {
     'assets':('name','url','owner','tags'), 'tasks':('name','status','goal'),
+    'task_categories':('name',),
+    'task_category_versions':('action','actor.name','snapshot.name'),
+    'task_category_history':('actor.name','before.name','after.name'),
     'task_templates':('name','description','category','definition.goal'),
     'task_template_history':('action','actor.name','snapshot.name'),
     'findings':('title','asset_name','check','severity','status'),
@@ -187,7 +190,8 @@ class PostgresStore:
         if kind not in FIELDS or not 1<=limit<=1000 or offset<0 or (snapshot is not None and snapshot<0):raise ValueError('Invalid record query')
         if priority and kind!='findings':raise ValueError('Priority order is only valid for findings')
         filters=filters or {}
-        if not filters.keys()<={'status','severity','asset_id','task_id','check','finding_id','enabled','source','state','todo_id'}:raise ValueError('Unknown record filter')
+        if not filters.keys()<={'status','severity','asset_id','task_id','check','finding_id','enabled','source','state','todo_id','category_id'}:raise ValueError('Unknown record filter')
+        if 'category_id' in filters and kind!='tasks':raise ValueError('Category filter requires tasks')
         if 'todo_id' in filters and kind!='todo_history':raise ValueError('Todo filter requires todo history')
         if ('source' in filters or 'state' in filters) and kind!='llm_calls':raise ValueError('Call filters require provider attempts')
         if 'enabled' in filters and kind!='schedules':raise ValueError('Enabled filter is only valid for schedules')
@@ -203,6 +207,10 @@ class PostgresStore:
                 # C collation retains SQLite's ASCII lower semantics; %, _ remain literal.
                 clauses.append('strpos(lower(('+expression+') COLLATE "C"),lower(%s COLLATE "C"))>0');args.append(search)
             for key,value in filters.items():
+                if key=='category_id':
+                    if value=='unclassified':clauses.append(text('category_ref.id')+' IS NULL')
+                    else:clauses.append(text('category_ref.id')+'=%s');args.append(value)
+                    continue
                 if key=='finding_id' and kind=='evidence':
                     clauses.append("EXISTS (SELECT 1 FROM records f WHERE f.kind='findings' AND f.id=%s AND "+array('evidence_ids','f')+" ? records.id AND "+text('asset_id','records')+'='+text('asset_id','f')+' AND '+text('check','records')+'='+text('check','f')+' AND '+text('fingerprint','records')+'='+text('fingerprint','f')+' AND '+array('task_ids','f')+' ? ('+text('task_id','records')+'))')
                 elif key=='task_id' and kind=='findings':clauses.append(array('task_ids')+' ? %s')
