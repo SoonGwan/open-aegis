@@ -5594,7 +5594,7 @@ HTTP200 health. Read-only snapshots of exactly `preview-data/aegis.db` before
 and after matched record counts and all four task statuses:one pending, two
 completed, one failed. No task approval or target execution was performed.
 Post-change900s execution rehearsals both exited0 with temporary resources
-removed and source fingerprints matching the frozen/current service. SQLite
+removed and source fingerprints matching the then-frozen service (`7004786`). SQLite
 completed723 cycles/2169 approved churn tasks; nativePostgreSQL461/1383. Both
 verified process-loss recovery, no automatic target request, fresh approval,
 audit chain, clean shutdown and actual lease reacquisition. Detailed timing,
@@ -5602,3 +5602,61 @@ resource observations, counts and limits are in
 [execution/load evidence](EXECUTION-LOAD.md#묶음-전달-적용-후15분-누적-실행--2026-10-05).
 Evidence: `artifacts/execution-batched-*-900s.{json,txt}` and summary JSONs.
 This does not complete production SLO/retention/multi-day operation or v1.
+
+### Coverage task-field projection — targeted and installed checks, 2026-10-05
+
+The dashboard summary and asset pages now project the task fields needed by
+coverage before expanding scope/check combinations, rank eligible attempts,
+and look up coverage only for the latest attempt. SQLite preserves JSON path
+scalar semantics through JSON encoding, with a no-hint branch below3.35.
+NativePostgreSQL decodes each task once through `jsonb_to_record`, and casts
+timestamps only for eligible cells. No HTTP response shape or frontend changed.
+
+The retained-history diagnostic and controlled measurements are in
+[execution/load evidence](EXECUTION-LOAD.md#대시보드-커버리지-조회-구간-진단--2026-10-05).
+Source coverage/nativeStore/contract subset:33 passed in8.31s. The new contract
+fixtures verify approval ordering and insertion ties, stale revision, wrong
+coverage source, unapproved/observation exclusions, goal objective and selected
+cell intersection, legacy timestamp fallback and unrelated archived history.
+The SQLite scalar-path projection regression was reproduced (3 failed/1 passed)
+and corrected before freezing the service source. The omitted-hint branch was
+run on the current SQLite engine, not an actual older SQLite installation.
+
+The wheel has all76 Python service files byte-for-byte matching the frozen
+source. SHA-256:
+`590389468b760c5d0196bb4bdd1483e5b9ded8172b3ea38e3450944aa69ee10e`.
+Installed-runtime HTTP/UI/authentication/persistence/maintenance/release checks
+pass outside checkout with0 target requests. An independent temporary
+installation with locked development and PostgreSQL dependencies imports
+`aegis` from its own site-packages and runs the coverage and contract files:
+22 passed in10.04s, including actual disposable nativePostgreSQL. Temporary
+installation/cluster resources were removed.
+
+Evidence: ignored `artifacts/overview-projection-final-targeted-tests.txt`,
+`overview-projection-frozen-wheel/`, `overview-projection-installed-runtime.txt`,
+`overview-projection-installed-feature-tests.txt`; the isolated reproduction is
+`artifacts/review_installed_overview_projection.py`. The frozen full regression,
+including actual nativePostgreSQL, passed1180 tests in767.68s with exit0. Its
+only warning is the existing TestClient httpx deprecation
+(`overview-projection-frozen-full-tests.txt`). Service source stayed unchanged
+during the full run and both long rehearsals; frontend source/bundle stayed
+unchanged throughout this change.
+
+Both900s execution rehearsals exited0 with matching frozen/current service
+fingerprints and temporary resources removed. SQLite completed772 cycles/2316
+approved churn tasks, nativePostgreSQL506/1518. Both verified burst approval,
+four interrupted jobs after SIGKILL, retained pending control,0 automatic target
+requests, fresh approved retry, audit integrity, clean shutdown and real lease
+reacquisition. Actual overview p95 is342/235ms in the last2000 samples per
+endpoint. The independent retained synthetic history and actual HTTP runs have
+different observation scopes; no production SLO or exact HTTP improvement ratio
+is inferred. Detailed measurements and limitations are in
+[execution/load evidence](EXECUTION-LOAD.md#커버리지-투영-적용-후15분-실제-실행--2026-10-05).
+Receipts: `artifacts/execution-overview-*-900s.{json,txt}` and summary JSONs.
+
+The owned idle preview was gracefully stopped (143), restarted with current
+service source at127.0.0.1:8790 and returned HTTP200 health. Read-only snapshots
+of exactly `preview-data/aegis.db` matched record counts and all four task states
+(one pending, two completed, one failed), with no task approval/target execution.
+This does not complete remaining v1 UI, retention/SLO, extension, deployment and
+other unchecked gates.

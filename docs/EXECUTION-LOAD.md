@@ -153,7 +153,8 @@ SQLite189ms/PostgreSQL186ms, 다운로드 p95는170ms/156ms였다. 누적 작업
 
 ## 묶음 전달 적용 후15분 누적 실행 — 2026-10-05
 
-두 명령 모두 종료 코드0, 현재 서비스 코드 지문 일치, 임시 자원 제거를 확인했다.
+두 명령 모두 종료 코드0, 당시 서비스 코드(`7004786`) 지문 일치, 임시 자원
+제거를 확인했다. 아래 결과에는 후속 커버리지 조회 최적화가 포함되지 않는다.
 
 | 관측 | SQLite | 네이티브PostgreSQL |
 |---|---:|---:|
@@ -191,3 +192,99 @@ WAL·초기클러스터를 포함한 근사 파일 순회이며 보존/백업 �
 모든 표본 수와 상태 건수를 확인했고, 미완료·정리 미확인·NaN 측정을 거절했다.
 수일 운영·정의된SLO·보존 정책·모바일·외부 제공자/연동·배포 등 나머지v1
 필수 조건은 이15분 검수로 완료되지 않는다.
+
+## 대시보드 커버리지 조회 구간 진단 — 2026-10-05
+
+위15분 결과의 `/overview` p95 약593/643ms를 조사했다. 이 API는 자산 목록의
+커버리지와 전역 커버리지를 각각 계산한다. `scripts/review_overview_queries.py`는
+임시 저장소에 활성 자산1개·합성 완료 작업2,250개·작업별3개 결과를 만들고,
+각 조회 연산을5번 실행한 개별 시간과 중앙값을 기록한다. 작업에는 조회에서
+사용하지 않는8,192bytes 필드를 넣어 실제 큰 작업 payload의 파싱 비용을
+구분한다. 외부 주소 요청이나 실제 검증 작업 실행은 없고, 네이티브PostgreSQL은
+Unix socket만 여는 임시 클러스터를 사용한다. 네이티브 읽기 SQL timeout은15초다.
+
+```sh
+.venv/bin/python scripts/review_overview_queries.py \
+  --output artifacts/overview-components-sqlite.json
+
+PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH" \
+  .venv/bin/python scripts/review_overview_queries.py --postgres \
+  --output artifacts/overview-components-postgres.json
+```
+
+| 연산 중앙값 | SQLite 수정 전/후 | PostgreSQL 수정 전/후 |
+|---|---:|---:|
+| 자산 목록+커버리지 | 198/49ms | 289/67ms |
+| 전역 커버리지+심각도 | 198/38ms | 251/29ms |
+| 작업 목록(100개) | 10/10ms | 5/5ms |
+
+미사용 필드를0bytes로 줄인 수정 전 통제 구간의 전역 계산은46/154ms였다.
+큰 task JSON의 반복 처리가 비용에 기여함을 확인했다. 최신 시도를 먼저 고르고
+결과 조회를 미루는 변경만으로는SQLite 계산이251ms여서 개선되지 않았다.
+최종 조회는 필요한 작업 필드를 먼저 추출한 SQL 임시 관계를 만들고 자산/검사
+조합을 펼친 뒤 최신 시도를 고른다. 해당 시도의 coverage만 조회한다.
+PostgreSQL은`jsonb_to_record`로 문서를 한 번 해석하며 숫자 시각 변환은 유효한
+조합을 고른 뒤 수행한다. Python에서 전체 task payload를 읽거나 캐시하지 않는다.
+
+SQLite는3.35+에서 materialization 힌트를 사용하고 이전 버전 분기에서는 이를
+생략한다([공식 문법](https://www.sqlite.org/lang_with.html#materialization_hints)).
+PostgreSQL16의 별도 계산 의미는
+[공식 문서](https://www.postgresql.org/docs/16/queries-with.html#QUERIES-WITH-CTE-MATERIALIZATION)를
+따른다. SQL 임시 관계·순위 계산의 메모리/디스크 작업은 이력량과 scope 크기에
+비례할 수 있으므로 이 최적화가 메모리 한도나 보존 정책을 보장하지 않는다.
+
+최종 관련 검증은33개/8.31초 통과했다. 승인 시각/rowid 동률·이전 revision·
+틀린 결과 출처·미승인/관찰 제외·목표 과제/선택 조합의 교집합·과거 시각 fallback·
+보관 자산의 무관한 시각을SQLite/실제PostgreSQL에서 확인했다. SQLite의 JSON
+scalar path 의미도 별도로 검수했다.
+SQLite 힌트 생략 분기는 현재3.44 엔진에서 결과 일치를 검수한 것이며 실제 구형
+SQLite 실행을 증명하지 않는다. 투영 중 JSON 문자열 처리 차이를 재현한3개 실패는
+JSON 인코딩을 보존한 수정 후 통과했다. 전후 합성 결과는 모두 기대6개/완료3개다.
+
+근거는 `artifacts/overview-components-*-{before,unpadded,late-coverage,final}.json`,
+`overview-projection-final-targeted-tests.txt`, `overview-projection-scalar-before.txt`다.
+앞뒤 결과는 같은 합성 작업/필드 크기를 사용하지만 HTTP/동시 실행/실제 발견
+이력이 없는 진단이며 생산SLO·원래900초 실행의 정확한 개선율을 증명하지 않는다.
+새 wheel의 독립 설치·HTTP/인증/유지보수 검수와 별도 설치본의 SQLite/네이티브
+커버리지22개 검증(10.04초)도 통과했다. 전체 회귀는1,180개/767.68초 통과했다.
+
+## 커버리지 투영 적용 후15분 실제 실행 — 2026-10-05
+
+두 리허설은 서비스 소스를 유지한 채 실행했고 앞부분에 전체 테스트도 동시에
+진행했다. 둘 다 종료 코드0·현재 소스 지문 일치·임시 자원 제거를 확인했다.
+
+| 관측 | SQLite | 네이티브PostgreSQL |
+|---|---:|---:|
+| 반복 구간 | 900.536초 | 902.139초 |
+| 반복/승인 작업 | 772회/2,316개 | 506회/1,518개 |
+| 대상 GET(장애/재시도 포함) | 2,324개 | 1,526개 |
+| 조회 응답 | 10,934개 | 12,159개 |
+| 요약 API p95 | 342ms | 235ms |
+| 작업/발견 목록 p95 | 22/12ms | 29/23ms |
+| 운영 지표 p95 | 64ms | 88ms |
+| 전체 보고서 p95 | 976ms | 714ms |
+| 표본 최대RSS | 90,704KiB | 71,424KiB |
+
+API별 p95는 각API의 마지막2,000개 표본이다. 전체2,186–2,187개/2,431–2,432개
+응답 중 앞부분은 제외된다. 혼합 마지막2,000개 p95는966/691ms이며 API별 표본
+범위와 다르다. 보고서 본문 크기 p95는9,617,898/6,303,110bytes다. 요약 API의
+기존593/643ms보다 낮은 지연을 관측했지만 작업/데이터량·표본 구간·동시 부하가
+달라 동일 조건의 HTTP 개선율을 증명하지 않는다. 고정 합성 이력의 조회 전후
+비교와 실제 HTTP 운영 관측을 각각의 근거로 유지한다.
+
+동시 승인6개 완료, 실행2개/대기2개 SIGKILL 후4개interrupted 복구,
+미승인 작업pending 보존, 복구 후 자동 대상 요청0개, 새 승인 재실행 완료,
+감사 연결30,223/19,849개 이벤트·정상 종료 표식·실제 잠금 재획득을 확인했다.
+PostgreSQL의SQLite 워크스페이스 미생성도 통과했다. 반복 종료 후 이벤트 대기0,
+표본 최대 대기40/16개·최대 오래된 대기0.265/0.275초였다.
+
+RSS 구간 중앙값은SQLite75,136/82,480/82,720/84,496KiB,
+PostgreSQL68,464/67,248/66,368/65,520KiB였다. 자원 표본은 모두 한 번씩 요약에
+포함됐다. 시작/종료 파일 크기는SQLite77,824/35,463,168bytes,
+PostgreSQL40,946,045/118,883,205bytes다. 부모/DB 프로세스 메모리·SQL 임시 작업의
+최대 메모리·보존 정책·수일 운영SLO를 이 표본으로 판정하지 않는다.
+
+근거는 `artifacts/execution-overview-*-900s.{json,txt}`와
+`execution-overview-*-900s-summary.json`이다. 종료/정리·현재 소스 지문·전체
+자원 표본과 API별 보존 표본 수를 검증했다. 로컬 미리보기는 새 소스로 재시작해
+HTTP200 건강 상태와 기존 기록 건수/작업 상태 보존을 확인했다.

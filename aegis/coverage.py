@@ -1,4 +1,5 @@
 """Coverage describes executed checks, never a claim that an asset is secure."""
+import sqlite3
 from .checks import CATALOG
 from .store_util import now
 
@@ -62,44 +63,61 @@ def latest_summary(db, asset_ids=None):
         args.extend(asset_ids)
     # CROSS JOIN fixes SQLite's loop order: enumerate task scope first, then
     # look up assets by (kind,id), rather than scan every task for each asset.
+    # Project the needed task fields once before expanding its scope/checks.
+    # The temporary relation omits full task payloads; result rows are looked
+    # up only after the latest attempt is ranked. Older SQLite keeps the same
+    # query semantics without the materialization hint.
+    # Keep iterated fields encoded as JSON, including scalar strings; otherwise
+    # extracting a string before json_each changes its original path semantics.
     query = """
       WITH catalog(check_id) AS (VALUES %s),
+      task_fields AS %s(
+        SELECT id,rowid,json_quote(json_extract(data,'$.scope_snapshot')) AS scope_snapshot,
+          json_quote(json_extract(data,'$.checks')) AS checks,json_extract(data,'$.status') AS task_status,
+          coalesce(json_extract(data,'$.approved_at'),json_extract(data,'$.created_at')) AS attempt_time,
+          json_extract(data,'$.goal_selection') AS goal_selection,
+          json_quote(json_extract(data,'$.goal_selection.cells')) AS selected_cells,
+          json_extract(data,'$.goal_plan.execution') AS goal_execution,
+          json_quote(json_extract(data,'$.goal_plan.decomposition.objectives')) AS objectives
+        FROM records WHERE kind='tasks' AND json_extract(data,'$.observation_execution') IS NULL
+          AND (json_extract(data,'$.approved_at') IS NOT NULL OR
+            json_extract(data,'$.status') IN ('queued','running','stopping','completed','failed','stopped','interrupted'))
+      ),
       assets AS (SELECT id,json_extract(data,'$.revision') AS revision FROM records
                  WHERE kind='assets' AND coalesce(json_extract(data,'$.archived_at'),0)=0 %s),
       attempts AS (
-        SELECT a.id AS asset_id, checks.value AS check_id,
+        SELECT a.id AS asset_id, checks.value AS check_id,t.id AS task_id,
                coalesce(json_extract(scope.value,'$.revision'),1) AS revision,
-               coalesce(json_extract(c.data,'$.status'),
-                 CASE WHEN json_extract(t.data,'$.status') IN ('queued','running','stopping')
-                      THEN 'not_started' ELSE 'not_recorded' END) AS status,
+               t.task_status,
                ROW_NUMBER() OVER (PARTITION BY a.id,checks.value
-                 ORDER BY coalesce(json_extract(t.data,'$.approved_at'),json_extract(t.data,'$.created_at')) DESC,t.rowid DESC) AS rank
-        FROM records t CROSS JOIN json_each(t.data,'$.scope_snapshot') scope
-        CROSS JOIN json_each(t.data,'$.checks') checks CROSS JOIN assets a
-        LEFT JOIN records c ON c.kind='coverage' AND c.id=t.id||':'||a.id||':'||checks.value
-          AND json_extract(c.data,'$.task_id')=t.id AND json_extract(c.data,'$.asset_id')=a.id
-          AND json_extract(c.data,'$.check')=checks.value
-        WHERE a.id=json_extract(scope.value,'$.id') AND t.kind='tasks'
-          AND json_extract(t.data,'$.observation_execution') IS NULL
-          AND (json_extract(t.data,'$.goal_selection') IS NULL OR EXISTS (
-            SELECT 1 FROM json_each(t.data,'$.goal_selection.cells') selected
+                 ORDER BY t.attempt_time DESC,t.rowid DESC) AS rank
+        FROM task_fields t CROSS JOIN json_each(t.scope_snapshot) scope
+        CROSS JOIN json_each(t.checks) checks CROSS JOIN assets a
+        WHERE a.id=json_extract(scope.value,'$.id')
+          AND (t.goal_selection IS NULL OR EXISTS (
+            SELECT 1 FROM json_each(t.selected_cells) selected
               WHERE json_extract(selected.value,'$.asset_id')=a.id
                 AND json_extract(selected.value,'$.check')=checks.value))
-          AND (json_extract(t.data,'$.goal_plan.execution') IS NULL OR
-            EXISTS (SELECT 1 FROM json_each(t.data,'$.goal_plan.decomposition.objectives') objective
+          AND (t.goal_execution IS NULL OR
+            EXISTS (SELECT 1 FROM json_each(t.objectives) objective
               CROSS JOIN json_each(objective.value,'$.asset_ids') goal_asset
               CROSS JOIN json_each(objective.value,'$.checks') goal_check
-              WHERE goal_asset.value=a.id AND goal_check.value=checks.value)) AND (json_extract(t.data,'$.approved_at') IS NOT NULL
-          OR json_extract(t.data,'$.status') IN ('queued','running','stopping','completed','failed','stopped','interrupted'))
+              WHERE goal_asset.value=a.id AND goal_check.value=checks.value))
       ), cells AS (
         SELECT a.id AS asset_id, CASE
           WHEN attempts.asset_id IS NULL THEN 'not_started'
           WHEN attempts.revision!=coalesce(a.revision,1) THEN 'stale'
-          ELSE attempts.status END AS status
+          ELSE coalesce(json_extract(c.data,'$.status'),
+            CASE WHEN attempts.task_status IN ('queued','running','stopping')
+              THEN 'not_started' ELSE 'not_recorded' END) END AS status
         FROM assets a CROSS JOIN catalog
         LEFT JOIN attempts ON attempts.asset_id=a.id AND attempts.check_id=catalog.check_id AND attempts.rank=1
+        LEFT JOIN records c ON c.kind='coverage' AND c.id=attempts.task_id||':'||a.id||':'||catalog.check_id
+          AND json_extract(c.data,'$.task_id')=attempts.task_id AND json_extract(c.data,'$.asset_id')=a.id
+          AND json_extract(c.data,'$.check')=catalog.check_id
       ) SELECT asset_id,status,count(*) AS count FROM cells GROUP BY asset_id,status ORDER BY asset_id
-    """ % (','.join('(?)' for _ in checks), asset_clause)
+    """ % (','.join('(?)' for _ in checks),
+           'MATERIALIZED ' if sqlite3.sqlite_version_info >= (3,35,0) else '',asset_clause)
     counts = dict.fromkeys(STATUSES, 0)
     assets = {}
     previous_asset, asset_completed = None, 0
