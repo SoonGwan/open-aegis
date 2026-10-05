@@ -203,3 +203,8 @@ removes the disposable workspace.
 `tests/test_event_planner_metrics.py`와 `tests/test_postgres_event_planner_metrics.py`에서
 검증합니다. `scripts/review_event_progress_ui.py --state current|replay|invalid`는
 처리기를 멈춘 합성 UI 검수 환경이며 대상 작업을 만들거나 실행하지 않습니다.
+
+실행 부하 리허설의30초 progress 파일은 중간 관측이며 통과 증거가 아닙니다.
+완료/정리된 결과만 `scripts/summarize_execution_load.py`로 시간 구간별 요약할 수
+있습니다. `--progress-log`에는 같은 실행의 stdout 파일을 지정합니다. 운영 SLO나
+원인 판정은 별도 검증이며, 실행 중에는 서비스 소스를 변경하지 않습니다.

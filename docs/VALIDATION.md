@@ -5501,3 +5501,57 @@ source: `scripts/review_execution_load.py`, `tests/test_event_planner_batches.py
 
 Evidence: ignored `artifacts/event-progress-*`; source tests:
 `tests/test_event_planner_metrics.py`, `tests/test_postgres_event_planner_metrics.py`.
+
+## Fifteen-minute execution/read churn with backlog and disk observations — 2026-10-05
+
+The current unchanged `3947acd` backend passes two concurrent900s owned rehearsals
+on the same Mac arm64 host. Rehearsal instrumentation adds bounded event-progress
+samples, whole-run observed peak backlog/age, approximate baseline/end storage
+file sizes and atomic30s progress receipts. Progress files are never pass evidence.
+No service Python/frontend source changed this round; the previous1,165-test full
+result applies to identical service source, not a newly executed broad test run.
+
+| Observation | SQLite | Native PostgreSQL |
+|---|---:|---:|
+| Repeating execution duration | 901.692s | 901.999s |
+| Completed cycles | 787 | 437 |
+| Explicitly approved churn jobs | 2,361 | 1,311 |
+| Target GETs including burst/recovery | 2,369 | 1,319 |
+| Successful read responses | 2,874 | 3,879 |
+| Largest observed pending event count | 40 | 18 |
+| Largest observed oldest event age | 0.240s | 0.299s |
+| Pending events after churn drains | 0 | 0 |
+| Sample peak server RSS | 74,064KiB | 70,992KiB |
+| Last2,000-read p50 / p95 | 0.0279 / 5.2217s | 0.0652 / 5.0552s |
+| Baseline / after-churn file bytes | 77,824 / 36,163,584 | 40,946,045 / 114,852,741 |
+| Complete audit chain verified | 30,808 events | 17,158 events |
+
+Each run also completes six burst jobs and a fresh approved retry. Two running
+and two queued jobs become four interrupted after SIGKILL; an unapproved control
+stays pending. Recovery issues0 automatic requests, preserves session access,
+finishes the newly approved retry and passes audit/clean shutdown/real lease
+reacquisition. Both report temporary resources removed and exit0.
+
+RSS medians by resource-sample quarters are68,880/71,744/50,128/53,720KiB for
+SQLite and62,632/62,680/40,064/42,888KiB for nativePG. The summary helper verifies
+completed successful/cleaned receipts, includes every resource sample once and
+rejects unfinished/failed receipts. Optional same-run progress logs retain
+increasing observation times/cumulative read counts. Observed read counts over
+those progress windows are1,942/505/213/210 and2,434/789/304/310 respectively;
+the last observed window ends at898.714s/873.536s and excludes the final4/42 reads.
+Window endpoints follow30s receipts, not exact equal-duration boundaries.
+
+Read completion frequency decreases with the accumulating scenario, and mixed
+read p95 is about5s. No endpoint-specific latency attribution, query-plan
+diagnosis or steady-state production throughput conclusion is established.
+Responsiveness under retained data needs further measurement/optimization.
+RSS observations do not diagnose memory leaks or prove a memory SLO. PostgreSQL
+file sizes include its initial cluster, catalog and WAL; both file walks are
+approximate and not retention/backup size guarantees. Parent/DB memory remains
+outside the service RSS sample. Multi-hour/day production, retention/SLO and all
+other unchecked v1 requirements remain open.
+
+Evidence: ignored `artifacts/execution-soak-*-900s.{json,txt}`, progress and
+`execution-soak-*-summary.json`; smoke instrumentation receipts are
+`artifacts/soak-metrics-*`. Scripts: `review_execution_load.py` and
+`summarize_execution_load.py`. Both long receipts match current service source.

@@ -14,6 +14,7 @@ import platform
 from pathlib import Path
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -78,7 +79,8 @@ def main():
     fingerprint=hashlib.sha256()
     for path in sorted((ROOT/'aegis').rglob('*.py')):
         fingerprint.update(path.relative_to(ROOT).as_posix().encode());fingerprint.update(path.read_bytes())
-    counts=Counter();latencies=deque(maxlen=2000);samples=[];errors=[];lock=threading.Lock();stopped=threading.Event()
+    counts=Counter();latencies=deque(maxlen=2000);samples=[];event_samples=deque(maxlen=2000)
+    peak_pending=0;peak_event_age=0.0;errors=[];lock=threading.Lock();stopped=threading.Event()
     held=threading.Event();release=threading.Event()
     class Target(LabHandler):
         requests=[];hardened=False;fault=False;hold=False
@@ -132,6 +134,7 @@ def main():
                     asset=http('POST','/assets',{'name':'Owned execution fixture','url':f'http://127.0.0.1:{target.server_port}/','authorized':True})
                     paths=['/records/tasks?limit=25','/records/findings?limit=25','/overview','/runtime','/reports/export?format=json']
                     def read_worker(index):
+                        nonlocal peak_pending,peak_event_age
                         iteration=index
                         try:
                             with httpx.Client(base_url=str(client.base_url),cookies=cookie,trust_env=False,timeout=15) as reader:
@@ -143,7 +146,14 @@ def main():
                                     else:
                                         response.raise_for_status();body=response.json();key=path.split('?')[0]
                                         if 'records' in path:assert len(body['items'])<=25
-                                        if path=='/runtime':assert body['queue_watchdog']['errors']==0 and body['event_planner']['errors']==0
+                                        if path=='/runtime':
+                                            assert body['queue_watchdog']['errors']==0 and body['event_planner']['errors']==0
+                                            progress=body['event_planner']['progress']
+                                            assert progress['status'] in ('current','uninitialized') and type(progress['pending_events']) is int
+                                            with lock:
+                                                event_samples.append({key:progress[key] for key in ('sampled_at','after','latest_event_seq','pending_events','oldest_pending_seconds')})
+                                                peak_pending=max(peak_pending,progress['pending_events'])
+                                                peak_event_age=max(peak_event_age,progress['oldest_pending_seconds'] or 0)
                                     with lock:counts[key]+=1;latencies.append(time.monotonic()-at)
                                     stopped.wait(.02)
                         except Exception as exc:
@@ -151,7 +161,16 @@ def main():
                             stopped.set()
                     for i in range(args.clients):
                         thread=threading.Thread(target=read_worker,args=(i,),daemon=True);workers.append(thread);thread.start()
-                    begin=time.monotonic();baseline=process_sample(process.pid);stage='execution_and_reads'
+                    begin=time.monotonic();baseline=process_sample(process.pid);stage='execution_and_reads';next_receipt=begin+30
+                    def disk_bytes():
+                        directory=folder/'cluster' if args.postgres else workspace
+                        total=0
+                        for path in directory.rglob('*'):
+                            try:info=path.stat()
+                            except FileNotFoundError:continue
+                            if stat.S_ISREG(info.st_mode):total+=info.st_size
+                        return total
+                    disk_baseline=disk_bytes()
                     while time.monotonic()-begin<args.duration and not stopped.is_set():
                         Target.hardened=False;Target.fault=False
                         before=len(Target.requests);pending=plan('Owned churn '+str(cycles))
@@ -170,6 +189,15 @@ def main():
                         assert after['finding']['status']=='resolved' and after['retests'][0]['conclusion']=='resolved'
                         assert resolved['task']['status']=='completed'
                         cycles+=1;samples.append({'elapsed':round(time.monotonic()-begin,3),**process_sample(process.pid)})
+                        if time.monotonic()>=next_receipt:
+                            with lock:
+                                receipt={'stage':stage,'backend':result['backend'],'elapsed_seconds':round(time.monotonic()-begin,3),
+                                    'cycles':cycles,'approved_churn_tasks':cycles*3,'read_responses':sum(counts.values()),
+                                    'rss_kib':samples[-1]['rss_kib'],'peak_pending_events':peak_pending,
+                                    'latest_event_progress':event_samples[-1] if event_samples else None}
+                            progress_path=args.output.with_suffix('.progress.json');progress_path.parent.mkdir(parents=True,exist_ok=True)
+                            staging=progress_path.with_suffix('.tmp');staging.write_text(json.dumps(receipt,indent=2));staging.replace(progress_path)
+                            print(json.dumps(receipt),flush=True);next_receipt=time.monotonic()+30
                         stopped.wait(.2)
                     elapsed=time.monotonic()-begin;stopped.set()
                     for thread in workers:
@@ -177,6 +205,7 @@ def main():
                     assert not errors and cycles>0
                     assert all(counts[path.split('?')[0]]>0 for path in paths)
                     steady=http('GET','/runtime');assert steady['exports']['active']==0
+                    disk_after_churn=disk_bytes()
                     assert steady['queue_watchdog']['errors']==steady['event_planner']['errors']==0
                     # Exercise concurrently admitted work sharing the target limiter.
                     stage='concurrent_approvals';before_burst=len(Target.requests)
@@ -231,6 +260,9 @@ def main():
                         owned_target_requests=len(Target.requests),read_responses=dict(counts),read_errors=errors,
                         sampled_latency_seconds={'p50':ordered[int((len(ordered)-1)*.5)],'p95':ordered[int((len(ordered)-1)*.95)]},
                         baseline=baseline,sample_peak_rss_kib=max([baseline['rss_kib'],*[s['rss_kib'] for s in samples]]),samples=samples,
+                        event_progress_samples=list(event_samples),peak_pending_events=peak_pending,peak_event_age_seconds=peak_event_age,
+                        disk={'baseline_bytes':disk_baseline,'after_churn_bytes':disk_after_churn,
+                            'scope':'owned PostgreSQL cluster including WAL' if args.postgres else 'owned SQLite workspace including WAL'},
                         runtime_steady=steady,runtime_before_loss=before_crash,runtime_after_recovery=runtime,
                         recovery={'process_loss_exit':-9,'running_before_loss':2,'queued_before_loss':2,'recovered_interrupted':4,'unapproved_status':'pending','automatic_target_requests':0,'retry_new_approval_completed':True,'clean_shutdown_marker':True,'lease_reacquired':True},audit=audit)
                 finally:
