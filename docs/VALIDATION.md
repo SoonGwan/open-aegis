@@ -5742,7 +5742,7 @@ service Python files stayed unchanged and byte-match the wheel after the run.
 No execution-load/SLO claims are inferred from this metadata registration change.
 
 Frontend97 tests pass and the production build succeeds. Final assets are
-`index-yioyrHvJ.js` and `index-BhB7wk0w.css`. Actual Browser desktop checks cover
+`index-DZGlg3Xs.js` and `index-BhB7wk0w.css`. Actual Browser desktop checks cover
 explicit connection selection, definition expansion and selection/confirmation
 gating, registration/saved definition, changed catalog rejection/new review,
 disabling, settings navigation/reentry and HTTP failure followed by explicit
@@ -5756,6 +5756,9 @@ reader journey. The owned peer saw8 initialize,7 initialized notifications and
 its exactly identified synthetic workspace was explicitly removed. A corrected
 fixture cleanup rehearsal returned health200, exited0 after SIGTERM and
 removed its owned workspace/servers (`mcp-registry-ui-cleanup-rehearsal.txt`).
+After formatting, the final bundle filenames were verified directly and the
+installed runtime smoke was repeated with those assets: valid,0 target requests
+(`mcp-registry-final-installed-runtime.txt`).
 
 The main idle preview restarted gracefully with the final service source at
 127.0.0.1:8790 and returns health200. Read-only snapshots of exactly
