@@ -6310,3 +6310,20 @@ full native invocation with explicit OpenSSL3/PostgreSQL16 PATH is running
 full candidate result. PR1's hosted candidate run37363828003 is also still running.
 The duplicate push run37363822445 for the exact same83433f0 source was cancelled to
 avoid duplicating hosted work; it is not a failed product validation.
+
+The supported candidate full-native invocation is now terminal **1,551 passed
+in1,098.57s**, with actual PostgreSQL and required OpenSSL3 selected explicitly
+(`task-template-full-supported-native.txt`). The service remains byte-identical
+to the installed88-file wheel and to functional source83433f0.
+
+Hosted candidate run
+[37363828003](https://github.com/SoonGwan/open-aegis/actions/runs/37363828003)
+for83433f0 is now **success in all six jobs**. Its first attempt passes verify,
+container(true) and Compose(true), while three other jobs never acquire a hosted
+runner and are cancelled with the annotation “The job was not acquired by Runner
+of type hosted even after multiple attempts”. Retrying the unexecuted jobs closes
+those checks without a production change. The earlier cancelled duplicate push
+run is not substituted for this successful candidate receipt. Subsequent candidate
+commits change only release/validation notes, with the88-file service and UI source
+unchanged. This validates the task-template candidate scope; whole-service v1 gates
+and the documented old-writer provenance limitation remain open.
