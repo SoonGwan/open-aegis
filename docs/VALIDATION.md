@@ -5117,3 +5117,52 @@ on 390×844 has no document overflow.
   suite evidence. These are actual local arm64 Dockerfile/harness results. Hosted CI,
   amd64/multi-architecture, actual Compose startup, PostgreSQL container storage,
   production deployment/egress controls and full v1 readiness remain unverified.
+
+
+### Actual Compose and PostgreSQL-container recovery (2026-10-05)
+
+- Added `scripts/review_compose.py`: stdlib orchestration of the repository's actual
+  compose.yml plus a temporary override. Requires Compose2.24.4+ for !override;
+  ephemeral loopback port replaces the original8787 mapping. Unique project/image/
+  named volumes; inherited application/Compose variables removed, explicit0600
+  synthetic env file, no user .env. QA overrides image tag/port/health interval/
+  restart policy. Actual model and running container check read-only/UID10001/
+  cap-drop/no-new-privileges and named data mount. Ordinary app bridge is not an
+  egress firewall; optional database-only network is internal with no published DB
+  ports. Base Compose deployment behavior beyond these QA changes is not assumed.
+- Final unchanged script ran both modes exit0/valid:true on Linux arm64,
+  Docker29.5.2/Compose5.5.0 (`artifacts/compose-final-sqlite.txt`,
+  `.../compose-final-postgres.txt`, `.../compose-final-proof.json`). Each builds the
+  real app, starts healthy, serves real UI bundles, rejects anonymous data access,
+  performs setup/auth and confirms /api/settings.storage equals the requested
+  backend. One synthetic asset/task remains pending and unapproved, target_requests0.
+- Actual online installed backup/audit CLI exports backup/checkpoint; later HTTP
+  note is added. App container is stopped/deleted/recreated; native mode also
+  stops/deletes/recreates the DB container. Named volumes retain all records,
+  login cookie/password and the later note. App then stops for restore: SQLite
+  restores its DB; PostgreSQL initializes/restores fresh owned_restored schema,
+  verifies original owned_source still has the later note, switches actual Compose
+  schema setting and recreates the app. Audit chain verifies against pre-note
+  checkpoint; old cookie rejected401, password login succeeds, original asset/
+  pending task retained, later note absent. Native data mount contains no SQLite DB.
+  Both normal stops finish exit0/143; each fixture cleans its own project resources.
+- Native DB is PostgreSQL16.15 from postgres:16-alpine, resolved digest
+  `postgres@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea`.
+  Digest/version are reported; --postgres-image accepts a PostgreSQL16-compatible
+  pinned image. This ephemeral DB uses a synthetic owner account, not production
+  privilege/credential validation. Checkpoint is in the fixture data volume, not
+  independently trusted remote storage. No DB-crash/WAL/PITR claim for this run.
+- First VM attempt hit macOS UNIX socket path length in the default temporary
+  directory (`.../compose-vm-start.txt`); moved only that owned setup/cache to short
+  /tmp path before successful startup (`.../compose-vm-start-short-path.txt`).
+  Final cleanup found no containers/volumes and only built-in bridge/host/none;
+  owned app images absent, dedicated VM/data/private root removed, default context
+  remains desktop-linux (`.../compose-cleanup-proof.json`, `.../compose-vm-cleanup.txt`).
+  Compose host plugin remains installed with no daemon autostart. Retained preview
+  health ok, exact records/task states unchanged. Both-mode reports bind results
+  to the final script SHA256, freshly checked after cleanup.
+- CI now includes both actual Compose modes. Hosted CI/amd64/multi-architecture
+  remain unrun; production rollout, retention/resource SLO, independent checkpoints,
+  official releases and full v1 readiness remain open. Service/frontend unchanged;
+  prior1035 backend/97 frontend tests remain latest suite evidence. Existing selected
+  design-pair verifier and diff whitespace check pass; no full accessibility claim.

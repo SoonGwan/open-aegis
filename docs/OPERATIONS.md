@@ -235,5 +235,34 @@ Docker29.5.2의 internal-only 네트워크에서는 지정한 호스트 포트�
 2026-10-05에는 별도 Colima VM의 Linux arm64/Docker29.5.2에서 두 이미지 모드의
 실제 build/health/HTTP/volume/restart/restore/종료 검수를 통과했다.
 결과와 정리 근거는 [VALIDATION.md](VALIDATION.md)의 컨테이너 검수 항목에 기록한다.
-CI에도 두 모드가 있지만 hosted 실행·amd64/멀티 아키텍처·실제 Compose 기동과
-PostgreSQL 컨테이너 저장소는 아직 미검증이다.
+CI에도 두 모드가 있지만 hosted 실행·amd64/멀티 아키텍처는 아직 미검증이다.
+실제 Compose 기동과 PostgreSQL 컨테이너 저장소의 별도 검수는 아래에 설명한다.
+
+실제 Compose 정의와 PostgreSQL 컨테이너를 함께 검수하려면 Docker Compose2.24.4 이상에서
+다음 별도 리허설을 실행한다.
+
+```sh
+python3 scripts/review_compose.py
+python3 scripts/review_compose.py --postgres
+```
+
+저장소의 `compose.yml`에 검수용 override를 적용해 고유 프로젝트/이미지·이름 있는 볼륨,
+임의 loopback 포트, 빠른 health 간격과 자동 재시작 없는 서비스를 만든다.
+`!override`로 기존8787 포트를 교체하므로 기존 개발 서비스와 포트가 겹치지 않는다.
+사용자의 애플리케이션/Compose 환경 변수와 `.env` 대신 임시0600 합성 설정 파일을 사용한다.
+검수는 UI·인증·실제 선택 저장소·승인 대기 작업·온라인 백업, 컨테이너 삭제/재생성 후
+데이터/쿠키 유지, 앱 중지 후 체크포인트 기준 복구·이전 쿠키 거절·정상 종료를 확인한다.
+
+`--postgres`는 `postgres:16-alpine` DB 컨테이너와 별도 내부 네트워크/볼륨을 추가하며
+DB 포트를 호스트에 공개하지 않는다. 설치 CLI로 새 스키마를 초기화하고 실제 HTTP가
+PostgreSQL을 사용하는지 확인한다. DB 컨테이너도 재생성한 뒤 네이티브 ZIP 백업을 새
+스키마로 복구해 앱 설정을 전환한다. 원본 스키마의 백업 이후 노트 보존과 복구 스키마의
+노트 제거·세션 폐기, SQLite DB 파일 없음도 확인한다. 합성 DB 계정은 이 임시 리허설용이다.
+이미지 digest와 DB 버전은 결과에 기록하며 PostgreSQL16 호환 digest를 지정하려면
+`--postgres-image postgres@sha256:...`를 사용한다.
+
+자신이 생성한 Compose 프로젝트의 컨테이너·네트워크·볼륨·앱 이미지와 임시 설정을
+정리하지만 base image/빌드 캐시는 남을 수 있다. 앱 네트워크는 일반 bridge이며
+외부 송신 차단을 보장하지 않는다. 이 체크포인트는 같은 검수 볼륨에 있으므로 독립
+운영 보관의 신뢰를 검증하지 않는다. 로컬 arm64의 두 저장소 리허설을 통과했으며
+hosted CI·amd64/멀티 아키텍처·운영 계정/장시간 부하·PITR은 별도 검수가 필요하다.

@@ -116,10 +116,21 @@ explicitly via AEGIS_WEB_DIR for this review; Docker packages the separately bui
 Build dependencies, runner images and Python/Node patch versions are not fully pinned,
 so this is behavior verification rather than a byte-reproducible or signed release.
 Action references use full official commit SHAs, checkout credentials are not retained,
-the token is read-only and the job has a 15-minute limit. The hosted workflow still needs
+the token is read-only; Python/native jobs have a 15-minute limit and container/Compose
+jobs have a 25-minute limit. The hosted workflow still needs
 an actual run on the published repository; local review does not prove a GitHub job ran.
 Docker execution, whole UI accessibility/mobile coverage and release signing remain
 separate gates in [V1-READINESS.md](docs/V1-READINESS.md).
+
+With Docker Compose2.24.4+, run `python3 scripts/review_compose.py` and
+`python3 scripts/review_compose.py --postgres` to rehearse the actual `compose.yml`
+using temporary overrides, synthetic settings and unique projects/volumes. They
+verify actual HTTP storage, retained data/cookies after container recreation,
+backup/checkpoint restore and old-session rejection without approving target
+execution. Native mode starts a PostgreSQL16 container and restores a new schema,
+preserving the original. Both remove their owned resources; image caches may remain.
+CI has both modes; local arm64 evidence does not prove hosted/amd64 execution.
+Details and network/trust limits are in [OPERATIONS.md](docs/OPERATIONS.md).
 
 ## Goal UI review
 

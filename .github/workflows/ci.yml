@@ -78,3 +78,23 @@ jobs:
           else
             python3 scripts/review_container.py
           fi
+
+  compose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        postgres: [false, true]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Rehearse actual Compose deployment and owned database recovery
+        env:
+          POSTGRES: ${{ matrix.postgres }}
+        run: |
+          if [ "$POSTGRES" = "true" ]; then
+            python3 scripts/review_compose.py --postgres
+          else
+            python3 scripts/review_compose.py
+          fi

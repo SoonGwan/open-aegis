@@ -283,7 +283,10 @@
     read-only/비관리자/loopback 포트, 볼륨·쿠키 재시작 유지, 오프라인 백업 복구·
     이전 세션 폐기·감사 검증·정상 종료를 검수. 대상 요청0이며 HTTP 저장소는 SQLite다.
     일반 bridge는 외부 송신을 차단하지 않는다. internal-only 포트 미공개를 실제 재현해 수정.
-    hosted CI·amd64/멀티 아키텍처·실제 Compose·PostgreSQL 컨테이너 검수는 남아 있음.
+    실제 `compose.yml` override 리허설도 SQLite/컨테이너 PostgreSQL16.15에서 검수.
+    앱/DB 컨테이너 재생성·볼륨/쿠키 유지, 새 PG 스키마 복구·원본 보존·이전 세션
+    거절·감사 체크포인트 비교·SQLite 파일 없음과 생성 리소스 정리를 확인.
+    hosted CI·amd64/멀티 아키텍처·운영 배포/PITR 검수는 남아 있음.
   - 백업·복구·감사 검증 CLI를 설치 패키지에 포함하고 깨끗한 가상환경에서 wheel 설치·복구·세션 폐기·변조 거절 검증.
     잠긴 runtime 의존성을 새 환경에 설치한 wheel 서버의 실제 HTTP 인증·별도 UI·자산/승인 대기 계획 저장·정상 종료/잠금 해제 검증.
     CI에 프런트엔드 테스트와 설치 패키지 리허설 추가; GitHub hosted 실행은 아직 미검증.
