@@ -6390,3 +6390,10 @@ source login creates sessions, and the restored session table is empty. The fixt
 records zero target GETs and removes its cluster, server and temporary installation
 (`task-category-installed-native-restore.txt`). This is a category-scoped native pairing
 and backup/restore receipt, not coverage of every earlier release or mixed-version deployment.
+
+The category candidate's full native regression is terminal **1,599 passed in
+1,129.23 s**, with actual SQLite/PostgreSQL and the required OpenSSL 3/PostgreSQL 16
+runner path (`task-category-full-native.txt`). Frozen service source remains the exact
+89-file installed wheel; later commits change documentation only. This result closes
+the candidate native regression check, while retained hosted run `37370424605` is still
+running. It does not substitute for the remaining hosted checks or whole-service v1 gates.
