@@ -56,7 +56,7 @@ export function RemoteExecutionPicker({ disabled, onChecks, names }: {
     {error && <p role="alert" className="form-error">{error}</p>}
     <button type="button" disabled={disabled || loading} onClick={() => setRevision((value) => value + 1)}>실행 연결 새로고침</button>
     {connection && <p className="subtle">{connection.url} · 지원 검사: {connection.check_ids.map((check) => names[check] || check).join(", ")}</p>}
-    {selected && <p className="subtle">등록한 범위의 GET 검사만 실행합니다. 중지는 이후 검사 전송을 막습니다. 진행 중인 원격 검사의 요청은 즉시 종료되지 않을 수 있습니다.</p>}
+    {selected && <p className="subtle">등록한 범위의 GET 검사만 실행합니다. 중지 시 원격 서버에 취소를 요청하며 확인 여부는 실행 기록에 표시합니다. 이미 전송된 요청은 되돌릴 수 없습니다.</p>}
   </section>;
 }
 

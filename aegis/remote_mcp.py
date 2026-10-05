@@ -198,7 +198,7 @@ class Client:
             address = resolve(p.hostname, port, self.connection.allow_private,
                               control=control, timeout=control.timeout(4))[0]
             cls = PinnedHTTPS if p.scheme == 'https' else PinnedHTTP
-            connection = cls(p.hostname, port, address, timeout=control.timeout(12))
+            connection = cls(p.hostname, port, address, timeout=control.timeout(self.operation_timeout))
             headers = {'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream',
                        'Accept-Encoding': 'identity', 'User-Agent': 'OpenAegis-MCP/0.2'}
             if token:
@@ -207,7 +207,7 @@ class Client:
                 headers['MCP-Protocol-Version'] = self._version
                 if self._session:
                     headers['MCP-Session-Id'] = self._session
-            with RequestGuard(connection, control, 12) as guard:
+            with RequestGuard(connection, control, self.operation_timeout) as guard:
                 connection.request(method, p.path, body=body, headers=headers)
                 guard.sock = connection.sock
                 response = connection.getresponse()
@@ -429,6 +429,20 @@ class Client:
                     or ('isError' in result and type(result['isError']) is not bool)
                     or ('structuredContent' in result and not isinstance(result['structuredContent'], dict))):
                 raise RemoteMCPError('tool_result_contract')
+            return result
+
+    def cancel_scoped(self, token, control=None):
+        """Fixed server extension: revoke existing signed authority, never execute."""
+        with self._operation(control) as control:
+            if not self._version:
+                raise RemoteMCPError('not_initialized')
+            if not isinstance(token, str) or not 1 <= len(token) <= 44000:
+                raise RemoteMCPError('cancellation_authority')
+            result = self._rpc('aegis/cancel', {'grant': token}, control)
+            expected = {'format': 'aegis-mcp-cancellation-v1',
+                        'grant_sha256': hashlib.sha256(token.encode()).hexdigest(), 'cancelled': True}
+            if _encode(result) != _encode(expected):
+                raise RemoteMCPError('cancellation_unconfirmed')
             return result
 
     def close(self, control=None):

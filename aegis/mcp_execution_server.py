@@ -26,7 +26,8 @@ MAX_RPC_BYTES = 65536
 def tools_for(runner):
     profile = {'format': FORMAT, 'server_id': runner.server_id, 'package_sha256': PACKAGE_SHA256,
                'ceiling': runner.ceiling.model_dump(), 'allow_private': runner.allow_private,
-               'credential_envs': sorted(runner.credential_envs), 'method': 'GET', 'single_use': True}
+               'credential_envs': sorted(runner.credential_envs), 'method': 'GET', 'single_use': True,
+               'cancellation': 'signed-grant-v1'}
     return [{'name': 'validate_' + item['id'], 'description': item['description'],
              'inputSchema': {'type': 'object', 'properties': {'grant': {'type': 'string', 'minLength': 1,
                               'maxLength': MAX_TOKEN_CHARS}}, 'required': ['grant'], 'additionalProperties': False},
@@ -116,6 +117,11 @@ def create_execution_app(server_id, bearer, scope_key, data_dir, *, allow_privat
                           'capabilities': {'tools': {}}, 'serverInfo': {'name': 'OpenAegis-ScopedGET', 'version': __version__}}
             elif method == 'tools/list' and not params:
                 result = {'tools': tools_for(runner)}
+            elif method == 'aegis/cancel' and set(params) == {'grant'}:
+                try:
+                    result = await asyncio.to_thread(runner.cancel, params['grant'])
+                except ExecutionRejected:
+                    return rpc_error(identifier, -32602)
             elif method == 'tools/call' and set(params) == {'name', 'arguments'} and isinstance(params['name'], str):
                 try:
                     output = await asyncio.to_thread(runner.execute, params['name'], params['arguments'])

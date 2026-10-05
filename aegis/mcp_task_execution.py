@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .coverage import slot
 from .mcp_execution_server import tools_for
-from .mcp_process import discover, invoke
+from .mcp_process import cancel, discover, invoke
 from .mcp_result_store import AUTHORITY_FIELDS, admit
 from .mcp_scope import RequestLimits, issue_grant
 from .remote_mcp import _decode, _digest, _encode
@@ -168,6 +168,7 @@ class Executors:
         for check in checks:
             attempt_id = _digest([task['id'], asset['id'], check, server_id])
             acquired = False
+            dispatched, token = False, None
             try:
                 while not acquired:
                     control.check()
@@ -210,6 +211,7 @@ class Executors:
                         'asset_id': asset['id'], 'worker_id': task['id'] + ':' + asset['id'], 'check': check,
                         'server_id': server_id, 'attempt_id': attempt_id, 'grant_sha256': grant_sha}, connection=db)
                 definition = next(tool for tool in contract['tools'] if tool['name'] == 'validate_' + check)
+                dispatched = True
                 response = invoke(endpoint, definition['name'], {'grant': token}, contract['catalog_sha256'],
                                   definition['definition_sha256'], control)
                 receipt = admit(self.store, task, asset['id'], check, token, key, server_id, response,
@@ -223,10 +225,19 @@ class Executors:
                 outcome['fingerprints'].extend(receipt['fingerprints'])
             except Exception as exc:
                 outcome['errors'].append(check)
+                cancellation = None
+                if dispatched:
+                    cancellation = {'state': 'unconfirmed', 'requested_at': now()}
+                    try:
+                        cancel(endpoint, token)
+                        cancellation.update(state='acknowledged', acknowledged_at=now())
+                    except Exception:
+                        pass
                 with self.store.lock, self.store.write_transaction() as db:
                     attempt = self.store.get('mcp_execution_attempts', attempt_id, connection=db)
                     if attempt and attempt['state'] == 'dispatching':
-                        self.store.put_many([('mcp_execution_attempts', {**attempt, 'state': 'unconfirmed', 'finished_at': now()})], connection=db)
+                        self.store.put_many([('mcp_execution_attempts', {**attempt, 'state': 'unconfirmed',
+                            'finished_at': now(), **({'cancellation': cancellation} if cancellation else {})})], connection=db)
                     for remaining_check in checks[checks.index(check):]:
                         self.store.put_many([('coverage', {**slot(task, asset, remaining_check),
                             'status': 'cancelled' if control.stop.is_set() else 'failed',
@@ -235,6 +246,13 @@ class Executors:
                     self.store.event(task['id'], '원격 실행 결과를 확인하지 못해 Worker를 종료합니다.', 'warning',
                         {'asset_id': asset['id'], 'worker_id': task['id'] + ':' + asset['id'],
                          'check': check, 'server_id': server_id, 'error_type': type(exc).__name__}, connection=db)
+                    if cancellation:
+                        self.store.event(task['id'], '원격 서버의 취소 기록을 확인했습니다.'
+                            if cancellation['state'] == 'acknowledged' else '원격 서버의 취소 확인을 받지 못했습니다.',
+                            'info' if cancellation['state'] == 'acknowledged' else 'warning',
+                            {'asset_id': asset['id'], 'worker_id': task['id'] + ':' + asset['id'],
+                             'check': check, 'server_id': server_id, 'attempt_id': attempt_id,
+                             'cancellation': cancellation}, connection=db)
                 break
             finally:
                 if acquired:

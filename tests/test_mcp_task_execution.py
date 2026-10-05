@@ -216,7 +216,7 @@ def test_authority_changed_after_grant_creation_prevents_dispatch(workspace, tar
     assert store.count('mcp_execution_attempts') == store.count('mcp_execution_receipts') == 0
 
 
-def test_source_stop_prevents_admission_and_next_remote_check(workspace, target):
+def test_source_stop_prevents_admission_and_next_remote_check(workspace, target, service):
     client = workspace
     register(client, ['security_headers', 'cookie_policy'])
     task = plan(client, target[0], ['security_headers', 'cookie_policy'])
@@ -231,6 +231,10 @@ def test_source_stop_prevents_admission_and_next_remote_check(workspace, target)
     store = client.app.state.store
     assert store.count('mcp_execution_receipts') == store.count('findings') == 0
     assert [row['state'] for row in store.all('mcp_execution_attempts')] == ['unconfirmed']
+    assert store.all('mcp_execution_attempts')[0]['cancellation']['state'] == 'acknowledged'
+    runner = service[0]
+    assert not runner.stop.is_set()
+    assert not runner.gate.locked()
     assert len(target[1]['requests']) == 1
     assert all(row['status'] == 'cancelled' for row in store.all('coverage'))
 

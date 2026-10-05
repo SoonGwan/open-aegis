@@ -25,7 +25,9 @@ class NonceLedger:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
             db.execute('CREATE TABLE IF NOT EXISTS consumed(nonce TEXT PRIMARY KEY, retain_until INTEGER NOT NULL)')
+            db.execute('CREATE TABLE IF NOT EXISTS cancelled(nonce TEXT PRIMARY KEY, retain_until INTEGER NOT NULL)')
         self.path.chmod(0o600)
 
     def connect(self):
@@ -36,13 +38,56 @@ class NonceLedger:
             with self.connect() as db:
                 db.execute('BEGIN IMMEDIATE')
                 db.execute('DELETE FROM consumed WHERE retain_until<=?', (time.time(),))
+                db.execute('DELETE FROM cancelled WHERE retain_until<=?', (time.time(),))
                 if db.execute('SELECT count(*) FROM consumed').fetchone()[0] >= 10000:
                     raise ExecutionRejected('nonce_capacity')
-                db.execute('INSERT INTO consumed VALUES (?,?)', (claim.nonce, claim.authorization_expires_at))
+                db.execute('INSERT INTO consumed(nonce,retain_until) VALUES (?,?)',
+                           (claim.nonce, claim.authorization_expires_at))
         except sqlite3.IntegrityError:
             raise ExecutionRejected('scope_grant_consumed') from None
         except sqlite3.Error:
             raise ExecutionRejected('nonce_storage') from None
+
+    def cancel(self, claim):
+        try:
+            with self.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                db.execute('DELETE FROM consumed WHERE retain_until<=?', (time.time(),))
+                db.execute('DELETE FROM cancelled WHERE retain_until<=?', (time.time(),))
+                exists = db.execute('SELECT 1 FROM consumed WHERE nonce=?', (claim.nonce,)).fetchone()
+                if not exists and db.execute('SELECT count(*) FROM consumed').fetchone()[0] >= 10000:
+                    raise ExecutionRejected('nonce_capacity')
+                db.execute('INSERT INTO consumed(nonce,retain_until) VALUES (?,?) '
+                           'ON CONFLICT(nonce) DO UPDATE SET retain_until=max(retain_until,excluded.retain_until)',
+                           (claim.nonce, claim.authorization_expires_at))
+                db.execute('INSERT INTO cancelled(nonce,retain_until) VALUES (?,?) '
+                           'ON CONFLICT(nonce) DO UPDATE SET retain_until=max(retain_until,excluded.retain_until)',
+                           (claim.nonce, claim.authorization_expires_at))
+        except sqlite3.Error:
+            raise ExecutionRejected('nonce_storage') from None
+
+    def cancelled(self, nonce):
+        try:
+            with sqlite3.connect(self.path, timeout=.1, factory=ClosingConnection) as db:
+                return db.execute('SELECT 1 FROM cancelled WHERE nonce=?', (nonce,)).fetchone() is not None
+        except sqlite3.Error:
+            raise InterruptedError('원격 취소 상태를 확인할 수 없습니다.') from None
+
+
+class CancellationControl(TaskControl):
+    def __init__(self, runner, claim, deadline):
+        super().__init__(deadline=deadline)
+        self.runner, self.nonce = runner, claim.nonce
+        self.poll_lock = threading.Lock()
+
+    def check(self):
+        super().check()
+        if self.runner.stop.is_set():
+            raise InterruptedError('원격 서버가 중지됐습니다.')
+        with self.poll_lock:
+            if self.runner.ledger.cancelled(self.nonce):
+                self.stop.set()
+                raise InterruptedError('원격 작업이 취소됐습니다.')
 
 
 class Runner:
@@ -56,6 +101,15 @@ class Runner:
         self.limiter = OriginLimiter(self.ceiling.execution_policy())
         self.stop = threading.Event()
         self.gate = threading.Lock()
+
+    def cancel(self, token):
+        try:
+            claim = verify_claim(token, self._key, self.server_id)
+        except ScopeGrantError:
+            raise ExecutionRejected('scope_authority') from None
+        self.ledger.cancel(claim)
+        return {'format': 'aegis-mcp-cancellation-v1',
+                'grant_sha256': hashlib.sha256(token.encode()).hexdigest(), 'cancelled': True}
 
     def execute(self, name, arguments):
         if not isinstance(arguments, dict) or set(arguments) != {'grant'}:
@@ -82,7 +136,8 @@ class Runner:
             # The execution gate serializes jobs, so the shared origin clock can
             # safely use this job's tighter limits while retaining prior starts.
             self.limiter.policy = limits.execution_policy()
-            control = TaskControl(self.stop, time.monotonic() + min(limits.task_timeout, claim.expires_at - time.time()))
+            control = CancellationControl(self, claim,
+                time.monotonic() + min(limits.task_timeout, claim.expires_at - time.time()))
             control.check()
             self.ledger.consume(claim)
             # Scope, DNS pinning, TLS and redirect checks apply to every GET,

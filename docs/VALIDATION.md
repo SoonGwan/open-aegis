@@ -5965,3 +5965,57 @@ ran privately before publication. The published version remains0.2.0a1; no v1
 completion, production deployment, independent audit or star count is claimed.
 Remote cancellation/observed-response/general plugin isolation and the other
 unmet v1 criteria remain tracked rather than silently omitted.
+
+
+### Signed remote cancellation and timeout reproduction
+
+The fixed GET execution server now accepts the `aegis/cancel` extension, verifies
+its existing signed grant, and stores revocation with consumption atomically.
+Native source-stop integration passes for SQLite and PostgreSQL. Nine focused
+cases cover pre-dispatch/idempotent cancellation, invalid/expired/wrong-server
+refusal, separate-runner and actual separate-process interruption, previous
+2-column ledger writes, supervised cancellation and capacity limits. A real
+13-second owned response failed before the SDK fix because its RequestGuard
+still used12 seconds despite trusted operation_timeout20; it succeeds after
+applying that timeout to the socket and guard. No real external target was used.
+
+The settled related suite passes **212 tests in155.83s**, exit0; the independent
+installed wheel passes the same212 cases in161.16s outside the checkout,
+including native PostgreSQL. The full frozen-source native regression passes
+**1,392 tests in877.42s**, exit0, with the existing TestClient httpx deprecation
+warning. Frontend97 tests and the production build pass. Selected design-token
+contrast checks are separate from a full accessibility review.
+
+Wheel `open_aegis-0.2.0a1-py3-none-any.whl` has SHA-256
+`399555a017fafe5a859df43ff7ee18b26cb7a9f72a34b892ba60e83bd7a2b196`;
+all85 service Python files match the frozen source byte for byte, rechecked after
+the full suite. Installed authentication/UI, persistence, maintenance and signed
+release rehearsal return a valid receipt with zero target requests.
+
+In the built desktop UI, an owned API asset with20 explicit anonymous GET rules
+was selected into a remote plan. The registry was seeded through the actual
+review/register service; registration UI was not retested in this review. There
+were zero target requests before approval. After approval, the task detail's
+explicit Stop sent POST `/api/tasks/<id>/stop`, returned200, changed the task to
+stopped and displayed both the stop event and remote cancellation confirmation.
+The remote gate was released, eight already-started target GETs remained stable,
+and no execution receipt or finding was admitted. Two earlier attempts ended
+by their request timeouts before an explicit stop was established; those are
+retained as timeout evidence, not successful stop-button evidence. Owned tabs,
+servers and temporary data were removed after review.
+
+Evidence is retained locally in `artifacts/mcp-cancellation-*-tests.txt`,
+`artifacts/mcp-cancellation-rpc-timeout-before.txt`,
+`artifacts/mcp-cancellation-installed-runtime.txt`, the wheel verification receipt
+and `artifacts/mcp-cancel-ui-stop-receipt.json`. These files are ignored diagnostic
+artifacts and are not published test certificates.
+
+Revocation acknowledgement confirms the server's grant ledger, not the truth of
+remote execution or undo of already-transmitted requests. The source records
+unconfirmed original execution and never automatically replays it. Cancellation
+is a fixed extension, not generic MCP cancellation. Connection loss, key/expiry
+changes and main-process hard termination can prevent acknowledgement; a durable
+crash-recovery cancellation outbox, observed-response adapter and general plugin
+OS/egress isolation remain open v1 work. Hosted checks for this changed source
+are pending until its next Verify run completes; previous hosted success applies
+to the preceding executable commit.

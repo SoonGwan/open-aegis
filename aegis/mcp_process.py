@@ -31,6 +31,12 @@ def invoke(connection, name, arguments, catalog_sha, definition_sha, control):
         'call_main', control.stop, timeout)
 
 
+def cancel(connection, token):
+    # Cancellation has its own short cleanup deadline after source stop/timeout.
+    return _supervise(connection, {'connection': connection.model_dump(), 'arguments': {'grant': token}},
+                      'cancel_main', None, 3)
+
+
 def _supervise(connection, payload, child_function, stop, timeout):
     """Bound a child lifetime, reap on cancellation, and do not inherit app secrets."""
     control = TaskControl(stop=stop, deadline=time.monotonic() + timeout)
@@ -88,7 +94,11 @@ def call_main():
     _child(call=True)
 
 
-def _child(call=False):
+def cancel_main():
+    _child(cancel=True)
+
+
+def _child(call=False, cancel=False):
     # Apply limits in the child rather than preexec_fn in a threaded web process.
     # Linux AS is a virtual-address limit. macOS has no equivalent reliable RSS
     # guarantee here; neither is a filesystem/egress isolation boundary.
@@ -101,16 +111,26 @@ def _child(call=False):
     from .remote_mcp import Client, Connection, _decode, _encode, _digest
     client = None
     try:
-        budget = 65536 if call else 32768
+        budget = 65536 if call or cancel else 32768
         raw = sys.stdin.buffer.read(budget + 1)
         if len(raw) > budget:
             raise ValueError('configuration_budget')
         value = _decode(raw)
-        connection = Connection(**(value['connection'] if call else value))
-        timeout = min(300, float(sys.argv[2])) if call else 12
+        connection = Connection(**(value['connection'] if call or cancel else value))
+        timeout = min(300, float(sys.argv[2])) if call or cancel else 12
         client = Client(connection, operation_timeout=timeout)
         control = TaskControl(deadline=time.monotonic() + timeout)
         initialized = client.initialize(control)
+        if cancel:
+            result = client.cancel_scoped(value['arguments']['grant'], control)
+            bearer = os.environ.get(connection.token_env, '') if connection.token_env else ''
+            protected = (bearer, value['arguments']['grant'])
+            if any(secret and secret in item for secret in protected
+                   for item in result.values() if isinstance(item, str)):
+                raise ValueError('credential_in_cancellation')
+            sys.stdout.buffer.write(_encode(result, MAX_OUTPUT))
+            sys.stdout.buffer.flush()
+            return
         tools = client.list_tools(control)
         fields = {'name', 'title', 'description', 'inputSchema', 'outputSchema', 'annotations', '_meta'}
         result = {'protocolVersion': initialized['protocolVersion'],

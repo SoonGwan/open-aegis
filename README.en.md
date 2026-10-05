@@ -78,8 +78,11 @@ This is a single shared workspace, not tenant isolation. Current checks validate
 specific configuration and operator-defined policy expectations. They do not
 provide autonomous exploitation chains, arbitrary shell/plugin execution or a
 general traffic interception proxy. Remote stop prevents later dispatch and local
-result admission; immediate cancellation of already-running remote requests and
-remote observed-response jobs remain unfinished. General plugin OS/egress
+result admission, requests signed revocation, and records whether the server
+acknowledges it. The server interrupts response waits and rejects later use of
+the revoked grant. Already-transmitted requests cannot be undone; cancellation
+acknowledgement after connection/process loss and remote observed-response jobs
+remain unfinished. General plugin OS/egress
 isolation, full accessibility/mobile journeys, production interoperability and
 the complete v1 release criteria remain open.
 
