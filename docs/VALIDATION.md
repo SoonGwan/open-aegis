@@ -6745,3 +6745,14 @@ writes admit only one reviewed profile/default revision; invalid recipient addre
 ports and credential controls never enable a profile. The real25-profile catalog
 cap rejects an extra profile, while explicitly synthetic revision200 boundary rows
 verify rejection without pretending200 actual saves occurred.
+Prompt main hosted run37385598230 fails the native report deadline case with
+QueryCanceled(statement timeout), while384 other native checks pass. The actual
+new native boundary regression fails before the fix: PostgreSQL is configured for
+9.998s despite a9.998767958022654s remaining export budget. Truncating milliseconds
+can trigger SQL cancellation before the monotonic permit expires, allowing the raw
+exception to escape. Rounding up milliseconds preserves the budget; unchanged
+regression and existing reports/disconnect/deadline/export checks pass32 cases
+in12.95s. No sleeps/retries, deadline increases or exception suppression are added.
+This demonstrates the controlled rounding mechanism, not the unrecorded exact
+remaining value on the hosted failure. Prior95-module wheel remains prior source;
+the one production module change requires a new package receipt.

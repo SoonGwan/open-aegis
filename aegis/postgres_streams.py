@@ -1,4 +1,5 @@
 """Interrupt owned PostgreSQL reads when an export permit expires or cancels."""
+import math
 import threading
 from contextlib import contextmanager
 
@@ -25,7 +26,7 @@ def query_permit(db, permit):
     worker.start()
     try:
         db.execute("SELECT set_config('statement_timeout',%s,true)",
-                   (str(max(1, int(permit.remaining()*1000))),))
+                   (str(max(1, math.ceil(permit.remaining()*1000))),))
         permit.check()
         yield
     except Exception:
