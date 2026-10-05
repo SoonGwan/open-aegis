@@ -277,3 +277,10 @@ def test_profile_catalog_limit_and_exhausted_versions_never_mutate(client):
     assert caught.value.status_code==409
     assert store.get('model_defaults','planner')==default and store.count('model_default_versions')==0
     assert store.count('model_profile_versions')==25 and not store.all('llm_calls')
+
+
+@pytest.mark.parametrize('name',['Owned\x00profile','Owned\nprofile','Owned\x7fprofile'])
+def test_profile_name_controls_are_rejected_before_backend_storage(client,name):
+    assert create(client,name=name).status_code==422
+    store=client.app.state.store
+    assert store.count('model_profiles')==store.count('model_profile_versions')==store.count('model_profile_operations')==0

@@ -6756,3 +6756,13 @@ in12.95s. No sleeps/retries, deadline increases or exception suppression are add
 This demonstrates the controlled rounding mechanism, not the unrecorded exact
 remaining value on the hosted failure. Prior95-module wheel remains prior source;
 the one production module change requires a new package receipt.
+
+An additional real API regression rejects control characters in profile names before
+storage. It fails before (SQLite returns200 for a NUL-containing name), then all64
+native/backend profile cases pass in15.77s after validation. The initial full run
+was intentionally interrupted at340 passes/163.44s and is not full-suite success.
+The initial96-module wheel15d155c6 passes both-store96→95→96/offline backup restore;
+its receipts apply to that earlier source. The final source/package and full native/
+installed/maintenance checks must be refreshed. Provider-origin retention is stated
+explicitly: existing call receipts retain scheme/host/port, while profile versions
+and call records do not retain API keys or full endpoint paths.

@@ -123,6 +123,7 @@ class Profiles:
     def definition(self,data,actor):
         name=data.name.strip();model=data.model.strip()
         if not name or not model:raise HTTPException(422,'프로필 이름과 모델 이름을 입력하세요.')
+        if any(ord(c)<32 or ord(c)==127 for c in data.name):raise HTTPException(422,'프로필 이름에 제어 문자를 사용할 수 없습니다.')
         if data.destination_id not in self.destinations.items:raise HTTPException(404,'설정된 모델 수신처가 없습니다.')
         if any(ord(c)<32 or ord(c)>126 for c in data.model):raise HTTPException(422,'모델 이름의 형식을 확인하세요.')
         try:prepared=self.destinations.prepare(data.destination_id,model,self.allow_local)
