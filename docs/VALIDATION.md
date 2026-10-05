@@ -6718,3 +6718,11 @@ read-only review also observes prompt navigation and ordinary/archive task filte
 with0 mutations/provider calls/target requests, closed tab and fixture exit0.
 This permits merging PR5 while version remains0.2.0a1. The independent96-module
 model-profile workspace is not part of this verified candidate.
+
+Prompt main e11878a now serves the frozen95-module source at the local preview
+http://127.0.0.1:8790. Restart preserves all59 persisted record bodies exactly
+(SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c),
+including the original pending/completed/failed task states. Served HTML/assets
+match the fresh frontend build byte for byte; health reports0.2.0a1 and unauthenticated
+prompt/channel/category/template reads return401. This is a local preview,
+not an external production deployment. Main hosted run37385598230 remains pending.
