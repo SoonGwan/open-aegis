@@ -6679,3 +6679,13 @@ or any change to production ownership fencing. Frozen95 production modules and
 wheel hash remain unchanged. The first notification-barrier probe was inconclusive
 because no notification worker starts with no destinations; the event-planner
 probe supplies the decisive owned lock observation. Full native must run again.
+
+
+After matching restart shutdown to the application lifecycle,107 native/backend
+MCP observation, ownership and notification delivery checks pass in158.48s.
+Production source is still the frozen95-module wheel. Latest hosted source run
+is37383092295 at `a82836b646c6e34dd7b08b9224b27de3f3ccfed6`; its preceding
+ff7a0cd run37381945973 was cancelled by the new test/source update and is not
+all-job success evidence. Full native is rerunning with the original strict failure
+stop and source-restart recovery assertions retained. The owned distinguishing
+probe is rerunnable in an isolated checkout of5db3c36 (before the fixture correction).
