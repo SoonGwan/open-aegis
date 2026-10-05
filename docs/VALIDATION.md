@@ -6064,3 +6064,53 @@ templates/categories/archives/notifications/model failover/prompt versioning are
 tracked as incomplete. No upstream source, prompts or skills were copied into
 the independently implemented service. The source remains0.2.0a1 and the full v1
 gate is open.
+
+
+## 2026-10-06 — selected observed-response remote batches
+
+Adds a seventh fixed MCP tool, `validate_observation_responses`, without adding
+a seventh check type. It requires separate administrator metadata review and
+registration. Approved source observations, selection fingerprint, current asset
+scope and planned check order bind a batch of up to10 URLs and40 explicit cells.
+Only four response configuration checks are eligible. Each selected response is
+reused; the base URL and unselected links are not fetched. Source remote location
+survives partial next plans and original-URL finding retests.
+
+The settled related suite passes218 cases with SQLite and actual PostgreSQL
+(`artifacts/mcp-observation-settled-targeted.txt`,269.11s). The new60 cases cover
+40-cell reuse, partial proof and failed-cell-only fresh approvals, retests, source
+tampering, administrator registration/disable, budget exhaustion, signed scope
+rejection, malformed remote results, audit rollback, replay/idempotent admission,
+active Stop, planned order and source-restart unknown recovery. These counts
+overlap the full suite and must not be added to it. Frontend97 tests and the
+TypeScript/Vite build pass; selected design contrast pairs pass separately.
+
+Actual built-UI browser QA selects two observed URLs and two checks, creates a
+pending plan, verifies explicit remote batch wording and exact requested URLs,
+approves and opens completed results with two targets per actual check. Owned
+fixture state records no extra GET before approval, then exactly two child GETs
+for four cells, six findings, one batch receipt and valid audit integrity. Registry
+registration and the endpoint-inventory source were prepared through trusted
+fixture APIs; their setup is not claimed as part of this browser journey. The
+fixture exits0 and removes its temporary resources. Artifacts:
+`mcp-observation-ui-before-approval.json`, `mcp-observation-ui-after-completion.json`,
+`mcp-observation-ui-receipt.json` and `mcp-observation-ui-process.txt`.
+
+An independently installed wheel outside the checkout passes272 related cases
+with SQLite and actual PostgreSQL in295.31s. Its package origin is checked to be
+inside the temporary installation, and temporary resources are removed
+(`mcp-observation-installed-tests.txt`).
+
+The wheel SHA-256 is
+`25ade32973d44e0b022c3ec0bc7eb8668df454bff9886e2788651340ff8964c9`.
+All86 service Python files match the frozen source byte-for-byte. Installed
+locked-runtime review outside the checkout passes startup/health, authentication,
+retained pending data, maintenance, backup/restore, release tamper/rollback and
+clean shutdown with zero target requests (`mcp-observation-installed-runtime.txt`).
+The main loopback preview health is200/0.2.0a1; its existing counts and four task
+states match before/after restart exactly. Public source Gitleaks8.30.1 scans377
+files with zero unignored candidates; this is not a guarantee of secret absence.
+
+General plugin OS/egress isolation, durable remote cancellation after source
+process loss, remote runtime attestation and remaining full operational criteria
+are still open. This batch integration does not establish a v1 release.

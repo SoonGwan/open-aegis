@@ -21,6 +21,7 @@ from .tool_contracts import PACKAGE_SHA256, require_contracts
 FORMAT = 'aegis-mcp-scoped-get-v1'
 MAX_CLAIM_BYTES = 32768
 MAX_TOKEN_CHARS = 44000
+OBSERVATION_CHECK = 'observation_responses'
 
 
 class ScopeGrantError(ValueError):
@@ -71,6 +72,35 @@ class ScopeAsset(BaseModel):
         return self
 
 
+class ObservedTarget(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True, frozen=True)
+    id: str = Field(pattern=r'^[a-f0-9]{64}$')
+    url: str = Field(max_length=2000)
+
+
+class ObservedCell(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True, frozen=True)
+    observation_id: str = Field(pattern=r'^[a-f0-9]{64}$')
+    check: str = Field(pattern=r'^(security_headers|transport_security|cookie_policy|cors_policy)$')
+
+
+class ObservationAuthority(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True, frozen=True)
+    source_task_id: str = Field(min_length=1, max_length=80)
+    execution_fingerprint: str = Field(pattern=r'^[a-f0-9]{64}$')
+    targets: list[ObservedTarget] = Field(min_length=1, max_length=10)
+    cells: list[ObservedCell] = Field(min_length=1, max_length=40)
+
+    @model_validator(mode='after')
+    def selected_matrix(self):
+        ids = [target.id for target in self.targets]
+        cells = [(cell.observation_id, cell.check) for cell in self.cells]
+        if (len(set(ids)) != len(ids) or len({target.url for target in self.targets}) != len(ids)
+                or len(set(cells)) != len(cells) or set(ids) != {id for id, _ in cells}):
+            raise ValueError('observation_matrix')
+        return self
+
+
 class ScopeClaim(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True, frozen=True)
     format: str = Field(pattern=r'^aegis-mcp-scoped-get-v1$')
@@ -85,11 +115,12 @@ class ScopeClaim(BaseModel):
     allow_private: bool = False
     asset: ScopeAsset
     limits: RequestLimits
+    observation: ObservationAuthority | None = None
 
     @field_validator('check_id')
     @classmethod
     def reviewed_check(cls, value):
-        if value not in CHECK_IDS:
+        if value not in CHECK_IDS and value != OBSERVATION_CHECK:
             raise ValueError('check_id')
         return value
 
@@ -98,6 +129,13 @@ class ScopeClaim(BaseModel):
         if (not 1 <= self.expires_at - self.issued_at <= 300
                 or not self.expires_at <= self.authorization_expires_at <= self.issued_at + 7210):
             raise ValueError('grant_lifetime')
+        if (self.check_id == OBSERVATION_CHECK) != (self.observation is not None):
+            raise ValueError('observation_mode')
+        if self.observation:
+            if self.asset.authorization_rules or any(
+                    normalize_url(target.url) != target.url or '?' in target.url or '#' in target.url
+                    or not in_scope(target.url, self.asset.url) for target in self.observation.targets):
+                raise ValueError('observation_scope')
         return self
 
 
@@ -143,12 +181,33 @@ def issue_grant(task, asset_id, check_id, server_id, key, *, ttl=60, timestamp=N
         approved = task.get('approved_at')
         if (task.get('status') not in ('queued', 'running') or type(approved) not in (int, float)
                 or not math.isfinite(approved) or approved <= 0
-                or check_id not in task['checks'] or type(ttl) is not int or not 1 <= ttl <= 300):
+                or (check_id not in task['checks'] and check_id != OBSERVATION_CHECK) or type(ttl) is not int or not 1 <= ttl <= 300):
             raise ValueError()
         snapshots = [asset for asset in task['scope_snapshot'] if asset['id'] == asset_id]
         if len(snapshots) != 1:
             raise ValueError()
         asset = snapshots[0]
+        observation = None
+        if check_id == OBSERVATION_CHECK:
+            from . import observation_execution, observation_rounds
+            from .goal_planner import execution_checks
+            observation_execution.require(task, approved=True)
+            targets = observation_execution.targets_for(task, asset)
+            order = task.get('plan', task['checks'])
+            if type(order) is not list or len(order) != len(set(order)) or set(order) != set(task['checks']):
+                raise ValueError()
+            checks = execution_checks(task, asset_id, order)
+            cells = [cell for cell in observation_rounds.selected_cells(task)
+                     if cell['observation_id'] in {target['id'] for target in targets} and cell['check'] in checks]
+            cells.sort(key=lambda cell: checks.index(cell['check']))
+            selected = list(dict.fromkeys(cell['observation_id'] for cell in cells))
+            by_id = {target['id']: target for target in targets}
+            observation = ObservationAuthority(source_task_id=task['observation_execution']['source_task_id'],
+                execution_fingerprint=task['observation_execution']['fingerprint'],
+                targets=[{'id': id, 'url': by_id[id]['url']} for id in selected],
+                cells=cells)
+        elif task.get('observation_execution') or task.get('observation_cells'):
+            raise ValueError()
         relevant = {key: asset[key] for key in ('id', 'name', 'type', 'url', 'authorized')}
         relevant['revision'] = asset.get('revision', 1)
         relevant['authorization_rules'] = asset.get('authorization_rules', []) if check_id == 'api_authorization' else []
@@ -164,14 +223,15 @@ def issue_grant(task, asset_id, check_id, server_id, key, *, ttl=60, timestamp=N
             raise ValueError()
         authority_end = math.ceil(approved + queue_timeout + limits.task_timeout + 5)
         expiry = min(current + ttl, authority_end)
-        context = _encode([FORMAT, task['id'], asset_id, relevant['revision'], check_id, server_id, approved, PACKAGE_SHA256])
+        context = _encode([FORMAT, task['id'], asset_id, relevant['revision'], check_id, server_id, approved, PACKAGE_SHA256]
+                         + ([observation.model_dump()] if observation else []))
         # Job identity is independent of key rotation. MAC verification still
         # protects the entire grant; the nonce alone grants no authority.
         nonce = hashlib.sha256(context).hexdigest()[:32]
         claim = ScopeClaim(format=FORMAT, nonce=nonce, server_id=server_id,
                            task_id=task['id'], check_id=check_id, package_sha256=PACKAGE_SHA256,
                            issued_at=current, expires_at=expiry, authorization_expires_at=authority_end,
-                           allow_private=allow_private, asset=ScopeAsset(**relevant), limits=limits)
+                           allow_private=allow_private, asset=ScopeAsset(**relevant), limits=limits, observation=observation)
         return sign_claim(claim, key)
     except (ValueError, TypeError, KeyError):
         raise ScopeGrantError('task_scope_authority') from None

@@ -16,7 +16,7 @@ from . import __version__
 from .checks import CATALOG
 from .http_limits import BodyLimitMiddleware
 from .mcp_executor import ExecutionRejected, Runner
-from .mcp_scope import FORMAT, MAX_TOKEN_CHARS, RequestLimits
+from .mcp_scope import FORMAT, MAX_TOKEN_CHARS, OBSERVATION_CHECK, RequestLimits
 from .remote_mcp import VERSIONS, _decode, _encode
 from .tool_contracts import PACKAGE_SHA256
 
@@ -28,6 +28,7 @@ def tools_for(runner):
                'ceiling': runner.ceiling.model_dump(), 'allow_private': runner.allow_private,
                'credential_envs': sorted(runner.credential_envs), 'method': 'GET', 'single_use': True,
                'cancellation': 'signed-grant-v1'}
+    catalog = [*CATALOG, {'id': OBSERVATION_CHECK, 'description': '서명된 관찰 URL·응답 검사 조합을 한 배치로 검증합니다.'}]
     return [{'name': 'validate_' + item['id'], 'description': item['description'],
              'inputSchema': {'type': 'object', 'properties': {'grant': {'type': 'string', 'minLength': 1,
                               'maxLength': MAX_TOKEN_CHARS}}, 'required': ['grant'], 'additionalProperties': False},
@@ -37,13 +38,14 @@ def tools_for(runner):
                  'check_id': {'const': item['id']}, 'scope_url': {'type': 'string'},
                  'allow_private': {'type': 'boolean'},
                  'package_sha256': {'const': PACKAGE_SHA256}, 'effective_limits': {'type': 'object'},
-                 'result': {'type': 'array', 'minItems': 3, 'maxItems': 3}, 'traffic': {'type': 'array', 'maxItems': 240}},
+                 'result': {'type': 'array', 'minItems': 1 if item['id'] == OBSERVATION_CHECK else 3,
+                            'maxItems': 40 if item['id'] == OBSERVATION_CHECK else 3}, 'traffic': {'type': 'array', 'maxItems': 240}},
                  'required': ['format', 'grant_sha256', 'task_id', 'asset_id', 'asset_revision', 'check_id',
                               'scope_url', 'package_sha256', 'allow_private', 'effective_limits', 'result', 'traffic'],
                  'additionalProperties': False},
              'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': False,
                              'openWorldHint': True},
-             '_meta': {'org.openaegis/scopedExecution': {**profile, 'check_id': item['id']}}} for item in CATALOG]
+             '_meta': {'org.openaegis/scopedExecution': {**profile, 'check_id': item['id']}}} for item in catalog]
 
 
 def create_execution_app(server_id, bearer, scope_key, data_dir, *, allow_private=False, credential_envs=(), ceiling=None, allowed_origins=()):

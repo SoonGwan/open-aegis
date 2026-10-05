@@ -27,7 +27,9 @@ claim complete ARTEX parity or detection of every vulnerability.
   retests; export Markdown, CSV and JSON reports.
 - Review ScopeSentry imports and configured remote sources before applying assets.
 - Select a configured, reviewed MCP GET server for approved tasks and atomically
-  store verified results and audit events. Arbitrary registered tools do not run.
+  store verified results and audit events. Selected observed URLs use a separately
+  registered batch tool, reuse each response across checks, and preserve provenance
+  through partial retries and retests. Arbitrary registered tools do not run.
 - Use optional OpenAI-compatible planning and recorded-evidence conversation;
   keep provider usage and configured price estimates distinct from actual billing.
 - Use administrator/operator/viewer roles within one shared workspace, SQLite or
@@ -81,8 +83,8 @@ general traffic interception proxy. Remote stop prevents later dispatch and loca
 result admission, requests signed revocation, and records whether the server
 acknowledges it. The server interrupts response waits and rejects later use of
 the revoked grant. Already-transmitted requests cannot be undone; cancellation
-acknowledgement after connection/process loss and remote observed-response jobs
-remain unfinished. General plugin OS/egress
+acknowledgement after connection/process loss remains unfinished. Selected
+observed-response jobs use the fixed batch adapter. General plugin OS/egress
 isolation, full accessibility/mobile journeys, production interoperability and
 the complete v1 release criteria remain open.
 

@@ -32,9 +32,13 @@ def validate_execution_response(token, key, server_id, response, *, ceiling=None
         effective = claim.limits.effective(ceiling or RequestLimits())
         if _encode(output['effective_limits']) != _encode(effective.model_dump()):
             raise ValueError()
-        validate_result(claim.check_id, claim.asset.model_dump(), output['result'])
+        if claim.observation:
+            from .mcp_observation import validate
+            validate(claim, output['result'])
+        else:
+            validate_result(claim.check_id, claim.asset.model_dump(), output['result'])
         traffic = output['traffic']
-        if not isinstance(traffic, list) or not 1 <= len(traffic) <= effective.request_budget:
+        if not isinstance(traffic, list) or not (0 if claim.observation else 1) <= len(traffic) <= effective.request_budget:
             raise ValueError()
         required = {'url', 'method', 'status', 'elapsed_ms', 'bytes', 'truncated', 'address', 'attempt'}
         for row in traffic:
@@ -60,6 +64,12 @@ def validate_execution_response(token, key, server_id, response, *, ceiling=None
                 raise ValueError()
             if 'body_sha256' in row and (not isinstance(row['body_sha256'], str)
                                         or not re.fullmatch(r'[a-f0-9]{64}', row['body_sha256'])):
+                raise ValueError()
+        if claim.observation and any(row['status'] == 'completed' for row in output['result']):
+            if not any(200 <= row['status'] < 300 for row in traffic):
+                raise ValueError()
+            completed_urls = {row['url'] for row in output['result'] if row['status'] == 'completed'}
+            if not completed_urls <= {row['url'] for row in traffic if row['status']}:
                 raise ValueError()
         return output
     except (ValueError, TypeError, KeyError, AttributeError):

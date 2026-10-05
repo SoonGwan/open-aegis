@@ -330,13 +330,6 @@ def create_app(data_dir=None, allow_private=None):
         location_source = attempt_source or (followup[0] if followup else {}) or (
             (store.get('tasks', observation_request[0]) or {}) if observation_request else {})
         task['remote_connection_id'] = data.remote_connection_id or location_source.get('remote_connection_id')
-        if task['remote_connection_id']:
-            try:
-                task['remote_execution'] = mcp_executors.snapshot(task['remote_connection_id'], data.checks)
-            except ValueError as exc:
-                raise HTTPException(409, str(exc)) from None
-            if observation_request:
-                raise HTTPException(409, '원격 관찰 응답 검증 어댑터는 아직 지원하지 않습니다.')
         if attempt_source:
             task.update(planning_history.metadata(attempt_source))
             if attempt_source.get('goal_plan'):task['goal_plan']=attempt_source['goal_plan']
@@ -381,6 +374,12 @@ def create_app(data_dir=None, allow_private=None):
         except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
         try:goal_planner.require_task(task)
         except planning_history.PlanningConflict as exc:raise HTTPException(409,str(exc)) from exc
+        if task['remote_connection_id']:
+            try:
+                task['remote_execution'] = mcp_executors.snapshot(task['remote_connection_id'], data.checks,
+                    observation=bool(task.get('observation_execution')))
+            except ValueError as exc:
+                raise HTTPException(409, str(exc)) from None
         try:mcp_executors.require(task)
         except ValueError as exc:raise HTTPException(409,str(exc)) from None
         records = [('tasks', task)] + [('coverage', row) for row in planned_slots(task)]

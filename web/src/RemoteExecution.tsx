@@ -3,6 +3,7 @@ import { api } from "./api";
 
 type Executor = { id: string; url: string; check_ids: string[] };
 export type RemoteExecution = {
+  mode?: "base-response" | "observation-response";
   connection_id: string;
   url: string;
   tools: { name: string; revision: number }[];
@@ -66,6 +67,7 @@ export function RemoteExecutionSummary({ contract }: { contract?: RemoteExecutio
     <h4>원격 GET 검증 · {contract.connection_id}</h4>
     <p className="subtle">{contract.url}</p>
     <p className="subtle">서버 상한 · 초당 {contract.profile.ceiling.target_rps} 요청 · 요청 {contract.profile.ceiling.request_timeout}초 · 검사 {contract.profile.ceiling.task_timeout}초</p>
+    {contract.mode === "observation-response" && <p className="subtle">선택한 관찰 URL과 검사 조합을 실행합니다. 각 URL의 응답을 검사 간 재사용하며, URL별 결과를 기록합니다.</p>}
     <p className="subtle">관리자 검토한 도구 {contract.tools.length}개 · 연결과 도구가 변경되면 새 계획을 검토합니다. 자산별 승인 요청 예산을 함께 사용합니다.</p>
   </section>;
 }

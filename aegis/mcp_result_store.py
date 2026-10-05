@@ -20,10 +20,12 @@ class AdmissionError(ValueError):
     pass
 
 
-AUTHORITY_FIELDS = ('id', 'approved_at', 'asset_ids', 'scope_snapshot', 'checks', 'tool_contracts',
+AUTHORITY_FIELDS = ('id', 'approved_at', 'plan', 'asset_ids', 'scope_snapshot', 'checks', 'tool_contracts',
                     'execution_policy', 'worker_dependencies', 'worker_dependency_contract',
                     'goal_plan', 'goal_selection', 'goal_selection_contract',
-                    'observation_execution', 'observation_execution_contract', 'remote_execution', 'remote_connection_id')
+                    'observation_execution', 'observation_execution_contract', 'worker_observation_context',
+                    'observation_cells', 'goal_observation', 'observation_selection',
+                    'remote_execution', 'remote_connection_id')
 
 
 def admit(store, task, asset_id, check_id, token, key, server_id, response, *,
@@ -41,7 +43,7 @@ receipt is proof of local admission, not remote runtime or target attestation.
         if task.get('remote_execution') and not attempt_id:
             raise ValueError()
         if (claim.task_id != task['id'] or claim.asset.id != asset_id or claim.check_id != check_id
-                or task.get('observation_execution') or task.get('observation_cells')):
+                or bool(claim.observation) != bool(task.get('observation_execution'))):
             raise ValueError()
         expected = issue_grant(task, asset_id, check_id, server_id, key,
                                ttl=claim.expires_at - claim.issued_at, timestamp=claim.issued_at,
@@ -87,9 +89,12 @@ receipt is proof of local admission, not remote runtime or target attestation.
         current = store.get('tasks', task['id'], connection=db)
         if (not current or current.get('status') != 'running'
                 or _encode({name: current.get(name) for name in AUTHORITY_FIELDS}) != _encode(authority)
-                or check_id not in execution_checks(current, asset_id)):
+                or (not claim.observation and check_id not in execution_checks(current, asset_id))):
             raise AdmissionError('task_authority_changed')
         require_contracts(current)
+        if claim.observation:
+            from .observation_execution import require
+            require(current, approved=True)
         attempt = store.get('mcp_execution_attempts', attempt_id, connection=db) if attempt_id else None
         if attempt_id and (not attempt or attempt.get('state') != 'dispatching'
                 or attempt.get('grant_sha256') != output['grant_sha256']
@@ -109,15 +114,28 @@ receipt is proof of local admission, not remote runtime or target attestation.
                 or live_asset.get('revision', 1) != asset.get('revision', 1)
                 or asset.get('revision', 1) != claim.asset.revision or asset.get('url') != claim.asset.url):
             raise AdmissionError('asset_authority_changed')
-        coverage_id = f"{task['id']}:{asset_id}:{check_id}"
-        prior = store.get('coverage', coverage_id, connection=db)
-        coverage_identity = {'id': coverage_id, 'task_id': task['id'], 'asset_id': asset_id,
-                             'check': check_id, 'asset_revision': claim.asset.revision}
-        if prior is not None and (prior.get('status') not in ('not_started', 'running')
-                                 or _encode({name: prior.get(name) for name in coverage_identity})
-                                 != _encode(coverage_identity)):
-            raise AdmissionError('coverage_already_recorded')
-        findings, observed, skipped = output['result']
+        selected_checks = list(dict.fromkeys(cell.check for cell in claim.observation.cells)) if claim.observation else [check_id]
+        priors = {}
+        for selected_check in selected_checks:
+            coverage_id = f"{task['id']}:{asset_id}:{selected_check}"
+            prior = store.get('coverage', coverage_id, connection=db)
+            identity = {'id': coverage_id, 'task_id': task['id'], 'asset_id': asset_id,
+                        'check': selected_check, 'asset_revision': claim.asset.revision}
+            if prior is not None and (prior.get('status') not in ('not_started', 'running')
+                    or _encode({name: prior.get(name) for name in identity}) != _encode(identity)):
+                raise AdmissionError('coverage_already_recorded')
+            priors[selected_check] = prior
+        if claim.observation:
+            from .mcp_observation import finding as observed_finding
+            rows = output['result']
+            try:
+                findings = [observed_finding(item, row, claim.observation.source_task_id)
+                            for row in rows if row['status'] == 'completed' for item in row['findings']]
+            except ValueError:
+                raise AdmissionError('observation_finding_contract') from None
+            observed, skipped = [], None
+        else:
+            findings, observed, skipped = output['result']
         timestamp = now()
         if timestamp >= claim.expires_at:
             raise AdmissionError('remote_authority_expired')
@@ -130,6 +148,15 @@ receipt is proof of local admission, not remote runtime or target attestation.
                    'observation_ids': [], 'traffic_ids': [], 'coverage_id': coverage_id,
                    'fingerprints': [], 'coverage_status': 'skipped' if skipped else 'completed',
                    'provenance_basis': 'validated_remote_result_and_local_approval_metadata'}
+        if claim.observation:
+            receipt['coverage_id'] = None
+            receipt['coverage_ids'] = [f"{task['id']}:{asset_id}:{check}" for check in selected_checks]
+            receipt['coverage_statuses'] = {check: 'completed' if all(row['status'] == 'completed'
+                for row in rows if row['check'] == check) else 'failed' for check in selected_checks}
+            receipt['coverage_status'] = 'completed' if all(status == 'completed'
+                for status in receipt['coverage_statuses'].values()) else 'failed'
+            receipt['observation_source_task_id'] = claim.observation.source_task_id
+            receipt['observation_execution_fingerprint'] = claim.observation.execution_fingerprint
         for item in findings:
             finding, evidence, _ = record_observation(store, current, asset, item, connection=db)
             receipt['finding_ids'].append(finding['id'])
@@ -144,11 +171,18 @@ receipt is proof of local admission, not remote runtime or target attestation.
                       'created_at': timestamp, 'remote_admission_id': receipt_id, 'server_id': server_id}
             receipt['traffic_ids'].append(record['id'])
             records.append(('traffic', record))
-        coverage = {**(prior or slot(current, asset, check_id)),
-                    'status': 'skipped' if skipped else 'completed',
-                    'reason': skipped or '승인된 원격 GET 검증 결과를 확인했습니다.',
-                    'updated_at': timestamp, 'finished_at': timestamp, 'remote_admission_id': receipt_id}
-        records.extend([('coverage', coverage), ('mcp_execution_receipts', receipt)])
+        for selected_check in selected_checks:
+            coverage = {**(priors[selected_check] or slot(current, asset, selected_check)),
+                        'status': 'skipped' if skipped else 'completed',
+                        'reason': skipped or '승인된 원격 GET 검증 결과를 확인했습니다.',
+                        'updated_at': timestamp, 'finished_at': timestamp, 'remote_admission_id': receipt_id}
+            if claim.observation:
+                coverage['targets'] = [{name: row[name] for name in ('observation_id', 'url', 'status', 'error_type') if name in row}
+                                       for row in rows if row['check'] == selected_check]
+                coverage['status'] = receipt['coverage_statuses'][selected_check]
+                coverage['reason'] = '선택한 모든 관찰 응답의 검증을 완료했습니다.' if coverage['status'] == 'completed' else '일부 관찰 응답의 검증을 완료하지 못했습니다.'
+            records.append(('coverage', coverage))
+        records.append(('mcp_execution_receipts', receipt))
         if attempt:
             receipt['attempt_id'] = attempt_id
             records.append(('mcp_execution_attempts', {**attempt, 'state': 'admitted',

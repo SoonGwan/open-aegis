@@ -150,10 +150,14 @@ class Runner:
             transport = Transport(asset['url'], self.allow_private and claim.allow_private,
                                   record=record, control=control, policy=limits.execution_policy(),
                                   limiter=self.limiter)
-            response = transport.get()
-            if not 200 <= response['status'] < 300:
-                raise ExecutionRejected('target_unconfirmed')
-            result = validate_result(claim.check_id, asset, run_check(claim.check_id, asset, transport, response))
+            if claim.observation:
+                from .mcp_observation import execute, validate
+                result = validate(claim, execute(claim, transport, control))
+            else:
+                response = transport.get()
+                if not 200 <= response['status'] < 300:
+                    raise ExecutionRejected('target_unconfirmed')
+                result = validate_result(claim.check_id, asset, run_check(claim.check_id, asset, transport, response))
             control.check()
             output = {'format': FORMAT, 'grant_sha256': hashlib.sha256(arguments['grant'].encode()).hexdigest(),
                       'task_id': claim.task_id, 'asset_id': asset['id'], 'asset_revision': asset['revision'],

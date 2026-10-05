@@ -13,7 +13,7 @@ from .coverage import slot
 from .mcp_execution_server import tools_for
 from .mcp_process import cancel, discover, invoke
 from .mcp_result_store import AUTHORITY_FIELDS, admit
-from .mcp_scope import RequestLimits, issue_grant
+from .mcp_scope import OBSERVATION_CHECK, RequestLimits, issue_grant
 from .remote_mcp import _decode, _digest, _encode
 from .store_util import now
 
@@ -91,13 +91,13 @@ class Executors:
         except (ValueError, TypeError, KeyError, AttributeError):
             return False
 
-    def snapshot(self, connection_id, checks, *, connection=None):
+    def snapshot(self, connection_id, checks, *, connection=None, observation=False):
         try:
             config = self.configurations[connection_id]
             endpoint = self.registry._connection(connection_id)
             key = self._key(config)
             rows, profiles, catalogs = [], [], set()
-            for check in checks:
+            for check in ([OBSERVATION_CHECK] if observation else checks):
                 row = self.store.get('mcp_tools', self.registry._tool_id(connection_id, 'validate_' + check), connection=connection)
                 if not row or not row['enabled'] or not row['execution_available']:
                     raise ValueError()
@@ -113,9 +113,11 @@ class Executors:
                     'url': endpoint.url,
                     'connection_contract': self.registry._contract(endpoint), 'key_sha256': hashlib.sha256(key).hexdigest(),
                     'catalog_sha256': catalogs.pop(), 'tools': rows, 'profile': profiles[0],
-                    'allow_private': config.allow_private}
+                    'allow_private': config.allow_private,
+                    'mode': 'observation-response' if observation else 'base-response'}
         except (ValueError, TypeError, KeyError, AttributeError, HTTPException):
-            raise ExecutionConfigError('원격 실행 설정 또는 관리자 도구 검토가 변경됐습니다. 새 계획을 검토하세요.') from None
+            raise ExecutionConfigError('관찰 응답 배치 도구의 설정과 관리자 검토·등록을 확인하고 새 계획을 검토하세요.'
+                if observation else '원격 실행 설정 또는 관리자 도구 검토가 변경됐습니다. 새 계획을 검토하세요.') from None
 
     def public(self):
         from .checks import CHECK_IDS
@@ -138,9 +140,10 @@ class Executors:
             if task.get('remote_connection_id'):
                 raise ExecutionConfigError('원격 작업의 실행 계약이 없습니다.')
             return
-        if task.get('observation_execution') or task.get('observation_cells'):
-            raise ExecutionConfigError('관찰 응답 작업의 원격 어댑터는 아직 지원하지 않습니다.')
-        current = self.snapshot(task['remote_connection_id'], task['checks'], connection=connection)
+        from . import observation_execution
+        observation_execution.require(task, approved=bool(task.get('approved_at')))
+        current = self.snapshot(task['remote_connection_id'], task['checks'], connection=connection,
+                                observation=bool(task.get('observation_execution')))
         if _digest(stored) != _digest(current):
             raise ExecutionConfigError('승인된 원격 실행 계약이 변경됐습니다. 새 계획을 검토하세요.')
         if 'api_authorization' in task['checks']:
@@ -165,7 +168,8 @@ class Executors:
         gate = self.gates[server_id]
         outcome = {'asset_id': asset['id'], 'completed_checks': [], 'fingerprints': [], 'errors': []}
         budget = task['execution_policy']['request_budget']
-        for check in checks:
+        jobs = [OBSERVATION_CHECK] if task.get('observation_execution') else checks
+        for check in jobs:
             attempt_id = _digest([task['id'], asset['id'], check, server_id])
             acquired = False
             dispatched, token = False, None
@@ -205,8 +209,9 @@ class Executors:
                     attempt = {'id': attempt_id, 'task_id': task['id'], 'asset_id': asset['id'], 'check': check,
                         'server_id': server_id, 'state': 'dispatching', 'created_at': now(),
                         'grant_sha256': grant_sha, 'contract_sha256': _digest(contract), 'request_budget': budget}
-                    self.store.put_many([('mcp_execution_attempts', attempt),
-                        ('coverage', {**slot(task, asset, check), 'status': 'running', 'started_at': now()})], connection=db)
+                    self.store.put_many([('mcp_execution_attempts', attempt)] +
+                        [('coverage', {**slot(task, asset, actual), 'status': 'running', 'started_at': now()})
+                         for actual in (checks if check == OBSERVATION_CHECK else [check])], connection=db)
                     self.store.event(task['id'], '승인된 원격 검증 전송을 기록했습니다.', detail={
                         'asset_id': asset['id'], 'worker_id': task['id'] + ':' + asset['id'], 'check': check,
                         'server_id': server_id, 'attempt_id': attempt_id, 'grant_sha256': grant_sha}, connection=db)
@@ -220,11 +225,14 @@ class Executors:
                     protected_values=(os.environ.get(endpoint.token_env, '') if endpoint.token_env else '',),
                     attempt_id=attempt_id, control=control)
                 budget -= len(receipt['traffic_ids'])
-                if receipt['coverage_status'] == 'completed':
+                if check == OBSERVATION_CHECK:
+                    outcome['completed_checks'].extend(actual for actual, status in receipt['coverage_statuses'].items() if status == 'completed')
+                    outcome['errors'].extend(actual for actual, status in receipt['coverage_statuses'].items() if status != 'completed')
+                elif receipt['coverage_status'] == 'completed':
                     outcome['completed_checks'].append(check)
                 outcome['fingerprints'].extend(receipt['fingerprints'])
             except Exception as exc:
-                outcome['errors'].append(check)
+                outcome['errors'].extend(checks if check == OBSERVATION_CHECK else [check])
                 cancellation = None
                 if dispatched:
                     cancellation = {'state': 'unconfirmed', 'requested_at': now()}
@@ -238,7 +246,7 @@ class Executors:
                     if attempt and attempt['state'] == 'dispatching':
                         self.store.put_many([('mcp_execution_attempts', {**attempt, 'state': 'unconfirmed',
                             'finished_at': now(), **({'cancellation': cancellation} if cancellation else {})})], connection=db)
-                    for remaining_check in checks[checks.index(check):]:
+                    for remaining_check in (checks if check == OBSERVATION_CHECK else checks[checks.index(check):]):
                         self.store.put_many([('coverage', {**slot(task, asset, remaining_check),
                             'status': 'cancelled' if control.stop.is_set() else 'failed',
                             'reason': '원격 실행 결과를 확인하지 못했습니다. 자동 재호출하지 않습니다.',
@@ -266,7 +274,7 @@ def recover_attempts(store, task):
     records = []
     with store.lock, store.write_transaction() as db:
         for asset in task['scope_snapshot']:
-            for check in task['checks']:
+            for check in ([OBSERVATION_CHECK] if task.get('observation_execution') else task['checks']):
                 attempt_id = _digest([task['id'], asset['id'], check, server_id])
                 attempt = store.get('mcp_execution_attempts', attempt_id, connection=db)
                 if attempt and attempt.get('state') == 'dispatching':

@@ -106,7 +106,7 @@ def test_actual_streamable_http_signed_scope_and_result(service, target):
     url, state = target
     sdk.initialize()
     tools = sdk.list_tools()
-    assert len(tools) == 6
+    assert len(tools) == 7
     assert tools[0]['_meta']['org.openaegis/scopedExecution']['server_id'] == 'owned-server'
     task = approved_task(url)
     token = grant(task)
@@ -129,7 +129,7 @@ def test_supervised_discovery_preserves_execution_profile_without_target_calls(s
     _, sdk = service
     _, state = target
     catalog = discover(sdk.connection)
-    assert len(catalog['tools']) == 6
+    assert len(catalog['tools']) == 7
     for tool in catalog['tools']:
         profile = tool['_meta']['org.openaegis/scopedExecution']
         assert profile['server_id'] == 'owned-server'

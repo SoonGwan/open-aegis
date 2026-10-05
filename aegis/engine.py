@@ -261,6 +261,7 @@ class Engine:
             checks = self.plan(task, control)
             control.check()
             self.store.patch('tasks', task_id, plan=checks)
+            task['plan'] = checks
             self.store.event(task_id, '검증 작업을 병렬 Worker에 배정합니다.', detail={'workers': task['workers'], 'checks': checks})
             outcomes = self.run_workers(task, checks, control)
             timed_out = control.expired() and not stop.is_set()
