@@ -45,11 +45,13 @@ def event(db, record, message, *, postgres=False):
     append(db,(now(),record['task_id'],'info',message,json.dumps(record,ensure_ascii=False,allow_nan=False)))
 
 
-def start(store, source, task_id, model, base, started_at, price, actor_id=None):
+def start(store, source, task_id, model, base, started_at, price, actor_id=None, *, prompt_snapshot=None):
     record = {'id':identifier(), 'source':source, 'task_id':task_id, 'actor_id':actor_id,
               'model':model, 'provider_origin':origin(base), 'started_at':started_at,
               'observed_at':started_at, 'state':'started', 'outcome':'unknown',
               'tokens':token_usage(None)}
+    if prompt_snapshot is not None:
+        record['prompt_snapshot']=prompt_snapshot
     record['cost']=estimate(record['tokens'],price,started_at)
     with write(store) as (db,native):
         query=("INSERT INTO records(kind,id,data) VALUES ('llm_calls',%s,%s)" if native else
@@ -64,7 +66,8 @@ def observe(store, call_id, detail):
         record=load(db,call_id,postgres=native)
         if record['state']!='started':
             raise RuntimeError('Provider attempt is not awaiting observation')
-        if detail['model']!=record['model'] or detail['started_at']!=record['started_at']:
+        if (detail['model']!=record['model'] or detail['started_at']!=record['started_at'] or
+                detail.get('prompt_snapshot') != record.get('prompt_snapshot')):
             raise RuntimeError('Provider attempt metadata mismatch')
         record.update({key:detail[key] for key in ('outcome','tokens','cost','observed_at')})
         record['state']='observed'
@@ -87,6 +90,7 @@ def commit(db, detail, task_id, source, record_kind, record_id, *, postgres=Fals
         return  # Legacy, explicitly stored synthetic fixtures have no attempt record.
     record=load(db,call_id,postgres=postgres)
     if (record['state']!='observed' or record['task_id']!=task_id or record['source']!=source or
+            detail.get('prompt_snapshot') != record.get('prompt_snapshot') or
             any(record[key]!=detail[key] for key in ('model','outcome','tokens','cost','started_at','observed_at'))):
         raise RuntimeError('Committed result does not match provider attempt')
     record.update(state='committed',record_kind=record_kind,record_id=record_id,settled_at=now())

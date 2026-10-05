@@ -159,6 +159,7 @@ class Store:
         fields = {
             'assets': ('name', 'url', 'owner', 'tags'),
             'tasks': ('name', 'status', 'goal'),
+            'prompt_versions':('action','actor.name','snapshot.template'),
             'notification_channels':('name','destination_id'),
             'notification_channel_versions':('action','actor.name','snapshot.name'),
             'notification_deliveries':('channel_id','task_id','status','payload.task_name','result_code'),

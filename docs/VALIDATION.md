@@ -6542,3 +6542,19 @@ counts and four task states remain identical across the idle restart. Health is2
 at0.2.0a1; template/category/channel/delivery reads return401 unauthenticated.
 No notification fixture or target request is added to the persistent workspace.
 Main hosted run37379865635 remains pending; prior PR all-six success is distinct.
+
+
+Prompt supplement version candidate connects planner/conversation capture to durable
+call attempts and final metadata. Related native/backend checks pass87 cases in16.29s;
+owned actual provider POST retains revision1 while the current prompt changes to2,
+and same-message replay makes no extra POST. Invalid model tools retain the approved
+check set. A controlled two-save race has one200 and one409. UTF-8/variable/request
+budgets, fresh role, audit rollback, version cap and corrupt fingerprint are checked.
+Frontend build and101 existing Node checks pass. Owned desktop preview/save503→same
+request200 preserves one version; two tabs yield200/409, preserve the original draft
+and require explicit latest review before200. Default restoration creates version4;
+four histories/operations remain,0 provider calls/target requests, valid audit, both
+tabs closed, fixture exit0 and temporary data removed. Initial assertions wrongly
+expected no audit on POST preview/422; existing request-audit middleware records these
+requests. Corrected checks retain zero domain mutation and assert that request event.
+Full native, installed, cross-version maintenance and hosted checks remain pending.
