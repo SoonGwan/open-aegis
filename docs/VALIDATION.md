@@ -6738,3 +6738,11 @@ in12.95s. No sleeps/retries, deadline increases or exception suppression are add
 This demonstrates the controlled rounding mechanism, not the unrecorded exact
 remaining value on the hosted failure. Prior95-module wheel remains prior source;
 the one production module change requires a new package receipt.
+
+Report deadline wheel has95 modules and changes only aegis/postgres_streams.py
+from the prior prompt freeze. SHA256a059c78cd3e7e8f618d7662943709879aa6d4302d5b38e384652f9a936b8eff8.
+All32 report/export checks also pass in17.28s on the installed wheel outside checkout,
+including native SQL deadline/disconnect cleanup; temporary resources are removed.
+Retained PR6 hosted run37387185260 remains pending; its duplicate push37387178574
+was intentionally cancelled. The original main run37385598230 is terminal with five
+successful jobs and one native report failure, not six-job success.
