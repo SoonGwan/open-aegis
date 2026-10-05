@@ -6515,3 +6515,13 @@ in [37373173305](https://github.com/SoonGwan/open-aegis/actions/runs/37373173305
 Only its unexecuted native job was rerun after the runner-allocation annotation; all
 other successful jobs were retained. This confirms the existing category main source
 and does not promote the newer notification draft or declare v1 readiness.
+
+
+Final request-budget-corrected notification full native regression is terminal:
+**1,679 passed in1,169.10s**, with OpenSSL3/PostgreSQL16 and actual native backend
+fixtures. The previously recorded source-restart case passes in this complete run;
+its earlier interrupted assertion cause remains unproven, and no speculative fix
+is attributed. Source remains the exact93-module wheel SHA256
+`c2ac9559f3af699823f00301f53fbdb621dfc3075547752cfc6fb014ca7b3004`.
+Hosted latest-source verify and both container/Compose variants pass; the native hosted
+job remains pending. Notifications stay draft until all required hosted checks finish.
