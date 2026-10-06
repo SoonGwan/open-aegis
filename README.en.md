@@ -34,7 +34,9 @@ claim complete ARTEX parity or detection of every vulnerability.
   tasks while retaining execution and evidence history.
 - Review versioned prompt supplements and fixed-recipient model profiles for separate
   planner/conversation defaults; inspect the snapshots saved with each call. Model
-  profiles are undergoing final verification; task/agent pins and failover remain open.
+  profiles, explicit catalog lookup, task-specific planner/conversation selections and
+  a fixed-message provider connection check have passed their scoped verification.
+  Creation-time selection, custom agent bindings and automatic failover remain open.
 - Configure fixed webhook notifications with delivery/attempt history and explicit
   bounded manual retries.
 - Use optional OpenAI-compatible planning and recorded-evidence conversation;
@@ -84,8 +86,12 @@ requires approval. See [the execution contract](docs/MCP-EXECUTION.md).
 Additional model recipients use `AEGIS_MODEL_DESTINATIONS`: fixed IDs and names
 reference server environment variables containing the URL and API key. Review
 profiles/defaults after credential changes. Configuration availability is distinct
-from a tested provider connection. See [model profiles](docs/MODEL-PROFILES.md)
-and [prompt versions](docs/PROMPT-VERSIONS.md).
+from a tested provider connection. Explicit [catalog lookup](docs/MODEL-CATALOG.md)
+and a [fixed-message connection check](docs/MODEL-CONNECTION.md) send separate,
+reviewed provider requests; the connection check can incur provider charges.
+[Task-specific selections](docs/TASK-MODELS.md) pin existing tasks to a reviewed
+profile revision for planning or recorded-evidence conversation. See
+[model profiles](docs/MODEL-PROFILES.md) and [prompt versions](docs/PROMPT-VERSIONS.md).
 
 ## Current limits and verification
 
@@ -106,10 +112,14 @@ the complete v1 release criteria remain open.
 Verification uses owned synthetic targets and disposable databases, including native
 PostgreSQL ownership, provider-call admission, recovery, installed wheel and offline
 backup/restore checks. Hosted Ubuntu24.04 image and Compose rehearsals cover startup,
-authentication, retained data and clean shutdown. Current model profiles pass64 native
-profile checks,1,812 full native/backend checks,484 installed checks and103 frontend
-checks. All six hosted jobs also pass on the retained source run. See [validation records](docs/VALIDATION.md) for source
-identities, preserved receipts and the remaining v1 checks. This project has not
+authentication, retained data and clean shutdown. The current connection-enabled
+100-module backend passed1,930 full native checks and606 installed-wheel checks,
+with two SQLite skips for native ownership-only cases in each run; the native
+variants passed. The console passed103 frontend checks. All six jobs passed in
+[the retained main run](https://github.com/SoonGwan/open-aegis/actions/runs/37399067286).
+These are scoped results for the recorded source, rather than results for pending
+feature branches. See [validation records](docs/VALIDATION.md) for source identities,
+preserved receipts and the remaining v1 checks. This project has not
 undergone an independent security audit.
 
 Contributions should preserve approval, scope, evidence and recovery behavior.
