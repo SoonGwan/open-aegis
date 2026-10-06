@@ -51,3 +51,9 @@ configuration; the loopback example is not a public hosting configuration.
 An update is a different operation: stop the existing service and follow
 [signed preflight and rollback](RELEASES.md) before changing its installation.
 Do not overwrite an existing workspace with this new-install example.
+
+Plans and approvals bind the reviewed package fingerprint, scope revision and
+execution policy. Updating Python package code changes that fingerprint, including
+the package version metadata. Preserved records do not transfer execution approval
+to the new code. Review a new plan against the current scope and approve it explicitly;
+do not edit stored fingerprints or approval records to bypass a stale-plan refusal.
