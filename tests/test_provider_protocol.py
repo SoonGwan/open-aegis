@@ -1,5 +1,7 @@
 """Native wire selection is explicit; reported usage never acquires an invented total."""
-import copy,json
+import copy,json,subprocess,sys
+from pathlib import Path
+import aegis
 import pytest
 from aegis.provider_protocol import inference_request,inference_response,catalog_request,catalog_response
 from aegis.llm import token_usage
@@ -7,6 +9,18 @@ from aegis.model_profiles import Destinations
 
 PAYLOAD={'model':'owned-native-model','temperature':0,'messages':[{'role':'system','content':'Owned instructions'},{'role':'user','content':'Owned goal'}]}
 REPLY={'type':'message','role':'assistant','stop_reason':'end_turn','content':[{'type':'text','text':'AEGIS_OK'}],'usage':{'input_tokens':5,'output_tokens':3}}
+
+
+def test_maintenance_store_import_does_not_require_application_dependencies(tmp_path):
+    package_root=Path(aegis.__file__).resolve().parent.parent
+    result=subprocess.run([sys.executable,'-I','-S','-c',
+        'import sys;sys.path.insert(0,sys.argv[1]);'
+        'from aegis.store import Store;from aegis.llm import token_usage;'
+        'assert token_usage(None)["status"]=="missing";'
+        'store=Store(sys.argv[2]);store.put("notes",{"id":"owned-import","title":"fixture"});'
+        'assert store.get("notes","owned-import")["title"]=="fixture"',
+        str(package_root),str(tmp_path/'aegis.db')],cwd=tmp_path,capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stderr
 
 
 def test_native_wire_is_text_only_and_explicitly_bounded():

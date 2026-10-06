@@ -5,7 +5,6 @@ from urllib.parse import urlsplit
 from .network import PinnedHTTP, PinnedHTTPS, resolve
 from .runtime import TaskControl, RequestGuard
 from .provider_protocol import inference_request,inference_response
-from .remote_mcp import _decode
 
 
 def token_usage(raw):
@@ -59,5 +58,11 @@ def completion(base, key, payload, allow_local=False, *, control=None, timeout=8
             body=response.read(1024*1024+1)
             if len(body)>1024*1024:
                 raise ValueError('Provider response exceeds size budget')
-        return inference_response(protocol,_decode(body) if protocol!='openai' else json.loads(body))
+        if protocol!='openai':
+            # Maintenance imports token_usage without the application dependencies.
+            # Load the strict application decoder only for an actual native response.
+            from .remote_mcp import _decode
+            decoded=_decode(body)
+        else:decoded=json.loads(body)
+        return inference_response(protocol,decoded)
     finally:connection.close()
