@@ -7222,3 +7222,9 @@ source-pending status above. Installed650(+2 skips), Node122, owned browser,
 both-store101→100→101/restore, exact signed bundle and installed HTTP/UI checks
 are complete. PR12 retained37403602102 and main PR11 run37404557449 remain
 in progress and are preserved until terminal completion before further merging.
+
+Retained PR12 creation run37403602102 at011104a completes all six hosted jobs.
+Full metadata/log are retained separately from duplicate cancelled push37403508716.
+PR11 main37404557449 atcb58da8 also completes all six terminal successes before
+the creation merge. Current creation executable source/tests/UI/CI match011104a;
+intervening merges and evidence changes are documentation only.
