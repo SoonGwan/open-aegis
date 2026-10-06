@@ -6924,3 +6924,9 @@ selected counts/task states remain exact. Health is0.2.0a1 and configuration/pro
 prompt/channel/category/template/catalog-history reads require authentication401.
 This remains a local preview, not external hosting. Main run37394395526 is pending;
 retained PR8 run37392213028 has six terminal successes.
+
+Catalog main run37394395526 is now terminal success at
+de38cca7613540bad4ab8c8d781d620e8337fc91: verify, postgres-storage, both container
+variants and both Compose variants all succeed. This six-job main result is
+separate from retained PR8 run37392213028. Later main commits reconcile documents
+only; the local97 preview and all59 persisted record bodies remain unchanged.
