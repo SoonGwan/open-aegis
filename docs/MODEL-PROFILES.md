@@ -49,3 +49,5 @@ GitHub 검증은 별도 검증 기록으로 추적한다.
 - `GET /api/model-defaults/{purpose}/history`: 인증된 선택 이력
 
 고정 제공자 모델 목록 조회와 기존 작업의 계획·대화 모델 고정은 각각 [모델 목록 계약](MODEL-CATALOG.md), [작업별 선택 계약](TASK-MODELS.md)의 범위로 구현·검수했다.
+
+선택 모델의 고정 메시지 추론 연결 시험은 [별도 계약](MODEL-CONNECTION.md)의 범위로 구현·검수했다. 실제 추론 요청이므로 제공자 비용이 발생할 수 있다.

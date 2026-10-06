@@ -7083,3 +7083,19 @@ documents. Python100 and all executable UI/test/CI source remain unchanged from
 owned connection/catalog browsers and public-source scan421/zero permit merging
 this scoped feature after the independent task-main result is retained.
 Version stays0.2.0a1; no full parity/v1/external hosting declaration is made.
+
+Task main run37397383118 has six terminal successes at
+c0116456fc7ac8e1aa199f8fee58de74262dfd02. This independent main result is retained
+before merging connection PR10; it is not cancelled/superseded evidence.
+
+Connection PR10 is merged at main8b9a992bde836cfdab625c100e5e36bf37be64ef.
+Root Python100 and executable UI/test/CI source match frozen implementation0fe8955.
+Owned prior preview PID24131 exits before root fast-forward and web/dist replacement;
+the separately staged assets index-47LuTt6R.js/index-gW8Sd6S8.css are served byte-
+exact at localhttp://127.0.0.1:8790. All59 record bodies retain
+SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c;
+selected counts/task states remain exact/idle. Health is0.2.0a1, configuration/
+profile/catalog/task-model/connection-history reads remain unauthenticated401.
+This is local preview, not external hosting. Main run37399067286 is pending;
+retained PR10 run37396948433 has six terminal successes. The separate frontend
+pending-request-recovery worktree is not part of this deployed local UI proof.
