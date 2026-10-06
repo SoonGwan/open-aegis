@@ -1,6 +1,26 @@
-# Validation — 2026-10-03
+# Validation history
 
-## Executed
+## Published 1.0.0 — 2026-10-06
+
+The public [v1.0.0 release](https://github.com/SoonGwan/open-aegis/releases/tag/v1.0.0)
+is fixed to source 79222383a6aa55cb3e07f0fd7151c1d3aec1bb79. The frozen application
+native suite passed 2,033 tests (2 SQLite ownership-only skips), and the independent
+installed suite passed 843 (2 skips). The added launcher subprocess check passed
+separately; it is not included in those frozen suite counts. Final main
+[run 37414561840](https://github.com/SoonGwan/open-aegis/actions/runs/37414561840)
+completed all six checks successfully.
+
+All five release assets downloaded anonymously with HTTPS200 and matching hashes.
+The downloaded archive's Ed25519 signature and extracted internal signed manifest
+and payloads verified successfully. Both-store transitions/startup rollback and
+installed runtime/UI/backup/preflight checks are recorded in
+[release validation](V1-RELEASE-CANDIDATE.md), including limits. The local service
+reports 1.0.0 and preserves 59 existing record bodies. The public project website
+is static documentation; external application-backend hosting is not claimed.
+
+## Initial implementation — 2026-10-03
+
+### Executed
 
 - `.venv/bin/python -m pytest -q`: **35 passed**. Final run takes about 8 seconds.
 - `npm run build`: TypeScript check and Vite production build succeed.

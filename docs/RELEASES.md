@@ -21,11 +21,11 @@ umask 077
 openssl genpkey -algorithm ED25519 -out rehearsal-private.pem
 openssl pkey -in rehearsal-private.pem -pubout -out rehearsal-public.pem
 
-aegis-release create --wheel dist/open_aegis-0.2.0a1-py3-none-any.whl \
-  --web web/dist --lock requirements.lock --output release-0.2.0a1 \
+aegis-release create --wheel dist/open_aegis-1.0.0-py3-none-any.whl \
+  --web web/dist --lock requirements.lock --output release-1.0.0 \
   --private-key rehearsal-private.pem --revision FULL_SOURCE_COMMIT_SHA
 
-aegis-release verify --bundle release-0.2.0a1 --public-key rehearsal-public.pem
+aegis-release verify --bundle release-1.0.0 --public-key rehearsal-public.pem
 ```
 
 wheel은 `open-aegis`, 현재 제작 도구와 같은 버전, Python >=3.11 메타데이터가 필요하다.
@@ -50,7 +50,7 @@ payload는 파일당 2 GiB·최대 10,000개 제한이다. 신뢰한 키의 지�
 환경의 절차를 따르며 아래 도구가 자동 중지하지 않는다.
 
 ```sh
-aegis-release prepare --backend sqlite --bundle release-0.2.0a1 --public-key rehearsal-public.pem \
+aegis-release prepare --backend sqlite --bundle release-1.0.0 --public-key rehearsal-public.pem \
   --database data/aegis.db --output before-update
 ```
 
@@ -81,7 +81,7 @@ PostgreSQL용 번들은 선택 의존성 잠금 파일도 서명에 포함한다
 설치본 검수를 대신하지 않는다.
 
 ```sh
-aegis-release create --wheel dist/open_aegis-0.2.0a1-py3-none-any.whl \
+aegis-release create --wheel dist/open_aegis-1.0.0-py3-none-any.whl \
   --web web/dist --lock requirements.lock --postgres-lock requirements-postgres.lock \
   --output release-postgres --private-key rehearsal-private.pem --revision FULL_SOURCE_COMMIT_SHA
 
@@ -148,7 +148,8 @@ aegis-restore --backend sqlite --source before-update/before-update.db --destina
 
 ## 서로 다른 버전·UI·설정 전환과 시작 실패 리허설
 
-현재 로컬 후보는0.2.0a1이며 v1 완료/공식 배포를 뜻하지 않는다.
+이 절은0.2.0a1 단계의 전환 리허설 기록이다. 현재 공개 버전1.0.0의
+[배포·검수 결과](V1-RELEASE-CANDIDATE.md)는 별도로 유지한다.
 `scripts/review_release_transition.py`는 서로 다른 wheel을 checkout 밖의 두 독립
 가상환경에 설치하고, 각 설치본의 자체 제작 CLI로 해당 버전의 번들을 서명한다.
 새 검증기로 두 번들의 payload를 확인한 뒤 실제 HTTP/MCP가 설치 버전을 보고하는지

@@ -2,9 +2,9 @@
 
 The `site/` directory contains a static English/Korean introduction, an existing
 owned-fixture console screenshot, installation commands and links to the project
-contracts. It presents the current pre-release version and links to implementation
-status and open release work. It is a project website; the security workspace is
-installed and operated separately.
+contracts. It presents version 1.0.0 and links to implementation
+status, release validation and remaining work. The security workspace is installed
+and operated separately.
 
 The pages use local CSS and an image, with no JavaScript, forms, account collection,
 analytics or external font loading. Responsive CSS includes narrow-screen layouts,
@@ -28,4 +28,10 @@ with[Korean](https://soongwan.github.io/open-aegis/ko.html) and English pages.
 Initial manual workflow37408139703 atmainac97ace completes successfully. Public
 HTTPS200 responses for root/index/Korean/CSS/dashboard image match the reviewed
 files byte-for-byte; live browser language switching also passes. This publication
-does not host the security application's backend or constitute a v1 release.
+does not host the security application's backend.
+
+The version 1.0.0 update at main 79222383a6aa55cb3e07f0fd7151c1d3aec1bb79
+passed Pages workflow 37414561869. Anonymous HTTPS200 downloads of root/index,
+Korean HTML, CSS and the image match the source bytes. The separate
+[v1.0.0 release](https://github.com/SoonGwan/open-aegis/releases/tag/v1.0.0)
+is published with signed installable files; the website remains static documentation.
