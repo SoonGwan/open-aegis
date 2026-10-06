@@ -4,7 +4,7 @@ import Modal from "./components/Modal";
 import { Pagination, RecordState, useRecords } from "./records";
 
 type Profile = { id: string; name: string; revision: number; model: string; enabled: boolean; configuration_available: boolean; destination_review_current: boolean; admin_review_current: boolean };
-type Query = { id: string; profile_revision: number; profile_snapshot: { name: string; model: string }; status: string; result_code: string; models: string[]; model_count: number; created_at: string; response_sha256?: string; http_status?: number };
+type Query = { id: string; profile_revision: number; profile_snapshot: { name: string; model: string }; status: string; result_code: string; models: string[]; model_count: number; created_at: number; response_sha256?: string; http_status?: number };
 type Request = { expected_revision: number; request_id: string };
 const status: Record<string, string> = { started: "응답 확인 중", completed: "목록 응답 확인됨", failed: "목록 확인 실패", blocked: "설정 변경으로 중단", unknown: "완료 여부 확인 불가" };
 const codes: Record<string, string> = {
@@ -15,11 +15,12 @@ const codes: Record<string, string> = {
   response_content_type: "JSON 응답이 아닙니다.", response_byte_budget: "응답 크기 제한을 초과했습니다.",
   response_shape: "모델 목록 형식이 유효하지 않습니다.", connection_failed: "제공자 연결 또는 응답을 확인하지 못했습니다.",
 };
+const date = (value: number) => new Date(value * 1000).toLocaleString("ko-KR");
 function Result({ query }: { query: Query }) {
   return <article className="prompt-card"><h3>{status[query.status] || query.status} · 프로필 버전 {query.profile_revision}</h3>
     <p>{query.profile_snapshot.name} · 당시 설정 모델 {query.profile_snapshot.model}</p>
     <p>{codes[query.result_code] || query.result_code}{query.http_status ? ` · HTTP ${query.http_status}` : ""}</p>
-    <p>조회 시작 {query.created_at} · 모델 {query.model_count}개</p>
+    <p>조회 시작 {date(query.created_at)} · 모델 {query.model_count}개</p>
     {query.status === "completed" && <><p>목록에 포함되어도 대화 호출 지원이나 이용 권한을 보장하지 않습니다.</p>{query.models.length ? <ul>{query.models.map(model => <li key={model}>{model}</li>)}</ul> : <p>제공자가 빈 목록을 반환했습니다.</p>}</>}
   </article>;
 }
@@ -72,6 +73,6 @@ export default function ModelCatalog({ initial, canAdmin, onClose }: { initial: 
     <div className="prompt-actions"><button disabled={busy} onClick={onClose}>닫기</button>{canAdmin && <button className="primary" disabled={busy || conflict || (!uncertain && !eligible)} onClick={read}>{busy ? "목록 확인 중…" : uncertain ? "같은 요청 결과 확인" : query ? "새 요청으로 모델 목록 조회" : "고정 수신처 모델 목록 조회"}</button>}</div>
     {query && <Result query={query} />}
     <h3>저장된 목록 조회 기록</h3><button disabled={history.loading} onClick={history.reload}>조회 기록 새로고침</button>
-    {history.loading || history.error ? <RecordState records={history} /> : <><p>{history.total}개 조회</p>{history.items.map(row => <details key={row.id}><summary>{status[row.status] || row.status} · 버전 {row.profile_revision} · {row.created_at}</summary><Result query={row} /></details>)}<Pagination records={history} /></>}
+    {history.loading || history.error ? <RecordState records={history} /> : <><p>{history.total}개 조회</p>{history.items.map(row => <details key={row.id}><summary>{status[row.status] || row.status} · 버전 {row.profile_revision} · {date(row.created_at)}</summary><Result query={row} /></details>)}<Pagination records={history} /></>}
   </Modal>;
 }
