@@ -7301,3 +7301,25 @@ before merge; duplicate push37407200186 was explicitly requested cancelled.
 Earlier frozen96004/324/752/browser/pair/signed-bundle receipts remain historical
 scope evidence, not relabelled as new-wheel verification. No native root deployment
 or v1 release is claimed.
+
+Initial pre-correction full source run terminates with1 failure/1,935 passed/
+2 SQLite skips in1,303.11s. The failed deterministic tool-contract check compares
+process-captured8834984abc1cd76eca31a713e8af5e250d5d726a7f3274c0b2b2a50da81472d5
+to current-sourceb598cfd527c04b400168aa0dad08685ce5e09bc8461d4f93d682dbb8b750602e.
+Both values independently match the retained old/new module manifests exactly.
+This is source modification during that active run; the original assertion is
+unchanged and passes on stable corrected source. The old failed log remains failure
+evidence, not a frozen-source success. Fresh corrected full/native run stays on
+byte-exactca1a804 source; documentation-only updates do not alter the fingerprint.
+
+Corrected frozen102 independently installed regression finishes753 passed/2
+SQLite native-owner-only skips in364.28s(6:04), outside checkout. The added
+site-package-free maintenance case runs against the actual installed package
+origin. Temporary installation/native clusters are removed. This supersedes
+the corrected-installed pending status above. Exact corrected wheel and unchanged
+UI also form a format2 bundle with six verified signed files/64-byte signature;
+the local rehearsal private key is removed and no official release is published.
+Public corrected-source scan435 candidates has zero findings. Fresh full/native
+and retained hosted37407203007 remain in progress. Separate30-minute owned
+SQLite/PostgreSQL execution/read/recovery rehearsals run concurrently with these
+local regressions; their measurements will not be presented as production SLOs.
