@@ -6960,3 +6960,22 @@ selected counts/task states remain exact. Health is0.2.0a1 and configuration/pro
 prompt/channel/category/template/catalog-history reads require authentication401.
 This remains a local preview, not external hosting. Main run37394395526 is pending;
 retained PR8 run37392213028 has six terminal successes.
+
+
+Frozen task-model98 wheel is SHA25617516a854cfa2303cb1479ae9b2fa083757c9c5ed1104d5d07ffbb8028d69700
+at executable sourced6179affbbba69a3dc0f1ae90aef58f56c129d7d. Outside-checkout
+installation passes553 cases, with one SQLite skip of a native-owner-only case,
+in232.90s(3:52); temporary installation/owned cluster are removed. Both stores pass
+98→97→98 and offline backup restore with task selections/versions/operation receipts,
+actual catalog receipts, profile/default/prompt/archive/notification records and
+explicitly synthetic old call snapshots preserved. Exactly two owned catalog GETs
+and two intentional notification POSTs occur; transition/replay/restore add none.
+All selected rows and trusted checkpoints are exact/valid; restored sessions are zero.
+
+Old97 credentials are explicitly unavailable and chat is disabled; settings confirm
+AI planning/conversation unavailable, so this demonstrates safe maintenance record
+preservation rather than old-version enforcement of task-specific model semantics.
+New98 restores the reviewed credentials and immutable old selection receipt without
+rolling the current selection back. Later main merge is documentation only and does
+not change frozen98/executable UI/test/CI source. Full native and hosted checks remain
+pending; Node103, build and the public-source secret scan pass.
