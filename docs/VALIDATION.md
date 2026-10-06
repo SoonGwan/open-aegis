@@ -7072,3 +7072,14 @@ retained PR9 run37395323928 has six terminal successes. Current readiness/invent
 feature documents distinguish verified existing-task selections from creation-time
 pins, custom agents and other remaining model work.
 
+Final frozen100 full native/source regression passes1,930 cases, with two SQLite
+skips of native-owner-only catalog/connection cases, in1,312.49s(21:52).
+Retained PR10 run37396948433 has six terminal successes at
+01b950f3014e7ce009187f4ae17f6d7add598e41: verify, postgres-storage, both image
+variants and both Compose variants. The initial stacked executable base matches
+merged task mainc011645; PR10 now targets main, and later merges only change
+documents. Python100 and all executable UI/test/CI source remain unchanged from
+0fe8955. Installed606(+same two skips), Node103, both-store100→98→100/backup,
+owned connection/catalog browsers and public-source scan421/zero permit merging
+this scoped feature after the independent task-main result is retained.
+Version stays0.2.0a1; no full parity/v1/external hosting declaration is made.
