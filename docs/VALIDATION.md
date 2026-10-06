@@ -6841,9 +6841,75 @@ Main run37390419067 is pending; prior report main37389130077 is automatically
 cancelled by this merge and is not six-job success evidence. PR7 retains six successes.
 
 
+## Explicit fixed-provider model catalog checkpoint — 2026-10-06
+
+The isolated catalog branch adds an administrator GET to the reviewed provider's
+fixed /models path, immutable request receipts, bounded ID-only responses and
+25-row SQL history. Owned SQLite/native PostgreSQL tests cover actual auth/path,
+response rejection, same-ID replay, stale role/profile/credentials, audit rollback,
+shutdown, real restart and native backend-owner termination/replacement fencing.
+Actual26-request paging passes on both stores; the200-record rejection boundary
+uses174 explicitly synthetic records, not174 additional provider requests.
+
+The first full regression stopped after30 passes at
+test_review_auth_roles_and_strict_checkpoint: catalog.close set the app-wide
+shutdown event and later user creation returned503. The fix gives the catalog its
+own stop event, observes the app-wide event without mutating it, and clears the
+local event at lifespan startup after joining old requests. The unchanged failing
+audit test plus catalog checks now pass49 cases with one SQLite skip of a native
+owner-only case. Original failed logs and the initial97-module wheel are retained
+privately; this is not a full-suite success claim.
+
+Owned browser statuses503,200,409,200 prove exact-body/UUID replay after a lost
+committed response and explicit latest-profile adoption before another request.
+There are exactly two actual provider GETs and two committed query receipts at
+profile revisions1/2. Historical details retain the old model, the new result shows
+the new model, defaults/call records remain empty, target traffic is zero and the
+audit chain is valid. Desktop screenshots/DOM were inspected; owned tabs closed
+and temporary fixture/provider removed. Final UI differs from initial retry review
+only in readable local timestamp formatting. Full mobile/screen-reader work is open.
+
+Final full native, installed wheel,97→96→97/backup restore and GitHub jobs remain
+pending. Version remains0.2.0a1. No third-party scans or actual chat connectivity
+claim is added by catalog success.
 Merged model profiles main run37390419067 is now terminal success at
 994963dd2d87303b99f76acdb4336fb894a0e0ca: verify, postgres-storage, both image
 variants and both Compose variants all succeed. This six-job main result is distinct
 from retained PR7 run37387988876; earlier report main37389130077 remains cancelled.
 Local preview still serves the exact frozen96 source with all59 record bodies
 preserved. The independent catalog branch is not part of this main proof.
+
+
+Final catalog97 wheel is SHA2566c63042652a03220b0e9e16d0d8dbfa7eae8d60f85d289cc4ae8af093a3e7dcf
+at executable sourceead23e0d9e7747356a0caff8f25c309faf4810fe. Outside-checkout
+installation passes529 cases, with one SQLite skip of a native-owner-only case,
+in222.22s; temporary installation and owned cluster are removed. Both stores pass
+97→96→97 and offline backup restore, preserving actual catalog receipts alongside
+profile/default/prompt/archive/notification records and explicitly synthetic old
+call snapshots. Exactly two owned catalog GETs and two intentional notification
+POSTs occur across both stores; replay, version transition and restore add none.
+All selected rows and trusted checkpoints remain valid; restored sessions are zero.
+
+The initial pre-fix wheel remains archived with failed full/audit and installed
+usage-summary regressions: installed525 pass,2 fail,1 skip in221.63s. Its successful
+pair/restore is historical and does not substitute for final wheel validation.
+Final full native and retained PR8 run37392213028 remain pending. Duplicate push
+run37392167872 was explicitly cancelled and is not success evidence. The subsequent
+main-document merge changes no Python/UI/test/CI source fromead23e0.
+
+
+Final catalog full native/source run passes1,857 cases, with one SQLite skip of a
+native-owner-only case, in1,256.86s(20:56). Frozen Python97 and executable UI/test/CI
+source remain unchanged fromead23e0. Installed529/Node103, both-store97→96→97 and
+backup restore, owned browser and public-source secret scan also pass. The retained
+PR8 hosted PostgreSQL job remains pending; five other jobs have succeeded. This
+scoped feature is ready for final hosted review, not a v1 or full parity declaration.
+
+
+Retained PR8 run37392213028 is now terminal success at executable source
+ead23e0d9e7747356a0caff8f25c309faf4810fe: verify, postgres-storage, both image
+variants and both Compose variants all succeed. Final native1,857(+one native-only
+SQLite skip), installed529(+same skip), Node103, both-store transitions/restore and
+owned browser receipts permit merging the scoped catalog feature. Later local
+commits merge/update documentation only; Python97 and executable UI/test/CI source
+remain exact. Version remains0.2.0a1; this is not a full parity/v1 declaration.

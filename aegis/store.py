@@ -160,6 +160,7 @@ class Store:
             'assets': ('name', 'url', 'owner', 'tags'),
             'tasks': ('name', 'status', 'goal'),
             'model_profiles':('name','model','destination_id'),
+    'model_catalog_queries':('profile_id','status','result_code'),
             'model_profile_versions':('actor.name','snapshot.name','snapshot.model'),
             'model_default_versions':('actor.name','snapshot.profile_id'),
             'prompt_versions':('action','actor.name','snapshot.template'),

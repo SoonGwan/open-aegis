@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, captureSession } from "./api";
 import Modal from "./components/Modal";
+import ModelCatalog from "./ModelCatalog";
 import { Pagination, RecordState, useRecords } from "./records";
 import type { ListPosition, HistoryMode } from "./navigation-state";
 
@@ -53,6 +54,7 @@ export default function ModelProfiles({ canAdmin, search, onSearch, status, onSt
   const records = useRecords<Profile>("model-profiles", search, { status }, position, "/model-profiles");
   const [config, setConfig] = useState<Configuration | null>(null), [profiles, setProfiles] = useState<Profile[]>([]), [error, setError] = useState(""), [nonce, setNonce] = useState(0);
   const [editor, setEditor] = useState<Profile | null | undefined>(), [selection, setSelection] = useState<Selection | null>(null);
+  const [catalog, setCatalog] = useState<Profile | null>(null);
   useEffect(() => {
     const changed = () => setNonce(value => value + 1);
     window.addEventListener("aegis-records-changed", changed);
@@ -72,9 +74,10 @@ export default function ModelProfiles({ canAdmin, search, onSearch, status, onSt
     {error && <p role="alert">{error}</p>}
     {config && <><p>설정 확인은 실제 연결 성공을 의미하지 않습니다. 대화 AI는 설치 설정에서 {config.conversation_enabled ? "허용" : "비활성화"}되어 있습니다.</p><div className="prompt-actions">{config.defaults.map(item => <article className="prompt-card" key={item.purpose}><h3>{names[item.purpose]} · 선택 버전 {item.revision}</h3><p>{item.profile_id ? `${profiles.find(p => p.id === item.profile_id)?.name || item.profile_id} · 프로필 버전 ${item.profile_revision}` : "기본 환경 설정"} · {item.configuration_available ? "설정 확인됨" : "설정 재검토 필요"}</p><button onClick={() => setSelection(item)}>{canAdmin ? `${names[item.purpose]} 모델 선택` : `${names[item.purpose]} 선택 검토`}</button></article>)}</div></>}
     <div className="template-toolbar"><label>프로필 검색<input maxLength={200} value={search} onChange={event => onSearch(event.target.value)} /></label><select aria-label="프로필 상태" value={status} onChange={event => onStatus(event.target.value)}><option value="all">모든 프로필</option><option value="active">활성</option><option value="disabled">비활성</option></select>{canAdmin && <button className="primary" disabled={!config} onClick={() => setEditor(null)}>프로필 만들기</button>}</div>
-    {records.loading || records.error ? <RecordState records={records} /> : <><p>{records.total}개 프로필 · 최대25개</p>{records.items.map(profile => <article className="prompt-card" key={profile.id}><h3>{profile.name} · 버전 {profile.revision}</h3><p>{profile.model} · {config?.destinations.find(d => d.id === profile.destination_id)?.name || profile.destination_id} · {profile.enabled ? "활성" : "비활성"}</p><p>{eligible(profile) ? "선택 가능한 검토된 설정" : "활성화 및 설정 재검토 필요"}</p><button onClick={() => setEditor(profile)}>{canAdmin ? "프로필 검토 및 편집" : "프로필 검토"}</button></article>)}<Pagination records={records} /></>}
+    {records.loading || records.error ? <RecordState records={records} /> : <><p>{records.total}개 프로필 · 최대25개</p>{records.items.map(profile => <article className="prompt-card" key={profile.id}><h3>{profile.name} · 버전 {profile.revision}</h3><p>{profile.model} · {config?.destinations.find(d => d.id === profile.destination_id)?.name || profile.destination_id} · {profile.enabled ? "활성" : "비활성"}</p><p>{eligible(profile) ? "선택 가능한 검토된 설정" : "활성화 및 설정 재검토 필요"}</p><button onClick={() => setEditor(profile)}>{canAdmin ? "프로필 검토 및 편집" : "프로필 검토"}</button><button onClick={() => setCatalog(profile)}>제공자 모델 목록 검토</button></article>)}<Pagination records={records} /></>}
     {editor !== undefined && config && <ProfileEditor key={editor?.id || "new"} initial={editor} config={config} canAdmin={canAdmin} onClose={() => setEditor(undefined)} onSaved={saved} />}
     {selection && <DefaultEditor key={selection.purpose} initial={selection} profiles={profiles} canAdmin={canAdmin} onClose={() => setSelection(null)} onSaved={saved} />}
+    {catalog && <ModelCatalog key={catalog.id} initial={catalog} canAdmin={canAdmin} onClose={() => setCatalog(null)} />}
   </section>;
 }
 

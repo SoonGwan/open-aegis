@@ -20,6 +20,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .task_templates import Templates, TemplateInput, TemplateEdit, TemplateArchive, TemplateApply
 from .model_profiles import Profiles, ProfileInput, ProfileEdit, DefaultEdit
+from .model_catalog import Catalog, CatalogInput
 from .prompt_versions import Prompts, Purpose, PromptEdit, PromptPreview
 from .notification_transport import Webhooks
 from .notification_channels import Channels,ChannelInput,ChannelEdit,DeliveryRetry,ChannelTest
@@ -253,6 +254,7 @@ def create_app(data_dir=None, allow_private=None):
         engine.remote = mcp_executors
         model_profiles = Profiles(store,private)
         store.model_profiles = model_profiles
+        model_catalog = Catalog(store,model_profiles,shutdown_requested)
         notification_channels = Channels(store,Webhooks.from_env())
         notification_deliveries = Deliveries(store,notification_channels)
     except BaseException:
@@ -502,11 +504,13 @@ def create_app(data_dir=None, allow_private=None):
         mcp_executors.revocations.start()
         try:
             notification_deliveries.start()
+            model_catalog.start()
             yield
         finally:
             scheduler_stop.set()
             thread.join(timeout=6)
             try:
+                await asyncio.to_thread(model_catalog.close)
                 await asyncio.to_thread(notification_deliveries.close)
                 await asyncio.to_thread(event_planner.close)
                 await asyncio.to_thread(engine.shutdown)
@@ -518,6 +522,7 @@ def create_app(data_dir=None, allow_private=None):
     app.state.store, app.state.engine = store, engine
     app.state.event_planner = event_planner
     app.state.model_profiles = model_profiles
+    app.state.model_catalog = model_catalog
     app.state.notification_channels = notification_channels
     app.state.notification_deliveries = notification_deliveries
     app.state.exports = exports
@@ -916,6 +921,15 @@ def create_app(data_dir=None, allow_private=None):
     def model_profile_history(id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
         model_profiles.get(id)
         return store.page('model_profile_versions',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':id})
+
+    @app.post('/api/model-profiles/{id}/catalog')
+    def model_catalog_read(id:str,data:CatalogInput,actor=Depends(administrator)):
+        return model_catalog.read(id,data,actor)
+
+    @app.get('/api/model-profiles/{id}/catalog-history',dependencies=auth)
+    def model_catalog_history(id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
+        model_profiles.get(id)
+        return store.page('model_catalog_queries',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':id})
 
     @app.put('/api/model-defaults/{purpose}')
     def model_default_change(purpose:Purpose,data:DefaultEdit,actor=Depends(administrator)):
