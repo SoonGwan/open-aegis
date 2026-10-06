@@ -29,7 +29,13 @@ the schema is not a grant of permission or a complete machine-readable role poli
 The Verify workflow uses Python 3.11 and Node.js 22, locked runtime/dev dependencies,
 frontend tests/build, backend tests and selected design contrast/token checks. It also
 builds a wheel and rehearses it outside the checkout in a fresh virtual environment.
-Run the package stage locally from the repository root after building the frontend:
+Run the package stage locally from the repository root after building the frontend.
+The installed package rehearsal also creates an ephemeral Ed25519 signing key and
+checks release/rollback behavior, so it requires OpenSSL 3 on `PATH`. Check
+`openssl version` first. On macOS with Homebrew OpenSSL 3, prepend
+`$(brew --prefix openssl@3)/bin` to your existing `PATH` for the rehearsal command.
+The regular HTTP server does not require the OpenSSL CLI. See
+[the release guide](docs/RELEASES.md) for the signing contract.
 
 ```sh
 .venv/bin/python scripts/check_design.py
