@@ -59,6 +59,8 @@ AEGIS_PORT=8790 ./start.sh
 
 설정 파일을 사용하려면 `.env.example`을 `.env`로 복사해 수정합니다.
 실행 환경변수는 `.env`보다 우선합니다. `.env`는 셸 코드로 실행하지 않습니다.
+추가 모델·알림 등의 선언에서 참조한 이름 있는 값도 읽습니다.
+[로컬 설정 계약](docs/LOCAL-CONFIGURATION.md)에 지원 형식과 우선순위를 정리했습니다.
 
 ### Docker
 

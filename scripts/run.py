@@ -2,19 +2,12 @@
 import os
 from pathlib import Path
 import sys
+from config_env import load_config_env
 
 root = Path(__file__).resolve().parent.parent
 os.chdir(root)
 sys.path.insert(0, str(root))
-env_file = root / '.env'
-if env_file.exists():
-    for line in env_file.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith('#') or '=' not in line:
-            continue
-        key, value = line.split('=', 1)
-        if key.startswith('AEGIS_'):
-            os.environ.setdefault(key, value.strip().strip('"\''))
+load_config_env(root / '.env', os.environ)
 
 from aegis.__main__ import AegisServer
 from aegis.app import create_app
