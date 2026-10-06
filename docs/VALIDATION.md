@@ -7365,3 +7365,30 @@ or Docker daemon. Local process starts no container/provider/target. New CI dry-
 configuration step and both real Compose matrix fixtures require separate hosted
 acceptance. Python/API/tests/application UI remain nativeca1a804 byte-exact; no
 new source/native regression count is invented for the Compose-only correction.
+
+Corrected retained native PR13 run37407203007 atca1a804 completes all six
+hosted jobs successfully. Metadata/full logs are retained separately from the
+initial failed37405655116 and duplicate cancelled37407200186. This is exact
+corrected API/Python/tests/UI/Verify-source evidence; later documentation/website
+merges do not change those sources. It supersedes the hosted-pending status above.
+
+The corrected local full run mistakenly omits OpenSSL3 from PATH. It encounters
+36 release-fixture errors; one native signed-bundle setup reproduces the identical
+Ed25519 key-generation failure under the default executable. With documented
+OpenSSL3/native PostgreSQL PATH the unchanged native/SQLite release group passes
+36 cases in6.33s. Owned full PID40507 is identified by command/cwd and interrupted
+with SIGINT; terminal2 records1,533 passed/2 skips/36 errors in1,240.59s. Its
+resources close and no owned test PostgreSQL cluster remains. It is not a success
+receipt. A fresh exactca1a804 full run with OpenSSL3 is in progress; no source or
+assertion changes are made for this environment correction. The corresponding
+full/source acceptance remains open despite hosted all-six/installed753 success.
+
+Corrected frozen native102 full source completes2,033 passed/2 native-owner-only
+SQLite skips in1,408.14s. All102 module hashes remain unchanged after completion.
+The retained Compose correction37409040964 atdb04abe also completes all six
+hosted jobs, including actual SQLite/PostgreSQL Compose and both image modes.
+Metadata/full logs and duplicate cancellation are retained. Named configuration,
+exact literal-dollar credentials, fixed container paths, authentication, persistent
+records, backup/restore and owned-resource cleanup pass; local dry-run evidence
+is not relabeled as a local container run. Main native merge4b34f0d has a fresh
+hosted run in progress; its final acceptance will be retained before this fix merges.
