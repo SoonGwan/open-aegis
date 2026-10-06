@@ -54,12 +54,22 @@ def main():
         values = {'AEGIS_SETUP_TOKEN':token, 'AEGIS_INSTALL_POSTGRES':str(int(args.postgres)),
                   'AEGIS_STORAGE_BACKEND':backend, 'AEGIS_POSTGRES_SCHEMA':'owned_source' if args.postgres else '',
                   'AEGIS_POSTGRES_DSN':f'postgresql://owned:{database_password}@database:5432/owned' if args.postgres else '',
-                  'REVIEW_DB_PASSWORD':database_password}
+                  'REVIEW_DB_PASSWORD':database_password,
+                  'AEGIS_CONFIG_ENV_FILE':str(environment_file),
+                  'AEGIS_PORT':'8799','AEGIS_DATA_DIR':'/wrong-owned-data','AEGIS_WEB_DIR':'/wrong-owned-web',
+                  'AEGIS_MODEL_DESTINATIONS':json.dumps([{'id':'owned-compose-model','name':'Owned Compose model',
+                    'base_env':'OWNED_COMPOSE_MODEL_BASE','key_env':'OWNED_COMPOSE_MODEL_KEY'}]),
+                  'OWNED_COMPOSE_MODEL_BASE':'https://owned-compose-model.invalid/v1',
+                  'OWNED_COMPOSE_MODEL_KEY':'owned-literal-$credential',
+                  'AEGIS_NOTIFICATION_DESTINATIONS':json.dumps([{'id':'owned-compose-webhook','name':'Owned Compose webhook',
+                    'endpoint_env':'OWNED_COMPOSE_WEBHOOK'}]),
+                  'OWNED_COMPOSE_WEBHOOK':'https://owned-compose-webhook.invalid/events'}
 
         def write_environment():
             descriptor = os.open(environment_file,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
             with os.fdopen(descriptor,'w') as output:
-                output.write(''.join(f'{key}={value}\n' for key,value in values.items()))
+                assert all("'" not in value and '\n' not in value for value in values.values())
+                output.write(''.join(f"{key}='{value}'\n" for key,value in values.items()))
 
         write_environment()
         text = f'''services:
@@ -163,6 +173,12 @@ networks:
             model = json.loads(compose('config','--format','json'))
             service = model['services']['aegis']
             assert service['environment']['AEGIS_STORAGE_BACKEND']==backend
+            for name in ('AEGIS_MODEL_DESTINATIONS','OWNED_COMPOSE_MODEL_BASE','OWNED_COMPOSE_MODEL_KEY',
+                         'AEGIS_NOTIFICATION_DESTINATIONS','OWNED_COMPOSE_WEBHOOK'):
+                assert service['environment'][name].replace('$$','$')==values[name],name
+            assert service['environment']['AEGIS_PORT']=='8787'
+            assert service['environment']['AEGIS_DATA_DIR']=='/app/data'
+            assert service['environment']['AEGIS_WEB_DIR']=='/app/web/dist'
             assert len(service['ports'])==1 and service['ports'][0]['host_ip']=='127.0.0.1'
             assert service['read_only'] and service['cap_drop']==['ALL']
             assert 'no-new-privileges:true' in service['security_opt']
@@ -192,6 +208,15 @@ networks:
             request('/api/assets',expected=401,opener=anonymous)
             request('/api/auth/setup',{'password':password,'setup_token':token})
             assert request('/api/settings')['storage']==backend
+            models=request('/api/models/configuration')['destinations']
+            assert next(item for item in models if item['id']=='owned-compose-model')['configuration_available']
+            notifications=request('/api/notifications')['destinations']
+            assert next(item for item in notifications if item['id']=='owned-compose-webhook')['configured']
+            for name in ('AEGIS_PORT','AEGIS_DATA_DIR','AEGIS_WEB_DIR','OWNED_COMPOSE_MODEL_KEY'):
+                actual=run(['exec',container(),'python','-c',
+                            'import os,sys;print(os.environ[sys.argv[1]])',name])
+                expected={'AEGIS_PORT':'8787','AEGIS_DATA_DIR':'/app/data','AEGIS_WEB_DIR':'/app/web/dist'}.get(name,values[name])
+                assert actual==expected,name
             bundles = re.findall(r'(?:src|href)="(/assets/[^"\s]+)"',request('/'))
             assert bundles and any(path.endswith('.js') for path in bundles)
             for path in bundles:
@@ -250,6 +275,8 @@ networks:
             result = {'valid':True,'backend':backend,'compose_version':compose_version,
                       'database':database_info,'target_requests':0,
                       'checks':['actual compose config/build/start/health','loopback publication',
+                                'named model/webhook environment and literal dollar credential',
+                                'fixed container port/data/UI paths despite local configuration',
                                 'nonroot/read-only','setup/auth/native storage/UI','pending unapproved task',
                                 'volume and cookie retained after container recreation','online backup',
                                 'stopped-app restore against checkpoint','restored cookie rejected/password retained',
