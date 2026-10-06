@@ -7014,6 +7014,15 @@ The final shared provider-check UI also runs an actual owned catalog GET at
 zero inference POSTs, zero target traffic/call/default changes and valid audit
 confirm the original catalog mode remains separate from connection tests.
 
+Frozen100 outside-checkout installation passes606 cases, with two SQLite skips
+of native-owner-only catalog/connection cases, in272.92s(4:32). Installed package
+origin is the temporary environment, not the checkout; the owned native cluster
+and installation are removed. The separate final catalog UI fixture closes its
+owned tab and exits0 on SIGINT, reporting temporary-directory cleanup=true.
+Retained stacked PR10 hosted run37396948433 is pending, as is full native100;
+duplicate push run37396903125 is explicitly cancelled, not success evidence.
+No executable source changes accompany this receipt update.
+
 
 Frozen task-model98 wheel is SHA25617516a854cfa2303cb1479ae9b2fa083757c9c5ed1104d5d07ffbb8028d69700
 at executable sourced6179affbbba69a3dc0f1ae90aef58f56c129d7d. Outside-checkout
