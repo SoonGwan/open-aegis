@@ -335,4 +335,4 @@ SQLite와 새 PostgreSQL 스키마 사이의 검증된 오프라인 데이터 �
 
 계획/기록 대화의 추가 지침과 호출 당시 버전은 [프롬프트 계약](docs/PROMPT-VERSIONS.md)을 참고하세요.
 
-모델 프로필 후보의 고정 수신처·용도별 선택·버전 계약은 [모델 프로필](docs/MODEL-PROFILES.md)에 정리했습니다. 전체 검수는 진행 중입니다.
+고정 수신처·용도별 선택·버전은 [모델 프로필](docs/MODEL-PROFILES.md), 명시적 제공자 목록 조회는 [모델 목록](docs/MODEL-CATALOG.md), 기존 작업의 계획·대화 모델 고정은 [작업별 모델 선택](docs/TASK-MODELS.md)을 참고하세요. 각 계약 범위의 패키지·두 저장소 전환·브라우저·GitHub 검수를 통과했으며 사용자 agent·전체 모바일·장시간 운영 검수는 남아 있습니다.
