@@ -7099,3 +7099,30 @@ profile/catalog/task-model/connection-history reads remain unauthenticated401.
 This is local preview, not external hosting. Main run37399067286 is pending;
 retained PR10 run37396948433 has six terminal successes. The separate frontend
 pending-request-recovery worktree is not part of this deployed local UI proof.
+
+Pending model frontend implementation7466068 is frozen through documentation head
+dc9521626edef4bf7529f2671b160ba27027d024. Python/API/storage/backend tests and CI
+execution source remain byte-identical to connection implementation0fe8955.
+Node114, TypeScript/production build/design checks pass; public candidates425,
+Gitleaks zero. Source hashes and separate UI assets are retained. The original
+nullable-auth type build failure and actual stale-draft input mismatch are retained;
+the fixed build restores original profile fields through reload409/latest adoption.
+
+Owned browser servers verify profile edits, workspace defaults, task selections,
+connection/catalog commit503→new document→explicit exact-ID/body200 recovery.
+Document load and request selection send nothing; task/scope/approval fields remain
+exact. Catalog provider GET1/receipt1, connection provider POST1/receipt1 remain
+unchanged by replay. Owned visible quota controls yield zero API/provider requests.
+Explicit logout/relogin clears only browser recovery, retaining server history.
+
+A further owned two-admin browser exercise holds an already committed A200 response,
+resets A password through the normal UI, observes both A sessions expire, logs into
+B, commits B503, then releases A200. B's UUID/body remains recoverable after a new
+document, while A's original UUID/body remains recoverable after rotated-password
+login. Exact B/A replay adds no provider requests: two actual POSTs, two durable
+receipts/distinct actors, statuses200/503/200/200, no planner/chat calls or target
+traffic, task exact and audit valid. This verifies this expiry/identity/reply order;
+it does not prove every timing or mobile/long-run coverage. All owned tabs close,
+three fixture servers stop with SIGINT, and each owned temporary workspace reports
+cleanup true. PR11 run37400366919 remains pending; push duplicate37400339635 was
+explicitly cancelled and is not success evidence. Root preview still serves100.
