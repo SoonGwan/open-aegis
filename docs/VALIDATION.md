@@ -6993,3 +6993,10 @@ public-source secret scan pass. Retained PR9 hosted run37395323928 is pending;
 duplicate push run37395291216 is explicitly cancelled, not successful evidence.
 Subsequent documentation-only commits do not constitute another full source run.
 
+Retained PR9 run37395323928 is terminal success at
+cd0d8c3952eef889de646bc9d77560741efa3088: verify, postgres-storage, both image
+variants and both Compose variants all succeed. Executable implementation remains
+d6179af; subsequent commits merge/update documentation only. Final full native1,881
+(+one native-only SQLite skip), installed553(+same skip), Node103, both-store pair/
+backup, owned browser and public-source secret scan permit merging the scoped
+task model selection feature. This is not a v1 or full ARTEX parity declaration.
