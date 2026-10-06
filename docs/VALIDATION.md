@@ -7182,3 +7182,9 @@ cleanup completes. This is record preservation, not every old API execution guar
 Full source/native and independently installed regression remain in progress.
 CI5126538 explicitly adds connection/creation native cases; it does not change frozen
 Python101/UI bytes. Pending recovery PR11 retained retry37403128445 remains separate.
+
+Installed frozen101 wheel regression completes650 passed,2 SQLite native-owner-only
+skips in287.98s outside checkout. The temporary package origin is independently
+verified and native PostgreSQL variants run; temporary resources are removed.
+This supersedes the installed-pending status above. Full source/native and retained
+PR12 hosted37403602102 at011104a remain in progress; no v1/release claim is made.
