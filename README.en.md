@@ -11,7 +11,9 @@ evidence, remediation and independent retests.**
 Open Aegis is an independently written project informed by ARTEX's public feature
 structure. It does not copy or fork ARTEX code. All implementation in this
 repository is provided under the [MIT license](LICENSE), with no commercial tier.
-The current version is **0.2.0a1, a pre-release validation candidate**. It does not
+The current package version is **1.0.0**. See the [validation evidence](docs/V1-RELEASE-CANDIDATE.md),
+[release publication status](https://github.com/SoonGwan/open-aegis/releases) and
+[signed bundle installation](docs/INSTALL-RELEASE.md). It does not
 claim complete ARTEX parity or detection of every vulnerability.
 
 ## What it does
@@ -42,7 +44,7 @@ claim complete ARTEX parity or detection of every vulnerability.
   automatic failover remain open.
 - Configure fixed webhook notifications with delivery/attempt history and explicit
   bounded manual retries.
-- Use optional OpenAI-compatible planning and recorded-evidence conversation;
+- Use optional OpenAI-compatible or direct Claude text planning and recorded-evidence conversation;
   keep provider usage and configured price estimates distinct from actual billing.
 - Use administrator/operator/viewer roles within one shared workspace, SQLite or
   native PostgreSQL storage, audit checkpoints, and backup/restore commands.
@@ -53,7 +55,7 @@ records; the separate scoped execution service has its own authorization boundar
 
 ## Start locally
 
-Install Python 3.11+ and Node.js 22 with npm, then run from the checkout:
+Use Linux/macOS with Python 3.11+ and Node.js 22 with npm, then run from the checkout:
 
 ```sh
 ./start.sh

@@ -7347,6 +7347,25 @@ and retained hosted37407203007 remain in progress. Separate30-minute owned
 SQLite/PostgreSQL execution/read/recovery rehearsals run concurrently with these
 local regressions; their measurements will not be presented as production SLOs.
 
+An isolated Compose environment-forwarding fix starts from main and merges the
+unchanged native102 implementation. Original real Compose config drops five
+configured model/webhook definition/address/credential names despite their presence
+in the selected env file. The failed assertion/metadata are retained without
+publishing values. Correction88bcf08 adds an optional explicitly selected env_file
+and fixes container port/data/UI paths so local start-script settings cannot
+override the image layout. Actual standard-schema configuration cases pass for
+default .env, explicit file and absent optional file with exported setup token.
+
+The first corrected config assertion fails on the serialized dollar representation;
+a controlled diagnostic confirms two rendered dollars decode to the one owned
+literal. Config comparisons normalize this round-trip escape; actual-container
+assertions retain exact unnormalized secret-value equality. Config review uses
+checksum-matched official standalone Compose5.6.0, not an installed system plugin
+or Docker daemon. Local process starts no container/provider/target. New CI dry-run
+configuration step and both real Compose matrix fixtures require separate hosted
+acceptance. Python/API/tests/application UI remain nativeca1a804 byte-exact; no
+new source/native regression count is invented for the Compose-only correction.
+
 Corrected retained native PR13 run37407203007 atca1a804 completes all six
 hosted jobs successfully. Metadata/full logs are retained separately from the
 initial failed37405655116 and duplicate cancelled37407200186. This is exact
@@ -7363,3 +7382,13 @@ resources close and no owned test PostgreSQL cluster remains. It is not a succes
 receipt. A fresh exactca1a804 full run with OpenSSL3 is in progress; no source or
 assertion changes are made for this environment correction. The corresponding
 full/source acceptance remains open despite hosted all-six/installed753 success.
+
+Corrected frozen native102 full source completes2,033 passed/2 native-owner-only
+SQLite skips in1,408.14s. All102 module hashes remain unchanged after completion.
+The retained Compose correction37409040964 atdb04abe also completes all six
+hosted jobs, including actual SQLite/PostgreSQL Compose and both image modes.
+Metadata/full logs and duplicate cancellation are retained. Named configuration,
+exact literal-dollar credentials, fixed container paths, authentication, persistent
+records, backup/restore and owned-resource cleanup pass; local dry-run evidence
+is not relabeled as a local container run. Main native merge4b34f0d has a fresh
+hosted run in progress; its final acceptance will be retained before this fix merges.

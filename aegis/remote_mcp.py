@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 from jsonschema import Draft202012Validator
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from . import __version__
 from .network import PinnedHTTP, PinnedHTTPS, normalize_url, resolve
 from .runtime import RequestGuard, TaskControl
 
@@ -289,7 +290,7 @@ class Client:
             try:
                 _, fingerprint = self._credentials()
                 result = self._rpc('initialize', {'protocolVersion': VERSIONS[0], 'capabilities': {},
-                                   'clientInfo': {'name': 'OpenAegis', 'version': '0.2.0a1'}}, control, True)
+                                   'clientInfo': {'name': 'OpenAegis', 'version': __version__}}, control, True)
                 if (result.get('protocolVersion') not in VERSIONS
                         or not isinstance(result.get('capabilities'), dict)
                         or not isinstance(result['capabilities'].get('tools'), dict)

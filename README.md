@@ -4,13 +4,15 @@
 
 **자산부터 증거, 수정 확인까지 연결하는 오픈소스 보안 검증 워크스페이스.**
 
-React + TypeScript 콘솔, Python/FastAPI 실행 엔진, SQLite 저장소로 구성됩니다.
+React + TypeScript 콘솔, Python/FastAPI 실행 엔진, SQLite/선택적 PostgreSQL 저장소로 구성됩니다.
 상용 기능 구분 없이 저장소의 전체 구현을 MIT 라이선스로 제공합니다.
 
 ![로컬 합성 서버 검증 결과 대시보드](docs/images/dashboard.jpg)
 
 이 저장소는 ARTEX의 공개 기능 구성을 참고하여 독립적으로 작성했습니다.
-ARTEX 코드를 복사하거나 포크하지 않았습니다. 현재 버전은 **0.2.0a1 로컬 검증 후보**이며
+ARTEX 코드를 복사하거나 포크하지 않았습니다. 현재 패키지 버전은 **1.0.0**입니다.
+[검수 근거](docs/V1-RELEASE-CANDIDATE.md), [릴리스 게시 상태](https://github.com/SoonGwan/open-aegis/releases),
+[서명 번들 설치](docs/INSTALL-RELEASE.md)를 확인할 수 있습니다.
 ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주장하지 않습니다.
 작업 템플릿의 버전·보관·현재 범위 적용은 [사용 계약](docs/TASK-TEMPLATES.md)에 있습니다.
 구현된 기능과 차이는 [기능 비교표](docs/FEATURES.md)를 확인하세요.
@@ -25,7 +27,7 @@ ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주�
 - ScopeSentry asset 파일/등록 원격 JWT 조회 검토·선택 반영·출처/이전 연결 조회([연동 계약](docs/SCOPESENTRY.md)).
 - 범위 스냅샷을 갖는 작업, 실행 승인, 거절, 중지, 재시작 중단 처리 및 현재 범위의 새 승인 계획.
 - 내장 도구 계약·코드 지문 승인 검사, 결과 형식·크기·관찰 범위 검증([도구 계약](docs/TOOL-CONTRACTS.md)).
-- 규칙 기반 Planner, 선택적 OpenAI 호환 LLM 순서 계획, 최대 4개 Worker.
+- 규칙 기반 Planner, 선택적 OpenAI 호환/직접 Claude 텍스트 계획·대화, 최대 4개 Worker.
 - 검토된 모델 프로필·용도별 기본값·작업 생성 시 계획/대화 모델 선택과 미확인 요청 복구([계약](docs/TASK-MODELS.md)).
 - 검토된 MCP GET 서버 선택·별도 작업 승인·서명 범위·결과/감사 원자적 저장([실행 설정](docs/MCP-EXECUTION.md)).
 - 자연어 목표 분해 초안·검토/새 승인·과제별 자산/검사 조합 실행·검사 진행률([목표 계획](docs/GOAL-PLANNING.md)).
@@ -41,7 +43,7 @@ ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주�
 
 ## 빠른 시작
 
-Python 3.11+와 Node.js 22, npm이 필요합니다.
+Linux/macOS, Python 3.11+와 Node.js 22, npm이 필요합니다.
 
 ```sh
 ./start.sh
@@ -58,6 +60,8 @@ AEGIS_PORT=8790 ./start.sh
 
 설정 파일을 사용하려면 `.env.example`을 `.env`로 복사해 수정합니다.
 실행 환경변수는 `.env`보다 우선합니다. `.env`는 셸 코드로 실행하지 않습니다.
+추가 모델·알림 등의 선언에서 참조한 이름 있는 값도 읽습니다.
+[로컬 설정 계약](docs/LOCAL-CONFIGURATION.md)에 지원 형식과 우선순위를 정리했습니다.
 
 ### Docker
 
@@ -74,6 +78,8 @@ docker compose up --build -d
 ```
 
 http://127.0.0.1:8787 에 접속하고 관리자 비밀번호 및 설치 토큰을 입력합니다.
+추가 모델·알림·MCP 등의 이름 있는 환경변수도 `.env`에서 컨테이너로 전달합니다.
+별도 파일과 고정 컨테이너 경로는 [Compose 설정 계약](docs/COMPOSE-CONFIGURATION.md)을 참고하세요.
 컨테이너는 비관리자 사용자로 실행되며 데이터는 `aegis-data` 볼륨에 보존됩니다.
 기본 포트 공개 범위는 호스트의 loopback입니다. 기본/드라이버 포함 이미지와 SQLite/PostgreSQL Compose를 GitHub의 Ubuntu24.04에서
 검증했습니다. 시작·인증·볼륨 보존·백업 복구·정상 종료를 확인했으며
