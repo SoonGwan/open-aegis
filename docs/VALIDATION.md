@@ -7161,6 +7161,21 @@ hosted run on the combined source is required; the earlier hosted failure remain
 failure evidence. Full native1,930/installed606 are the retained frozen100 backend
 results, not newly rerun counts for this frontend/fixture change.
 
+Retained PR11 retry37403128445 at7a644a1 completes all six jobs successfully.
+The full hosted metadata and log are preserved independently of initial failed
+run37400366919. This closes the scoped frontend/fixture admission; production
+Python remains frozen100, frontend remains the114-test reviewed implementation.
+Main preview preservation and its own hosted checks follow separately.
+
+PR11 merges ascb58da8 after retained retry37403128445 passes all six jobs.
+Root local preview serves byte-exact114-test UIindex-_bnAr0tZ.js and existing CSS,
+while all100 packaged Python modules remain frozen connection source. Its59
+record bodies retain SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c
+and original task states; no fixture creation/execution approval is performed.
+Health and anonymous401 checks pass. Old owned PID89699 was identified by
+command/cwd before SIGINT; old assets are preserved. This remains local preview,
+not external deployment. Main hosted37404557449 atcb58da8 remains in progress.
+
 Creation-time task model implementation1ca5e4f adds one independent Python module,
 with frozen101 wheelb15beceabadc84560913ce469ad86781630e16e57f37e9be0b5727c84395e6e4.
 All packaged Python bytes match the101-source manifest. Scoped related tests128,
@@ -7188,6 +7203,25 @@ skips in287.98s outside checkout. The temporary package origin is independently
 verified and native PostgreSQL variants run; temporary resources are removed.
 This supersedes the installed-pending status above. Full source/native and retained
 PR12 hosted37403602102 at011104a remain in progress; no v1/release claim is made.
+
+Frozen101 installed runtime review also passes with exact built122-test UI: origin
+outside checkout, locked dependencies/pip check, eight CLIs, health/authentication/
+persistence/ScopeSentry/conversation/audit, clean shutdown/lease release and signed
+release tamper refusal/preflight/data rollback. The first run fails at signing
+under macOS default OpenSSL; its failure log is retained. Repeating with documented
+OpenSSL3 succeeds. A separate exact-wheel/UI format2 Ed25519 bundle rehearsal
+verifies six signed payloads and64-byte signature; its temporary private key is
+removed. This is a local rehearsal key/bundle, not an official published release.
+PR12 is retargeted to main after PR11 merge; this merge changes documentation only
+and retains original in-progress hosted37403602102/source011104a.
+
+Frozen101 full source/native regression completes1,970 passed,2 SQLite skips
+for native-owner-only checks in1,321.74s(22:01). Both native variants run; all
+packaged Python/UI bytes remain identical to1ca5e4f. This supersedes the full
+source-pending status above. Installed650(+2 skips), Node122, owned browser,
+both-store101→100→101/restore, exact signed bundle and installed HTTP/UI checks
+are complete. PR12 retained37403602102 and main PR11 run37404557449 remain
+in progress and are preserved until terminal completion before further merging.
 
 Native direct Anthropic protocol is implemented in an isolated branch over frozen
 creation101. Default OpenAI wire format and review binding remain unchanged; native
