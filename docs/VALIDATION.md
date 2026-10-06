@@ -7100,6 +7100,33 @@ This is local preview, not external hosting. Main run37399067286 is pending;
 retained PR10 run37396948433 has six terminal successes. The separate frontend
 pending-request-recovery worktree is not part of this deployed local UI proof.
 
+Pending model frontend implementation7466068 is frozen through documentation head
+dc9521626edef4bf7529f2671b160ba27027d024. Python/API/storage/backend tests and CI
+execution source remain byte-identical to connection implementation0fe8955.
+Node114, TypeScript/production build/design checks pass; public candidates425,
+Gitleaks zero. Source hashes and separate UI assets are retained. The original
+nullable-auth type build failure and actual stale-draft input mismatch are retained;
+the fixed build restores original profile fields through reload409/latest adoption.
+
+Owned browser servers verify profile edits, workspace defaults, task selections,
+connection/catalog commit503→new document→explicit exact-ID/body200 recovery.
+Document load and request selection send nothing; task/scope/approval fields remain
+exact. Catalog provider GET1/receipt1, connection provider POST1/receipt1 remain
+unchanged by replay. Owned visible quota controls yield zero API/provider requests.
+Explicit logout/relogin clears only browser recovery, retaining server history.
+
+A further owned two-admin browser exercise holds an already committed A200 response,
+resets A password through the normal UI, observes both A sessions expire, logs into
+B, commits B503, then releases A200. B's UUID/body remains recoverable after a new
+document, while A's original UUID/body remains recoverable after rotated-password
+login. Exact B/A replay adds no provider requests: two actual POSTs, two durable
+receipts/distinct actors, statuses200/503/200/200, no planner/chat calls or target
+traffic, task exact and audit valid. This verifies this expiry/identity/reply order;
+it does not prove every timing or mobile/long-run coverage. All owned tabs close,
+three fixture servers stop with SIGINT, and each owned temporary workspace reports
+cleanup true. PR11 run37400366919 remains pending; push duplicate37400339635 was
+explicitly cancelled and is not success evidence. Root preview still serves100.
+
 Connection main run37399067286 has six terminal successes at
 8b9a992bde836cfdab625c100e5e36bf37be64ef: verify, postgres-storage, both image
 variants and both Compose variants. Metadata and the completed log are retained
@@ -7123,3 +7150,19 @@ fixtures in MCP revocations now mirror application service shutdown order in an
 isolated worktree, with four targeted cases passing; related native regression and
 new exact-source hosted verification are required before PR11 merge. Production
 Python, UI and ownership fencing are unchanged. Root preview remains100.
+
+After the scoped MCP revocation fixture lifecycle correctioncfccad2, four unchanged
+recovery cases pass in4.97s and related native revocation/observation/ownership/
+notification regression passes146 cases in204.93s. There are no waits/retries or
+weakened recovery assertions in the fixture fix; production ownership is unchanged.
+The frontend remains the frozen114-test implementation7466068 and Python remains
+frozen100. Only tests/test_mcp_revocations.py changes executable test code. A fresh
+hosted run on the combined source is required; the earlier hosted failure remains
+failure evidence. Full native1,930/installed606 are the retained frozen100 backend
+results, not newly rerun counts for this frontend/fixture change.
+
+Retained PR11 retry37403128445 at7a644a1 completes all six jobs successfully.
+The full hosted metadata and log are preserved independently of initial failed
+run37400366919. This closes the scoped frontend/fixture admission; production
+Python remains frozen100, frontend remains the114-test reviewed implementation.
+Main preview preservation and its own hosted checks follow separately.

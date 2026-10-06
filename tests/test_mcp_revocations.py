@@ -47,6 +47,18 @@ def worker(client):
     return revocations.Recovery(client.app.state.engine.remote)
 
 
+def stop_application_runtime(client):
+    # Match lifespan shutdown before replacing the application's native owner.
+    # An admitted background transaction correctly fences a new engine until joined.
+    state=client.app.state
+    state.model_connection.close()
+    state.model_catalog.close()
+    state.notification_deliveries.close()
+    state.event_planner.close()
+    assert not state.event_planner.thread.is_alive()
+    state.engine.shutdown()
+
+
 def test_dormant_intent_never_cancels_a_live_call_and_admitted_result_removes_it(workspace, target):
     client = workspace
     register(client, ['security_headers'])
@@ -65,7 +77,7 @@ def test_dormant_intent_never_cancels_a_live_call_and_admitted_result_removes_it
 def test_restarted_engine_activates_exact_cancel_and_acknowledges_without_target_get(workspace, target, service):
     client = workspace; task, attempt, row, token = pending(client, target[0])
     source = client.app.state.store
-    client.app.state.engine.shutdown()
+    stop_application_runtime(client)
     if getattr(source, 'backend', None) == 'postgres':
         from aegis.postgres_store import PostgresStore
         store = PostgresStore(source._dsn, source.schema)
@@ -343,7 +355,7 @@ def test_lost_native_source_ownership_prevents_outbound_cleanup(workspace,target
 def test_startup_recovers_unsaved_cleanup_even_when_source_task_already_terminated(workspace,target):
     client=workspace;task,attempt,row,token=pending(client,target[0]);source=client.app.state.store
     source.patch('tasks',task['id'],status='failed',finished_at=time.time())
-    client.app.state.engine.shutdown()
+    stop_application_runtime(client)
     if getattr(source,'backend',None)=='postgres':
         from aegis.postgres_store import PostgresStore
         store=PostgresStore(source._dsn,source.schema)

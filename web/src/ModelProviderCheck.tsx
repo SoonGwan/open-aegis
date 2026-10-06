@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, captureSession } from "./api";
 import Modal from "./components/Modal";
+import { useModelPending, ModelPendingRecovery } from "./ModelPendingRecovery";
 import { Pagination, RecordState, useRecords } from "./records";
 
 type Profile = { id: string; name: string; revision: number; model: string; enabled: boolean; configuration_available: boolean; destination_review_current: boolean; admin_review_current: boolean };
 type Query = { id: string; profile_revision: number; profile_snapshot: { name: string; model: string }; status: string; result_code: string; models?: string[]; model_count?: number; tokens?: { status: string; prompt_tokens: number | null; completion_tokens: number | null; total_tokens: number | null }; cost?: { status: string; amount: string | null; currency: string | null }; created_at: number; response_sha256?: string; http_status?: number };
-type Request = { expected_revision: number; request_id: string };
 const status: Record<string, string> = { started: "응답 확인 중", completed: "목록 응답 확인됨", failed: "요청 확인 실패", blocked: "설정 변경으로 중단", unknown: "완료 여부 확인 불가" };
 const codes: Record<string, string> = {
   inference_response_valid: "고정된 짧은 메시지의 추론 응답을 확인했습니다. 모델 품질이나 이후 가용성을 보장하지 않습니다.",
@@ -29,31 +29,35 @@ function Result({ query, connection }: { query: Query; connection: boolean }) {
   </article>;
 }
 
-export default function ModelProviderCheck({ initial, canAdmin, onClose, connection = false }: { initial: Profile; canAdmin: boolean; onClose: () => void; connection?: boolean }) {
+export default function ModelProviderCheck({ actorId, initial, canAdmin, onClose, connection = false }: { actorId: string; initial: Profile; canAdmin: boolean; onClose: () => void; connection?: boolean }) {
   const action = connection ? "모델 연결 시험" : "모델 목록 조회", endpoint = connection ? "connection-test" : "catalog", historyEndpoint = connection ? "connection-history" : "catalog-history";
   const [profile, setProfile] = useState(initial), [latest, setLatest] = useState<Profile | null>(null);
   const [query, setQuery] = useState<Query | null>(null), [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false), [conflict, setConflict] = useState(false), [error, setError] = useState("");
-  const pending = useRef<Request | null>(null), inFlight = useRef(false), lifetime = useRef(0);
+  const pending = useModelPending(actorId, `/model-profiles/${initial.id}/${endpoint}`, "POST"), inFlight = useRef(false), lifetime = useRef(0);
   const history = useRecords<Query>(`model-${historyEndpoint}`, "", {}, undefined, `/model-profiles/${initial.id}/${historyEndpoint}`, false);
   useEffect(() => () => { lifetime.current++; }, []);
   const eligible = profile.enabled && profile.configuration_available && profile.destination_review_current && profile.admin_review_current;
   async function read() {
     if (inFlight.current || conflict) return;
-    const alive = lifetime.current, session = captureSession();
+    const alive = lifetime.current, session = captureSession();let dispatched = false;
     inFlight.current = true; setBusy(true); setError("");
-    pending.current ||= { expected_revision: profile.revision, request_id: crypto.randomUUID() };
     try {
-      const result = await api<{ query: Query; replayed: boolean }>(`/model-profiles/${initial.id}/${endpoint}`, "POST", pending.current);
+      const body = pending.stage({ expected_revision: profile.revision });dispatched = true;
+      const result = await api<{ query: Query; replayed: boolean }>(`/model-profiles/${initial.id}/${endpoint}`, "POST", body);
       if (alive === lifetime.current && session()) {
-        setQuery(result.query); setUncertain(result.query.status === "started");
-        if (result.query.status !== "started") pending.current = null;
+        setQuery(result.query);
+        if (result.query.status !== "started") pending.finish();
+        setUncertain(result.query.status === "started");
         history.reload();
       }
     } catch (error) {
       if (alive === lifetime.current && session()) {
         setError(error instanceof Error ? error.message : "제공자 응답을 확인하지 못했습니다.");
-        if (error instanceof ApiError && error.status === 409) { setConflict(true); setUncertain(false); }
-        else if (error instanceof ApiError && [400, 401, 403, 404, 422].includes(error.status)) { pending.current = null; setUncertain(false); }
+        if (!dispatched) setUncertain(!!pending.current);
+        else if (error instanceof ApiError && error.status === 409) { setConflict(true); setUncertain(false); }
+        else if (error instanceof ApiError && [400, 404, 422].includes(error.status)) {
+          try { pending.finish();setUncertain(false); } catch (cleanup) { setError(cleanup instanceof Error ? cleanup.message : "브라우저 기록을 정리하지 못했습니다.");setUncertain(true); }
+        }
         else setUncertain(true);
       }
     } finally { inFlight.current = false; if (alive === lifetime.current && session()) setBusy(false); }
@@ -71,11 +75,12 @@ export default function ModelProviderCheck({ initial, canAdmin, onClose, connect
     <p>{profile.name} · 검토 기준 버전 {profile.revision} · 설정 모델 {profile.model}. 등록된 고정 수신처에 {action} 요청을 한 번 보냅니다.</p>
     <p>{connection ? "고정된 짧은 메시지와 출력 토큰 제한16으로 실제 추론 요청을 보냅니다. 제공자 비용이 발생할 수 있습니다. 작업 데이터나 대상 정보는 보내지 않습니다." : "응답은 최대1MiB·256개 모델입니다."} 프로필별 기록은 최대200개이며 모델 선택을 변경하지 않습니다.</p>
     {!eligible && <p>활성 프로필과 현재 인증 설정을 먼저 검토하세요.</p>}
+    <ModelPendingRecovery state={pending} canAdmin={canAdmin} busy={busy} choose={request => { pending.choose(request);setUncertain(true);setConflict(false);setError(""); }} onCleared={() => { setUncertain(false);setConflict(false);setError(""); }} />
     {error && <p role="alert">{error}</p>}
     {uncertain && <p role="status">같은 요청으로 결과를 다시 확인하세요. 저장된 요청이 있으면 외부 요청을 중복하지 않습니다.</p>}
     {conflict && <><p>설정 변경 또는 요청 기록 제한을 확인하세요. 기록 제한은 프로필을 다시 검토해도 해제되지 않습니다.</p><button disabled={busy} onClick={review}>최신 프로필 검토</button></>}
-    {latest && <article className="prompt-card"><h3>최신 버전 {latest.revision}</h3><p>{latest.name} · {latest.model} · {latest.enabled ? "활성" : "비활성"}</p><button disabled={busy} onClick={() => { setProfile(latest); setLatest(null); pending.current = null; setConflict(false); setUncertain(false); setError(""); }}>이 프로필을 검토하고 요청 준비</button></article>}
-    <div className="prompt-actions"><button disabled={busy} onClick={onClose}>닫기</button>{canAdmin && <button className="primary" disabled={busy || conflict || (!uncertain && !eligible)} onClick={read}>{busy ? "응답 확인 중…" : uncertain ? "같은 요청 결과 확인" : connection ? "추론 요청으로 연결 시험" : query ? "새 요청으로 모델 목록 조회" : "고정 수신처 모델 목록 조회"}</button>}</div>
+    {latest && <article className="prompt-card"><h3>최신 버전 {latest.revision}</h3><p>{latest.name} · {latest.model} · {latest.enabled ? "활성" : "비활성"}</p><button disabled={busy} onClick={() => { try { pending.finish();setProfile(latest);setLatest(null);setConflict(false);setUncertain(false);setError(""); } catch (value) { setError(value instanceof Error ? value.message : "브라우저 기록을 정리하지 못했습니다."); } }}>이 프로필을 검토하고 요청 준비</button></article>}
+    <div className="prompt-actions"><button disabled={busy} onClick={onClose}>닫기</button>{canAdmin && <button className="primary" disabled={busy || conflict || pending.waiting || !!pending.error || (!uncertain && !eligible)} onClick={read}>{busy ? "응답 확인 중…" : uncertain ? "같은 요청 결과 확인" : connection ? "추론 요청으로 연결 시험" : query ? "새 요청으로 모델 목록 조회" : "고정 수신처 모델 목록 조회"}</button>}</div>
     {query && <Result query={query} connection={connection} />}
     <h3>저장된 {action} 기록</h3><button disabled={history.loading} onClick={history.reload}>요청 기록 새로고침</button>
     {history.loading || history.error ? <RecordState records={history} /> : <><p>{history.total}개 요청</p>{history.items.map(row => <details key={row.id}><summary>{stateLabel(row.status, connection)} · 버전 {row.profile_revision} · {date(row.created_at)}</summary><Result query={row} connection={connection} /></details>)}<Pagination records={history} /></>}
