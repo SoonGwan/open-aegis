@@ -10,6 +10,7 @@ import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
 import { NotificationChannels, NotificationDeliveries } from "./Notifications";
 import ModelProfiles from "./ModelProfiles";
+import { clearModelPending } from "./model-pending";
 import TaskModels from "./TaskModels";
 import PromptVersions from "./PromptVersions";
 import { TaskCategories } from "./TaskCategories";
@@ -702,7 +703,11 @@ function App() {
     setBusy(true);
     try {
       await api("/auth/logout", "POST");
+      let cleanupFailed = false;
+      try { if (auth?.user?.id) clearModelPending(window.localStorage, auth.user.id); }
+      catch { cleanupFailed = true; }
       setAuth({ setup_required: false, authenticated: false });
+      if (cleanupFailed) setError("로그아웃했습니다. 브라우저의 미확인 모델 요청 기록은 정리하지 못했습니다. 같은 계정으로 로그인해 확인하거나 브라우저 저장소를 정리하세요.");
     } catch (e) {
       if (isSessionCurrent()) setError((e as Error).message);
     } finally {
@@ -1762,7 +1767,7 @@ function App() {
             status={filter} onStatus={setFilter} position={list} onPositionChange={changeRecordPosition}
             onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}
 
-          {page === "models" && <ModelProfiles key={auth.user?.id} canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} />}
+          {page === "models" && <ModelProfiles actorId={auth.user?.id || ""} key={auth.user?.id} canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} />}
           {page === "prompts" && <PromptVersions canAdmin={canApprove} />}
           {page === "notifications" && <NotificationChannels canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} onDeliveries={()=>navigation.navigate("deliveries")} />}
           {page === "deliveries" && <NotificationDeliveries canAdmin={canApprove} search={search} onSearch={setSearch} status={filter} onStatus={setFilter} position={{...list,onPositionChange:changeRecordPosition}} onChannels={()=>navigation.navigate("notifications")} onTask={id=>{navigation.navigate("tasks");navigation.openDetail({kind:"task",id});}} />}
@@ -2890,7 +2895,7 @@ function App() {
               </details>
             )}
             <TemplateOriginSummary origin={selectedTask.template_origin} />
-            <TaskModels key={`task-models-${auth.user?.id}-${selectedTask.id}`} taskId={selectedTask.id} canAdmin={canApprove} />
+            <TaskModels actorId={auth.user?.id || ""} key={`task-models-${auth.user?.id}-${selectedTask.id}`} taskId={selectedTask.id} canAdmin={canApprove} />
             {selectedTask.archived_at && <p>보관된 작업 · 실행 결과와 증거가 보존됩니다.</p>}
             <TaskArchiveHistory key={`archive-history-${selectedTask.id}`} taskId={selectedTask.id}/>
             {(selectedTask.category_ref || selectedTask.category_revision) && <p>작업 분류: <strong>{selectedTask.category_ref?.name || "미분류"}</strong> · 변경 버전 {selectedTask.category_revision || 0}{selectedTask.category_origin_task_id && " · 이전 작업에서 이어받음"} · 이름은 지정 당시 기록입니다.</p>}
