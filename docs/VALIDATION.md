@@ -7234,3 +7234,24 @@ goal regressions42 pass. Expanded related native324 pass,2 native-owner-only SQL
 skips in162.45s; Node122/build/typecheck pass. No third-party provider or target
 requests are made in this scope. Full/installed/transition/browser/hosted evidence
 is still required before merge; version remains0.2.0a1.
+
+Frozen102 wheel96004de24ffd08f5ca41633e81df43d7d2309a7ce11e1b9deaa7d0a72de33ec7
+completes independently installed752 tests with2 SQLite native-owner-only skips
+in341.71s; package origin outside checkout and temporary cleanup are verified.
+Owned native browser connection/catalog503→new document→same ID/body200 preserves
+one inference/one catalog receipt. An incomplete second catalog fails explicitly.
+Actual task-pinned goal AI generation/replay and recorded conversation produce
+two committed protocol/task-selection snapshots with partial usage, while original
+task remains byte-exact pending and no target request/approval occurs. Across
+that fixture there are3 POSTs and2 GETs. An inherited explicitly owned quota fault
+first blocks API/provider dispatch; it is turned off through the visible fixture
+control. All owned tabs close and verified fixture PID51574 receives SIGINT/cleanup.
+
+Installed102→101→102 and offline restore pass both stores with actual native
+goal/chat/check/catalog, creation/selection/prompt/notification/archive records and
+one explicitly synthetic old-call snapshot per backend. Old101 omits native
+destination configuration and disables AI for maintenance. Only initially intended
+native POST6/catalog GET2/notification POST2 occur; replays/transitions/restore add
+none. Selected rows/checkpoint match, restored sessions0 and temporary cluster/
+installation cleanup complete. Full native and retained PR13 hosted37405655116 at
+5076628 remain in progress; duplicate push37405649680 is cancelled.
