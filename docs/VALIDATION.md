@@ -7346,3 +7346,22 @@ Public corrected-source scan435 candidates has zero findings. Fresh full/native
 and retained hosted37407203007 remain in progress. Separate30-minute owned
 SQLite/PostgreSQL execution/read/recovery rehearsals run concurrently with these
 local regressions; their measurements will not be presented as production SLOs.
+
+An isolated Compose environment-forwarding fix starts from main and merges the
+unchanged native102 implementation. Original real Compose config drops five
+configured model/webhook definition/address/credential names despite their presence
+in the selected env file. The failed assertion/metadata are retained without
+publishing values. Correction88bcf08 adds an optional explicitly selected env_file
+and fixes container port/data/UI paths so local start-script settings cannot
+override the image layout. Actual standard-schema configuration cases pass for
+default .env, explicit file and absent optional file with exported setup token.
+
+The first corrected config assertion fails on the serialized dollar representation;
+a controlled diagnostic confirms two rendered dollars decode to the one owned
+literal. Config comparisons normalize this round-trip escape; actual-container
+assertions retain exact unnormalized secret-value equality. Config review uses
+checksum-matched official standalone Compose5.6.0, not an installed system plugin
+or Docker daemon. Local process starts no container/provider/target. New CI dry-run
+configuration step and both real Compose matrix fixtures require separate hosted
+acceptance. Python/API/tests/application UI remain nativeca1a804 byte-exact; no
+new source/native regression count is invented for the Compose-only correction.

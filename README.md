@@ -74,6 +74,8 @@ docker compose up --build -d
 ```
 
 http://127.0.0.1:8787 에 접속하고 관리자 비밀번호 및 설치 토큰을 입력합니다.
+추가 모델·알림·MCP 등의 이름 있는 환경변수도 `.env`에서 컨테이너로 전달합니다.
+별도 파일과 고정 컨테이너 경로는 [Compose 설정 계약](docs/COMPOSE-CONFIGURATION.md)을 참고하세요.
 컨테이너는 비관리자 사용자로 실행되며 데이터는 `aegis-data` 볼륨에 보존됩니다.
 기본 포트 공개 범위는 호스트의 loopback입니다. 기본/드라이버 포함 이미지와 SQLite/PostgreSQL Compose를 GitHub의 Ubuntu24.04에서
 검증했습니다. 시작·인증·볼륨 보존·백업 복구·정상 종료를 확인했으며
