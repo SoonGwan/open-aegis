@@ -48,4 +48,4 @@ GitHub 검증은 별도 검증 기록으로 추적한다.
 - `PUT /api/model-defaults/{planner|conversation}`: 관리자 용도별 선택
 - `GET /api/model-defaults/{purpose}/history`: 인증된 선택 이력
 
-고정 제공자 모델 목록 조회는 [별도 계약](MODEL-CATALOG.md)과 브랜치 검증으로 추적한다.
+고정 제공자 모델 목록 조회와 기존 작업의 계획·대화 모델 고정은 각각 [모델 목록 계약](MODEL-CATALOG.md), [작업별 선택 계약](TASK-MODELS.md)의 범위로 구현·검수했다.

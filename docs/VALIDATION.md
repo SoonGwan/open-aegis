@@ -7000,3 +7000,16 @@ d6179af; subsequent commits merge/update documentation only. Final full native1,
 (+one native-only SQLite skip), installed553(+same skip), Node103, both-store pair/
 backup, owned browser and public-source secret scan permit merging the scoped
 task model selection feature. This is not a v1 or full ARTEX parity declaration.
+
+Task-model PR9 is merged at mainc0116456fc7ac8e1aa199f8fee58de74262dfd02.
+Root Python98 and executable UI/test/CI source match the frozen task candidate.
+Owned prior preview PID95446 exits before root fast-forward and web/dist replacement;
+the separately staged production assets index-DhSwXClv.js/index-gW8Sd6S8.css are
+served byte-exact at localhttp://127.0.0.1:8790. All59 record bodies retain
+SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c;
+selected counts/task states are unchanged and idle. Health remains0.2.0a1, and
+unauthenticated configuration/profile/catalog/task-model/history reads are401.
+This is a local preview, not external hosting. Main run37397383118 is pending;
+retained PR9 run37395323928 has six terminal successes. Current readiness/inventory/
+feature documents distinguish verified existing-task selections from creation-time
+pins, custom agents and other remaining model work.
