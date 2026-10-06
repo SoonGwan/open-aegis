@@ -6913,3 +6913,14 @@ SQLite skip), installed529(+same skip), Node103, both-store transitions/restore 
 owned browser receipts permit merging the scoped catalog feature. Later local
 commits merge/update documentation only; Python97 and executable UI/test/CI source
 remain exact. Version remains0.2.0a1; this is not a full parity/v1 declaration.
+
+
+Catalog PR8 is merged at mainde38cca7613540bad4ab8c8d781d620e8337fc91. Root
+source exactly matches frozen97 and serves the separately staged production UI
+at localhttp://127.0.0.1:8790. Owned prior PID67333 exits before replacing web/dist;
+served assets index-hm_MBOqY.js/index-gW8Sd6S8.css match build bytes. All59 record
+bodies retain SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c;
+selected counts/task states remain exact. Health is0.2.0a1 and configuration/profile/
+prompt/channel/category/template/catalog-history reads require authentication401.
+This remains a local preview, not external hosting. Main run37394395526 is pending;
+retained PR8 run37392213028 has six terminal successes.
