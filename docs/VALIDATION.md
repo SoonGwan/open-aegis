@@ -7160,3 +7160,9 @@ frozen100. Only tests/test_mcp_revocations.py changes executable test code. A fr
 hosted run on the combined source is required; the earlier hosted failure remains
 failure evidence. Full native1,930/installed606 are the retained frozen100 backend
 results, not newly rerun counts for this frontend/fixture change.
+
+Retained PR11 retry37403128445 at7a644a1 completes all six jobs successfully.
+The full hosted metadata and log are preserved independently of initial failed
+run37400366919. This closes the scoped frontend/fixture admission; production
+Python remains frozen100, frontend remains the114-test reviewed implementation.
+Main preview preservation and its own hosted checks follow separately.
