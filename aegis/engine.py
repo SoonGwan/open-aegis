@@ -202,7 +202,7 @@ class Engine:
         try:
             with getattr(self.store,'execution_permit',nullcontext)():
                 profiles.guard(choice)
-                raw = completion(base, key, payload, allow_local=choice.local, control=control, timeout=self.policy.request_timeout)
+                raw = completion(base, key, payload, allow_local=choice.local, control=control, timeout=self.policy.request_timeout, **({'protocol':choice.protocol} if choice.protocol!='openai' else {}))
             outcome = 'invalid_plan'
             usage = token_usage(raw.get('usage') if isinstance(raw, dict) else None)
             text = raw['choices'][0]['message']['content'].strip().removeprefix('```json').removeprefix('```').removesuffix('```').strip()

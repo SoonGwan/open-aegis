@@ -5,6 +5,7 @@ from .model_profiles import ProfileUnavailable
 from .remote_mcp import _decode
 from .network import PinnedHTTP,PinnedHTTPS,resolve
 from .runtime import RequestGuard
+from .provider_protocol import catalog_request,catalog_response
 from .provider_checks import ProviderCheck,CheckInput as CatalogInput,CheckError as CatalogError,CheckControl as CatalogControl
 KIND='model_catalog_queries'
 MAX_BYTES=1024*1024
@@ -28,8 +29,10 @@ class Catalog(ProviderCheck):
             with self.store.read_transaction() as db:
                 profile,current,_=self.profile(record['profile_id'],record['profile_revision'],record['actor'],db)
                 if current!=prepared or profile['fingerprint']!=record['profile_fingerprint']:raise ProfileUnavailable('Model profile changed')
+            protocol=record['profile_snapshot'].get('provider_protocol','openai')
+            suffix,authentication=catalog_request(protocol,key)
             with RequestGuard(connection,control,8) as guard:
-                connection.request('GET',parsed.path.rstrip('/')+'/models',headers={'Authorization':'Bearer '+key,'Accept':'application/json','Accept-Encoding':'identity'})
+                connection.request('GET',parsed.path.rstrip('/')+suffix,headers={**authentication,'Accept':'application/json','Accept-Encoding':'identity'})
                 guard.sock=connection.sock;response=connection.getresponse()
                 if response.status!=200:raise CatalogError('provider_status',response.status)
                 if response.getheader('Content-Encoding','identity').lower()!='identity':raise CatalogError('response_encoding',200)
@@ -39,7 +42,10 @@ class Catalog(ProviderCheck):
                 if len(raw)>MAX_BYTES:raise CatalogError('response_byte_budget',200)
             control.check()
             try:
-                body=_decode(raw);rows=body['data']
+                body=_decode(raw)
+                if protocol=='anthropic' and isinstance(body,dict) and body.get('has_more') is True:
+                    raise CatalogError('catalog_incomplete',200)
+                body=catalog_response(protocol,body);rows=body['data']
                 if not isinstance(rows,list) or len(rows)>MAX_MODELS:raise ValueError()
                 models=[];seen=set()
                 for row in rows:
@@ -48,5 +54,6 @@ class Catalog(ProviderCheck):
                             any(ord(c)<=32 or ord(c)>126 for c in name) or key in name or base in name or name in seen):raise ValueError()
                     models.append(name);seen.add(name)
                 return models,hashlib.sha256(raw).hexdigest()
+            except CatalogError:raise
             except (ValueError,TypeError,KeyError,AttributeError):raise CatalogError('response_shape',200) from None
         finally:connection.close()

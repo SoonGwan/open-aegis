@@ -4,6 +4,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from .network import PinnedHTTP, PinnedHTTPS, resolve
 from .runtime import TaskControl, RequestGuard
+from .provider_protocol import inference_request,inference_response
 
 
 def token_usage(raw):
@@ -30,7 +31,8 @@ def token_usage(raw):
     return {'status':status, **result}
 
 
-def completion(base, key, payload, allow_local=False, *, control=None, timeout=8):
+def completion(base, key, payload, allow_local=False, *, control=None, timeout=8, protocol='openai'):
+    suffix,authentication,payload=inference_request(protocol,key,payload)
     parsed=urlsplit(base)
     local=allow_local and parsed.hostname in ('localhost','127.0.0.1','::1')
     if (parsed.scheme != 'https' and not (local and parsed.scheme == 'http')) or parsed.username or parsed.password or parsed.query or parsed.fragment:
@@ -43,8 +45,8 @@ def completion(base, key, payload, allow_local=False, *, control=None, timeout=8
     connection=cls(parsed.hostname,port,address,timeout=control.timeout(timeout))
     try:
         with RequestGuard(connection,control,timeout) as guard:
-            connection.request('POST',parsed.path.rstrip('/')+'/chat/completions',body=json.dumps(payload).encode(),
-                               headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
+            connection.request('POST',parsed.path.rstrip('/')+suffix,body=json.dumps(payload).encode(),
+                               headers={**authentication,'Content-Type':'application/json'})
             guard.sock=connection.sock
             response=connection.getresponse()
             if not 200<=response.status<300:
@@ -56,5 +58,11 @@ def completion(base, key, payload, allow_local=False, *, control=None, timeout=8
             body=response.read(1024*1024+1)
             if len(body)>1024*1024:
                 raise ValueError('Provider response exceeds size budget')
-        return json.loads(body)
+        if protocol!='openai':
+            # Maintenance imports token_usage without the application dependencies.
+            # Load the strict application decoder only for an actual native response.
+            from .remote_mcp import _decode
+            decoded=_decode(body)
+        else:decoded=json.loads(body)
+        return inference_response(protocol,decoded)
     finally:connection.close()

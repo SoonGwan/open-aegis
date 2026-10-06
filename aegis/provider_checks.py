@@ -92,6 +92,8 @@ class ProviderCheck:
                         'profile_fingerprint':profile['fingerprint'],'destination_id':profile['destination_id'],
                         'destination_fingerprint':prepared[3],'request_sha256':requested,'actor':actor,'status':'started',
                         'created_at':now(),**self.initial(),'result_code':'awaiting_response'}
+                protocol=self.profiles.destinations.items[profile['destination_id']].protocol
+                if protocol!='openai':record['profile_snapshot']['provider_protocol']=protocol
                 record.update(self.context(prepared,record))
                 self.store.put_many([(self.kind,record)],connection=db)
                 self.store.event(None,self.label+' 시작',detail={'query_id':query_id,'profile_id':id,'profile_revision':profile['revision'],'actor':actor},connection=db)

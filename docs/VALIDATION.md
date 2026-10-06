@@ -7261,3 +7261,88 @@ https://soongwan.github.io/open-aegis/ and private vulnerability reporting is
 independently confirmed enabled. This is project introduction publication, not
 external security-backend hosting or v1. Source-core verification remains retained
 creation main37406589245 because the site/README additions do not change it.
+
+Native direct Anthropic protocol is implemented in an isolated branch over frozen
+creation101. Default OpenAI wire format and review binding remain unchanged; native
+protocol binds review/reference and uses bounded text messages/check16/catalog256.
+Provider input/output counters remain partial without an invented total or price.
+Actual owned HTTP first tests55 pass; new goal-pin test fails409 before correction
+because old goal code reads only environment-default credentials. After using the
+reviewed source-task planner selection and fresh guard, native goal plus original
+goal regressions42 pass. Expanded related native324 pass,2 native-owner-only SQLite
+skips in162.45s; Node122/build/typecheck pass. No third-party provider or target
+requests are made in this scope. Full/installed/transition/browser/hosted evidence
+is still required before merge; version remains0.2.0a1.
+
+Frozen102 wheel96004de24ffd08f5ca41633e81df43d7d2309a7ce11e1b9deaa7d0a72de33ec7
+completes independently installed752 tests with2 SQLite native-owner-only skips
+in341.71s; package origin outside checkout and temporary cleanup are verified.
+Owned native browser connection/catalog503→new document→same ID/body200 preserves
+one inference/one catalog receipt. An incomplete second catalog fails explicitly.
+Actual task-pinned goal AI generation/replay and recorded conversation produce
+two committed protocol/task-selection snapshots with partial usage, while original
+task remains byte-exact pending and no target request/approval occurs. Across
+that fixture there are3 POSTs and2 GETs. An inherited explicitly owned quota fault
+first blocks API/provider dispatch; it is turned off through the visible fixture
+control. All owned tabs close and verified fixture PID51574 receives SIGINT/cleanup.
+
+Installed102→101→102 and offline restore pass both stores with actual native
+goal/chat/check/catalog, creation/selection/prompt/notification/archive records and
+one explicitly synthetic old-call snapshot per backend. Old101 omits native
+destination configuration and disables AI for maintenance. Only initially intended
+native POST6/catalog GET2/notification POST2 occur; replays/transitions/restore add
+none. Selected rows/checkpoint match, restored sessions0 and temporary cluster/
+installation cleanup complete. Full native and retained PR13 hosted37405655116 at
+5076628 remain in progress; duplicate push37405649680 is cancelled.
+
+Native PR13 retained37405655116 at5076628 completes with five successes and a
+verify failure. Its installed runtime rehearsal fails in the nested maintenance
+command. Full failed metadata/log and the completed verify-job log are retained.
+Local frozen102 wheel96004 fails the same rehearsal; a diagnostic run preserves
+the child ModuleNotFoundError(jsonschema): importing Store→call_ledger→llm loads
+remote_mcp and its application dependencies even for dependency-free maintenance.
+This is a real import regression, not an OpenSSL or ownership failure.
+
+Correctionca1a804 makes the strict native response decoder import local to an
+actual native response. Existing OpenAI decoding/native validation remains intact.
+A subprocess regression uses isolated Python with site packages disabled and the
+actual package origin, then imports Store/token_usage and writes/reads a note.
+Native protocol/HTTP/LLM group passes87 cases in21.74s; the first run with native
+flags absent passes74 and skips13, separately retained. New frozen102 wheel
+bf36ac7709407b0b6300942f19693c0694783323746ce57bcdbbacbd5c9dde31
+exactly matches all102 packaged modules. Exact reviewed UI remains unchanged.
+Installed runtime/UI/maintenance/signing/tamper/preflight/rollback now pass with
+OpenSSL3. New installed102→101→102/offline restore again pass both stores,
+retaining selected rows/checkpoints/sessions0 with only initial native POST6/
+catalog GET2/notification POST2 and no transition/replay traffic.
+
+Initial source full run was started before this correction; source was changed
+while it remained active, so its eventual count is not exact frozen-source
+acceptance evidence. A fresh full/native run and fresh independently installed
+regression onca1a804 are running. Retained retry37407203007 is required to finish
+before merge; duplicate push37407200186 was explicitly requested cancelled.
+Earlier frozen96004/324/752/browser/pair/signed-bundle receipts remain historical
+scope evidence, not relabelled as new-wheel verification. No native root deployment
+or v1 release is claimed.
+
+Initial pre-correction full source run terminates with1 failure/1,935 passed/
+2 SQLite skips in1,303.11s. The failed deterministic tool-contract check compares
+process-captured8834984abc1cd76eca31a713e8af5e250d5d726a7f3274c0b2b2a50da81472d5
+to current-sourceb598cfd527c04b400168aa0dad08685ce5e09bc8461d4f93d682dbb8b750602e.
+Both values independently match the retained old/new module manifests exactly.
+This is source modification during that active run; the original assertion is
+unchanged and passes on stable corrected source. The old failed log remains failure
+evidence, not a frozen-source success. Fresh corrected full/native run stays on
+byte-exactca1a804 source; documentation-only updates do not alter the fingerprint.
+
+Corrected frozen102 independently installed regression finishes753 passed/2
+SQLite native-owner-only skips in364.28s(6:04), outside checkout. The added
+site-package-free maintenance case runs against the actual installed package
+origin. Temporary installation/native clusters are removed. This supersedes
+the corrected-installed pending status above. Exact corrected wheel and unchanged
+UI also form a format2 bundle with six verified signed files/64-byte signature;
+the local rehearsal private key is removed and no official release is published.
+Public corrected-source scan435 candidates has zero findings. Fresh full/native
+and retained hosted37407203007 remain in progress. Separate30-minute owned
+SQLite/PostgreSQL execution/read/recovery rehearsals run concurrently with these
+local regressions; their measurements will not be presented as production SLOs.
