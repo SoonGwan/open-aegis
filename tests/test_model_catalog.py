@@ -180,3 +180,23 @@ def test_catalog_committed_receipt_survives_actual_app_restart_without_get(clien
         assert history['items']==[record] and history['total']==1
         assert restarted.app.state.store.audit_integrity()['valid']
     assert len(provider[1])==1
+
+
+def test_catalog_sql_history_pages_and_explicit_synthetic_exhaustion_boundary(client,provider,monkeypatch):
+    profile=setup(client,provider,monkeypatch)
+    for n in range(26):
+        response=query(client,profile,request_id='owned-catalog-page-'+str(n));assert response.status_code==200,response.text
+        assert response.json()['query']['status']=='completed'
+    path='/api/model-profiles/'+profile['id']+'/catalog-history'
+    first=client.get(path).json();assert len(first['items'])==25 and first['total']==26 and first['has_more']
+    second=client.get(path,params={'offset':25,'snapshot':first['snapshot']}).json()
+    assert len(second['items'])==1 and not second['has_more']
+    assert len({row['id'] for row in first['items']+second['items']})==26
+    assert client.get(path,params={'limit':26}).status_code==422
+    store=client.app.state.store;sample=first['items'][0]
+    # Synthetic rows exercise the 200-record rejection boundary, not174 real GETs.
+    store.put_many([('model_catalog_queries',{**sample,'id':'synthetic-boundary-'+str(n)}) for n in range(174)])
+    before=store.count('model_catalog_queries');assert before==200
+    assert query(client,profile,request_id='owned-catalog-overflow-001').status_code==409
+    assert store.count('model_catalog_queries')==before and len(provider[1])==26
+    assert not store.all('traffic') and not store.all('llm_calls')
