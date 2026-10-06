@@ -10,9 +10,9 @@ from .store_util import now
 from . import call_ledger
 
 
-def configured(store=None):
+def configured(store=None,task_id=None):
     return (os.environ.get('AEGIS_LLM_CHAT_ENABLED') == '1' and
-            (get_profiles(store).configured('conversation') if store is not None else
+            (get_profiles(store).configured('conversation',task_id) if store is not None else
              bool(os.environ.get('AEGIS_LLM_API_KEY') and os.environ.get('AEGIS_LLM_MODEL'))))
 
 
@@ -33,7 +33,7 @@ def _draft(summary, question, *, store, task_id, actor_id, allow_local=False, co
     if len(prompt.encode())>65536:
         raise ValueError('AI 대화에 전달할 기록이 64 KiB를 초과합니다. 규칙 기반 요약을 사용하세요.')
     profiles=get_profiles(store,allow_local)
-    choice=profiles.capture('conversation')
+    choice=profiles.capture('conversation',task_id)
     if choice is None:raise ValueError('모델 설정을 확인하세요.')
     model,base=choice.model,choice.base
     prompts=Prompts(store)

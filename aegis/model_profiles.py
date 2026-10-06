@@ -211,7 +211,8 @@ class Profiles:
         if prepared[3]!=record['destination_fingerprint']:raise ProfileUnavailable('수신처 인증 설정이 바뀌었습니다. 프로필과 모델 선택을 다시 검토하세요.')
         return prepared
 
-    def capture(self,purpose):
+    def capture(self,purpose,task_id=None):
+        if task_id is not None and hasattr(self,'task_models'):return self.task_models.capture(purpose,task_id)
         with self.store.read_transaction() as db:
             stored=self.store.get(DEFAULTS,purpose,connection=db)
             selection=stored or self.default(purpose,db)
@@ -244,7 +245,7 @@ class Profiles:
             return Choice(base,key,model,local,reference)
 
     def guard(self,choice):
-        current=self.capture(choice.reference['purpose'])
+        current=self.capture(choice.reference['purpose'],choice.reference.get('task_model_snapshot',{}).get('task_id'))
         if current is None or current!=choice:raise ProfileUnavailable('호출 준비 중 모델 설정이 바뀌었습니다.')
 
     def model_name(self,purpose):
@@ -254,10 +255,15 @@ class Profiles:
             return record.get('model','') if record else ''
         return os.environ.get('AEGIS_LLM_MODEL','')
 
-    def configured(self,purpose):
-        try:return self.capture(purpose) is not None
+    def configured(self,purpose,task_id=None):
+        try:return self.capture(purpose,task_id) is not None
         except (ProfileUnavailable,HTTPException):return False
 
 
 def get_profiles(store,allow_local=False):
-    return getattr(store,'model_profiles',None) or Profiles(store,allow_local)
+    bound=getattr(store,'model_profiles',None)
+    if bound is not None:return bound
+    from .task_models import TaskModels
+    profiles=Profiles(store,allow_local)
+    profiles.task_models=TaskModels(store,profiles)
+    return profiles

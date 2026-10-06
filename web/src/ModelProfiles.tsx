@@ -15,7 +15,7 @@ const message = (error: unknown) => error instanceof Error ? error.message : "�
 const eligible = (p: Profile) => p.enabled && p.configuration_available && p.destination_review_current && p.admin_review_current;
 
 // Both profile edits and default selections retain the exact request after a lost response.
-function useReviewedSave(path: string, method: string, onSaved: () => void) {
+export function useReviewedSave(path: string, method: string, onSaved: () => void) {
   const pending = useRef<Body | null>(null), inFlight = useRef(false), lifetime = useRef(0);
   const [busy, setBusy] = useState(false), [uncertain, setUncertain] = useState(false), [conflict, setConflict] = useState(false), [error, setError] = useState("");
   useEffect(() => () => { lifetime.current++; }, []);
@@ -39,7 +39,7 @@ function useReviewedSave(path: string, method: string, onSaved: () => void) {
   function reviewed() { pending.current = null; setConflict(false); setUncertain(false); setError(""); }
   return { busy, uncertain, conflict, error, save, reviewed, locked: busy || uncertain || conflict, inFlight };
 }
-function SaveStatus({ state }: { state: ReturnType<typeof useReviewedSave> }) {
+export function SaveStatus({ state }: { state: ReturnType<typeof useReviewedSave> }) {
   return <>{state.error && <p role="alert">{state.error}</p>}{state.uncertain && <p role="status">저장 응답을 확인하지 못했습니다. 같은 요청으로 다시 저장해 결과를 확인하세요.</p>}{state.conflict && <p>초안을 유지했습니다. 현재 설정을 명시적으로 검토한 뒤 다시 저장하세요.</p>}</>;
 }
 function History({ path }: { path: string }) {

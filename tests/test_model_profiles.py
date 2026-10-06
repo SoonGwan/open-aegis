@@ -172,9 +172,9 @@ def test_default_changed_after_capture_is_rejected_before_provider_post(client,m
     second=create(client,name='Owned second',model='owned-second-model',enabled=True,request_id='owned-model-create-002').json()['profile']
     store=client.app.state.store;service=client.app.state.model_profiles;capture=service.capture;changed=False
     actor=store.user(username='admin')
-    def capturing(purpose):
+    def capturing(purpose,task_id=None):
         nonlocal changed
-        choice=capture(purpose)
+        choice=capture(purpose,task_id)
         if not changed:
             changed=True
             service.choose(purpose,DefaultEdit(expected_revision=1,profile_id=second['id'],expected_profile_revision=1,request_id='owned-model-select-002'),actor)

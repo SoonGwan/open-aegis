@@ -10,6 +10,7 @@ import { WorkerHistory } from "./WorkerHistory";
 import { WorkerDependencies } from "./WorkerDependencies";
 import { NotificationChannels, NotificationDeliveries } from "./Notifications";
 import ModelProfiles from "./ModelProfiles";
+import TaskModels from "./TaskModels";
 import PromptVersions from "./PromptVersions";
 import { TaskCategories } from "./TaskCategories";
 import { TaskTemplates, TemplateOriginSummary, type TemplateOrigin } from "./TaskTemplates";
@@ -2889,6 +2890,7 @@ function App() {
               </details>
             )}
             <TemplateOriginSummary origin={selectedTask.template_origin} />
+            <TaskModels key={`task-models-${auth.user?.id}-${selectedTask.id}`} taskId={selectedTask.id} canAdmin={canApprove} />
             {selectedTask.archived_at && <p>보관된 작업 · 실행 결과와 증거가 보존됩니다.</p>}
             <TaskArchiveHistory key={`archive-history-${selectedTask.id}`} taskId={selectedTask.id}/>
             {(selectedTask.category_ref || selectedTask.category_revision) && <p>작업 분류: <strong>{selectedTask.category_ref?.name || "미분류"}</strong> · 변경 버전 {selectedTask.category_revision || 0}{selectedTask.category_origin_task_id && " · 이전 작업에서 이어받음"} · 이름은 지정 당시 기록입니다.</p>}

@@ -6872,6 +6872,42 @@ only in readable local timestamp formatting. Full mobile/screen-reader work is o
 Final full native, installed wheel,97→96→97/backup restore and GitHub jobs remain
 pending. Version remains0.2.0a1. No third-party scans or actual chat connectivity
 claim is added by catalog success.
+
+
+## Task-specific model selections checkpoint — 2026-10-06
+
+A separate branch extends the existing planner/conversation roles with reviewed
+task-specific profile selections, immutable CAS receipts and25-row SQL history.
+The selection never alters task scope/checks/plan/approval. Unavailable pins never
+silently choose another provider; clearing follows the workspace default. Actual
+owned planner/conversation POSTs, held old/new call snapshots and same-ID chat replay
+pass on SQLite/native PostgreSQL. Related tests pass136 cases in33.26s.
+
+The first history read failed because purpose was not an admitted SQL filter; the
+filter is now restricted to task-model record kinds. An old capture test spy also
+required the new optional taskID argument; its no-provider-on-stale assertions are
+unchanged. Explicit corrupted stored archive revision-1 was accepted before the
+new bound check, then rejected; booleans/overflow and capture error translation
+also pass. An unbound profile factory initially ignored a persisted task pin and
+returnedNone; that same case passes after constructing TaskModels in the standalone
+factory. Original failures are retained privately.
+
+Owned browser statuses503,200,200,409,200,200 prove exact-ID/body response-loss
+replay, competing selection conflict, explicit latest adoption and task-only chat
+configuration. Four immutable versions/operations result(planner3/conversation1).
+Original task/scope/approval remains exact; defaults, target traffic and call records
+remain empty and audit is valid. Readable profile labels appear only for exact current
+profile revisions; different historical revisions retain their identifiers. Desktop
+DOM/screenshots inspected; owned tabs close and fixture temp directory is removed.
+Browser uses the bound app profile service; the later backend change affects only
+the unbound factory, covered separately. Later frontend change is label formatting
+only and its final render was inspected. Node103 and production build pass.
+
+Full source/installed package, both-store98→97→98/restore, hosted checks and complete
+mobile/screen-reader validation remain pending. Version remains0.2.0a1. Older97
+understands retained records generically but does not honor task model pins during
+AI calls; rollback rehearsal must suspend AI planning/conversation and verifies
+record preservation rather than equivalent old-version model execution.
 Merged model profiles main run37390419067 is now terminal success at
 994963dd2d87303b99f76acdb4336fb894a0e0ca: verify, postgres-storage, both image
 variants and both Compose variants all succeed. This six-job main result is distinct
@@ -6930,3 +6966,37 @@ de38cca7613540bad4ab8c8d781d620e8337fc91: verify, postgres-storage, both contain
 variants and both Compose variants all succeed. This six-job main result is
 separate from retained PR8 run37392213028. Later main commits reconcile documents
 only; the local97 preview and all59 persisted record bodies remain unchanged.
+
+Frozen task-model98 wheel is SHA25617516a854cfa2303cb1479ae9b2fa083757c9c5ed1104d5d07ffbb8028d69700
+at executable sourced6179affbbba69a3dc0f1ae90aef58f56c129d7d. Outside-checkout
+installation passes553 cases, with one SQLite skip of a native-owner-only case,
+in232.90s(3:52); temporary installation/owned cluster are removed. Both stores pass
+98→97→98 and offline backup restore with task selections/versions/operation receipts,
+actual catalog receipts, profile/default/prompt/archive/notification records and
+explicitly synthetic old call snapshots preserved. Exactly two owned catalog GETs
+and two intentional notification POSTs occur; transition/replay/restore add none.
+All selected rows and trusted checkpoints are exact/valid; restored sessions are zero.
+
+Old97 credentials are explicitly unavailable and chat is disabled; settings confirm
+AI planning/conversation unavailable, so this demonstrates safe maintenance record
+preservation rather than old-version enforcement of task-specific model semantics.
+New98 restores the reviewed credentials and immutable old selection receipt without
+rolling the current selection back. Later main merge is documentation only and does
+not change frozen98/executable UI/test/CI source. Full native and hosted checks remain
+pending; Node103, build and the public-source secret scan pass.
+
+Final frozen task-model98 full native/source run passes1,881 cases, with one SQLite
+skip of the native-owner-only catalog case, in1,268.43s(21:08). Python98 and all
+executable UI/test/CI source remain unchanged fromd6179af. Installed553(+same skip),
+Node103, both-store98→97→98 and offline backup restore, owned browser and official
+public-source secret scan pass. Retained PR9 hosted run37395323928 is pending;
+duplicate push run37395291216 is explicitly cancelled, not successful evidence.
+Subsequent documentation-only commits do not constitute another full source run.
+
+Retained PR9 run37395323928 is terminal success at
+cd0d8c3952eef889de646bc9d77560741efa3088: verify, postgres-storage, both image
+variants and both Compose variants all succeed. Executable implementation remains
+d6179af; subsequent commits merge/update documentation only. Final full native1,881
+(+one native-only SQLite skip), installed553(+same skip), Node103, both-store pair/
+backup, owned browser and public-source secret scan permit merging the scoped
+task model selection feature. This is not a v1 or full ARTEX parity declaration.
