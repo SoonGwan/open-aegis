@@ -36,7 +36,9 @@ claim complete ARTEX parity or detection of every vulnerability.
   planner/conversation defaults; inspect the snapshots saved with each call. Model
   profiles, explicit catalog lookup, task-specific planner/conversation selections and
   a fixed-message provider connection check have passed their scoped verification.
-  Creation-time selection, custom agent bindings and automatic failover remain open.
+  Model settings preserve unresolved request IDs and reviewed input across reloads
+  until an explicit retry or cleanup. Creation-time selection, custom agent bindings
+  and automatic failover remain open.
 - Configure fixed webhook notifications with delivery/attempt history and explicit
   bounded manual retries.
 - Use optional OpenAI-compatible planning and recorded-evidence conversation;
@@ -115,8 +117,11 @@ backup/restore checks. Hosted Ubuntu24.04 image and Compose rehearsals cover sta
 authentication, retained data and clean shutdown. The current connection-enabled
 100-module backend passed1,930 full native checks and606 installed-wheel checks,
 with two SQLite skips for native ownership-only cases in each run; the native
-variants passed. The console passed103 frontend checks. All six jobs passed in
-[the retained main run](https://github.com/SoonGwan/open-aegis/actions/runs/37399067286).
+variants passed. The connection console passed103 frontend checks; its latest
+unresolved-model-request recovery changes passed114 frontend checks and146 related
+native lifecycle checks. All six jobs passed in
+[the connection main run](https://github.com/SoonGwan/open-aegis/actions/runs/37399067286)
+and [the recovery PR run](https://github.com/SoonGwan/open-aegis/actions/runs/37403128445).
 These are scoped results for the recorded source, rather than results for pending
 feature branches. See [validation records](docs/VALIDATION.md) for source identities,
 preserved receipts and the remaining v1 checks. This project has not

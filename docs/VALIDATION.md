@@ -7166,3 +7166,12 @@ The full hosted metadata and log are preserved independently of initial failed
 run37400366919. This closes the scoped frontend/fixture admission; production
 Python remains frozen100, frontend remains the114-test reviewed implementation.
 Main preview preservation and its own hosted checks follow separately.
+
+PR11 merges ascb58da8 after retained retry37403128445 passes all six jobs.
+Root local preview serves byte-exact114-test UIindex-_bnAr0tZ.js and existing CSS,
+while all100 packaged Python modules remain frozen connection source. Its59
+record bodies retain SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c
+and original task states; no fixture creation/execution approval is performed.
+Health and anonymous401 checks pass. Old owned PID89699 was identified by
+command/cwd before SIGINT; old assets are preserved. This remains local preview,
+not external deployment. Main hosted37404557449 atcb58da8 remains in progress.
