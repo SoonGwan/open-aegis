@@ -6993,6 +6993,27 @@ and removed explicitly after confirming the process is gone. No graceful-finally
 cleanup claim is made for that run. Node103/build/design pass; final broader tests,
 installed/full/version-transition/backup/hosted verification remain pending.
 
+Final related backend/native tests pass186 with two SQLite skips of native-owner-
+only catalog/connection cases in98.43s. Frozen100 wheel is
+SHA25610423e55686511aa1f9310d4029218e23c9db1ba1baec395e0c5a195266f902f,
+with exact packaged source100 and executable implementation0fe8955. Later merge
+changes documents only. Both stores pass100→98→100 and offline backup restore,
+preserving actual inference/catalog receipts and task selection/profile/default/
+prompt/archive/notification rows alongside explicitly synthetic old call snapshots.
+Exactly two owned inference POSTs, two catalog GETs and two intentional notification
+POSTs occur across both stores; version transition/replay/restore adds none.
+Old98 AI credentials/chat are disabled for maintenance; restored sessions are zero
+and selected rows/trusted checkpoints remain exact/valid. Temporary cluster and
+installations are removed. The initial no-build-isolation wheel attempt fails
+metadata because the local environment lacks bdist_wheel; the normal isolated
+build succeeds without changing source. Public-source scan covers421 files with
+zero findings. Full regression and installed/hosted checks remain pending.
+
+The final shared provider-check UI also runs an actual owned catalog GET at
+/v1/models, preserves the safe model ID and discards metadata. Exactly one GET,
+zero inference POSTs, zero target traffic/call/default changes and valid audit
+confirm the original catalog mode remains separate from connection tests.
+
 
 Frozen task-model98 wheel is SHA25617516a854cfa2303cb1479ae9b2fa083757c9c5ed1104d5d07ffbb8028d69700
 at executable sourced6179affbbba69a3dc0f1ae90aef58f56c129d7d. Outside-checkout
@@ -7019,4 +7040,3 @@ Node103, both-store98→97→98 and offline backup restore, owned browser and of
 public-source secret scan pass. Retained PR9 hosted run37395323928 is pending;
 duplicate push run37395291216 is explicitly cancelled, not successful evidence.
 Subsequent documentation-only commits do not constitute another full source run.
-
