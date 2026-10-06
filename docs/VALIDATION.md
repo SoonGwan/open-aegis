@@ -6961,6 +6961,32 @@ prompt/channel/category/template/catalog-history reads require authentication401
 This remains a local preview, not external hosting. Main run37394395526 is pending;
 retained PR8 run37392213028 has six terminal successes.
 
+Independent provider connection checks implement a fixed short inference POST,
+durable immutable receipts, fresh administrator/profile/credential review after
+DNS, safe reported token counters and call-time price estimates with quote URLs
+excluded. Planning/conversation usage aggregates intentionally exclude these checks.
+Catalog and connection checks share the durable protocol and reviewed UI with
+separate kinds, request identities, histories and network payloads.
+
+Initial connection tests pass18 cases; expanded usage/pricing tests pass38; native
+owner loss/concurrent replay/stop cases pass45 with one native-only SQLite skip.
+The first expanded lifecycle run fails after38 passes because the adapted restart
+test refers to the old fixture helper query and models field; correcting the test
+to check and tokens preserves the same restart/no-second-request assertions.
+Catalog/audit/initial connection integration passes77 with one skip before the
+later test additions. SQL paging/caps and strict admission pass4 cases; the200-row
+boundary uses174 explicitly synthetic rows after26 actual owned POSTs per store.
+
+Owned browser statuses are503,200,409,200: the first two exact UUID/bodies replay
+one committed inference, stale profile1 is blocked, and explicit profile2 adoption
+creates one new inference. Exactly two POSTs and two receipts, no task/default/call
+or target-traffic mutation, valid audit. Final readable UI shows historical model1
+under current profile2. Both owned tabs close. The fixture exits143 on SIGTERM;
+its remaining temporary SQLite folder is verified against those exact receipt IDs
+and removed explicitly after confirming the process is gone. No graceful-finally
+cleanup claim is made for that run. Node103/build/design pass; final broader tests,
+installed/full/version-transition/backup/hosted verification remain pending.
+
 
 Frozen task-model98 wheel is SHA25617516a854cfa2303cb1479ae9b2fa083757c9c5ed1104d5d07ffbb8028d69700
 at executable sourced6179affbbba69a3dc0f1ae90aef58f56c129d7d. Outside-checkout

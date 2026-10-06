@@ -21,6 +21,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .task_templates import Templates, TemplateInput, TemplateEdit, TemplateArchive, TemplateApply
 from .model_profiles import Profiles, ProfileInput, ProfileEdit, DefaultEdit
 from .model_catalog import Catalog, CatalogInput
+from .model_connection import ConnectionCheck,ConnectionInput
 from .task_models import TaskModels, TaskModelEdit
 from .prompt_versions import Prompts, Purpose, PromptEdit, PromptPreview
 from .notification_transport import Webhooks
@@ -258,6 +259,7 @@ def create_app(data_dir=None, allow_private=None):
         task_models = TaskModels(store,model_profiles)
         model_profiles.task_models = task_models
         model_catalog = Catalog(store,model_profiles,shutdown_requested)
+        model_connection = ConnectionCheck(store,model_profiles,shutdown_requested)
         notification_channels = Channels(store,Webhooks.from_env())
         notification_deliveries = Deliveries(store,notification_channels)
     except BaseException:
@@ -508,11 +510,13 @@ def create_app(data_dir=None, allow_private=None):
         try:
             notification_deliveries.start()
             model_catalog.start()
+            model_connection.start()
             yield
         finally:
             scheduler_stop.set()
             thread.join(timeout=6)
             try:
+                await asyncio.to_thread(model_connection.close)
                 await asyncio.to_thread(model_catalog.close)
                 await asyncio.to_thread(notification_deliveries.close)
                 await asyncio.to_thread(event_planner.close)
@@ -526,6 +530,7 @@ def create_app(data_dir=None, allow_private=None):
     app.state.event_planner = event_planner
     app.state.model_profiles = model_profiles
     app.state.model_catalog = model_catalog
+    app.state.model_connection = model_connection
     app.state.task_models = task_models
     app.state.notification_channels = notification_channels
     app.state.notification_deliveries = notification_deliveries
@@ -948,6 +953,15 @@ def create_app(data_dir=None, allow_private=None):
     def model_catalog_history(id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
         model_profiles.get(id)
         return store.page('model_catalog_queries',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':id})
+
+    @app.post('/api/model-profiles/{id}/connection-test')
+    def model_connection_test(id:str,data:ConnectionInput,actor=Depends(administrator)):
+        return model_connection.read(id,data,actor)
+
+    @app.get('/api/model-profiles/{id}/connection-history',dependencies=auth)
+    def model_connection_history(id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
+        model_profiles.get(id)
+        return store.page('model_connection_checks',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':id})
 
     @app.put('/api/model-defaults/{purpose}')
     def model_default_change(purpose:Purpose,data:DefaultEdit,actor=Depends(administrator)):
