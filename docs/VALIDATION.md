@@ -6967,6 +6967,63 @@ variants and both Compose variants all succeed. This six-job main result is
 separate from retained PR8 run37392213028. Later main commits reconcile documents
 only; the local97 preview and all59 persisted record bodies remain unchanged.
 
+Independent provider connection checks implement a fixed short inference POST,
+durable immutable receipts, fresh administrator/profile/credential review after
+DNS, safe reported token counters and call-time price estimates with quote URLs
+excluded. Planning/conversation usage aggregates intentionally exclude these checks.
+Catalog and connection checks share the durable protocol and reviewed UI with
+separate kinds, request identities, histories and network payloads.
+
+Initial connection tests pass18 cases; expanded usage/pricing tests pass38; native
+owner loss/concurrent replay/stop cases pass45 with one native-only SQLite skip.
+The first expanded lifecycle run fails after38 passes because the adapted restart
+test refers to the old fixture helper query and models field; correcting the test
+to check and tokens preserves the same restart/no-second-request assertions.
+Catalog/audit/initial connection integration passes77 with one skip before the
+later test additions. SQL paging/caps and strict admission pass4 cases; the200-row
+boundary uses174 explicitly synthetic rows after26 actual owned POSTs per store.
+
+Owned browser statuses are503,200,409,200: the first two exact UUID/bodies replay
+one committed inference, stale profile1 is blocked, and explicit profile2 adoption
+creates one new inference. Exactly two POSTs and two receipts, no task/default/call
+or target-traffic mutation, valid audit. Final readable UI shows historical model1
+under current profile2. Both owned tabs close. The fixture exits143 on SIGTERM;
+its remaining temporary SQLite folder is verified against those exact receipt IDs
+and removed explicitly after confirming the process is gone. No graceful-finally
+cleanup claim is made for that run. Node103/build/design pass; final broader tests,
+installed/full/version-transition/backup/hosted verification remain pending.
+
+Final related backend/native tests pass186 with two SQLite skips of native-owner-
+only catalog/connection cases in98.43s. Frozen100 wheel is
+SHA25610423e55686511aa1f9310d4029218e23c9db1ba1baec395e0c5a195266f902f,
+with exact packaged source100 and executable implementation0fe8955. Later merge
+changes documents only. Both stores pass100→98→100 and offline backup restore,
+preserving actual inference/catalog receipts and task selection/profile/default/
+prompt/archive/notification rows alongside explicitly synthetic old call snapshots.
+Exactly two owned inference POSTs, two catalog GETs and two intentional notification
+POSTs occur across both stores; version transition/replay/restore adds none.
+Old98 AI credentials/chat are disabled for maintenance; restored sessions are zero
+and selected rows/trusted checkpoints remain exact/valid. Temporary cluster and
+installations are removed. The initial no-build-isolation wheel attempt fails
+metadata because the local environment lacks bdist_wheel; the normal isolated
+build succeeds without changing source. Public-source scan covers421 files with
+zero findings. Full regression and installed/hosted checks remain pending.
+
+The final shared provider-check UI also runs an actual owned catalog GET at
+/v1/models, preserves the safe model ID and discards metadata. Exactly one GET,
+zero inference POSTs, zero target traffic/call/default changes and valid audit
+confirm the original catalog mode remains separate from connection tests.
+
+Frozen100 outside-checkout installation passes606 cases, with two SQLite skips
+of native-owner-only catalog/connection cases, in272.92s(4:32). Installed package
+origin is the temporary environment, not the checkout; the owned native cluster
+and installation are removed. The separate final catalog UI fixture closes its
+owned tab and exits0 on SIGINT, reporting temporary-directory cleanup=true.
+Retained stacked PR10 hosted run37396948433 is pending, as is full native100;
+duplicate push run37396903125 is explicitly cancelled, not success evidence.
+No executable source changes accompany this receipt update.
+
+
 Frozen task-model98 wheel is SHA25617516a854cfa2303cb1479ae9b2fa083757c9c5ed1104d5d07ffbb8028d69700
 at executable sourced6179affbbba69a3dc0f1ae90aef58f56c129d7d. Outside-checkout
 installation passes553 cases, with one SQLite skip of a native-owner-only case,
@@ -6993,6 +7050,7 @@ public-source secret scan pass. Retained PR9 hosted run37395323928 is pending;
 duplicate push run37395291216 is explicitly cancelled, not successful evidence.
 Subsequent documentation-only commits do not constitute another full source run.
 
+
 Retained PR9 run37395323928 is terminal success at
 cd0d8c3952eef889de646bc9d77560741efa3088: verify, postgres-storage, both image
 variants and both Compose variants all succeed. Executable implementation remains
@@ -7013,3 +7071,15 @@ This is a local preview, not external hosting. Main run37397383118 is pending;
 retained PR9 run37395323928 has six terminal successes. Current readiness/inventory/
 feature documents distinguish verified existing-task selections from creation-time
 pins, custom agents and other remaining model work.
+
+Final frozen100 full native/source regression passes1,930 cases, with two SQLite
+skips of native-owner-only catalog/connection cases, in1,312.49s(21:52).
+Retained PR10 run37396948433 has six terminal successes at
+01b950f3014e7ce009187f4ae17f6d7add598e41: verify, postgres-storage, both image
+variants and both Compose variants. The initial stacked executable base matches
+merged task mainc011645; PR10 now targets main, and later merges only change
+documents. Python100 and all executable UI/test/CI source remain unchanged from
+0fe8955. Installed606(+same two skips), Node103, both-store100→98→100/backup,
+owned connection/catalog browsers and public-source scan421/zero permit merging
+this scoped feature after the independent task-main result is retained.
+Version stays0.2.0a1; no full parity/v1/external hosting declaration is made.

@@ -161,6 +161,7 @@ class Store:
             'tasks': ('name', 'status', 'goal'),
             'model_profiles':('name','model','destination_id'),
     'model_catalog_queries':('profile_id','status','result_code'),
+    'model_connection_checks':('profile_id','status','result_code'),
     'task_model_selections':('purpose','profile_id'),
     'task_model_versions':('purpose',),
             'model_profile_versions':('actor.name','snapshot.name','snapshot.model'),
