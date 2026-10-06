@@ -6872,3 +6872,9 @@ only in readable local timestamp formatting. Full mobile/screen-reader work is o
 Final full native, installed wheel,97→96→97/backup restore and GitHub jobs remain
 pending. Version remains0.2.0a1. No third-party scans or actual chat connectivity
 claim is added by catalog success.
+Merged model profiles main run37390419067 is now terminal success at
+994963dd2d87303b99f76acdb4336fb894a0e0ca: verify, postgres-storage, both image
+variants and both Compose variants all succeed. This six-job main result is distinct
+from retained PR7 run37387988876; earlier report main37389130077 remains cancelled.
+Local preview still serves the exact frozen96 source with all59 record bodies
+preserved. The independent catalog branch is not part of this main proof.
