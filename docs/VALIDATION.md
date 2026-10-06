@@ -7238,3 +7238,26 @@ reads401 and creation POST401 pass; no fixture task or approval is added to root
 Owned old PID15823 was identified and stopped with SIGINT before this restart.
 Main hosted37406589245 at5649b54 remains in progress. This is local preview,
 not external hosting or a v1 release. Native Claude PR13 remains a separate draft.
+
+Creation main retained37406589245 at5649b54 completes all six hosted jobs.
+Metadata/full logs are retained before the independent project-site merge. PR14
+adds static site/ and a separate pinned Pages workflow; Python/API/tests/app UI
+and existing Verify workflow remain unchanged. Its scope is English/Korean
+introduction and the existing owned-fixture screenshot, not hosted application.
+
+Project site PR14 merges asac97ace. Local desktop review covers English hero/
+install anchor, language switch and Korean hero; owned iframe reviews English
+320/390px and Korean320/768px, including a Korean keep-all line-wrap improvement.
+The cross-frame DOM mirror does not expose contentDocument; no child overflow
+measurement or mobile-device/SR claim is made. Local page links/anchors/resources/
+language and original screenshot equality pass; seven publish-source files scan
+with zero Gitleaks findings. Formatter/diff-check pass.
+
+Initial manual Project website37408139703 atmainac97ace passes publish. GitHub
+Pages is configured for Actions with HTTPS; only site/ is uploaded. Public root/
+index/Korean/CSS/dashboard HTTPS200 bytes match every reviewed published file.
+Actual public browser English→Korean link works. Repository homepage points to
+https://soongwan.github.io/open-aegis/ and private vulnerability reporting is
+independently confirmed enabled. This is project introduction publication, not
+external security-backend hosting or v1. Source-core verification remains retained
+creation main37406589245 because the site/README additions do not change it.

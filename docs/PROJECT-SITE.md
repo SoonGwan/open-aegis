@@ -22,3 +22,10 @@ application data, ignored artifacts, a server executable or the entire checkout.
 The deploy job has Pages/OIDC permissions and uses the `github-pages` environment;
 it does not deploy from pull requests or other branches. A successful deployment
 and independent public HTTP/asset checks are required before claiming publication.
+
+The introduction is published at[soongwan.github.io/open-aegis](https://soongwan.github.io/open-aegis/),
+with[Korean](https://soongwan.github.io/open-aegis/ko.html) and English pages.
+Initial manual workflow37408139703 atmainac97ace completes successfully. Public
+HTTPS200 responses for root/index/Korean/CSS/dashboard image match the reviewed
+files byte-for-byte; live browser language switching also passes. This publication
+does not host the security application's backend or constitute a v1 release.
