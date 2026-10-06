@@ -7099,3 +7099,11 @@ profile/catalog/task-model/connection-history reads remain unauthenticated401.
 This is local preview, not external hosting. Main run37399067286 is pending;
 retained PR10 run37396948433 has six terminal successes. The separate frontend
 pending-request-recovery worktree is not part of this deployed local UI proof.
+
+Connection main run37399067286 has six terminal successes at
+8b9a992bde836cfdab625c100e5e36bf37be64ef: verify, postgres-storage, both image
+variants and both Compose variants. Metadata and the completed log are retained
+before further feature merges; this supersedes the earlier pending status above.
+The separate frontend reload-recovery PR11 is draft at dc9521626edef4bf7529f2671b160ba27027d024
+with retained hosted run37400366919 still pending. Root preview remains frozen100;
+no pending-recovery frontend has been deployed to the root preview.
