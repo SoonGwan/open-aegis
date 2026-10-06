@@ -37,8 +37,9 @@ claim complete ARTEX parity or detection of every vulnerability.
   profiles, explicit catalog lookup, task-specific planner/conversation selections and
   a fixed-message provider connection check have passed their scoped verification.
   Model settings preserve unresolved request IDs and reviewed input across reloads
-  until an explicit retry or cleanup. Creation-time selection, custom agent bindings
-  and automatic failover remain open.
+  until an explicit retry or cleanup. Creation-time planner/conversation selection
+  and recovery have also passed scoped verification. Custom agent bindings and
+  automatic failover remain open.
 - Configure fixed webhook notifications with delivery/attempt history and explicit
   bounded manual retries.
 - Use optional OpenAI-compatible planning and recorded-evidence conversation;

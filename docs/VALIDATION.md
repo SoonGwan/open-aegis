@@ -7229,6 +7229,16 @@ PR11 main37404557449 atcb58da8 also completes all six terminal successes before
 the creation merge. Current creation executable source/tests/UI/CI match011104a;
 intervening merges and evidence changes are documentation only.
 
+Creation PR12 merges as5649b54 after retained37403602102 passes all six jobs.
+Root local preview now serves byte-exact frozen101 Python and reviewed122-test
+UIindex-W7KEMjI3.js/CSS. Its59 record bodies retain
+SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c
+and original task states. Health200, exact UI asset hashes, anonymous model-related
+reads401 and creation POST401 pass; no fixture task or approval is added to root.
+Owned old PID15823 was identified and stopped with SIGINT before this restart.
+Main hosted37406589245 at5649b54 remains in progress. This is local preview,
+not external hosting or a v1 release. Native Claude PR13 remains a separate draft.
+
 Native direct Anthropic protocol is implemented in an isolated branch over frozen
 creation101. Default OpenAI wire format and review binding remain unchanged; native
 protocol binds review/reference and uses bounded text messages/check16/catalog256.
