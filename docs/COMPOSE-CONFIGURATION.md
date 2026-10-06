@@ -38,3 +38,8 @@ The real `scripts/review_compose.py` separately checks exact variables inside th
 running container, model/notification configuration availability, both storage
 backends, persistence, backup/restore and cleanup. Hosted container verification
 is required before declaring the environment-forwarding fix accepted.
+
+Retained GitHub run37409040964 atdb04abe passes all six jobs, including both actual
+Compose storage backends and image modes. Local configuration review passes without
+a daemon; local container execution is not claimed. This acceptance does not cover
+an external production deployment or every possible integration variable.
