@@ -7107,3 +7107,19 @@ before further feature merges; this supersedes the earlier pending status above.
 The separate frontend reload-recovery PR11 is draft at dc9521626edef4bf7529f2671b160ba27027d024
 with retained hosted run37400366919 still pending. Root preview remains frozen100;
 no pending-recovery frontend has been deployed to the root preview.
+
+Frontend pending PR11 retained run37400366919 completes with five successes and a
+postgres-storage failure at dc9521626edef4bf7529f2671b160ba27027d024. Its MCP group
+records601 passed/1 skipped/1 failed: test_startup_recovers_unsaved_cleanup_even_when_source_task_already_terminated[postgres]
+refuses new Engine admission with WorkspaceBusy after the test stops only the old
+engine. Failed metadata/log are retained; the PR is not merged or relabelled success.
+
+The exact test on an unchanged source is exercised with a controlled admitted
+EventPlanner read: engine-only stop fails, recording reader PID17213 as a granted
+runtime ShareLock at new-owner refusal. Joining background workers before engine
+shutdown passes the original recovery assertions. This establishes this local race
+mechanism, not the unrecorded historical holder in GitHub. The two engine replacement
+fixtures in MCP revocations now mirror application service shutdown order in an
+isolated worktree, with four targeted cases passing; related native regression and
+new exact-source hosted verification are required before PR11 merge. Production
+Python, UI and ownership fencing are unchanged. Root preview remains100.
