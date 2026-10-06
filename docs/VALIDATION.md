@@ -7346,3 +7346,20 @@ Public corrected-source scan435 candidates has zero findings. Fresh full/native
 and retained hosted37407203007 remain in progress. Separate30-minute owned
 SQLite/PostgreSQL execution/read/recovery rehearsals run concurrently with these
 local regressions; their measurements will not be presented as production SLOs.
+
+Corrected retained native PR13 run37407203007 atca1a804 completes all six
+hosted jobs successfully. Metadata/full logs are retained separately from the
+initial failed37405655116 and duplicate cancelled37407200186. This is exact
+corrected API/Python/tests/UI/Verify-source evidence; later documentation/website
+merges do not change those sources. It supersedes the hosted-pending status above.
+
+The corrected local full run mistakenly omits OpenSSL3 from PATH. It encounters
+36 release-fixture errors; one native signed-bundle setup reproduces the identical
+Ed25519 key-generation failure under the default executable. With documented
+OpenSSL3/native PostgreSQL PATH the unchanged native/SQLite release group passes
+36 cases in6.33s. Owned full PID40507 is identified by command/cwd and interrupted
+with SIGINT; terminal2 records1,533 passed/2 skips/36 errors in1,240.59s. Its
+resources close and no owned test PostgreSQL cluster remains. It is not a success
+receipt. A fresh exactca1a804 full run with OpenSSL3 is in progress; no source or
+assertion changes are made for this environment correction. The corresponding
+full/source acceptance remains open despite hosted all-six/installed753 success.
