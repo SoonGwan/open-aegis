@@ -6904,3 +6904,12 @@ source remain unchanged fromead23e0. Installed529/Node103, both-store97→96→9
 backup restore, owned browser and public-source secret scan also pass. The retained
 PR8 hosted PostgreSQL job remains pending; five other jobs have succeeded. This
 scoped feature is ready for final hosted review, not a v1 or full parity declaration.
+
+
+Retained PR8 run37392213028 is now terminal success at executable source
+ead23e0d9e7747356a0caff8f25c309faf4810fe: verify, postgres-storage, both image
+variants and both Compose variants all succeed. Final native1,857(+one native-only
+SQLite skip), installed529(+same skip), Node103, both-store transitions/restore and
+owned browser receipts permit merging the scoped catalog feature. Later local
+commits merge/update documentation only; Python97 and executable UI/test/CI source
+remain exact. Version remains0.2.0a1; this is not a full parity/v1 declaration.
