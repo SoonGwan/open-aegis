@@ -6961,6 +6961,11 @@ prompt/channel/category/template/catalog-history reads require authentication401
 This remains a local preview, not external hosting. Main run37394395526 is pending;
 retained PR8 run37392213028 has six terminal successes.
 
+Catalog main run37394395526 is now terminal success at
+de38cca7613540bad4ab8c8d781d620e8337fc91: verify, postgres-storage, both container
+variants and both Compose variants all succeed. This six-job main result is
+separate from retained PR8 run37392213028. Later main commits reconcile documents
+only; the local97 preview and all59 persisted record bodies remain unchanged.
 
 Frozen task-model98 wheel is SHA25617516a854cfa2303cb1479ae9b2fa083757c9c5ed1104d5d07ffbb8028d69700
 at executable sourced6179affbbba69a3dc0f1ae90aef58f56c129d7d. Outside-checkout
@@ -6987,3 +6992,4 @@ Node103, both-store98→97→98 and offline backup restore, owned browser and of
 public-source secret scan pass. Retained PR9 hosted run37395323928 is pending;
 duplicate push run37395291216 is explicitly cancelled, not successful evidence.
 Subsequent documentation-only commits do not constitute another full source run.
+
