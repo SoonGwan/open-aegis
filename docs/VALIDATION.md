@@ -7214,3 +7214,11 @@ verifies six signed payloads and64-byte signature; its temporary private key is
 removed. This is a local rehearsal key/bundle, not an official published release.
 PR12 is retargeted to main after PR11 merge; this merge changes documentation only
 and retains original in-progress hosted37403602102/source011104a.
+
+Frozen101 full source/native regression completes1,970 passed,2 SQLite skips
+for native-owner-only checks in1,321.74s(22:01). Both native variants run; all
+packaged Python/UI bytes remain identical to1ca5e4f. This supersedes the full
+source-pending status above. Installed650(+2 skips), Node122, owned browser,
+both-store101→100→101/restore, exact signed bundle and installed HTTP/UI checks
+are complete. PR12 retained37403602102 and main PR11 run37404557449 remain
+in progress and are preserved until terminal completion before further merging.
