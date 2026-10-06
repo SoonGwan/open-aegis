@@ -26,7 +26,8 @@ def test_launch_loads_named_integration_values_without_shell_or_system_overrides
         ' def __init__(self,*a,**kw): pass\n'
         f' def run(self): print(json.dumps({{k:os.environ.get(k) for k in {names!r}}}))\n')
     config = {
-        'AEGIS_MODEL_DESTINATIONS': [{'base_env': 'OWNED_MODEL_BASE', 'key_env': 'OWNED_MODEL_KEY'}],
+        'AEGIS_MODEL_DESTINATIONS': [{'base_env': 'OWNED_MODEL_BASE', 'key_env': 'OWNED_MODEL_KEY'},
+                                   {'base_env': 'HOME', 'key_env': 'OWNED_MODEL_KEY'}],
         'AEGIS_NOTIFICATION_DESTINATIONS': [{'endpoint_env': 'OWNED_WEBHOOK', 'token_env': 'OWNED_OVERRIDE'}],
         'AEGIS_SCOPESENTRY_SOURCES': [{'token_env': 'OWNED_TOKEN'}],
         'AEGIS_MCP_CONNECTIONS': [{'token_env': 'OWNED_TOKEN'}],
