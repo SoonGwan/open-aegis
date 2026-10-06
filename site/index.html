@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Open Aegis is a self-hosted, MIT open source security validation workspace. Connect authorized assets, approvals, evidence and independent retests."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'self'; form-action 'none'"
+    />
+    <meta name="theme-color" content="#f8f5ed" />
+    <title>Open Aegis — From assets to evidence.</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="header wrap">
+      <a class="brand" href="./" aria-label="Open Aegis home"
+        ><span class="mark" aria-hidden="true">A</span> OPEN AEGIS</a
+      >
+      <nav aria-label="Main navigation">
+        <a href="#workflow">How it works</a><a href="#install">Install</a
+        ><a href="ko.html" lang="ko">한국어</a
+        ><a class="repo" href="https://github.com/SoonGwan/open-aegis"
+          >GitHub ↗</a
+        >
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="dot" aria-hidden="true"></span> SELF-HOSTED · MIT ·
+            OPEN SOURCE
+          </p>
+          <h1 id="hero-title">From assets<br />to <span>evidence.</span></h1>
+          <p class="lead">
+            Know what was checked. Review what runs. Keep the proof when you fix
+            it.
+          </p>
+          <p class="intro">
+            A security validation workspace that connects your authorized
+            assets, reviewed plans, findings and independent retests.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#install"
+              >Start locally <span aria-hidden="true">↗</span></a
+            ><a class="button" href="https://github.com/SoonGwan/open-aegis"
+              >Explore the source</a
+            >
+          </div>
+          <p class="version">
+            Current: <strong>0.2.0a1</strong> · Pre-release validation candidate
+          </p>
+        </div>
+        <div class="hero-note">
+          <p class="small-label">THE WORKFLOW</p>
+          <ol>
+            <li><span>01</span> Define your scope</li>
+            <li><span>02</span> Review & approve</li>
+            <li><span>03</span> Collect the evidence</li>
+            <li><span>04</span> Fix & verify again</li>
+          </ol>
+          <p class="note-footer">
+            Your infrastructure.<br />Your records. Your decisions.
+          </p>
+        </div>
+      </section>
+      <section class="preview wrap" aria-label="Console preview">
+        <div class="preview-bar">
+          <span class="window-dots" aria-hidden="true">● ● ●</span
+          ><span>THE WORKSPACE / LOCAL SYNTHETIC FIXTURE</span
+          ><span class="badge">KOREAN CONSOLE</span>
+        </div>
+        <img
+          src="assets/dashboard.jpg"
+          alt="Open Aegis console showing a dashboard with asset, task, finding and coverage summaries from an owned synthetic test service"
+          width="1440"
+          loading="eager"
+        />
+        <p class="caption">
+          An actual console screenshot from an owned synthetic service. This
+          page introduces the project; install the application to use your own
+          workspace.
+        </p>
+      </section>
+      <section
+        class="section wrap"
+        id="workflow"
+        aria-labelledby="workflow-title"
+      >
+        <div class="section-heading">
+          <p class="eyebrow">REVIEW → RUN → RETEST</p>
+          <h2 id="workflow-title">A trail you can follow.</h2>
+          <p>
+            Bring a question. Leave with the check, its result and the next
+            decision connected.
+          </p>
+        </div>
+        <div class="steps">
+          <article>
+            <span class="step">01 / SCOPE</span>
+            <h3>Start with what you own.</h3>
+            <p>
+              Register assets, owners, tags and explicit API access
+              expectations. Each plan captures its scope and execution limits.
+            </p>
+          </article>
+          <article>
+            <span class="step">02 / APPROVAL</span>
+            <h3>Make the decision visible.</h3>
+            <p>
+              Review a plan and approve execution separately. Goal decomposition
+              and result-based follow-ups prepare proposals for a fresh
+              decision.
+            </p>
+          </article>
+          <article>
+            <span class="step">03 / EVIDENCE</span>
+            <h3>Keep the context.</h3>
+            <p>
+              Trace coverage, findings, traffic metadata, worker progress and
+              audit records. Export Markdown, CSV and JSON evidence.
+            </p>
+          </article>
+          <article>
+            <span class="step">04 / RETEST</span>
+            <h3>Verify the fix.</h3>
+            <p>
+              Record the remediation and run an independently approved retest.
+              Preserve the original evidence and the new result.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section
+        class="capabilities section"
+        aria-labelledby="capabilities-title"
+      >
+        <div class="wrap">
+          <div class="section-heading">
+            <p class="eyebrow">ONE SHARED WORKSPACE</p>
+            <h2 id="capabilities-title">Useful pieces, connected.</h2>
+          </div>
+          <div class="cards">
+            <article>
+              <h3>Bounded validation</h3>
+              <p>
+                HTTP headers, HTTPS/HSTS, certificate expiry, cookie flags,
+                CORS, scoped links and operator-defined GET API authorization
+                expectations.
+              </p>
+            </article>
+            <article>
+              <h3>Planning & workers</h3>
+              <p>
+                Rule-based planning, optional AI order and goal drafts, declared
+                worker dependencies, shared todos and reviewed follow-up plans.
+              </p>
+            </article>
+            <article>
+              <h3>Daily operations</h3>
+              <p>
+                Versioned templates, task categories, archives, schedules, notes
+                and fixed webhook notifications with delivery history.
+              </p>
+            </article>
+            <article>
+              <h3>Reviewed model settings</h3>
+              <p>
+                Fixed-recipient model profiles, planner/conversation choices at
+                task creation, catalog lookup, connection checks and request
+                recovery.
+              </p>
+            </article>
+            <article>
+              <h3>Explicit integrations</h3>
+              <p>
+                Review ScopeSentry imports before applying assets. Read existing
+                records through stdio MCP and review scoped remote GET execution
+                separately.
+              </p>
+            </article>
+            <article>
+              <h3>Own the records</h3>
+              <p>
+                SQLite or native PostgreSQL, backup/restore commands, audit
+                checkpoints and administrator/operator/viewer roles.
+              </p>
+            </article>
+          </div>
+          <a
+            class="text-link"
+            href="https://github.com/SoonGwan/open-aegis/blob/main/docs/FEATURES.md"
+            >See implementation status and remaining work ↗</a
+          >
+        </div>
+      </section>
+      <section
+        class="section wrap install"
+        id="install"
+        aria-labelledby="install-title"
+      >
+        <div>
+          <p class="eyebrow">RUN IT ON YOUR TERMS</p>
+          <h2 id="install-title">A local workspace<br />in three steps.</h2>
+          <p>
+            Install Python 3.11+ and Node.js 22 with npm. Then run these
+            commands from your terminal.
+          </p>
+          <p>
+            Open <code>http://127.0.0.1:8787</code> and create an administrator
+            password of at least 12 characters. The console is currently in
+            Korean.
+          </p>
+          <a
+            class="text-link"
+            href="https://github.com/SoonGwan/open-aegis/blob/main/README.en.md"
+            >Installation, Docker and configuration ↗</a
+          >
+        </div>
+        <div class="terminal">
+          <div class="terminal-header">
+            TERMINAL <span>LOCAL INSTALLATION</span>
+          </div>
+          <pre><code>git clone https://github.com/SoonGwan/open-aegis.git
+cd open-aegis
+./start.sh</code></pre>
+          <p>
+            The start script installs locked runtime dependencies and builds the
+            console.
+          </p>
+        </div>
+      </section>
+      <section class="section wrap about" aria-labelledby="about-title">
+        <div>
+          <p class="eyebrow">BUILT IN THE OPEN</p>
+          <h2 id="about-title">All implementation.<br />One MIT license.</h2>
+          <p>
+            Open Aegis is independently written, informed by ARTEX's public
+            feature structure. It does not copy or fork ARTEX code.
+          </p>
+          <p>
+            The current project is a pre-release candidate. Complete ARTEX
+            parity, an independent security audit, every vulnerability class and
+            production service guarantees are not claimed.
+          </p>
+        </div>
+        <div class="docs">
+          <a
+            href="https://github.com/SoonGwan/open-aegis/blob/main/docs/ARTEX-INVENTORY.md"
+            >ARTEX feature inventory <span aria-hidden="true">↗</span></a
+          ><a
+            href="https://github.com/SoonGwan/open-aegis/blob/main/docs/VALIDATION.md"
+            >Recorded verification <span aria-hidden="true">↗</span></a
+          ><a
+            href="https://github.com/SoonGwan/open-aegis/blob/main/docs/V1-READINESS.md"
+            >Release criteria & open work <span aria-hidden="true">↗</span></a
+          ><a
+            href="https://github.com/SoonGwan/open-aegis/blob/main/SECURITY.md"
+            >Security policy <span aria-hidden="true">↗</span></a
+          ><a
+            href="https://github.com/SoonGwan/open-aegis/blob/main/CONTRIBUTING.md"
+            >Contribute <span aria-hidden="true">↗</span></a
+          >
+        </div>
+      </section>
+    </main>
+    <footer class="wrap footer">
+      <span>OPEN AEGIS · MIT</span>
+      <p>Self-hosted security validation, with evidence you can inspect.</p>
+      <a href="https://github.com/SoonGwan/open-aegis">Source on GitHub ↗</a>
+    </footer>
+  </body>
+</html>
