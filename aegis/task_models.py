@@ -103,6 +103,8 @@ class TaskModels:
                 reference={'kind':'profile','purpose':purpose,'profile_id':profile_id,'profile_revision':profile['revision'],
                            'profile_fingerprint':profile['fingerprint'],'destination_id':profile['destination_id'],'model':profile['model'],
                            'selection_revision':selection['revision'],'selection_fingerprint':selection['fingerprint'],'destination_fingerprint':binding}
+                protocol=self.profiles.destinations.items[profile['destination_id']].protocol
+                if protocol!='openai':reference['provider_protocol']=protocol
                 choice=Choice(base,key,profile['model'],local,reference)
         if profile_id is None:choice=self.profiles.capture(purpose)
         if choice is None:return None

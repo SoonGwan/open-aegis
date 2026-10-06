@@ -7188,3 +7188,15 @@ skips in287.98s outside checkout. The temporary package origin is independently
 verified and native PostgreSQL variants run; temporary resources are removed.
 This supersedes the installed-pending status above. Full source/native and retained
 PR12 hosted37403602102 at011104a remain in progress; no v1/release claim is made.
+
+Native direct Anthropic protocol is implemented in an isolated branch over frozen
+creation101. Default OpenAI wire format and review binding remain unchanged; native
+protocol binds review/reference and uses bounded text messages/check16/catalog256.
+Provider input/output counters remain partial without an invented total or price.
+Actual owned HTTP first tests55 pass; new goal-pin test fails409 before correction
+because old goal code reads only environment-default credentials. After using the
+reviewed source-task planner selection and fresh guard, native goal plus original
+goal regressions42 pass. Expanded related native324 pass,2 native-owner-only SQLite
+skips in162.45s; Node122/build/typecheck pass. No third-party provider or target
+requests are made in this scope. Full/installed/transition/browser/hosted evidence
+is still required before merge; version remains0.2.0a1.

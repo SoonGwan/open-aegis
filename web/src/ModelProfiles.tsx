@@ -9,7 +9,7 @@ import type { ListPosition, HistoryMode } from "./navigation-state";
 type Purpose = "planner" | "conversation";
 type Profile = { id: string; name: string; model: string; destination_id: string; enabled: boolean; revision: number; configuration_available: boolean; destination_review_current: boolean; admin_review_current: boolean };
 type Selection = { purpose: Purpose; revision: number; profile_id: string | null; profile_revision: number | null; configuration_available: boolean };
-type Configuration = { destinations: { id: string; name: string; configuration_available: boolean }[]; defaults: Selection[]; conversation_enabled: boolean };
+type Configuration = { destinations: { id: string; name: string; configuration_available: boolean; protocol?: "openai" | "anthropic" }[]; defaults: Selection[]; conversation_enabled: boolean };
 type Body = Record<string, string | number | boolean | null>;
 const names = { planner: "검증 순서 계획", conversation: "기록 기반 대화" };
 const message = (error: unknown) => error instanceof Error ? error.message : "요청을 확인할 수 없습니다.";
@@ -114,7 +114,7 @@ function ProfileEditor({ actorId, initial, config, canAdmin, onClose, onSaved }:
     <p>검토 기준 버전 {base?.revision || 0} · 최대200개 버전. 활성화하면 현재 수신처 인증 설정을 검토한 것으로 기록합니다.</p>
     <label>프로필 이름<input value={name} maxLength={100} disabled={!canAdmin || state.locked} onChange={e => setName(e.target.value)} /></label>
     <label>모델 이름<input value={model} maxLength={160} disabled={!canAdmin || state.locked} onChange={e => setModel(e.target.value)} /></label>
-    <label>고정 수신처<select value={destination} disabled={!canAdmin || state.locked} onChange={e => setDestination(e.target.value)}>{config.destinations.map(item => <option key={item.id} value={item.id}>{item.name} · {item.configuration_available ? "설정 확인됨" : "설정 필요"}</option>)}</select></label>
+    <label>고정 수신처<select value={destination} disabled={!canAdmin || state.locked} onChange={e => setDestination(e.target.value)}>{config.destinations.map(item => <option key={item.id} value={item.id}>{item.name} · {item.protocol === "anthropic" ? "Claude API" : "OpenAI 호환 API"} · {item.configuration_available ? "설정 확인됨" : "설정 필요"}</option>)}</select></label>
     <label><input type="checkbox" checked={enabled} disabled={!canAdmin || state.locked} onChange={e => setEnabled(e.target.checked)} />활성화 및 현재 설정 검토</label>
     <p>프로필을 바꾸면 기존 용도별 선택도 다시 검토해야 합니다.</p><SaveStatus state={state} canAdmin={canAdmin} />
     {state.conflict && initial && <button disabled={reviewing} onClick={review}>최신 프로필 검토</button>}{reviewError && <p role="alert">{reviewError}</p>}

@@ -50,7 +50,7 @@ def _draft(summary, question, *, store, task_id, actor_id, allow_local=False, co
             choice.key, {'model':model,'temperature':0,'messages':[
                 {'role':'system','content':
                  prompts.system(prompt_snapshot, question)},
-                {'role':'user','content':prompt}]},allow_local=choice.local,control=control,timeout=8)
+                {'role':'user','content':prompt}]},allow_local=choice.local,control=control,timeout=8, **({'protocol':choice.protocol} if choice.protocol!='openai' else {}))
         metadata['outcome']='invalid_answer'
         metadata['tokens']=token_usage(raw.get('usage') if type(raw) is dict else None)
         parsed=json.loads(raw['choices'][0]['message']['content'])
