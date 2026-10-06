@@ -7160,3 +7160,25 @@ frozen100. Only tests/test_mcp_revocations.py changes executable test code. A fr
 hosted run on the combined source is required; the earlier hosted failure remains
 failure evidence. Full native1,930/installed606 are the retained frozen100 backend
 results, not newly rerun counts for this frontend/fixture change.
+
+Creation-time task model implementation1ca5e4f adds one independent Python module,
+with frozen101 wheelb15beceabadc84560913ce469ad86781630e16e57f37e9be0b5727c84395e6e4.
+All packaged Python bytes match the101-source manifest. Scoped related tests128,
+Node122, build/typecheck/design pass; owned browser creation503→new document→same
+ID/body200 produces one pending task/two initial selections without provider/target
+traffic. Real stale profile409 survives reload, explicit profile2 adoption retains
+the original task body and uses a new UUID; quota failure causes zero added dispatch.
+All owned creation tabs close and fixture SIGINT reports temporary cleanup true.
+
+Installed101→100→101 plus offline backup/restore passes both stores: actual initial
+creation receipt/two choices/history/current task, connection/catalog receipts,
+profile/default/prompt/archive/notification records and an explicitly synthetic
+old-call snapshot are preserved. Old100 reads task selections but returns405 for
+new creation and is run with AI credentials/chat disabled for maintenance. Selected
+rows/trusted checkpoint match and restored sessions are0. Across both stores only
+two owned inference POSTs, two catalog GETs and two intentional notification POSTs
+occur; replay/transitions/restore add none, no target traffic, owned temp/cluster
+cleanup completes. This is record preservation, not every old API execution guarantee.
+Full source/native and independently installed regression remain in progress.
+CI5126538 explicitly adds connection/creation native cases; it does not change frozen
+Python101/UI bytes. Pending recovery PR11 retained retry37403128445 remains separate.
