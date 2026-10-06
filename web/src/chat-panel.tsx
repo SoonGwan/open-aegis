@@ -97,14 +97,18 @@ export function ChatPanel({
     { ...state, onPositionChange: changePosition },
     `/tasks/${encodeURIComponent(taskId)}/messages/page`,
   );
-  useEffect(()=>{
-    if(!open) return;
-    let current=true;
-    api<{llm_chat_configured:boolean}>("/settings").then(value=>{
-      if(current) {setAiReady(value.llm_chat_configured);setAiConfigurationError("");}
-    }).catch(()=>{if(current) {setAiReady(false);setAiConfigurationError("AI 설정을 확인하지 못했습니다. 대화를 접었다 다시 펼쳐 재시도하세요.");}});
-    return ()=>{current=false;};
-  },[open,taskId]);
+  useEffect(() => {
+    if (!open) return;
+    let current = true, controller: AbortController | null = null;
+    function load() {
+      controller?.abort(); const request = new AbortController(); controller = request;
+      api<{ conversation_enabled: boolean; items: { purpose: string; configuration_available: boolean; task_archived: boolean }[] }>(`/tasks/${encodeURIComponent(taskId)}/models`, "GET", undefined, request.signal)
+        .then(value => { if (current && !request.signal.aborted) { setAiReady(value.conversation_enabled && value.items.some(item => item.purpose === "conversation" && item.configuration_available && !item.task_archived)); setAiConfigurationError(""); } })
+        .catch(() => { if (current && !request.signal.aborted) { setAiReady(false); setAiConfigurationError("작업의 AI 설정을 확인하지 못했습니다. 다음 갱신에서 다시 확인합니다."); } });
+    }
+    load(); const timer = window.setInterval(load, 4000); window.addEventListener("aegis-records-changed", load);
+    return () => { current = false; controller?.abort(); window.clearInterval(timer); window.removeEventListener("aegis-records-changed", load); };
+  }, [open, taskId]);
   useEffect(() => {
     const detail = readDetail(location.search);
     if (restored && detail?.kind === "task" && detail.id === taskId)

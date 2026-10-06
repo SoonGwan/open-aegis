@@ -172,7 +172,7 @@ class Engine:
         if task['planner'] != 'ai':
             return checks
         profiles = get_profiles(self.store,self.allow_private)
-        try:choice = profiles.capture('planner')
+        try:choice = profiles.capture('planner',task['id'])
         except ProfileUnavailable:choice = None
         if choice is None:
             self.store.event(task['id'], 'AI 모델 설정을 사용할 수 없어 규칙 기반 계획을 사용합니다.', 'warning')

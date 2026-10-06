@@ -21,6 +21,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .task_templates import Templates, TemplateInput, TemplateEdit, TemplateArchive, TemplateApply
 from .model_profiles import Profiles, ProfileInput, ProfileEdit, DefaultEdit
 from .model_catalog import Catalog, CatalogInput
+from .task_models import TaskModels, TaskModelEdit
 from .prompt_versions import Prompts, Purpose, PromptEdit, PromptPreview
 from .notification_transport import Webhooks
 from .notification_channels import Channels,ChannelInput,ChannelEdit,DeliveryRetry,ChannelTest
@@ -254,6 +255,8 @@ def create_app(data_dir=None, allow_private=None):
         engine.remote = mcp_executors
         model_profiles = Profiles(store,private)
         store.model_profiles = model_profiles
+        task_models = TaskModels(store,model_profiles)
+        model_profiles.task_models = task_models
         model_catalog = Catalog(store,model_profiles,shutdown_requested)
         notification_channels = Channels(store,Webhooks.from_env())
         notification_deliveries = Deliveries(store,notification_channels)
@@ -523,6 +526,7 @@ def create_app(data_dir=None, allow_private=None):
     app.state.event_planner = event_planner
     app.state.model_profiles = model_profiles
     app.state.model_catalog = model_catalog
+    app.state.task_models = task_models
     app.state.notification_channels = notification_channels
     app.state.notification_deliveries = notification_deliveries
     app.state.exports = exports
@@ -921,6 +925,20 @@ def create_app(data_dir=None, allow_private=None):
     def model_profile_history(id:str,limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
         model_profiles.get(id)
         return store.page('model_profile_versions',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':id})
+
+    @app.get('/api/tasks/{task_id}/models',dependencies=auth)
+    def task_model_configuration(task_id:str):
+        return {'items':[task_models.public(task_id,purpose) for purpose in ('planner','conversation')],
+                'conversation_enabled':os.environ.get('AEGIS_LLM_CHAT_ENABLED')=='1'}
+
+    @app.put('/api/tasks/{task_id}/models/{purpose}')
+    def task_model_change(task_id:str,purpose:Literal['planner','conversation'],data:TaskModelEdit,actor=Depends(administrator)):
+        return task_models.change(task_id,purpose,data,actor)
+
+    @app.get('/api/tasks/{task_id}/models/{purpose}/history',dependencies=auth)
+    def task_model_history(task_id:str,purpose:Literal['planner','conversation'],limit:int=Query(25,ge=1,le=25),offset:int=Query(0,ge=0),snapshot:int|None=Query(None,ge=0)):
+        task_models.task(task_id)
+        return store.page('task_model_versions',limit=limit,offset=offset,snapshot=snapshot,filters={'task_id':task_id,'purpose':purpose})
 
     @app.post('/api/model-profiles/{id}/catalog')
     def model_catalog_read(id:str,data:CatalogInput,actor=Depends(administrator)):
@@ -1466,7 +1484,7 @@ def create_app(data_dir=None, allow_private=None):
                 if original['content']!=data.content or original.get('mode','rules')!=data.mode:
                     raise HTTPException(409,'같은 전송 ID에 다른 질문이나 답변 방식을 사용할 수 없습니다.')
                 return store.get('messages','reply-'+digest)
-        if data.mode=='ai' and not conversation_ai.configured(store):
+        if data.mode=='ai' and not conversation_ai.configured(store,task_id):
             raise HTTPException(409,'AI 대화가 서버에 설정되지 않았습니다. 규칙 기반 요약을 사용하세요.')
         summary = summarize_task(store, task_id, data.content)
         if summary is None:

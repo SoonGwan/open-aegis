@@ -6872,3 +6872,39 @@ only in readable local timestamp formatting. Full mobile/screen-reader work is o
 Final full native, installed wheel,97→96→97/backup restore and GitHub jobs remain
 pending. Version remains0.2.0a1. No third-party scans or actual chat connectivity
 claim is added by catalog success.
+
+
+## Task-specific model selections checkpoint — 2026-10-06
+
+A separate branch extends the existing planner/conversation roles with reviewed
+task-specific profile selections, immutable CAS receipts and25-row SQL history.
+The selection never alters task scope/checks/plan/approval. Unavailable pins never
+silently choose another provider; clearing follows the workspace default. Actual
+owned planner/conversation POSTs, held old/new call snapshots and same-ID chat replay
+pass on SQLite/native PostgreSQL. Related tests pass136 cases in33.26s.
+
+The first history read failed because purpose was not an admitted SQL filter; the
+filter is now restricted to task-model record kinds. An old capture test spy also
+required the new optional taskID argument; its no-provider-on-stale assertions are
+unchanged. Explicit corrupted stored archive revision-1 was accepted before the
+new bound check, then rejected; booleans/overflow and capture error translation
+also pass. An unbound profile factory initially ignored a persisted task pin and
+returnedNone; that same case passes after constructing TaskModels in the standalone
+factory. Original failures are retained privately.
+
+Owned browser statuses503,200,200,409,200,200 prove exact-ID/body response-loss
+replay, competing selection conflict, explicit latest adoption and task-only chat
+configuration. Four immutable versions/operations result(planner3/conversation1).
+Original task/scope/approval remains exact; defaults, target traffic and call records
+remain empty and audit is valid. Readable profile labels appear only for exact current
+profile revisions; different historical revisions retain their identifiers. Desktop
+DOM/screenshots inspected; owned tabs close and fixture temp directory is removed.
+Browser uses the bound app profile service; the later backend change affects only
+the unbound factory, covered separately. Later frontend change is label formatting
+only and its final render was inspected. Node103 and production build pass.
+
+Full source/installed package, both-store98→97→98/restore, hosted checks and complete
+mobile/screen-reader validation remain pending. Version remains0.2.0a1. Older97
+understands retained records generically but does not honor task model pins during
+AI calls; rollback rehearsal must suspend AI planning/conversation and verifies
+record preservation rather than equivalent old-version model execution.

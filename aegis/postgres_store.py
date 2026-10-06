@@ -14,6 +14,8 @@ FIELDS = {
     'assets':('name','url','owner','tags'), 'tasks':('name','status','goal'),
     'model_profiles':('name','model','destination_id'),
     'model_catalog_queries':('profile_id','status','result_code'),
+    'task_model_selections':('purpose','profile_id'),
+    'task_model_versions':('purpose',),
     'model_profile_versions':('actor.name','snapshot.name','snapshot.model'),
     'model_default_versions':('actor.name','snapshot.profile_id'),
     'prompt_versions':('action','actor.name','snapshot.template'),
@@ -202,7 +204,8 @@ class PostgresStore:
         if kind not in FIELDS or not 1<=limit<=1000 or offset<0 or (snapshot is not None and snapshot<0):raise ValueError('Invalid record query')
         if priority and kind!='findings':raise ValueError('Priority order is only valid for findings')
         filters=filters or {}
-        if not filters.keys()<={'status','severity','asset_id','task_id','check','finding_id','enabled','source','state','todo_id','category_id','channel_id','delivery_id'}:raise ValueError('Unknown record filter')
+        if not filters.keys()<={'status','severity','asset_id','task_id','check','finding_id','enabled','source','state','todo_id','category_id','channel_id','delivery_id','purpose'}:raise ValueError('Unknown record filter')
+        if 'purpose' in filters and kind not in ('task_model_selections','task_model_versions'):raise ValueError('Purpose filter requires task model records')
         if 'channel_id' in filters and kind!='notification_deliveries':raise ValueError('Channel filter requires deliveries')
         if 'delivery_id' in filters and kind!='notification_attempts':raise ValueError('Delivery filter requires attempts')
         if 'category_id' in filters and kind!='tasks':raise ValueError('Category filter requires tasks')

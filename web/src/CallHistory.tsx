@@ -17,7 +17,7 @@ export type ProviderCall = {
   model: string;
   provider_origin: string | null;
   prompt_snapshot?: { purpose: string; revision: number; template: string; fingerprint: string };
-  model_profile_snapshot?: { kind: string; purpose: string; selection_revision: number; model: string; destination_id: string; profile_id?: string; profile_revision?: number };
+  model_profile_snapshot?: { kind: string; purpose: string; selection_revision: number; model: string; destination_id: string; profile_id?: string; profile_revision?: number; task_model_snapshot?: { task_id: string; revision: number; profile_id: string | null } };
   started_at: number;
   observed_at: number;
   settled_at?: number;
@@ -166,6 +166,7 @@ export function CallHistory({
                 <h5>호출 당시 모델 선택</h5>
                 {call.model_profile_snapshot ? <>
                   <p>용도: {call.model_profile_snapshot.purpose === "planner" ? "검증 순서 계획" : "기록 기반 대화"} · 선택 버전 {call.model_profile_snapshot.selection_revision}</p>
+                  {call.model_profile_snapshot.task_model_snapshot && <p>작업별 선택 버전 {call.model_profile_snapshot.task_model_snapshot.revision} · {call.model_profile_snapshot.task_model_snapshot.profile_id ? "작업 고정 프로필" : "워크스페이스 용도별 선택 따름"}</p>}
                   <p>모델: {call.model_profile_snapshot.model} · 고정 수신처: {call.model_profile_snapshot.destination_id}</p>
                   <p>{call.model_profile_snapshot.kind === "profile" ? `프로필 ${call.model_profile_snapshot.profile_id} · 버전 ${call.model_profile_snapshot.profile_revision}` : "기본 환경 설정"}</p>
                 </> : <p>모델 선택 스냅샷 기록 없음</p>}
