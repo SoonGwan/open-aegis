@@ -7223,6 +7223,7 @@ both-store101→100→101/restore, exact signed bundle and installed HTTP/UI che
 are complete. PR12 retained37403602102 and main PR11 run37404557449 remain
 in progress and are preserved until terminal completion before further merging.
 
+<<<<<<< HEAD
 Native direct Anthropic protocol is implemented in an isolated branch over frozen
 creation101. Default OpenAI wire format and review binding remain unchanged; native
 protocol binds review/reference and uses bounded text messages/check16/catalog256.
@@ -7255,3 +7256,10 @@ native POST6/catalog GET2/notification POST2 occur; replays/transitions/restore 
 none. Selected rows/checkpoint match, restored sessions0 and temporary cluster/
 installation cleanup complete. Full native and retained PR13 hosted37405655116 at
 5076628 remain in progress; duplicate push37405649680 is cancelled.
+=======
+Retained PR12 creation run37403602102 at011104a completes all six hosted jobs.
+Full metadata/log are retained separately from duplicate cancelled push37403508716.
+PR11 main37404557449 atcb58da8 also completes all six terminal successes before
+the creation merge. Current creation executable source/tests/UI/CI match011104a;
+intervening merges and evidence changes are documentation only.
+>>>>>>> main
