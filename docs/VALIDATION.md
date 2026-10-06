@@ -7126,3 +7126,37 @@ it does not prove every timing or mobile/long-run coverage. All owned tabs close
 three fixture servers stop with SIGINT, and each owned temporary workspace reports
 cleanup true. PR11 run37400366919 remains pending; push duplicate37400339635 was
 explicitly cancelled and is not success evidence. Root preview still serves100.
+
+Connection main run37399067286 has six terminal successes at
+8b9a992bde836cfdab625c100e5e36bf37be64ef: verify, postgres-storage, both image
+variants and both Compose variants. Metadata and the completed log are retained
+before further feature merges; this supersedes the earlier pending status above.
+The separate frontend reload-recovery PR11 is draft at dc9521626edef4bf7529f2671b160ba27027d024
+with retained hosted run37400366919 still pending. Root preview remains frozen100;
+no pending-recovery frontend has been deployed to the root preview.
+
+Frontend pending PR11 retained run37400366919 completes with five successes and a
+postgres-storage failure at dc9521626edef4bf7529f2671b160ba27027d024. Its MCP group
+records601 passed/1 skipped/1 failed: test_startup_recovers_unsaved_cleanup_even_when_source_task_already_terminated[postgres]
+refuses new Engine admission with WorkspaceBusy after the test stops only the old
+engine. Failed metadata/log are retained; the PR is not merged or relabelled success.
+
+The exact test on an unchanged source is exercised with a controlled admitted
+EventPlanner read: engine-only stop fails, recording reader PID17213 as a granted
+runtime ShareLock at new-owner refusal. Joining background workers before engine
+shutdown passes the original recovery assertions. This establishes this local race
+mechanism, not the unrecorded historical holder in GitHub. The two engine replacement
+fixtures in MCP revocations now mirror application service shutdown order in an
+isolated worktree, with four targeted cases passing; related native regression and
+new exact-source hosted verification are required before PR11 merge. Production
+Python, UI and ownership fencing are unchanged. Root preview remains100.
+
+After the scoped MCP revocation fixture lifecycle correctioncfccad2, four unchanged
+recovery cases pass in4.97s and related native revocation/observation/ownership/
+notification regression passes146 cases in204.93s. There are no waits/retries or
+weakened recovery assertions in the fixture fix; production ownership is unchanged.
+The frontend remains the frozen114-test implementation7466068 and Python remains
+frozen100. Only tests/test_mcp_revocations.py changes executable test code. A fresh
+hosted run on the combined source is required; the earlier hosted failure remains
+failure evidence. Full native1,930/installed606 are the retained frozen100 backend
+results, not newly rerun counts for this frontend/fixture change.
