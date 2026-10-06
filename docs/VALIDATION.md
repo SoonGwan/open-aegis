@@ -7271,3 +7271,33 @@ native POST6/catalog GET2/notification POST2 occur; replays/transitions/restore 
 none. Selected rows/checkpoint match, restored sessions0 and temporary cluster/
 installation cleanup complete. Full native and retained PR13 hosted37405655116 at
 5076628 remain in progress; duplicate push37405649680 is cancelled.
+
+Native PR13 retained37405655116 at5076628 completes with five successes and a
+verify failure. Its installed runtime rehearsal fails in the nested maintenance
+command. Full failed metadata/log and the completed verify-job log are retained.
+Local frozen102 wheel96004 fails the same rehearsal; a diagnostic run preserves
+the child ModuleNotFoundError(jsonschema): importing Store→call_ledger→llm loads
+remote_mcp and its application dependencies even for dependency-free maintenance.
+This is a real import regression, not an OpenSSL or ownership failure.
+
+Correctionca1a804 makes the strict native response decoder import local to an
+actual native response. Existing OpenAI decoding/native validation remains intact.
+A subprocess regression uses isolated Python with site packages disabled and the
+actual package origin, then imports Store/token_usage and writes/reads a note.
+Native protocol/HTTP/LLM group passes87 cases in21.74s; the first run with native
+flags absent passes74 and skips13, separately retained. New frozen102 wheel
+bf36ac7709407b0b6300942f19693c0694783323746ce57bcdbbacbd5c9dde31
+exactly matches all102 packaged modules. Exact reviewed UI remains unchanged.
+Installed runtime/UI/maintenance/signing/tamper/preflight/rollback now pass with
+OpenSSL3. New installed102→101→102/offline restore again pass both stores,
+retaining selected rows/checkpoints/sessions0 with only initial native POST6/
+catalog GET2/notification POST2 and no transition/replay traffic.
+
+Initial source full run was started before this correction; source was changed
+while it remained active, so its eventual count is not exact frozen-source
+acceptance evidence. A fresh full/native run and fresh independently installed
+regression onca1a804 are running. Retained retry37407203007 is required to finish
+before merge; duplicate push37407200186 was explicitly requested cancelled.
+Earlier frozen96004/324/752/browser/pair/signed-bundle receipts remain historical
+scope evidence, not relabelled as new-wheel verification. No native root deployment
+or v1 release is claimed.
