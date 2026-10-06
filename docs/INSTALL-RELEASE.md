@@ -23,14 +23,18 @@ The verifier uses the Python standard library and OpenSSL3; it does not install
 or execute the downloaded wheel. A missing/mismatched key, signature or payload
 fails verification. Preserve the verified directory against later modification.
 
-For a new SQLite workspace, change into that verified bundle directory:
+For a new SQLite workspace, keep the verified bundle separate from the installation
+and data. Replace the absolute path with your verified bundle directory:
 
 ```sh
+mkdir open-aegis-instance
+cd open-aegis-instance
+release_bundle=/absolute/path/to/extracted/bundle
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.lock
-.venv/bin/python -m pip install --no-index --no-deps runtime/open_aegis-1.0.0-py3-none-any.whl
+.venv/bin/python -m pip install -r "$release_bundle/requirements.lock"
+.venv/bin/python -m pip install --no-index --no-deps "$release_bundle/runtime/open_aegis-1.0.0-py3-none-any.whl"
 .venv/bin/python -m pip check
-AEGIS_WEB_DIR="$PWD/web" AEGIS_DATA_DIR="$PWD/data" \
+AEGIS_WEB_DIR="$release_bundle/web" AEGIS_DATA_DIR="$PWD/data" \
   AEGIS_HOST=127.0.0.1 AEGIS_PORT=8787 .venv/bin/python -m aegis
 ```
 
