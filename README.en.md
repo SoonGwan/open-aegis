@@ -11,7 +11,8 @@ evidence, remediation and independent retests.**
 Open Aegis is an independently written project informed by ARTEX's public feature
 structure. It does not copy or fork ARTEX code. All implementation in this
 repository is provided under the [MIT license](LICENSE), with no commercial tier.
-The current version is **0.2.0a1, a pre-release validation candidate**. It does not
+This branch is the **1.0.0 release candidate**; no official v1 tag or release has
+been published yet ([candidate evidence](docs/V1-RELEASE-CANDIDATE.md)). It does not
 claim complete ARTEX parity or detection of every vulnerability.
 
 ## What it does

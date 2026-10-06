@@ -10,7 +10,8 @@ React + TypeScript 콘솔, Python/FastAPI 실행 엔진, SQLite 저장소로 구
 ![로컬 합성 서버 검증 결과 대시보드](docs/images/dashboard.jpg)
 
 이 저장소는 ARTEX의 공개 기능 구성을 참고하여 독립적으로 작성했습니다.
-ARTEX 코드를 복사하거나 포크하지 않았습니다. 현재 버전은 **0.2.0a1 로컬 검증 후보**이며
+ARTEX 코드를 복사하거나 포크하지 않았습니다. 이 브랜치는 **1.0.0 출시 후보**이며
+공식 태그와 릴리스는 아직 게시하지 않았습니다([후보 검수](docs/V1-RELEASE-CANDIDATE.md)).
 ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주장하지 않습니다.
 작업 템플릿의 버전·보관·현재 범위 적용은 [사용 계약](docs/TASK-TEMPLATES.md)에 있습니다.
 구현된 기능과 차이는 [기능 비교표](docs/FEATURES.md)를 확인하세요.
@@ -25,7 +26,7 @@ ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주�
 - ScopeSentry asset 파일/등록 원격 JWT 조회 검토·선택 반영·출처/이전 연결 조회([연동 계약](docs/SCOPESENTRY.md)).
 - 범위 스냅샷을 갖는 작업, 실행 승인, 거절, 중지, 재시작 중단 처리 및 현재 범위의 새 승인 계획.
 - 내장 도구 계약·코드 지문 승인 검사, 결과 형식·크기·관찰 범위 검증([도구 계약](docs/TOOL-CONTRACTS.md)).
-- 규칙 기반 Planner, 선택적 OpenAI 호환 LLM 순서 계획, 최대 4개 Worker.
+- 규칙 기반 Planner, 선택적 OpenAI 호환/직접 Claude 텍스트 계획·대화, 최대 4개 Worker.
 - 검토된 모델 프로필·용도별 기본값·작업 생성 시 계획/대화 모델 선택과 미확인 요청 복구([계약](docs/TASK-MODELS.md)).
 - 검토된 MCP GET 서버 선택·별도 작업 승인·서명 범위·결과/감사 원자적 저장([실행 설정](docs/MCP-EXECUTION.md)).
 - 자연어 목표 분해 초안·검토/새 승인·과제별 자산/검사 조합 실행·검사 진행률([목표 계획](docs/GOAL-PLANNING.md)).
