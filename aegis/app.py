@@ -23,6 +23,8 @@ from .model_profiles import Profiles, ProfileInput, ProfileEdit, DefaultEdit
 from .model_catalog import Catalog, CatalogInput
 from .model_connection import ConnectionCheck,ConnectionInput
 from .task_models import TaskModels, TaskModelEdit
+from .task_model_creation import TaskModelCreation,InitialModel
+from .model_profiles import RequestID
 from .prompt_versions import Prompts, Purpose, PromptEdit, PromptPreview
 from .notification_transport import Webhooks
 from .notification_channels import Channels,ChannelInput,ChannelEdit,DeliveryRetry,ChannelTest
@@ -139,6 +141,13 @@ class TaskInput(BaseModel):
         if len(value) != len(set(value)):
             raise ValueError('중복 자산을 제거하세요.')
         return value
+
+
+class TaskWithModelsInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    task:TaskInput
+    models:dict[Literal['planner','conversation'],InitialModel]=Field(min_length=1,max_length=2)
+    request_id:RequestID
 
 
 class NoteInput(BaseModel):
@@ -258,6 +267,7 @@ def create_app(data_dir=None, allow_private=None):
         store.model_profiles = model_profiles
         task_models = TaskModels(store,model_profiles)
         model_profiles.task_models = task_models
+        task_model_creation = TaskModelCreation(store,model_profiles,task_models)
         model_catalog = Catalog(store,model_profiles,shutdown_requested)
         model_connection = ConnectionCheck(store,model_profiles,shutdown_requested)
         notification_channels = Channels(store,Webhooks.from_env())
@@ -278,7 +288,7 @@ def create_app(data_dir=None, allow_private=None):
         with store.lock:
             return create_task_locked(data, retest_of, schedule_id, retry_of)
 
-    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None, goal_retest=None, goal_observation=None, template_request=None):
+    def create_task_locked(data, retest_of=None, schedule_id=None, retry_of=None, *, replacing=None, followup=None, resuming=None, observation_request=None, planned_id=None, goal_draft=None, goal_retest=None, goal_observation=None, template_request=None, initial_model_request=None):
         assets = [store.get('assets', id) for id in data.asset_ids]
         if any(a is None for a in assets):
             raise HTTPException(400, '존재하지 않는 자산입니다.')
@@ -475,6 +485,9 @@ def create_app(data_dir=None, allow_private=None):
         elif template_request:
             with store.write_transaction() as db:
                 return task_templates.commit(template_request, task, records, assets, db)
+        elif initial_model_request:
+            with store.write_transaction() as db:
+                return task_model_creation.commit(initial_model_request,task,records,assets,db)
         else:
             store.put_many(records)
             store.event(task['id'], '작업 생성. 실행 범위와 검증 도구의 승인을 기다립니다.')
@@ -532,6 +545,7 @@ def create_app(data_dir=None, allow_private=None):
     app.state.model_catalog = model_catalog
     app.state.model_connection = model_connection
     app.state.task_models = task_models
+    app.state.task_model_creation = task_model_creation
     app.state.notification_channels = notification_channels
     app.state.notification_deliveries = notification_deliveries
     app.state.exports = exports
@@ -1126,6 +1140,13 @@ def create_app(data_dir=None, allow_private=None):
     @app.post('/api/tasks', dependencies=operations)
     def add_task(data: TaskInput):
         return create_task(data)
+
+    @app.post('/api/tasks/with-models')
+    def add_task_with_models(data:TaskWithModelsInput,actor=Depends(administrator)):
+        with store.lock:
+            request,replay=task_model_creation.prepare(data,actor)
+            if replay:return replay
+            return create_task_locked(data.task,planned_id=request['id'],initial_model_request=request)
 
     @app.get('/api/tasks/{task_id}', dependencies=auth)
     def task_detail(task_id: str):

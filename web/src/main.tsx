@@ -12,6 +12,8 @@ import { NotificationChannels, NotificationDeliveries } from "./Notifications";
 import ModelProfiles from "./ModelProfiles";
 import { clearModelPending } from "./model-pending";
 import TaskModels from "./TaskModels";
+import TaskCreateModels from "./TaskCreateModels";
+import { clearTaskCreationPending } from "./task-model-creation-pending";
 import PromptVersions from "./PromptVersions";
 import { TaskCategories } from "./TaskCategories";
 import { TaskTemplates, TemplateOriginSummary, type TemplateOrigin } from "./TaskTemplates";
@@ -502,7 +504,7 @@ function App() {
   useEffect(() => { setArchiveSelection({}); setTaskArchiveModal(null); }, [page, auth?.user?.id, showArchived, search, filter]);
   const localActionScope = useRef(new ViewScope());
   const [modal, setModalState] = useState<
-    "asset" | "task" | "import" | "note" | "scopesentry" | "sources" | null
+    "asset" | "task" | "task-model" | "import" | "note" | "scopesentry" | "sources" | null
   >(null);
   const [remoteChecks, setRemoteChecks] = useState<string[] | null>(null);
   const [taskCheckChoices, setTaskCheckChoices] = useState<Record<string, boolean>>({});
@@ -704,7 +706,7 @@ function App() {
     try {
       await api("/auth/logout", "POST");
       let cleanupFailed = false;
-      try { if (auth?.user?.id) clearModelPending(window.localStorage, auth.user.id); }
+      try { if (auth?.user?.id) { clearModelPending(window.localStorage, auth.user.id);clearTaskCreationPending(window.localStorage, auth.user.id); } }
       catch { cleanupFailed = true; }
       setAuth({ setup_required: false, authenticated: false });
       if (cleanupFailed) setError("로그아웃했습니다. 브라우저의 미확인 모델 요청 기록은 정리하지 못했습니다. 같은 계정으로 로그인해 확인하거나 브라우저 저장소를 정리하세요.");
@@ -1248,6 +1250,7 @@ function App() {
               </p>
             </div>
             <div className="head-actions">
+              {canApprove && ["overview", "tasks"].includes(page) && <button disabled={!overview.assets.length} onClick={() => openModal("task-model")}>모델을 선택해 작업 만들기</button>}
               {page === "assets" ? (
                 <>
                   <button
@@ -2550,7 +2553,8 @@ function App() {
         window.dispatchEvent(new Event("aegis-records-changed"));
       }} />}
       {modal === "sources" && editingAsset && <AssetSources key={editingAsset.id} asset={editingAsset} onClose={closeModal} />}
-      {modal && modal !== "scopesentry" && modal !== "sources" && (
+      {modal === "task-model" && <TaskCreateModels key={auth.user?.id} actorId={auth.user?.id || ""} canAdmin={canApprove} tools={tools} onClose={closeModal} onCreated={taskId => { void refresh();window.dispatchEvent(new Event("aegis-records-changed"));setModal(null);navigation.navigate("tasks");navigation.openDetail({kind:"task",id:taskId});message("작업 저장 결과를 확인했습니다. 현재 작업 상태와 실행 범위를 검토하세요."); }} />}
+      {modal && modal !== "scopesentry" && modal !== "sources" && modal !== "task-model" && (
         <Modal
           title={
             modal === "asset"

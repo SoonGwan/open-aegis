@@ -38,6 +38,15 @@ class TaskModels:
         return {**selection,'configuration_available':available,'archive_revision':task.get('archive_revision',0),
                 'task_archived':bool(task.get('archived_at'))}
 
+    def version_records(self,task_id,purpose,revision,profile,actor):
+        record={'id':self.key(task_id,purpose),'task_id':task_id,'purpose':purpose,'revision':revision,
+                'profile_id':profile['id'] if profile else None,'profile_revision':profile['revision'] if profile else None,
+                'profile_fingerprint':profile['fingerprint'] if profile else None,'actor':actor,'updated_at':now()}
+        record['fingerprint']=self.fingerprint(record)
+        version={'id':record['id']+':'+str(revision),'task_id':task_id,'purpose':purpose,
+                 'revision':revision,'snapshot':record,'actor':actor,'created_at':record['updated_at']}
+        return record,[(KIND,record),('task_model_versions',version)]
+
     def change(self,task_id,purpose,data,actor):
         if (data.profile_id is None)!=(data.expected_profile_revision is None):raise HTTPException(422,'프로필과 현재 버전을 함께 지정하세요.')
         operation_id=_digest(['aegis-task-model-save-v1',task_id,purpose,actor['id'],data.request_id])[:32]
@@ -59,14 +68,8 @@ class TaskModels:
                 if profile['revision']!=data.expected_profile_revision:raise HTTPException(409,'모델 프로필 버전이 변경되었습니다.')
                 try:self.profiles._profile(profile,db)
                 except ProfileUnavailable as error:raise HTTPException(409,str(error)) from None
-            record={'id':self.key(task_id,purpose),'task_id':task_id,'purpose':purpose,'revision':before['revision']+1,
-                    'profile_id':profile['id'] if profile else None,'profile_revision':profile['revision'] if profile else None,
-                    'profile_fingerprint':profile['fingerprint'] if profile else None,'actor':actor,'updated_at':now()}
-            record['fingerprint']=self.fingerprint(record)
-            version={'id':record['id']+':'+str(record['revision']),'task_id':task_id,'purpose':purpose,
-                     'revision':record['revision'],'snapshot':record,'actor':actor,'created_at':record['updated_at']}
-            self.store.put_many([(KIND,record),('task_model_versions',version),
-                                 ('task_model_operations',{'id':operation_id,'snapshot':record,'request_sha256':requested})],connection=db)
+            record,records=self.version_records(task_id,purpose,before['revision']+1,profile,actor)
+            self.store.put_many(records+[('task_model_operations',{'id':operation_id,'snapshot':record,'request_sha256':requested})],connection=db)
             self.store.event(task_id,'작업 모델 선택 저장',detail={'purpose':purpose,'revision':record['revision'],
                              'profile_id':record['profile_id'],'profile_revision':record['profile_revision'],'actor':actor},connection=db)
             return {'selection':record,'replayed':False,'execution_authorized':False}

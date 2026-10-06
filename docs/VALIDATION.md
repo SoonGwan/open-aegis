@@ -7175,3 +7175,56 @@ and original task states; no fixture creation/execution approval is performed.
 Health and anonymous401 checks pass. Old owned PID89699 was identified by
 command/cwd before SIGINT; old assets are preserved. This remains local preview,
 not external deployment. Main hosted37404557449 atcb58da8 remains in progress.
+
+Creation-time task model implementation1ca5e4f adds one independent Python module,
+with frozen101 wheelb15beceabadc84560913ce469ad86781630e16e57f37e9be0b5727c84395e6e4.
+All packaged Python bytes match the101-source manifest. Scoped related tests128,
+Node122, build/typecheck/design pass; owned browser creation503→new document→same
+ID/body200 produces one pending task/two initial selections without provider/target
+traffic. Real stale profile409 survives reload, explicit profile2 adoption retains
+the original task body and uses a new UUID; quota failure causes zero added dispatch.
+All owned creation tabs close and fixture SIGINT reports temporary cleanup true.
+
+Installed101→100→101 plus offline backup/restore passes both stores: actual initial
+creation receipt/two choices/history/current task, connection/catalog receipts,
+profile/default/prompt/archive/notification records and an explicitly synthetic
+old-call snapshot are preserved. Old100 reads task selections but returns405 for
+new creation and is run with AI credentials/chat disabled for maintenance. Selected
+rows/trusted checkpoint match and restored sessions are0. Across both stores only
+two owned inference POSTs, two catalog GETs and two intentional notification POSTs
+occur; replay/transitions/restore add none, no target traffic, owned temp/cluster
+cleanup completes. This is record preservation, not every old API execution guarantee.
+Full source/native and independently installed regression remain in progress.
+CI5126538 explicitly adds connection/creation native cases; it does not change frozen
+Python101/UI bytes. Pending recovery PR11 retained retry37403128445 remains separate.
+
+Installed frozen101 wheel regression completes650 passed,2 SQLite native-owner-only
+skips in287.98s outside checkout. The temporary package origin is independently
+verified and native PostgreSQL variants run; temporary resources are removed.
+This supersedes the installed-pending status above. Full source/native and retained
+PR12 hosted37403602102 at011104a remain in progress; no v1/release claim is made.
+
+Frozen101 installed runtime review also passes with exact built122-test UI: origin
+outside checkout, locked dependencies/pip check, eight CLIs, health/authentication/
+persistence/ScopeSentry/conversation/audit, clean shutdown/lease release and signed
+release tamper refusal/preflight/data rollback. The first run fails at signing
+under macOS default OpenSSL; its failure log is retained. Repeating with documented
+OpenSSL3 succeeds. A separate exact-wheel/UI format2 Ed25519 bundle rehearsal
+verifies six signed payloads and64-byte signature; its temporary private key is
+removed. This is a local rehearsal key/bundle, not an official published release.
+PR12 is retargeted to main after PR11 merge; this merge changes documentation only
+and retains original in-progress hosted37403602102/source011104a.
+
+Frozen101 full source/native regression completes1,970 passed,2 SQLite skips
+for native-owner-only checks in1,321.74s(22:01). Both native variants run; all
+packaged Python/UI bytes remain identical to1ca5e4f. This supersedes the full
+source-pending status above. Installed650(+2 skips), Node122, owned browser,
+both-store101→100→101/restore, exact signed bundle and installed HTTP/UI checks
+are complete. PR12 retained37403602102 and main PR11 run37404557449 remain
+in progress and are preserved until terminal completion before further merging.
+
+Retained PR12 creation run37403602102 at011104a completes all six hosted jobs.
+Full metadata/log are retained separately from duplicate cancelled push37403508716.
+PR11 main37404557449 atcb58da8 also completes all six terminal successes before
+the creation merge. Current creation executable source/tests/UI/CI match011104a;
+intervening merges and evidence changes are documentation only.
