@@ -6961,6 +6961,12 @@ prompt/channel/category/template/catalog-history reads require authentication401
 This remains a local preview, not external hosting. Main run37394395526 is pending;
 retained PR8 run37392213028 has six terminal successes.
 
+Catalog main run37394395526 is now terminal success at
+de38cca7613540bad4ab8c8d781d620e8337fc91: verify, postgres-storage, both container
+variants and both Compose variants all succeed. This six-job main result is
+separate from retained PR8 run37392213028. Later main commits reconcile documents
+only; the local97 preview and all59 persisted record bodies remain unchanged.
+
 Independent provider connection checks implement a fixed short inference POST,
 durable immutable receipts, fresh administrator/profile/credential review after
 DNS, safe reported token counters and call-time price estimates with quote URLs
@@ -7005,3 +7011,12 @@ New98 restores the reviewed credentials and immutable old selection receipt with
 rolling the current selection back. Later main merge is documentation only and does
 not change frozen98/executable UI/test/CI source. Full native and hosted checks remain
 pending; Node103, build and the public-source secret scan pass.
+
+Final frozen task-model98 full native/source run passes1,881 cases, with one SQLite
+skip of the native-owner-only catalog case, in1,268.43s(21:08). Python98 and all
+executable UI/test/CI source remain unchanged fromd6179af. Installed553(+same skip),
+Node103, both-store98→97→98 and offline backup restore, owned browser and official
+public-source secret scan pass. Retained PR9 hosted run37395323928 is pending;
+duplicate push run37395291216 is explicitly cancelled, not successful evidence.
+Subsequent documentation-only commits do not constitute another full source run.
+
