@@ -1,8 +1,8 @@
 # Release signing key
 
 `publisher-ed25519-v1.pem` is the public Ed25519 key prepared for Open Aegis
-release bundles. It is separate from the temporary keys used by tests. No
-official v1 bundle has been published yet.
+release bundles. It is separate from the temporary keys used by tests. Check
+[GitHub Releases](https://github.com/SoonGwan/open-aegis/releases) for signed assets.
 
 SHA-256 of the DER SubjectPublicKeyInfo:
 

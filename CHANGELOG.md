@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0 — 2026-10-06
+
+Self-hosted security validation with reviewed scope, separate execution approval,
+recorded evidence and independent retests. Validation and remaining limits are
+documented in `docs/V1-RELEASE-CANDIDATE.md` and the individual feature contracts.
+
+- Model profiles, explicit OpenAI/direct Claude text protocols, model catalogs,
+  fixed-message connection receipts, task creation pins and unknown-request recovery.
+- Versioned templates, categories, archives, prompt settings and fixed webhooks,
+  with scoped histories, request receipts and conflict handling.
+- SQLite and PostgreSQL16 schema2, audited backup/restore, installed maintenance
+  commands and signed wheel/UI/dependency bundles with preflight and rollback.
+- Repair named integration values in both local `.env` startup and Compose;
+  preserve literal values/exported precedence and fixed container paths.
+- Advertise the actual package version to remote MCP servers.
+
 - Goal drafts optionally decompose natural-language requests into reviewed objectives,
   catalog checks, selected assets and Worker dependencies before a separate approval.
   Durable request replay, provider usage, rules fallback and per-objective execution
@@ -9,7 +25,7 @@
   approval, execute bounded GET configuration checks with per-URL proof/failures,
   preserve original-URL retests and recover unknown create outcomes by request ID.
 
-## Unreleased — v1 개발
+### Additional changes implemented since 0.1.0
 
 - 작업 분류의 버전·이력·보관/복원·SQL 검색과 관리 화면을 연결한다. 최대25개 작업의 분류 변경은 선택 당시 버전·동일 요청 영수증으로 전체 저장/거절하며 기존 승인·실행 상태를 유지한다.
 

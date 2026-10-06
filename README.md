@@ -4,14 +4,15 @@
 
 **자산부터 증거, 수정 확인까지 연결하는 오픈소스 보안 검증 워크스페이스.**
 
-React + TypeScript 콘솔, Python/FastAPI 실행 엔진, SQLite 저장소로 구성됩니다.
+React + TypeScript 콘솔, Python/FastAPI 실행 엔진, SQLite/선택적 PostgreSQL 저장소로 구성됩니다.
 상용 기능 구분 없이 저장소의 전체 구현을 MIT 라이선스로 제공합니다.
 
 ![로컬 합성 서버 검증 결과 대시보드](docs/images/dashboard.jpg)
 
 이 저장소는 ARTEX의 공개 기능 구성을 참고하여 독립적으로 작성했습니다.
-ARTEX 코드를 복사하거나 포크하지 않았습니다. 이 브랜치는 **1.0.0 출시 후보**이며
-공식 태그와 릴리스는 아직 게시하지 않았습니다([후보 검수](docs/V1-RELEASE-CANDIDATE.md)).
+ARTEX 코드를 복사하거나 포크하지 않았습니다. 현재 패키지 버전은 **1.0.0**입니다.
+[검수 근거](docs/V1-RELEASE-CANDIDATE.md), [릴리스 게시 상태](https://github.com/SoonGwan/open-aegis/releases),
+[서명 번들 설치](docs/INSTALL-RELEASE.md)를 확인할 수 있습니다.
 ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주장하지 않습니다.
 작업 템플릿의 버전·보관·현재 범위 적용은 [사용 계약](docs/TASK-TEMPLATES.md)에 있습니다.
 구현된 기능과 차이는 [기능 비교표](docs/FEATURES.md)를 확인하세요.
@@ -42,7 +43,7 @@ ARTEX 전체 기능과 동등하거나 모든 취약점을 검출한다고 주�
 
 ## 빠른 시작
 
-Python 3.11+와 Node.js 22, npm이 필요합니다.
+Linux/macOS, Python 3.11+와 Node.js 22, npm이 필요합니다.
 
 ```sh
 ./start.sh

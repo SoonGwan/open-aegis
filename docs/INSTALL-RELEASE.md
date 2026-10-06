@@ -1,12 +1,23 @@
 # Install a signed release bundle
 
-The 1.0.0 candidate has not been published as an official release yet. The steps
-below describe installing its verified bundle once publication is complete.
+The steps below describe installing a verified 1.0.0 bundle. Check
+[GitHub Releases](https://github.com/SoonGwan/open-aegis/releases) for publication status.
 Source installation with `./start.sh` and Docker Compose remain alternatives.
 
-Use Linux or macOS, Python3.11+ and OpenSSL3. Choose a new private directory for
-the extracted bundle. Extract only a release you intend to trust; archives and
-their checksums are not an independent authenticity check.
+Use Linux or macOS, Python3.11+ and OpenSSL3. The archive has a detached Ed25519
+signature as well as the signed manifest inside it. Verify the archive before
+extracting it, using the publisher key from a checkout you already trust:
+
+```sh
+openssl pkeyutl -verify -rawin -pubin \
+  -inkey docs/release-keys/publisher-ed25519-v1.pem \
+  -in /absolute/path/to/open-aegis-v1.0.0-bundle.tar.gz \
+  -sigfile /absolute/path/to/open-aegis-v1.0.0-bundle.tar.gz.sig
+```
+
+After successful verification, extract into a new private directory. The archive
+contains a single `open-aegis-v1.0.0` directory. A checksum file alone is not an
+independent authenticity check.
 
 Before installing the wheel, verify the bundle using the verifier from a source
 checkout you already trust. Obtain the publisher key independently of the bundle
