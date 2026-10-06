@@ -6896,3 +6896,11 @@ pair/restore is historical and does not substitute for final wheel validation.
 Final full native and retained PR8 run37392213028 remain pending. Duplicate push
 run37392167872 was explicitly cancelled and is not success evidence. The subsequent
 main-document merge changes no Python/UI/test/CI source fromead23e0.
+
+
+Final catalog full native/source run passes1,857 cases, with one SQLite skip of a
+native-owner-only case, in1,256.86s(20:56). Frozen Python97 and executable UI/test/CI
+source remain unchanged fromead23e0. Installed529/Node103, both-store97→96→97 and
+backup restore, owned browser and public-source secret scan also pass. The retained
+PR8 hosted PostgreSQL job remains pending; five other jobs have succeeded. This
+scoped feature is ready for final hosted review, not a v1 or full parity declaration.
