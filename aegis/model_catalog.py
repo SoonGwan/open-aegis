@@ -22,9 +22,23 @@ class CatalogInput(BaseModel):
 class CatalogError(ValueError):
     def __init__(self,code,http_status=None):self.code=code;self.http_status=http_status
 
+class CatalogControl(TaskControl):
+    def __init__(self,stop,shutdown,deadline):
+        super().__init__(stop,deadline);self.shutdown=shutdown
+
+    def check(self):
+        if self.shutdown.is_set():raise InterruptedError('서버가 종료 중입니다.')
+        super().check()
+
 class Catalog:
     def __init__(self,store,profiles,shutdown):
-        self.store=store;self.profiles=profiles;self.stop=shutdown;self.gate=threading.Lock()
+        self.store=store;self.profiles=profiles;self.shutdown=shutdown
+        self.stop=threading.Event();self.gate=threading.Lock()
+
+    def start(self):
+        with self.gate:
+            self.stop.clear()
+            while self.recover():pass
 
     def close(self):
         self.stop.set()
@@ -65,7 +79,7 @@ class Catalog:
             if previous:return {'query':previous,'replayed':True}
         if not self.gate.acquire(blocking=False):raise HTTPException(429,'다른 모델 목록 조회가 진행 중입니다. 같은 요청으로 다시 확인하세요.')
         try:
-            if self.stop.is_set():raise HTTPException(503,'서버가 종료 중입니다.')
+            if self.stop.is_set() or self.shutdown.is_set():raise HTTPException(503,'서버가 종료 중입니다.')
             with self.store.lock,self.store.write_transaction() as db:
                 previous=self.lookup(query_id,requested,actor,db)
                 if previous:return {'query':previous,'replayed':True}
@@ -79,7 +93,7 @@ class Catalog:
                         'created_at':now(),'models':[],'model_count':0,'result_code':'awaiting_response'}
                 self.store.put_many([(KIND,record)],connection=db)
                 self.store.event(None,'제공자 모델 목록 조회 시작',detail={'query_id':query_id,'profile_id':id,'profile_revision':profile['revision'],'actor':actor},connection=db)
-            control=TaskControl(self.stop,time.monotonic()+8)
+            control=CatalogControl(self.stop,self.shutdown,time.monotonic()+8)
             status,code,models,digest,http_status='failed','connection_failed',[],None,None
             try:
                 with getattr(self.store,'execution_permit',nullcontext)():

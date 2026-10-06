@@ -6839,3 +6839,36 @@ bytes. Model configuration/profile/prompt/channel/category/template reads requir
 authentication(401); health is0.2.0a1. This is a local preview, not external hosting.
 Main run37390419067 is pending; prior report main37389130077 is automatically
 cancelled by this merge and is not six-job success evidence. PR7 retains six successes.
+
+
+## Explicit fixed-provider model catalog checkpoint — 2026-10-06
+
+The isolated catalog branch adds an administrator GET to the reviewed provider's
+fixed /models path, immutable request receipts, bounded ID-only responses and
+25-row SQL history. Owned SQLite/native PostgreSQL tests cover actual auth/path,
+response rejection, same-ID replay, stale role/profile/credentials, audit rollback,
+shutdown, real restart and native backend-owner termination/replacement fencing.
+Actual26-request paging passes on both stores; the200-record rejection boundary
+uses174 explicitly synthetic records, not174 additional provider requests.
+
+The first full regression stopped after30 passes at
+test_review_auth_roles_and_strict_checkpoint: catalog.close set the app-wide
+shutdown event and later user creation returned503. The fix gives the catalog its
+own stop event, observes the app-wide event without mutating it, and clears the
+local event at lifespan startup after joining old requests. The unchanged failing
+audit test plus catalog checks now pass49 cases with one SQLite skip of a native
+owner-only case. Original failed logs and the initial97-module wheel are retained
+privately; this is not a full-suite success claim.
+
+Owned browser statuses503,200,409,200 prove exact-body/UUID replay after a lost
+committed response and explicit latest-profile adoption before another request.
+There are exactly two actual provider GETs and two committed query receipts at
+profile revisions1/2. Historical details retain the old model, the new result shows
+the new model, defaults/call records remain empty, target traffic is zero and the
+audit chain is valid. Desktop screenshots/DOM were inspected; owned tabs closed
+and temporary fixture/provider removed. Final UI differs from initial retry review
+only in readable local timestamp formatting. Full mobile/screen-reader work is open.
+
+Final full native, installed wheel,97→96→97/backup restore and GitHub jobs remain
+pending. Version remains0.2.0a1. No third-party scans or actual chat connectivity
+claim is added by catalog success.

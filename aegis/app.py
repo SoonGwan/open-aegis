@@ -504,7 +504,7 @@ def create_app(data_dir=None, allow_private=None):
         mcp_executors.revocations.start()
         try:
             notification_deliveries.start()
-            while model_catalog.recover():pass
+            model_catalog.start()
             yield
         finally:
             scheduler_stop.set()

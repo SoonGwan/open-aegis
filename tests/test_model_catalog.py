@@ -113,11 +113,15 @@ def test_catalog_request_validation_and_stale_profile_or_role_never_dispatch(cli
     assert caught.value.status_code==403 and not provider[1] and store.count('model_catalog_queries')==0
 
 
-def test_stopping_a_pending_catalog_waits_for_owned_request_and_records_uncertainty(client,provider,monkeypatch):
+@pytest.mark.parametrize('stop_kind',['catalog','server'])
+def test_stopping_a_pending_catalog_waits_for_owned_request_and_records_uncertainty(client,provider,monkeypatch,stop_kind):
     profile=setup(client,provider,monkeypatch);provider[4].clear()
     with ThreadPoolExecutor(max_workers=1) as pool:
         pending=pool.submit(query,client,profile);assert provider[3].wait(4)
-        client.app.state.model_catalog.close()
+        if stop_kind=='server':client.app.state.shutdown_requested.set()
+        else:
+            client.app.state.model_catalog.close()
+            assert not client.app.state.shutdown_requested.is_set()
         result=pending.result(timeout=4)
     assert result.status_code==200,result.text
     assert result.json()['query']['status']=='unknown' and result.json()['query']['result_code']=='request_stopped'
