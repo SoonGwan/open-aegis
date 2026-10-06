@@ -6821,3 +6821,21 @@ scan receipts apply to the same production module hashes. Current hosted source
 run37387988876 still awaits its PostgreSQL job; five other jobs are successful.
 Subsequent main merges and documentation commits change no production/UI execution
 source. The earlier340-pass interrupted run is not substituted for this full result.
+
+Retained model PR7 hosted run37387988876 is terminal with all six jobs successful
+at functional UI source65235660b1af344d369e4fb95853636cfe434c88. Later branch commits
+are documentation/main-doc merges only; Python96 and executable UI source remain
+unchanged. Full native1,812, installed484, Node103, both-store maintenance and owned
+browser receipts now permit merging this scoped model profile feature. Candidate
+version remains0.2.0a1; catalog/connectivity/task-agent pins/failover/mobile/long-running
+work is not declared complete. Main report run37389130077 is tracked separately.
+
+Model profiles main994963d now serve the exact frozen96-module source and the
+fresh separately staged frontend at localhttp://127.0.0.1:8790. Verified owned
+PID52298 exits before UI replacement/restart; all59 record bodies retain original
+SHA2566419aec7272b10f9e72c246c956d03dd4d154dd48e79d1262d7189a01ede465c
+and task states. Served assets/index-iRUJ9NXv.js and index-gW8Sd6S8.css match build
+bytes. Model configuration/profile/prompt/channel/category/template reads require
+authentication(401); health is0.2.0a1. This is a local preview, not external hosting.
+Main run37390419067 is pending; prior report main37389130077 is automatically
+cancelled by this merge and is not six-job success evidence. PR7 retains six successes.

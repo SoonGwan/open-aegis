@@ -108,7 +108,7 @@ PostgreSQL ownership, provider-call admission, recovery, installed wheel and off
 backup/restore checks. Hosted Ubuntu24.04 image and Compose rehearsals cover startup,
 authentication, retained data and clean shutdown. Current model profiles pass64 native
 profile checks,1,812 full native/backend checks,484 installed checks and103 frontend
-checks; hosted verification remains pending. See [validation records](docs/VALIDATION.md) for source
+checks. All six hosted jobs also pass on the retained source run. See [validation records](docs/VALIDATION.md) for source
 identities, preserved receipts and the remaining v1 checks. This project has not
 undergone an independent security audit.
 
