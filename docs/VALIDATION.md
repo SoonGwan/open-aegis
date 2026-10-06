@@ -6878,3 +6878,21 @@ variants and both Compose variants all succeed. This six-job main result is dist
 from retained PR7 run37387988876; earlier report main37389130077 remains cancelled.
 Local preview still serves the exact frozen96 source with all59 record bodies
 preserved. The independent catalog branch is not part of this main proof.
+
+
+Final catalog97 wheel is SHA2566c63042652a03220b0e9e16d0d8dbfa7eae8d60f85d289cc4ae8af093a3e7dcf
+at executable sourceead23e0d9e7747356a0caff8f25c309faf4810fe. Outside-checkout
+installation passes529 cases, with one SQLite skip of a native-owner-only case,
+in222.22s; temporary installation and owned cluster are removed. Both stores pass
+97→96→97 and offline backup restore, preserving actual catalog receipts alongside
+profile/default/prompt/archive/notification records and explicitly synthetic old
+call snapshots. Exactly two owned catalog GETs and two intentional notification
+POSTs occur across both stores; replay, version transition and restore add none.
+All selected rows and trusted checkpoints remain valid; restored sessions are zero.
+
+The initial pre-fix wheel remains archived with failed full/audit and installed
+usage-summary regressions: installed525 pass,2 fail,1 skip in221.63s. Its successful
+pair/restore is historical and does not substitute for final wheel validation.
+Final full native and retained PR8 run37392213028 remain pending. Duplicate push
+run37392167872 was explicitly cancelled and is not success evidence. The subsequent
+main-document merge changes no Python/UI/test/CI source fromead23e0.
