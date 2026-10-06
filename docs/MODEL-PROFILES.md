@@ -11,13 +11,14 @@
 같은 ID를 재사용하거나 검토 기준 버전이 달라지면409다. 이력과 목록은25개 SQL 페이지다.
 
 설치자는 `AEGIS_MODEL_DESTINATIONS`에 최대10개 추가 고정 수신처를 지정한다.
-각 항목은 `id`, `name`, `base_env`, `key_env`, 선택적 `lab_http`다. 예:
+각 항목은 `id`, `name`, `base_env`, `key_env`, 선택적 `lab_http`, `protocol`이다. `protocol`은 기본 `openai` 또는 명시적
+`anthropic`이다. [제공자 형식 계약](PROVIDER-PROTOCOLS.md)을 참고하세요. 예:
 
 ```json
 [{"id":"company","name":"회사 제공자","base_env":"COMPANY_MODEL_BASE","key_env":"COMPANY_MODEL_KEY"}]
 ```
 
-주소와 인증 키는 참조한 환경변수에서 읽는다. 화면은 고정 수신처 ID·이름·설정 여부만
+주소와 인증 키는 참조한 환경변수에서 읽는다. 화면은 고정 수신처 ID·이름·API 형식·설정 여부만
 표시하며 주소·키를 편집하거나 반환하지 않는다. 기존 `AEGIS_LLM_BASE_URL`,
 `AEGIS_LLM_API_KEY`, `AEGIS_LLM_MODEL`은 기본 환경 설정으로 유지한다.
 HTTPS가 기본이며 추가 수신처의 명시적 실험용 HTTP는 리터럴127.0.0.1/::1만 허용한다.

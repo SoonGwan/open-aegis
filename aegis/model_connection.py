@@ -7,6 +7,7 @@ from .remote_mcp import _decode
 from .network import PinnedHTTP,PinnedHTTPS,resolve
 from .runtime import RequestGuard
 from .llm import token_usage
+from .provider_protocol import inference_request,inference_response
 from .costs import price_snapshot,estimate
 
 KIND='model_connection_checks'
@@ -48,9 +49,11 @@ class ConnectionCheck(ProviderCheck):
                 if current!=prepared or profile['fingerprint']!=record['profile_fingerprint']:raise ProfileUnavailable('Model profile changed')
             payload={'model':record['profile_snapshot']['model'],'messages':[{'role':'user','content':'Reply exactly '+MARKER+'.'}],
                      'max_tokens':16,'stream':False}
+            protocol=record['profile_snapshot'].get('provider_protocol','openai')
+            suffix,authentication,payload=inference_request(protocol,key,payload)
             with RequestGuard(connection,control,8) as guard:
-                connection.request('POST',parsed.path.rstrip('/')+'/chat/completions',body=json.dumps(payload).encode(),
-                                   headers={'Authorization':'Bearer '+key,'Content-Type':'application/json','Accept':'application/json','Accept-Encoding':'identity'})
+                connection.request('POST',parsed.path.rstrip('/')+suffix,body=json.dumps(payload).encode(),
+                                   headers={**authentication,'Content-Type':'application/json','Accept':'application/json','Accept-Encoding':'identity'})
                 guard.sock=connection.sock;response=connection.getresponse()
                 if response.status!=200:raise CheckError('provider_status',response.status)
                 if response.getheader('Content-Encoding','identity').lower()!='identity':raise CheckError('response_encoding',200)
@@ -60,7 +63,7 @@ class ConnectionCheck(ProviderCheck):
                 if len(raw)>MAX_BYTES:raise CheckError('response_byte_budget',200)
             control.check()
             try:
-                body=_decode(raw);choices=body['choices']
+                body=inference_response(protocol,_decode(raw));choices=body['choices']
                 if not isinstance(choices,list) or len(choices)!=1:raise ValueError()
                 message=choices[0]['message'];content=message['content']
                 if (message.get('role')!='assistant' or not isinstance(content,str) or len(content)>128

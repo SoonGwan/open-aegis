@@ -5,7 +5,7 @@ import { useModelPending, ModelPendingRecovery } from "./ModelPendingRecovery";
 import { Pagination, RecordState, useRecords } from "./records";
 
 type Profile = { id: string; name: string; revision: number; model: string; enabled: boolean; configuration_available: boolean; destination_review_current: boolean; admin_review_current: boolean };
-type Query = { id: string; profile_revision: number; profile_snapshot: { name: string; model: string }; status: string; result_code: string; models?: string[]; model_count?: number; tokens?: { status: string; prompt_tokens: number | null; completion_tokens: number | null; total_tokens: number | null }; cost?: { status: string; amount: string | null; currency: string | null }; created_at: number; response_sha256?: string; http_status?: number };
+type Query = { id: string; profile_revision: number; profile_snapshot: { name: string; model: string; provider_protocol?: "openai" | "anthropic" }; status: string; result_code: string; models?: string[]; model_count?: number; tokens?: { status: string; prompt_tokens: number | null; completion_tokens: number | null; total_tokens: number | null }; cost?: { status: string; amount: string | null; currency: string | null }; created_at: number; response_sha256?: string; http_status?: number };
 const status: Record<string, string> = { started: "응답 확인 중", completed: "목록 응답 확인됨", failed: "요청 확인 실패", blocked: "설정 변경으로 중단", unknown: "완료 여부 확인 불가" };
 const codes: Record<string, string> = {
   inference_response_valid: "고정된 짧은 메시지의 추론 응답을 확인했습니다. 모델 품질이나 이후 가용성을 보장하지 않습니다.",
@@ -14,6 +14,7 @@ const codes: Record<string, string> = {
   request_stopped: "종료 중 요청이 중단되어 결과를 확정하지 못했습니다.", profile_review_changed: "요청 직전 프로필 또는 인증 설정이 변경됐습니다.",
   provider_status: "제공자가 성공 응답을 반환하지 않았습니다.", response_encoding: "지원하지 않는 응답 인코딩입니다.",
   response_content_type: "JSON 응답이 아닙니다.", response_byte_budget: "응답 크기 제한을 초과했습니다.",
+  catalog_incomplete: "다음 페이지가 있어 전체 모델 목록을 확인하지 못했습니다. 현재 조회는 최대256개 한 페이지를 지원합니다.",
   response_shape: "기대한 응답 형식 또는 고정 메시지의 답이 유효하지 않습니다.", connection_failed: "제공자 연결 또는 응답을 확인하지 못했습니다.",
 };
 const stateLabel = (state: string, connection: boolean) => connection && state === "completed" ? "고정 메시지 추론 응답 확인됨" : connection && state === "failed" ? "연결 시험 실패" : status[state] || state;
@@ -21,7 +22,7 @@ const usageLabel: Record<string, string> = { reported: "보고됨", partial: "�
 const date = (value: number) => new Date(value * 1000).toLocaleString("ko-KR");
 function Result({ query, connection }: { query: Query; connection: boolean }) {
   return <article className="prompt-card"><h3>{stateLabel(query.status, connection)} · 프로필 버전 {query.profile_revision}</h3>
-    <p>{query.profile_snapshot.name} · 당시 설정 모델 {query.profile_snapshot.model}</p>
+    <p>{query.profile_snapshot.name} · 당시 설정 모델 {query.profile_snapshot.model} · {query.profile_snapshot.provider_protocol === "anthropic" ? "Claude API" : "OpenAI 호환 API"}</p>
     <p>{codes[query.result_code] || query.result_code}{query.http_status ? ` · HTTP ${query.http_status}` : ""}</p>
     <p>요청 시작 {date(query.created_at)}{!connection && ` · 모델 ${query.model_count}개`}</p>
     {connection && <><p>보고된 토큰: 입력 {query.tokens?.prompt_tokens ?? "미보고"} · 출력 {query.tokens?.completion_tokens ?? "미보고"} · 전체 {query.tokens?.total_tokens ?? "미보고"} · 상태 {usageLabel[query.tokens?.status || "missing"] || "유효하지 않음"}</p><p>{query.cost?.status === "estimated" ? `당시 설정 단가에 따른 추정 ${query.cost.amount} ${query.cost.currency}` : "유효한 사용량 또는 단가가 없어 비용을 추정하지 못했습니다."}</p><p>연결 시험은 계획·대화 사용량 합계에 포함되지 않습니다. 실제 청구는 제공자 기록에서 확인하세요.</p></>}

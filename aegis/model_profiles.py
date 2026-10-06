@@ -21,6 +21,7 @@ class Destination(BaseModel):
     base_env:str=Field(pattern=r'^[A-Z][A-Z0-9_]{0,99}$')
     key_env:str=Field(pattern=r'^[A-Z][A-Z0-9_]{0,99}$')
     lab_http:bool=False
+    protocol:Literal['openai','anthropic']='openai'
 
 class ProfileInput(BaseModel):
     model_config=ConfigDict(extra='forbid',strict=True)
@@ -47,6 +48,9 @@ class Choice:
     model:str
     local:bool
     reference:dict
+
+    @property
+    def protocol(self):return self.reference.get('provider_protocol','openai')
 
 class ProfileUnavailable(ValueError):pass
 
@@ -82,7 +86,9 @@ class Destinations:
             if (port is not None and not 1<=port<=65535 or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment
                     or parsed.scheme!='https' and not(local and parsed.scheme=='http')):raise ValueError()
         except ValueError:raise ProfileUnavailable('모델 수신처 주소의 형식을 확인하세요.') from None
-        fingerprint=_digest({'id':id,'base':base,'key':key,'local':bool(local)})
+        binding={'id':id,'base':base,'key':key,'local':bool(local)}
+        if item.protocol!='openai':binding['provider_protocol']=item.protocol
+        fingerprint=_digest(binding)
         return base,key,bool(local),fingerprint
 
     def public(self,allow_local=False):
@@ -90,7 +96,7 @@ class Destinations:
         for item in self.items.values():
             try:self.prepare(item.id,'configuration-review',allow_local);available=True
             except ProfileUnavailable:available=False
-            result.append({'id':item.id,'name':item.name,'configuration_available':available})
+            result.append({'id':item.id,'name':item.name,'configuration_available':available,'protocol':item.protocol})
         return result
 
 class Profiles:
@@ -241,6 +247,8 @@ class Profiles:
                 if not model or not os.environ.get('AEGIS_LLM_API_KEY'):return None
                 base,key,local,binding=self.destinations.prepare('environment-default',model,self.allow_local)
                 reference={'kind':'environment','destination_id':'environment-default','model':model}
+            protocol=self.destinations.items[reference['destination_id']].protocol
+            if protocol!='openai':reference['provider_protocol']=protocol
             reference.update(purpose=purpose,selection_revision=selection['revision'],selection_fingerprint=self.selection_fingerprint(selection),destination_fingerprint=binding)
             return Choice(base,key,model,local,reference)
 
