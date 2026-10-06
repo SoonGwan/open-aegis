@@ -6839,3 +6839,11 @@ bytes. Model configuration/profile/prompt/channel/category/template reads requir
 authentication(401); health is0.2.0a1. This is a local preview, not external hosting.
 Main run37390419067 is pending; prior report main37389130077 is automatically
 cancelled by this merge and is not six-job success evidence. PR7 retains six successes.
+
+
+Merged model profiles main run37390419067 is now terminal success at
+994963dd2d87303b99f76acdb4336fb894a0e0ca: verify, postgres-storage, both image
+variants and both Compose variants all succeed. This six-job main result is distinct
+from retained PR7 run37387988876; earlier report main37389130077 remains cancelled.
+Local preview still serves the exact frozen96 source with all59 record bodies
+preserved. The independent catalog branch is not part of this main proof.
