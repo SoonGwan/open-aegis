@@ -8,6 +8,7 @@ data/
 .env
 .DS_Store
 artifacts/
+.release-keys/
 *.egg-info/
 *.tsbuildinfo
 build/
