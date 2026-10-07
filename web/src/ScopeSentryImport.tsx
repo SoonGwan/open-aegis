@@ -1,3 +1,4 @@
+import { t as uiText, localizeLabels, getFormatLocale } from "./i18n-core.ts";
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import Modal from "./components/Modal";
@@ -34,11 +35,11 @@ type Applied = {
   source_changed: number;
   items: { asset_id: string; external_id: string; url: string }[];
 };
-const actions: Record<string, string> = {
+const actions: Record<string, string> = localizeLabels({
   create: "새 자산 등록",
   link: "기존 자산에 출처 연결",
   seen: "기존 출처 확인",
-};
+});
 
 export function ScopeSentryImport({
   onClose,
@@ -181,11 +182,11 @@ export function ScopeSentryImport({
     plan?.rows.filter((row) => row.status === "ready" && row.external_id) || [];
   return (
     <Modal
-      title="ScopeSentry 자산 가져오기"
-      subtitle="원본 검토 → 항목 선택 → 출처와 자산 반영"
+      title={uiText("ScopeSentry 자산 가져오기")}
+      subtitle={uiText("원본 검토 → 항목 선택 → 출처와 자산 반영")}
       onClose={onClose}
     >
-      <div className="modal-actions" aria-label="원본 가져오기 방식">
+      <div className="modal-actions" aria-label={uiText("원본 가져오기 방식")}>
         <button
           disabled={busy || submitted}
           aria-pressed={mode === "file"}
@@ -194,8 +195,7 @@ export function ScopeSentryImport({
             setMode("file");
           }}
         >
-          파일 가져오기
-        </button>
+          {uiText("파일 가져오기")}</button>
         <button
           disabled={busy || submitted}
           aria-pressed={mode === "remote"}
@@ -204,34 +204,29 @@ export function ScopeSentryImport({
             setMode("remote");
           }}
         >
-          원격 원본 조회
-        </button>
+          {uiText("원격 원본 조회")}</button>
       </div>
       {mode === "remote" && (
-        <section className="scopesentry-preview" aria-label="원격 원본 연결">
+        <section className="scopesentry-preview" aria-label={uiText("원격 원본 연결")}>
           <p className="remediation">
-            관리자가 등록한 원본에서 한 번에 최대 50개를 조회합니다. 항목 반영은
-            직접 선택하며 검증 작업 실행에는 별도 승인이 필요합니다.
-          </p>
+            {uiText("관리자가 등록한 원본에서 한 번에 최대 50개를 조회합니다. 항목 반영은 직접 선택하며 검증 작업 실행에는 별도 승인이 필요합니다.")}</p>
           {connectionsLoading && (
-            <p role="status">원격 연결 목록을 불러오는 중…</p>
+            <p role="status">{uiText("원격 연결 목록을 불러오는 중…")}</p>
           )}
           {connectionError && (
             <p role="alert" className="form-error">
-              연결 목록 조회 실패: {connectionError}
+              {uiText("연결 목록 조회 실패: ")}{connectionError}
             </p>
           )}
           {!connectionsLoading && !connectionError && !connections.length && (
             <p>
-              등록된 원격 원본이 없습니다. 관리자가 서버 연결과 인증을
-              설정하거나 파일 가져오기를 사용하세요.
-            </p>
+              {uiText("등록된 원격 원본이 없습니다. 관리자가 서버 연결과 인증을 설정하거나 파일 가져오기를 사용하세요.")}</p>
           )}
           <button
             disabled={connectionsLoading || busy || submitted}
             onClick={() => void loadConnections()}
           >
-            {connectionError ? "연결 목록 다시 시도" : "연결 목록 새로고침"}
+            {connectionError ? uiText("연결 목록 다시 시도") : uiText("연결 목록 새로고침")}
           </button>
           {connections.map((item) => (
             <label
@@ -257,7 +252,7 @@ export function ScopeSentryImport({
               <span>
                 {item.id} · {item.url}
                 {item.project ? ` · ${item.project}` : ""}
-                {!item.configured ? " · 서버 인증 설정 필요" : ""}
+                {!item.configured ? uiText(" · 서버 인증 설정 필요") : ""}
               </span>
             </label>
           ))}
@@ -268,7 +263,7 @@ export function ScopeSentryImport({
               }
               onClick={() => void preview()}
             >
-              {busy ? "원본 조회 중…" : "첫 페이지 조회"}
+              {busy ? uiText("원본 조회 중…") : uiText("첫 페이지 조회")}
             </button>
           )}
         </section>
@@ -276,24 +271,20 @@ export function ScopeSentryImport({
       {mode === "file" && (
         <>
           <p className="remediation">
-            ScopeSentry의 asset JSON 내보내기 파일을 붙여 넣으세요. 한 줄에
-            레코드 하나이며 최대 100줄·1 MiB입니다. 파일에 없는 항목은 삭제하지
-            않습니다. 가져온 후에도 검증 작업은 별도로 승인해야 합니다.
-          </p>
+            {uiText("ScopeSentry의 asset JSON 내보내기 파일을 붙여 넣으세요. 한 줄에 레코드 하나이며 최대 100줄·1 MiB입니다. 파일에 없는 항목은 삭제하지 않습니다. 가져온 후에도 검증 작업은 별도로 승인해야 합니다.")}</p>
           <form onSubmit={preview}>
             <fieldset
               disabled={busy || submitted}
               className="identity-form-fields"
-              aria-label="ScopeSentry 가져오기 입력"
+              aria-label={uiText("ScopeSentry 가져오기 입력")}
             >
               <label>
-                원본 인스턴스 식별자
-                <input
+                {uiText("원본 인스턴스 식별자")}<input
                   value={source}
                   maxLength={64}
                   pattern="[A-Za-z0-9_.-]+"
                   required
-                  placeholder="예: company-sentry"
+                  placeholder={uiText("예: company-sentry")}
                   onChange={(e) => {
                     reset();
                     setSource(e.target.value);
@@ -301,8 +292,7 @@ export function ScopeSentryImport({
                 />
               </label>
               <label>
-                내보낸 자산 JSON
-                <textarea
+                {uiText("내보낸 자산 JSON")}<textarea
                   value={text}
                   rows={7}
                   maxLength={1048576}
@@ -318,14 +308,11 @@ export function ScopeSentryImport({
                 />
               </label>
               <p className="subtle">
-                같은 ScopeSentry 인스턴스는 항상 같은 식별자를 사용하세요. HTTP
-                자산의 _id·type·url을 읽습니다. 본문·헤더·스크린샷과 외부 접근
-                규칙은 저장하지 않습니다.
-              </p>
+                {uiText("같은 ScopeSentry 인스턴스는 항상 같은 식별자를 사용하세요. HTTP 자산의 _id·type·url을 읽습니다. 본문·헤더·스크린샷과 외부 접근 규칙은 저장하지 않습니다.")}</p>
             </fieldset>
             {!submitted && (
               <button type="submit" disabled={busy}>
-                {busy ? "미리보는 중…" : "가져오기 미리보기"}
+                {busy ? uiText("미리보는 중…") : uiText("가져오기 미리보기")}
               </button>
             )}
           </form>
@@ -333,34 +320,28 @@ export function ScopeSentryImport({
       )}
       {plan?.remote?.page && (
         <p role="status">
-          원본 {plan.source_key} · {plan.remote.page}페이지 · {plan.rows.length}
-          개
-        </p>
+          {uiText("원본 ")}{plan.source_key} · {plan.remote.page}{uiText("페이지 · ")}{plan.rows.length}
+          {uiText("개")}</p>
       )}
       {plan && !result && (
-        <section className="scopesentry-preview" aria-label="가져오기 검토">
+        <section className="scopesentry-preview" aria-label={uiText("가져오기 검토")}>
           <p>
             <strong>
-              전체 {plan.rows.length}개 · 가져올 수 있는 항목 {ready.length}개
-            </strong>
+              {uiText("전체 ")}{plan.rows.length}{uiText("개 · 가져올 수 있는 항목 ")}{ready.length}{uiText("개")}</strong>
           </p>
           <p className="subtle">
-            이 검토는{" "}
-            {new Date(plan.expires_at * 1000).toLocaleTimeString("ko-KR")}에
-            만료됩니다. 기존 자산의 로컬 설정은 유지합니다. 주소 변경 항목은 새
-            주소의 자산에 연결하며 이전 이력은 보존합니다.
-          </p>
+            {uiText("이 검토는")}{" "}
+            {new Date(plan.expires_at * 1000).toLocaleTimeString(getFormatLocale())}{uiText("에 만료됩니다. 기존 자산의 로컬 설정은 유지합니다. 주소 변경 항목은 새 주소의 자산에 연결하며 이전 이력은 보존합니다.")}</p>
           <button
             disabled={busy || submitted || !ready.length}
             onClick={() => setSelected(ready.map((row) => row.external_id!))}
           >
-            가져올 수 있는 항목 모두 선택
-          </button>
+            {uiText("가져올 수 있는 항목 모두 선택")}</button>
           <div
             className="scopesentry-rows"
             tabIndex={0}
             role="region"
-            aria-label="가져올 원본 항목"
+            aria-label={uiText("가져올 원본 항목")}
           >
             {plan.rows.map((row) => (
               <label className="scopesentry-row" key={row.line}>
@@ -379,13 +360,13 @@ export function ScopeSentryImport({
                   }
                 />
                 <span>
-                  <strong>{row.url || `레코드 ${row.line}`}</strong>
+                  <strong>{row.url || uiText("레코드 {0}", [row.line])}</strong>
                   <small>
-                    {row.external_id || "원본 ID 없음"} ·{" "}
+                    {row.external_id || uiText("원본 ID 없음")} ·{" "}
                     {row.reason || actions[row.action || ""]}
                   </small>
                   {row.source_changed && (
-                    <small>원본 주소 변경 · 이전 주소 {row.previous_url}</small>
+                    <small>{uiText("원본 주소 변경 · 이전 주소 ")}{row.previous_url}</small>
                   )}
                 </span>
               </label>
@@ -398,26 +379,22 @@ export function ScopeSentryImport({
               disabled={busy || submitted}
               onChange={(e) => setAuthorized(e.target.checked)}
             />
-            선택한 주소에 대한 검증 권한을 확인했습니다.
-          </label>
+            {uiText("선택한 주소에 대한 검증 권한을 확인했습니다.")}</label>
           <p className="subtle">
-            선택한 {selected.length}개만 반영합니다. 응답을 확인하지 못하면 같은
-            선택으로 다시 확인하세요.
-          </p>
+            {uiText("선택한 ")}{selected.length}{uiText("개만 반영합니다. 응답을 확인하지 못하면 같은 선택으로 다시 확인하세요.")}</p>
           <div className="modal-actions">
             <button disabled={busy} onClick={reset}>
-              미리보기 다시 만들기
-            </button>
+              {uiText("미리보기 다시 만들기")}</button>
             <button
               className="primary"
               disabled={busy || !authorized || !selected.length}
               onClick={() => void apply()}
             >
               {busy
-                ? "반영 중…"
+                ? uiText("반영 중…")
                 : submitted
-                  ? "같은 선택으로 다시 확인"
-                  : "선택한 항목 반영"}
+                  ? uiText("같은 선택으로 다시 확인")
+                  : uiText("선택한 항목 반영")}
             </button>
           </div>
         </section>
@@ -425,16 +402,12 @@ export function ScopeSentryImport({
       {result && (
         <section
           className="scopesentry-preview"
-          aria-label="가져오기 반영 결과"
+          aria-label={uiText("가져오기 반영 결과")}
         >
           <p role="status">
-            새 자산 {result.created}개 · 새 출처 연결 {result.linked}개 · 기존
-            출처 확인 {result.seen}개 · 주소 변경 {result.source_changed}개
-          </p>
+            {uiText("새 자산 ")}{result.created}{uiText("개 · 새 출처 연결 ")}{result.linked}{uiText("개 · 기존 출처 확인 ")}{result.seen}{uiText("개 · 주소 변경 ")}{result.source_changed}{uiText("개")}</p>
           <p>
-            검증 작업을 자동 생성하거나 실행하지 않았습니다. 자산의 ‘출처’에서
-            연결 정보를 확인하세요.
-          </p>
+            {uiText("검증 작업을 자동 생성하거나 실행하지 않았습니다. 자산의 ‘출처’에서 연결 정보를 확인하세요.")}</p>
           <ul>
             {result.items.map((item) => (
               <li key={item.external_id}>
@@ -442,19 +415,16 @@ export function ScopeSentryImport({
               </li>
             ))}
           </ul>
-          <button onClick={onClose}>닫기</button>
+          <button onClick={onClose}>{uiText("닫기")}</button>
         </section>
       )}
       {plan?.remote?.page && (
         <section
           className="scopesentry-preview"
-          aria-label="원본 페이지 이어받기"
+          aria-label={uiText("원본 페이지 이어받기")}
         >
           <p className="subtle">
-            원본 목록은 조회 중 바뀔 수 있습니다. 이전 페이지 변경이나 중복 ID가
-            발견되면 처음부터 다시 조회하세요. 누락된 항목을 자동 삭제하지
-            않습니다.
-          </p>
+            {uiText("원본 목록은 조회 중 바뀔 수 있습니다. 이전 페이지 변경이나 중복 ID가 발견되면 처음부터 다시 조회하세요. 누락된 항목을 자동 삭제하지 않습니다.")}</p>
           {plan.remote.has_more && plan.remote.page < 20 ? (
             <button
               disabled={
@@ -467,16 +437,16 @@ export function ScopeSentryImport({
               onClick={() => void preview(undefined, plan.id)}
             >
               {busy
-                ? "원본 조회 중…"
+                ? uiText("원본 조회 중…")
                 : result
-                  ? "다음 원본 페이지 조회"
-                  : "이 페이지 반영 없이 다음 조회"}
+                  ? uiText("다음 원본 페이지 조회")
+                  : uiText("이 페이지 반영 없이 다음 조회")}
             </button>
           ) : (
             <p>
               {plan.remote.has_more
-                ? "20페이지 한도입니다. 관리자에게 원본 필터 설정을 확인하세요."
-                : "이 수집의 마지막 페이지입니다."}
+                ? uiText("20페이지 한도입니다. 관리자에게 원본 필터 설정을 확인하세요.")
+                : uiText("이 수집의 마지막 페이지입니다.")}
             </p>
           )}
           <button
@@ -489,8 +459,7 @@ export function ScopeSentryImport({
             }
             onClick={() => void preview()}
           >
-            원본 처음부터 다시 조회
-          </button>
+            {uiText("원본 처음부터 다시 조회")}</button>
         </section>
       )}
       {error && (
@@ -529,19 +498,16 @@ export function AssetSources({
     `/assets/${encodeURIComponent(asset.id)}/sources`,
   );
   return (
-    <Modal title="자산의 원본 출처" subtitle={asset.name} onClose={onClose}>
+    <Modal title={uiText("자산의 원본 출처")} subtitle={asset.name} onClose={onClose}>
       <div className="scopesentry-sources">
         <p>
-          ScopeSentry 파일에서 명시적으로 반영한 원본 연결입니다. 원본의 삭제나
-          주소 변경이 검증 증거를 삭제하지 않습니다.
-        </p>
+          {uiText("ScopeSentry 파일에서 명시적으로 반영한 원본 연결입니다. 원본의 삭제나 주소 변경이 검증 증거를 삭제하지 않습니다.")}</p>
         <label>
-          출처 검색
-          <input
+          {uiText("출처 검색")}<input
             value={search}
             maxLength={200}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="인스턴스·원본 ID·주소"
+            placeholder={uiText("인스턴스·원본 ID·주소")}
           />
         </label>
         <label className="checkbox-label">
@@ -550,8 +516,7 @@ export function AssetSources({
             checked={history}
             onChange={(e) => setHistory(e.target.checked)}
           />
-          이전 연결 이력 보기
-        </label>
+          {uiText("이전 연결 이력 보기")}</label>
         <Pagination records={records} />
         {!records.ready ? (
           <RecordState records={records} />
@@ -562,25 +527,24 @@ export function AssetSources({
               <code>{source.external_id}</code>
               <code>{source.source_url}</code>
               <p>
-                최초 확인{" "}
-                {new Date(source.first_seen * 1000).toLocaleString("ko-KR")} ·
-                최근 확인{" "}
-                {new Date(source.last_seen * 1000).toLocaleString("ko-KR")}
+                {uiText("최초 확인")}{" "}
+                {new Date(source.first_seen * 1000).toLocaleString(getFormatLocale())} {uiText(" · 최근 확인")}{" "}
+                {new Date(source.last_seen * 1000).toLocaleString(getFormatLocale())}
               </p>
               {source.replaced_at && (
                 <p>
-                  연결 변경{" "}
-                  {new Date(source.replaced_at * 1000).toLocaleString("ko-KR")}
+                  {uiText("연결 변경")}{" "}
+                  {new Date(source.replaced_at * 1000).toLocaleString(getFormatLocale())}
                 </p>
               )}
               <details>
-                <summary>내보내기 파일의 SHA-256</summary>
+                <summary>{uiText("내보내기 파일의 SHA-256")}</summary>
                 <code>{source.export_sha256}</code>
               </details>
             </article>
           ))
         ) : (
-          <p>표시할 출처가 없습니다.</p>
+          <p>{uiText("표시할 출처가 없습니다.")}</p>
         )}
       </div>
     </Modal>

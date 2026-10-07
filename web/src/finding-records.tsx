@@ -1,3 +1,4 @@
+import { t as uiText, localizeLabels, getFormatLocale } from "./i18n-core.ts";
 import { useCallback } from "react";
 import {
   readDetail,
@@ -23,13 +24,13 @@ type Retest = {
   created_at: number;
   state_note?: string;
 };
-const conclusions: Record<string, string> = {
+const conclusions: Record<string, string> = localizeLabels({
   reproduced: "재현됨",
   resolved: "해결 확인",
   inconclusive: "판정 불가",
-};
+});
 function timestamp(value: number) {
-  return new Date(value * 1000).toLocaleString("ko-KR");
+  return new Date(value * 1000).toLocaleString(getFormatLocale());
 }
 
 export function FindingRecords({
@@ -105,7 +106,7 @@ function FindingCollection({
     { ...state, onPositionChange: changePosition },
     `/findings/${encodeURIComponent(findingId)}/${kind}`,
   );
-  const name = kind === "evidence" ? "증거 이력" : "재검증 이력";
+  const name = kind === "evidence" ? uiText("증거 이력") : uiText("재검증 이력");
   return (
     <section className="finding-collection" aria-label={name}>
       <h4 className="detail-heading">{name}</h4>
@@ -114,16 +115,16 @@ function FindingCollection({
         aria-expanded={expanded}
         onClick={() => onChange(kind, { expanded: !expanded })}
       >
-        {expanded ? `${name} 접기` : `${name} 보기`}
+        {expanded ? uiText("{0} 접기", [name]) : uiText("{0} 보기", [name])}
       </button>
       {expanded && (
         <div className="finding-collection-content">
           <label>
             {kind === "evidence"
-              ? "도구 ID 또는 작업 ID로 검색"
-              : "판정·사유 또는 작업 ID로 검색"}
+              ? uiText("도구 ID 또는 작업 ID로 검색")
+              : uiText("판정·사유 또는 작업 ID로 검색")}
             <input
-              aria-label={`${name} 검색`}
+              aria-label={uiText("{0} 검색", [name])}
               value={search}
               maxLength={200}
               onChange={(e) =>
@@ -147,15 +148,15 @@ function FindingCollection({
                 <small>{timestamp(record.created_at)}</small>
                 {kind === "evidence" && (
                   <p>
-                    도구 ID <code>{(record as Evidence).check}</code>
+                    {uiText("도구 ID ")}<code>{(record as Evidence).check}</code>
                   </p>
                 )}
                 <p>
-                  작업 <code>{record.task_id}</code>
+                  {uiText("작업 ")}<code>{record.task_id}</code>
                 </p>
                 {kind === "evidence" ? (
                   <details>
-                    <summary>증거 원본 · {record.id}</summary>
+                    <summary>{uiText("증거 원본 · ")}{record.id}</summary>
                     <pre>
                       {JSON.stringify(
                         (record as Evidence).observation,
@@ -173,7 +174,7 @@ function FindingCollection({
             ))
           ) : (
             <p className="subtle">
-              {search ? "검색 결과가 없습니다." : `저장된 ${name}이 없습니다.`}
+              {search ? uiText("검색 결과가 없습니다.") : uiText("저장된 {0}이 없습니다.", [name])}
             </p>
           )}
         </div>

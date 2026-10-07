@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 export type RuleDraft = {
   key: string;
   path: string;
@@ -33,7 +34,7 @@ export function parseRules(text: string): Record<string, unknown>[] {
     value.length > 20 ||
     value.some((row) => !row || typeof row !== "object" || Array.isArray(row))
   )
-    throw new Error("규칙 JSON은 최대 20개 객체를 담은 배열이어야 합니다.");
+    throw new Error(uiText("규칙 JSON은 최대 20개 객체를 담은 배열이어야 합니다."));
   return value;
 }
 
@@ -68,7 +69,7 @@ export function rulesToDrafts(rows: unknown[]): RuleDraft[] {
           typeof owner.expected !== "string"))
     )
       throw new Error(
-        "폼으로 표시할 수 없는 필드가 있습니다. JSON 편집에서 원본을 확인하세요.",
+        uiText("폼으로 표시할 수 없는 필드가 있습니다. JSON 편집에서 원본을 확인하세요."),
       );
     return {
       ...blankRule(`rule-${index}`),
@@ -91,9 +92,9 @@ export function rulesToDrafts(rows: unknown[]): RuleDraft[] {
 export function parseSchema(text: string): Record<string, unknown> {
   const value: unknown = JSON.parse(text);
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("응답 스키마는 JSON 객체여야 합니다.");
+    throw new Error(uiText("응답 스키마는 JSON 객체여야 합니다."));
   if (new TextEncoder().encode(JSON.stringify(value)).length > 16384)
-    throw new Error("응답 스키마는 UTF-8 JSON 16 KiB 이하여야 합니다.");
+    throw new Error(uiText("응답 스키마는 UTF-8 JSON 16 KiB 이하여야 합니다."));
   return value as Record<string, unknown>;
 }
 

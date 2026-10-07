@@ -1,3 +1,4 @@
+import { t as uiText, localizeLabels, getFormatLocale } from "./i18n-core.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { useRecords, Pagination, RecordState } from "./records";
@@ -35,26 +36,26 @@ type Page<T> = {
   has_more: boolean;
   snapshot?: number;
 };
-const statuses: Record<string, string> = {
+const statuses: Record<string, string> = localizeLabels({
   open: "미조치",
   accepted: "위험 수용",
   resolved: "해결",
-};
-const actions: Record<string, string> = {
+});
+const actions: Record<string, string> = localizeLabels({
   triage: "조치 변경",
   detected: "최초 발견",
   observed: "추가 관찰",
   reopened: "재발견",
   retest: "재검증",
-};
-const fields: Record<string, string> = {
+});
+const fields: Record<string, string> = localizeLabels({
   status: "상태",
   assignee_id: "담당자 ID",
   assignee_name: "담당자",
   assignee_username: "계정",
   acceptance_reason: "수용 사유",
   resolution_reason: "해결 사유",
-};
+});
 
 export function FindingTriage({
   finding,
@@ -169,13 +170,12 @@ export function FindingTriage({
       ? [selectedPerson, ...people.items]
       : people.items;
   return (
-    <section className="triage-panel" aria-label="발견 사항 조치 기록">
-      <h4 className="detail-heading">담당자와 조치</h4>
+    <section className="triage-panel" aria-label={uiText("발견 사항 조치 기록")}>
+      <h4 className="detail-heading">{uiText("담당자와 조치")}</h4>
       {canOperate ? (
         <form onSubmit={save} className="triage-form">
           <label>
-            조치 상태
-            <select
+            {uiText("조치 상태")}<select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               disabled={busy}
@@ -188,21 +188,19 @@ export function FindingTriage({
             </select>
           </label>
           <label>
-            담당자 검색
-            <input
+            {uiText("담당자 검색")}<input
               value={search}
               maxLength={100}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setOwnerOffset(0);
               }}
-              placeholder="이름 또는 계정"
+              placeholder={uiText("이름 또는 계정")}
               disabled={busy}
             />
           </label>
           <label>
-            담당자
-            <select
+            {uiText("담당자")}<select
               value={owner}
               disabled={busy || directoryLoading || !!directoryError}
               onChange={(e) => {
@@ -212,7 +210,7 @@ export function FindingTriage({
                 );
               }}
             >
-              <option value="">미지정</option>
+              <option value="">{uiText("미지정")}</option>
               {options.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} · {p.username}
@@ -222,14 +220,13 @@ export function FindingTriage({
           </label>
           {directoryError && (
             <div role="alert">
-              <p>담당자 목록 조회 실패: {directoryError}</p>
+              <p>{uiText("담당자 목록 조회 실패: ")}{directoryError}</p>
               <button
                 type="button"
                 disabled={busy || directoryLoading}
                 onClick={() => setDirectoryReload((value) => value + 1)}
               >
-                담당자 목록 다시 조회
-              </button>
+                {uiText("담당자 목록 다시 조회")}</button>
             </div>
           )}
           <div className="triage-paging">
@@ -243,14 +240,13 @@ export function FindingTriage({
               }
               onClick={() => setOwnerOffset((v) => Math.max(0, v - 25))}
             >
-              담당자 이전
-            </button>
+              {uiText("담당자 이전")}</button>
             <span role="status">
               {directoryLoading
-                ? "담당자 목록 불러오는 중…"
+                ? uiText("담당자 목록 불러오는 중…")
                 : directoryError
-                  ? "담당자 수를 확인하지 못했습니다."
-                  : `${people.total}명`}
+                  ? uiText("담당자 수를 확인하지 못했습니다.")
+                  : uiText("{0}명", [people.total])}
             </span>
             <button
               type="button"
@@ -259,12 +255,10 @@ export function FindingTriage({
               }
               onClick={() => setOwnerOffset((v) => v + 25)}
             >
-              담당자 다음
-            </button>
+              {uiText("담당자 다음")}</button>
           </div>
           <label>
-            위험 수용 사유
-            <textarea
+            {uiText("위험 수용 사유")}<textarea
               value={acceptance}
               onChange={(e) => setAcceptance(e.target.value)}
               required={status === "accepted"}
@@ -274,8 +268,7 @@ export function FindingTriage({
             />
           </label>
           <label>
-            해결 사유
-            <textarea
+            {uiText("해결 사유")}<textarea
               value={resolution}
               onChange={(e) => setResolution(e.target.value)}
               required={status === "resolved"}
@@ -285,30 +278,26 @@ export function FindingTriage({
             />
           </label>
           <p className="subtle">
-            수동 해결은 조치 기록입니다. 실제 해결 여부는 승인된 재검증으로
-            확인하세요.
-          </p>
+            {uiText("수동 해결은 조치 기록입니다. 실제 해결 여부는 승인된 재검증으로 확인하세요.")}</p>
           {error && (
             <div role="alert">
               <p>{error}</p>
               <button type="button" onClick={onReload} disabled={busy}>
-                최신 기록 다시 불러오기
-              </button>
+                {uiText("최신 기록 다시 불러오기")}</button>
               <p className="subtle">
-                다시 불러오면 작성 중인 내용은 최신 기록으로 바뀝니다.
-              </p>
+                {uiText("다시 불러오면 작성 중인 내용은 최신 기록으로 바뀝니다.")}</p>
             </div>
           )}
           <button className="primary" type="submit" disabled={busy}>
-            {busy ? "저장 중…" : "조치 기록 저장"}
+            {busy ? uiText("저장 중…") : uiText("조치 기록 저장")}
           </button>
         </form>
       ) : (
         <div className="triage-readonly">
-          <p>담당자: {finding.assignee_name || "미지정"}</p>
-          <p>상태: {statuses[finding.status] || finding.status}</p>
-          <p>수용 사유: {finding.acceptance_reason || "없음"}</p>
-          <p>해결 사유: {finding.resolution_reason || "없음"}</p>
+          <p>{uiText("담당자: ")}{finding.assignee_name || uiText("미지정")}</p>
+          <p>{uiText("상태: ")}{statuses[finding.status] || finding.status}</p>
+          <p>{uiText("수용 사유: ")}{finding.acceptance_reason || uiText("없음")}</p>
+          <p>{uiText("해결 사유: ")}{finding.resolution_reason || uiText("없음")}</p>
         </div>
       )}
       <FindingHistory
@@ -356,21 +345,20 @@ function FindingHistory({
     `/findings/${encodeURIComponent(findingId)}/history`,
   );
   return (
-    <section className="finding-collection" aria-label="발견 사항 변경 이력">
-      <h4 className="detail-heading">변경 이력</h4>
+    <section className="finding-collection" aria-label={uiText("발견 사항 변경 이력")}>
+      <h4 className="detail-heading">{uiText("변경 이력")}</h4>
       <button
         type="button"
         aria-expanded={expanded}
         onClick={() => onChange("history", { expanded: !expanded })}
       >
-        {expanded ? "변경 이력 접기" : "변경 이력 보기"}
+        {expanded ? uiText("변경 이력 접기") : uiText("변경 이력 보기")}
       </button>
       {expanded && (
         <div className="finding-collection-content">
           <label>
-            사유·작성자로 검색
-            <input
-              aria-label="변경 이력 검색"
+            {uiText("사유·작성자로 검색")}<input
+              aria-label={uiText("변경 이력 검색")}
               maxLength={200}
               value={search}
               onChange={(event) =>
@@ -392,7 +380,7 @@ function FindingHistory({
                   <time
                     dateTime={new Date(entry.created_at * 1000).toISOString()}
                   >
-                    {new Date(entry.created_at * 1000).toLocaleString("ko-KR")}
+                    {new Date(entry.created_at * 1000).toLocaleString(getFormatLocale())}
                   </time>
                   <p>{entry.reason}</p>
                   {Object.entries(entry.changes)
@@ -401,10 +389,10 @@ function FindingHistory({
                       <p key={key}>
                         {fields[key] || key}:{" "}
                         {statuses[String(value.before)] ||
-                          String(value.before ?? "없음")}{" "}
+                          String(value.before ?? uiText("없음"))}{" "}
                         →{" "}
                         {statuses[String(value.after)] ||
-                          String(value.after ?? "없음")}
+                          String(value.after ?? uiText("없음"))}
                       </p>
                     ))}
                 </li>
@@ -413,8 +401,8 @@ function FindingHistory({
           ) : (
             <p className="subtle">
               {search
-                ? "검색 결과가 없습니다."
-                : "기록된 변경 이력이 없습니다. 이전 버전의 이력은 소급 생성하지 않습니다."}
+                ? uiText("검색 결과가 없습니다.")
+                : uiText("기록된 변경 이력이 없습니다. 이전 버전의 이력은 소급 생성하지 않습니다.")}
             </p>
           )}
         </div>

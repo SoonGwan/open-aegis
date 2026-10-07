@@ -45,7 +45,7 @@ test("advanced fields cannot silently disappear when switching to a form", () =>
     },
   ];
   const original = JSON.stringify(rows);
-  assert.throws(() => rulesToDrafts(rows), /JSON 편집/);
+  assert.throws(() => rulesToDrafts(rows), /Inspect the original in the JSON editor/);
   assert.deepEqual(parseRules(original), rows);
   assert.equal(JSON.stringify(rows), original);
   assert.throws(() =>

@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError, captureSession } from "./api";
 import { pendingStorage } from "./chat-pending";
@@ -62,20 +63,20 @@ function read(actor: string, task: string, objective?: string): ObservationExecu
 export type GoalObservationRef = {source_task_id:string;source_task_name:string;objective_title:string;objective_id:string};
 export function GoalObservationOrigin({origin,onTask}:{origin?:GoalObservationRef;onTask:(id:string)=>void}) {
   if(!origin)return null;
-  return <section className="next-plan" aria-label="관찰 검사의 원래 목표 과제">
-    <h4>목표 과제에서 선택한 관찰 검사</h4>
+  return <section className="next-plan" aria-label={uiText("관찰 검사의 원래 목표 과제")}>
+    <h4>{uiText("목표 과제에서 선택한 관찰 검사")}</h4>
     <p>{origin.source_task_name} · {origin.objective_title}</p>
-    <p>과제에 속한 자산의 관찰 URL과 선언한 응답 검사를 선택한 계획입니다. 실행에는 별도 관리자 승인이 필요합니다. 기본 응답 완료율이나 자연어 목표 달성으로 합치지 않습니다.</p>
-    <button type="button" onClick={()=>onTask(origin.source_task_id)}>원래 목표 작업 열기</button>
+    <p>{uiText("과제에 속한 자산의 관찰 URL과 선언한 응답 검사를 선택한 계획입니다. 실행에는 별도 관리자 승인이 필요합니다. 기본 응답 완료율이나 자연어 목표 달성으로 합치지 않습니다.")}</p>
+    <button type="button" onClick={()=>onTask(origin.source_task_id)}>{uiText("원래 목표 작업 열기")}</button>
   </section>;
 }
 
 export type ObservationCells = {format:string;source_task_id:string;cells:{observation_id:string;check:string}[];fingerprint:string};
 export function ObservationCellsSummary({selection,execution,names}:{selection?:ObservationCells;execution?:ObservationExecution;names:Record<string,string>}) {
   if(!selection || !execution)return null;
-  return <section className="next-plan" aria-label="이번 관찰 회차의 URL과 검사">
-    <h4>이번 회차에 다시 검사할 관찰</h4>
-    <p>표시한 URL과 검사 조합만 새 승인 후 실행합니다. 선택하지 않은 URL의 이전 결과를 유지하며 기본 자산 응답 완료율과 별도로 기록합니다.</p>
+  return <section className="next-plan" aria-label={uiText("이번 관찰 회차의 URL과 검사")}>
+    <h4>{uiText("이번 회차에 다시 검사할 관찰")}</h4>
+    <p>{uiText("표시한 URL과 검사 조합만 새 승인 후 실행합니다. 선택하지 않은 URL의 이전 결과를 유지하며 기본 자산 응답 완료율과 별도로 기록합니다.")}</p>
     {selection.cells.map(row=><article key={row.observation_id+":"+row.check}>
       <code className="observation-url">{execution.targets.find(target=>target.id===row.observation_id)?.url || row.observation_id}</code>
       <p>{names[row.check] || row.check}</p>
@@ -92,18 +93,15 @@ export function ObservationExecutionBasis({
 }) {
   if (!execution) return null;
   return (
-    <section className="next-plan observation-execution" aria-label="승인할 관찰 응답 요청">
-      <h4>선택한 관찰 응답 검증</h4>
+    <section className="next-plan observation-execution" aria-label={uiText("승인할 관찰 응답 요청")}>
+      <h4>{uiText("선택한 관찰 응답 검증")}</h4>
       <p>
-        아래 URL에 GET 요청을 보내 선택한 응답 설정을 검증합니다. 실행은 관리자
-        승인이 필요합니다. URL별 결과를 기록하며 기본 자산 응답의 완료율에는
-        포함하지 않습니다.
-      </p>
+        {uiText("아래 URL에 GET 요청을 보내 선택한 응답 설정을 검증합니다. 실행은 관리자 승인이 필요합니다. URL별 결과를 기록하며 기본 자산 응답의 완료율에는 포함하지 않습니다.")}</p>
       {execution.targets.filter(row=>!selection || selection.cells.some(cell=>cell.observation_id===row.id)).map((row) => (
         <article key={row.id}>
           <code className="observation-url">{row.url}</code>
           <p>
-            범위 버전 {row.scope_revision} · 관찰 {row.id}
+            {uiText("범위 버전 ")}{row.scope_revision} {uiText(" · 관찰 ")}{row.id}
           </p>
         </article>
       ))}
@@ -188,7 +186,7 @@ export function ObservationExecutionPicker({
       }
     } catch (err) {
       if (active.current && view() && session() && !request.signal.aborted)
-        setError(err instanceof Error ? err.message : "목록 조회 실패");
+        setError(err instanceof Error ? err.message : uiText("목록 조회 실패"));
     } finally {
       if (active.current && controller.current === request) setLoading(false);
     }
@@ -214,7 +212,7 @@ export function ObservationExecutionPicker({
       storage.setItem(storageKey, JSON.stringify(request));
     } catch {
       setError(
-        "요청 복구 정보를 저장하지 못했습니다. 브라우저 저장소를 확인하세요.",
+        uiText("요청 복구 정보를 저장하지 못했습니다. 브라우저 저장소를 확인하세요."),
       );
       return;
     }
@@ -254,7 +252,7 @@ export function ObservationExecutionPicker({
           setPreview(null);
           setIds([]);
         }
-        setError(err instanceof Error ? err.message : "계획 반영 실패");
+        setError(err instanceof Error ? err.message : uiText("계획 반영 실패"));
       }
     } finally {
       locked.current = false;
@@ -262,38 +260,33 @@ export function ObservationExecutionPicker({
     }
   }
   return (
-    <section className="next-plan observation-execution" aria-label={objectiveId?"과제의 관찰 응답 검사 · "+objectiveTitle:"관찰 응답 검사 계획"}>
-      <h4>{objectiveId?"이 과제의 관찰 응답 검사":"관찰 응답 검사 계획"}</h4>
-      {objectiveId && <p>이 과제에 선언된 자산의 관찰과 응답 검사만 선택합니다. 새 계획에도 원래 과제 출처를 보존합니다.</p>}
-      {preview && !preview.checks.length && <p role="status">이 과제에는 지원하는 응답 검사가 없습니다. 목표 초안을 새로 검토해 검사 범위를 정하세요.</p>}
+    <section className="next-plan observation-execution" aria-label={objectiveId?uiText("과제의 관찰 응답 검사 · ")+objectiveTitle:uiText("관찰 응답 검사 계획")}>
+      <h4>{objectiveId?uiText("이 과제의 관찰 응답 검사"):uiText("관찰 응답 검사 계획")}</h4>
+      {objectiveId && <p>{uiText("이 과제에 선언된 자산의 관찰과 응답 검사만 선택합니다. 새 계획에도 원래 과제 출처를 보존합니다.")}</p>}
+      {preview && !preview.checks.length && <p role="status">{uiText("이 과제에는 지원하는 응답 검사가 없습니다. 목표 초안을 새로 검토해 검사 범위를 정하세요.")}</p>}
       <p>
-        출처와 현재 범위를 확인한 관찰 중 최대 10개를 선택합니다. 계획 생성과
-        URL 조회는 별개이며 새 계획의 관리자 승인 후 GET 요청을 보냅니다.
-      </p>
+        {uiText("출처와 현재 범위를 확인한 관찰 중 최대 10개를 선택합니다. 계획 생성과 URL 조회는 별개이며 새 계획의 관리자 승인 후 GET 요청을 보냅니다.")}</p>
       <button
         type="button"
         onClick={() => void load()}
         disabled={busy || loading || saving || !!pending}
       >
-        {loading ? "관찰 확인 중…" : "검사할 관찰 확인"}
+        {loading ? uiText("관찰 확인 중…") : uiText("검사할 관찰 확인")}
       </button>
       {error && <p role="alert">{error}</p>}
       {pending && (
         <p role="status">
-          이전 반영 요청의 결과를 확인해야 합니다. 선택을 유지한 채 같은
-          요청으로 다시 확인합니다.
-        </p>
+          {uiText("이전 반영 요청의 결과를 확인해야 합니다. 선택을 유지한 채 같은 요청으로 다시 확인합니다.")}</p>
       )}
       {preview && (
         <>
           <p>
-            전체 {preview.context.counts.total}개 · 사용 가능{" "}
-            {preview.context.counts.included}개 · 제외{" "}
-            {preview.context.counts.excluded}개 · 표본 밖{" "}
-            {preview.context.counts.omitted}개
-          </p>
+            {uiText("전체 ")}{preview.context.counts.total}{uiText("개 · 사용 가능")}{" "}
+            {preview.context.counts.included}{uiText("개 · 제외")}{" "}
+            {preview.context.counts.excluded}{uiText("개 · 표본 밖")}{" "}
+            {preview.context.counts.omitted}{uiText("개")}</p>
           <fieldset disabled={busy || saving || !!pending || !canOperate}>
-            <legend>검사할 관찰 URL</legend>
+            <legend>{uiText("검사할 관찰 URL")}</legend>
             {preview.context.items.map((row) => (
               <label key={row.id} className="observation-url">
                 <input
@@ -312,11 +305,11 @@ export function ObservationExecutionPicker({
               </label>
             ))}
             {!preview.context.items.length && (
-              <p>현재 검사할 수 있는 관찰이 없습니다.</p>
+              <p>{uiText("현재 검사할 수 있는 관찰이 없습니다.")}</p>
             )}
           </fieldset>
           <fieldset disabled={busy || saving || !!pending || !canOperate}>
-            <legend>관찰 응답의 검증 도구</legend>
+            <legend>{uiText("관찰 응답의 검증 도구")}</legend>
             {preview.checks.map((id) => (
               <label key={id}>
                 <input
@@ -338,7 +331,7 @@ export function ObservationExecutionPicker({
       )}
       {pending && !preview && (
         <p>
-          저장된 선택: 관찰 {pending.observation_ids.length}개 ·{" "}
+          {uiText("저장된 선택: 관찰 ")}{pending.observation_ids.length}{uiText("개 ·")}{" "}
           {pending.checks.map((c) => names[c] || c).join(", ")}
         </p>
       )}
@@ -354,12 +347,12 @@ export function ObservationExecutionPicker({
         }
       >
         {saving
-          ? "반영 중…"
+          ? uiText("반영 중…")
           : pending
-            ? "같은 요청으로 결과 확인"
-            : "선택한 관찰의 승인 대기 계획 만들기"}
+            ? uiText("같은 요청으로 결과 확인")
+            : uiText("선택한 관찰의 승인 대기 계획 만들기")}
       </button>
-      {!canOperate && <p>관리자 또는 운영자가 계획을 만들 수 있습니다.</p>}
+      {!canOperate && <p>{uiText("관리자 또는 운영자가 계획을 만들 수 있습니다.")}</p>}
     </section>
   );
 }

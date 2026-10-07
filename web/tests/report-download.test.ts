@@ -125,7 +125,7 @@ test("HTML, empty and interrupted bodies cannot become saved reports", async () 
           headers: { "Content-Type": "application/json" },
         })) as typeof fetch,
     ),
-    /다운로드를 완료하지 못했습니다/,
+    /Could not complete the download/,
   );
 });
 

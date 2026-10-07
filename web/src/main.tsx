@@ -1,3 +1,5 @@
+import { LanguageSwitcher, useLocale } from "./i18n";
+import { t as uiText, localizeLabels, getFormatLocale } from "./i18n-core.ts";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PlannerUsage, type PlannerCall } from "./PlannerUsage";
@@ -243,7 +245,7 @@ const initial: Overview = {
   events: [],
   stats: {},
 };
-const statusNames: Record<string, string> = {
+const statusNames: Record<string, string> = localizeLabels({
   pending: "승인 대기",
   queued: "대기 중",
   running: "실행 중",
@@ -258,7 +260,7 @@ const statusNames: Record<string, string> = {
   accepted: "위험 수용",
   reproduced: "여전히 재현됨",
   inconclusive: "판정 불가",
-};
+});
 const severityNames: Record<string, string> = {
   critical: "Critical",
   high: "High",
@@ -266,12 +268,12 @@ const severityNames: Record<string, string> = {
   low: "Low",
   info: "Info",
 };
-const confidenceNames: Record<string, string> = {
+const confidenceNames: Record<string, string> = localizeLabels({
   configuration: "설정 관찰",
   review: "검토 필요",
   "policy-mismatch": "권한 규칙 불일치",
-};
-const pages = [
+});
+const pages = localizeLabels([
   {
     id: "overview",
     name: "대시보드",
@@ -303,10 +305,10 @@ const pages = [
   { id: "models", name: "모델 프로필", icon: Settings2 },
   { id: "users", name: "사용자 관리", icon: UsersRound },
   { id: "settings", name: "시스템 설정", icon: Settings2 },
-];
+]);
 
 const date = (ts: number) =>
-  new Date(ts * 1000).toLocaleString("ko-KR", {
+  new Date(ts * 1000).toLocaleString(getFormatLocale(), {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -393,15 +395,12 @@ function Auth({
         <div>
           <span className="eyebrow">OPEN SOURCE · SELF HOSTED</span>
           <h1>
-            보안을 확인하고.
-            <br />
-            <em>증거로 연결하세요.</em>
+            {uiText("보안을 확인하고.")}<br />
+            <em>{uiText("증거로 연결하세요.")}</em>
           </h1>
           <p>
-            자산 파악부터 검증, 수정 확인까지.
-            <br />
-            팀이 함께 사용하는 보안 워크스페이스.
-          </p>
+            {uiText("자산 파악부터 검증, 수정 확인까지.")}<br />
+            {uiText("팀이 함께 사용하는 보안 워크스페이스.")}</p>
           <div className="auth-pill">
             <span className="live-dot" /> Your infrastructure. Your evidence.
           </div>
@@ -411,20 +410,20 @@ function Auth({
         </span>
       </div>
       <div className="auth-card">
+        <LanguageSwitcher />
         <div className="section-icon">
           <LockKeyhole size={24} />
         </div>
-        <h2>{setup ? "워크스페이스 시작하기" : "다시 만나서 반갑습니다"}</h2>
+        <h2>{setup ? uiText("워크스페이스 시작하기") : uiText("다시 만나서 반갑습니다")}</h2>
         <p>
           {setup
-            ? "관리자 비밀번호를 설정하고 첫 자산을 연결하세요."
-            : "계정으로 로그인하면 역할에 맞는 기능을 사용할 수 있습니다."}
+            ? uiText("관리자 비밀번호를 설정하고 첫 자산을 연결하세요.")
+            : uiText("계정으로 로그인하면 역할에 맞는 기능을 사용할 수 있습니다.")}
         </p>
-        {busy && <p role="status">계정을 확인하고 있습니다. 잠시 기다려 주세요.</p>}
+        {busy && <p role="status">{uiText("계정을 확인하고 있습니다. 잠시 기다려 주세요.")}</p>}
         <form onSubmit={submit} aria-busy={busy} aria-describedby={error ? errorId : undefined}>
           <label>
-            사용자 이름
-            <input
+            {uiText("사용자 이름")}<input
               value={username}
               disabled={busy}
               onChange={(e) => setUsername(e.target.value)}
@@ -435,8 +434,7 @@ function Auth({
             />
           </label>
           <label>
-            비밀번호
-            <input
+            {uiText("비밀번호")}<input
               type="password"
               disabled={busy}
               minLength={12}
@@ -445,19 +443,19 @@ function Auth({
               autoComplete={setup ? "new-password" : "current-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="12자 이상 입력하세요"
+              placeholder={uiText("12자 이상 입력하세요")}
             />
           </label>
           {setup && (
             <label>
-              설치 토큰 <span className="subtle">원격 설치 시 필요</span>
+              {uiText("설치 토큰 ")}<span className="subtle">{uiText("원격 설치 시 필요")}</span>
               <input
                 type="password"
                 disabled={busy}
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 autoComplete="off"
-                placeholder="로컬 설치에서는 비워두세요"
+                placeholder={uiText("로컬 설치에서는 비워두세요")}
               />
             </label>
           )}
@@ -467,19 +465,19 @@ function Auth({
             </p>
           )}
           <button className="primary full" disabled={busy}>
-            {busy ? "연결 중…" : setup ? "워크스페이스 만들기" : "로그인"}
+            {busy ? uiText("연결 중…") : setup ? uiText("워크스페이스 만들기") : uiText("로그인")}
             <ArrowRight size={16} />
           </button>
         </form>
         <div className="auth-foot">
-          <ShieldCheck size={15} /> 비밀번호는 해시로 저장됩니다.
-        </div>
+          <ShieldCheck size={15} /> {uiText(" 비밀번호는 해시로 저장됩니다.")}</div>
       </div>
     </div>
   );
 }
 
 function App() {
+  useLocale();
   const [overviewLoaded, setOverviewLoaded] = useState(false);
   const [auth, setAuth] = useState<{
     setup_required: boolean;
@@ -487,8 +485,9 @@ function App() {
     user?: User | null;
   } | null>(null);
   const [overview, setOverview] = useState<Overview>(initial),
-    [tools, setTools] = useState<Tool[]>([]),
+    [rawTools, setTools] = useState<Tool[]>([]),
     [settings, setSettings] = useState<Settings | null>(null);
+  const tools = rawTools.map(tool => ({ ...tool, name: uiText(tool.name), description: uiText(tool.description) }));
   const navigation = useNavigation(pages.map((item) => item.id));
   const { page, list } = navigation;
   const search = list.search,
@@ -662,7 +661,7 @@ function App() {
     path: string,
     method = "POST",
     body?: unknown,
-    success = "적용했습니다.",
+    success = uiText("적용했습니다."),
     onFailure?: (message: string) => void,
   ) {
     if (busy || actionInFlight.current) return;
@@ -681,13 +680,13 @@ function App() {
         isCurrent,
         isSessionCurrent,
         success: (_result, current) =>
-          message(current ? success : "이전 화면 요청 완료 · " + success),
+          message(current ? success : uiText("이전 화면 요청 완료 · ") + success),
         failure: (e, current) => {
           const errorMessage = (e as Error).message;
           if (current) {
             setError(errorMessage);
             onFailure?.(errorMessage);
-          } else message("이전 화면 요청 실패 · " + errorMessage);
+          } else message(uiText("이전 화면 요청 실패 · ") + errorMessage);
         },
       });
     } finally {
@@ -709,7 +708,7 @@ function App() {
       try { if (auth?.user?.id) { clearModelPending(window.localStorage, auth.user.id);clearTaskCreationPending(window.localStorage, auth.user.id); } }
       catch { cleanupFailed = true; }
       setAuth({ setup_required: false, authenticated: false });
-      if (cleanupFailed) setError("로그아웃했습니다. 브라우저의 미확인 모델 요청 기록은 정리하지 못했습니다. 같은 계정으로 로그인해 확인하거나 브라우저 저장소를 정리하세요.");
+      if (cleanupFailed) setError(uiText("로그아웃했습니다. 브라우저의 미확인 모델 요청 기록은 정리하지 못했습니다. 같은 계정으로 로그인해 확인하거나 브라우저 저장소를 정리하세요."));
     } catch (e) {
       if (isSessionCurrent()) setError((e as Error).message);
     } finally {
@@ -723,7 +722,7 @@ function App() {
     setReplanError(null);
     const result = await act(
       "/tasks/" + encodeURIComponent(id) + "/replan", "POST", undefined,
-      "현재 범위로 새 계획을 만들었습니다. 변경된 범위와 도구를 확인하고 승인하세요.",
+      uiText("현재 범위로 새 계획을 만들었습니다. 변경된 범위와 도구를 확인하고 승인하세요."),
       (message) => setReplanError({id, message}),
     ) as Task | undefined;
     if (result) navigation.openDetail({kind:"task",id:result.id});
@@ -913,13 +912,11 @@ function App() {
     };
   }, [detailKey, page, auth?.authenticated, detailReload]);
   const detailHistory = (
-    <nav className="pagination" aria-label="상세 탐색 이력">
+    <nav className="pagination" aria-label={uiText("상세 탐색 이력")}>
       <button disabled={!navigation.canBack} onClick={navigation.back}>
-        이전 화면
-      </button>
+        {uiText("이전 화면")}</button>
       <button disabled={!navigation.canForward} onClick={navigation.forward}>
-        다음 화면
-      </button>
+        {uiText("다음 화면")}</button>
     </nav>
   );
   async function openFinding(id: string, reload = false) {
@@ -938,7 +935,7 @@ function App() {
     const isCurrent = captureActionView();
     const isSessionCurrent = captureSession();
     let destination: string | null = null;
-    let successMessage = "저장했습니다.";
+    let successMessage = uiText("저장했습니다.");
     try {
       if (modal === "asset") {
         const rules = String(data.get("rules") || "").trim();
@@ -959,15 +956,15 @@ function App() {
           },
         );
         successMessage = editingAsset
-          ? "자산을 수정했습니다. 기존 승인 대기 계획은 다시 만들어야 합니다."
-          : "자산을 등록했습니다.";
+          ? uiText("자산을 수정했습니다. 기존 승인 대기 계획은 다시 만들어야 합니다.")
+          : uiText("자산을 등록했습니다.");
       } else if (modal === "import") {
         await api(
           "/assets/import",
           "POST",
           JSON.parse(String(data.get("json"))),
         );
-        successMessage = "자산을 가져왔습니다.";
+        successMessage = uiText("자산을 가져왔습니다.");
       } else if (modal === "task") {
         const body = {
           name: data.get("name"),
@@ -988,15 +985,15 @@ function App() {
         );
         destination = interval ? "schedules" : "approvals";
         successMessage = interval
-          ? "예약을 만들었습니다. 생성된 작업은 승인이 필요합니다."
-          : "계획을 만들었습니다. 실행 범위를 확인하고 승인하세요.";
+          ? uiText("예약을 만들었습니다. 생성된 작업은 승인이 필요합니다.")
+          : uiText("계획을 만들었습니다. 실행 범위를 확인하고 승인하세요.");
       } else if (modal === "note") {
         await api("/notes", "POST", {
           title: data.get("title"),
           content: data.get("content"),
         });
         destination = "notes";
-        successMessage = "노트를 저장했습니다.";
+        successMessage = uiText("노트를 저장했습니다.");
       }
       if (!isSessionCurrent()) return;
       await refresh();
@@ -1004,7 +1001,7 @@ function App() {
       window.dispatchEvent(new Event("aegis-records-changed"));
       const current = isCurrent();
       message(
-        current ? successMessage : "이전 화면 요청 완료 · " + successMessage,
+        current ? successMessage : uiText("이전 화면 요청 완료 · ") + successMessage,
       );
       if (current) {
         setModal(null);
@@ -1013,7 +1010,7 @@ function App() {
     } catch (e) {
       if (!isSessionCurrent()) return;
       const errorMessage = e instanceof SyntaxError
-        ? "JSON 형식을 확인하세요."
+        ? uiText("JSON 형식을 확인하세요.")
         : (e as Error).message;
       if (isCurrent()) {
         setFormError(errorMessage);
@@ -1026,7 +1023,7 @@ function App() {
           target?.focus();
         }
       }
-      else message("이전 화면 요청 실패 · " + errorMessage);
+      else message(uiText("이전 화면 요청 실패 · ") + errorMessage);
     } finally {
       if (actionInFlight.current === action) {
         actionInFlight.current = null;
@@ -1038,7 +1035,7 @@ function App() {
     return (
       <div className="loading">
         <Shield size={32} />
-        <p>{error || "워크스페이스에 연결하고 있습니다…"}</p>
+        <p>{error || uiText("워크스페이스에 연결하고 있습니다…")}</p>
         {error && (
           <button
             onClick={() => {
@@ -1053,8 +1050,7 @@ function App() {
               }
             }}
           >
-            다시 연결
-          </button>
+            {uiText("다시 연결")}</button>
         )}
       </div>
     );
@@ -1083,8 +1079,7 @@ function App() {
           heading?.scrollIntoView({ block: "nearest" });
         }}
       >
-        본문으로 건너뛰기
-      </a>
+        {uiText("본문으로 건너뛰기")}</a>
       <aside className="sidebar">
         <a
           className="brand"
@@ -1104,7 +1099,7 @@ function App() {
         <div className="workspace-switch">
           <span className="workspace-avatar">W</span>
           <div>
-            내 워크스페이스<small>Self-hosted · Local</small>
+            {uiText("내 워크스페이스")}<small>Self-hosted · Local</small>
           </div>
           <ChevronRight size={14} />
         </div>
@@ -1134,7 +1129,7 @@ function App() {
         <div className="sidebar-bottom">
           <span className="open-source">
             <Code2 size={14} /> OPEN SOURCE{" "}
-            <span>{settings?.version ? `v${settings.version}` : "버전 미확인"}</span>
+            <span>{settings?.version ? `v${settings.version}` : uiText("버전 미확인")}</span>
           </span>
           <button
             className="nav-item"
@@ -1142,25 +1137,24 @@ function App() {
             onClick={() => void logout()}
           >
             <LogOut size={17} />
-            로그아웃
-          </button>
+            {uiText("로그아웃")}</button>
         </div>
       </aside>
       <main className="main" aria-labelledby="workspace-title">
         <header className="topbar">
           <div>
-            <nav className="navigation-controls" aria-label="탐색 이력">
+            <nav className="navigation-controls" aria-label={uiText("탐색 이력")}>
               <button
-                aria-label="이전 탐색"
-                title="이전 탐색"
+                aria-label={uiText("이전 탐색")}
+                title={uiText("이전 탐색")}
                 disabled={!navigation.canBack}
                 onClick={navigation.back}
               >
                 <ChevronLeft size={18} />
               </button>
               <button
-                aria-label="다음 탐색"
-                title="다음 탐색"
+                aria-label={uiText("다음 탐색")}
+                title={uiText("다음 탐색")}
                 disabled={!navigation.canForward}
                 onClick={navigation.forward}
               >
@@ -1168,18 +1162,19 @@ function App() {
               </button>
             </nav>
             <div className="navigation-crumb">
-              <span>워크스페이스</span>
+              <span>{uiText("워크스페이스")}</span>
               <ChevronRight size={13} />
               <strong>{title}</strong>
             </div>
           </div>
           <div className="topbar-right">
+            <LanguageSwitcher />
             <span className="connection">
               <span className={connection ? "live-dot" : "offline-dot"} />
-              {connection ? "시스템 연결됨" : "연결 확인 필요"}
+              {connection ? uiText("시스템 연결됨") : uiText("연결 확인 필요")}
             </span>
             <span className="role-identity">
-              {auth.user?.name || "사용자"} ·{" "}
+              {auth.user?.name || uiText("사용자")} ·{" "}
               {roleNames[auth.user?.role || "viewer"]}
             </span>
             <span className="topbar-avatar">
@@ -1191,7 +1186,7 @@ function App() {
           {error && (!recordKind || error !== records.error) && (
             <div className="error-banner" role="alert">
               <span>{error}</span>
-              <button aria-label="오류 닫기" onClick={() => setError("")}>
+              <button aria-label={uiText("오류 닫기")} onClick={() => setError("")}>
                 <X size={16} />
               </button>
             </div>
@@ -1206,51 +1201,51 @@ function App() {
                     : "YOUR SECURITY WORKSPACE"}
               </div>
               <h1 id="workspace-title" tabIndex={-1}>
-                {page === "overview" ? "보안 현황을 한눈에." : title}
+                {page === "overview" ? uiText("보안 현황을 한눈에.") : title}
               </h1>
               <p>
                 {
                   (
                     {
                       overview:
-                        "자산의 상태를 확인하고, 근거 있는 검증을 시작하세요.",
-                      tasks: "목표를 정하고 실행부터 수정 확인까지 추적하세요.",
-                      models: "용도별 모델 선택과 호출 당시 버전을 검토하세요.",
-                      prompts: "호출 당시 지침을 기록하고 변경 이력을 검토하세요.",
-                      notifications: "작업 종료 알림의 수신처와 상태를 검토해 설정하세요.",
-                      deliveries: "전송 결과와 시도 이력을 확인하고 필요한 알림만 다시 보내세요.",
-                      categories: "작업을 분류하고 여러 작업의 분류를 한 번에 변경하세요.",
-                      templates: "반복 사용할 검사 설정을 저장하고 현재 자산으로 계획을 만드세요.",
-                      processes: "여러 작업의 Worker 실행 기록을 검색하고 출처를 확인하세요.",
-                      assets: "검증할 자산과 접근 범위를 한곳에서 관리하세요.",
+                        uiText("자산의 상태를 확인하고, 근거 있는 검증을 시작하세요."),
+                      tasks: uiText("목표를 정하고 실행부터 수정 확인까지 추적하세요."),
+                      models: uiText("용도별 모델 선택과 호출 당시 버전을 검토하세요."),
+                      prompts: uiText("호출 당시 지침을 기록하고 변경 이력을 검토하세요."),
+                      notifications: uiText("작업 종료 알림의 수신처와 상태를 검토해 설정하세요."),
+                      deliveries: uiText("전송 결과와 시도 이력을 확인하고 필요한 알림만 다시 보내세요."),
+                      categories: uiText("작업을 분류하고 여러 작업의 분류를 한 번에 변경하세요."),
+                      templates: uiText("반복 사용할 검사 설정을 저장하고 현재 자산으로 계획을 만드세요."),
+                      processes: uiText("여러 작업의 Worker 실행 기록을 검색하고 출처를 확인하세요."),
+                      assets: uiText("검증할 자산과 접근 범위를 한곳에서 관리하세요."),
                       observations:
-                        "승인된 검증에서 관찰한 링크와 기록의 출처를 확인하세요.",
+                        uiText("승인된 검증에서 관찰한 링크와 기록의 출처를 확인하세요."),
                       findings:
-                        "실제 관찰한 증거를 바탕으로 조치 우선순위를 정하세요.",
+                        uiText("실제 관찰한 증거를 바탕으로 조치 우선순위를 정하세요."),
                       graph:
-                        "등록된 자산과 수행한 검증, 발견 사항의 연결을 확인하세요.",
+                        uiText("등록된 자산과 수행한 검증, 발견 사항의 연결을 확인하세요."),
                       approvals:
-                        "요청 대상과 도구를 확인한 뒤 검증 실행을 승인하세요.",
+                        uiText("요청 대상과 도구를 확인한 뒤 검증 실행을 승인하세요."),
                       traffic:
-                        "검증 중 발생한 HTTP 요청과 응답 메타데이터를 확인하세요.",
+                        uiText("검증 중 발생한 HTTP 요청과 응답 메타데이터를 확인하세요."),
                       reports:
-                        "검증 범위와 결과, 증거를 공유할 수 있는 형태로 내보내세요.",
+                        uiText("검증 범위와 결과, 증거를 공유할 수 있는 형태로 내보내세요."),
                       schedules:
-                        "반복 검증을 예약하고 새 작업의 실행 범위를 확인하세요.",
-                      notes: "운영 지식과 검증 메모를 팀의 기록으로 남기세요.",
+                        uiText("반복 검증을 예약하고 새 작업의 실행 범위를 확인하세요."),
+                      notes: uiText("운영 지식과 검증 메모를 팀의 기록으로 남기세요."),
                       agents:
-                        "계획·실행·재검증 에이전트와 등록된 검증 도구입니다.",
+                        uiText("계획·실행·재검증 에이전트와 등록된 검증 도구입니다."),
                       users:
-                        "계정과 역할을 관리하세요. 권한 변경은 기존 세션을 만료시킵니다.",
+                        uiText("계정과 역할을 관리하세요. 권한 변경은 기존 세션을 만료시킵니다."),
                       settings:
-                        "워크스페이스의 실행 정책과 연결 상태를 확인하세요.",
+                        uiText("워크스페이스의 실행 정책과 연결 상태를 확인하세요."),
                     } as Record<string, string>
                   )[page]
                 }
               </p>
             </div>
             <div className="head-actions">
-              {canApprove && ["overview", "tasks"].includes(page) && <button disabled={!overview.assets.length} onClick={() => openModal("task-model")}>모델을 선택해 작업 만들기</button>}
+              {canApprove && ["overview", "tasks"].includes(page) && <button disabled={!overview.assets.length} onClick={() => openModal("task-model")}>{uiText("모델을 선택해 작업 만들기")}</button>}
               {page === "assets" ? (
                 <>
                   <button
@@ -1258,19 +1253,16 @@ function App() {
                     onClick={() => openModal("import")}
                   >
                     <ArrowDownToLine size={15} />
-                    JSON 가져오기
-                  </button>
+                    {uiText("JSON 가져오기")}</button>
                   <button disabled={!canOperate} onClick={() => openModal("scopesentry")}>
-                    ScopeSentry 가져오기
-                  </button>
+                    {uiText("ScopeSentry 가져오기")}</button>
                   <button
                     className="primary"
                     disabled={!canOperate}
                     onClick={() => openModal("asset")}
                   >
                     <Plus size={16} />
-                    자산 등록
-                  </button>
+                    {uiText("자산 등록")}</button>
                 </>
               ) : page === "notes" ? (
                 <button
@@ -1279,8 +1271,7 @@ function App() {
                   onClick={() => openModal("note")}
                 >
                   <Plus size={16} />
-                  노트 작성
-                </button>
+                  {uiText("노트 작성")}</button>
               ) : ["overview", "tasks", "schedules"].includes(page) ? (
                 <button
                   className="primary"
@@ -1288,13 +1279,12 @@ function App() {
                   onClick={() => openModal("task")}
                 >
                   <Plus size={16} />
-                  {page === "schedules" ? "예약 만들기" : "새 검증 작업"}
+                  {page === "schedules" ? uiText("예약 만들기") : uiText("새 검증 작업")}
                 </button>
               ) : (
                 <button onClick={() => void refresh()}>
                   <RefreshCw size={15} />
-                  새로고침
-                </button>
+                  {uiText("새로고침")}</button>
               )}
             </div>
           </div>
@@ -1309,15 +1299,12 @@ function App() {
                     <span className="live-dot" /> EVIDENCE FIRST, ALWAYS.
                   </div>
                   <h2>
-                    확인할 수 있는 보안.
-                    <br />
-                    <span>지속할 수 있는 검증.</span>
+                    {uiText("확인할 수 있는 보안.")}<br />
+                    <span>{uiText("지속할 수 있는 검증.")}</span>
                   </h2>
                   <p>
-                    승인된 자산을 검증하고, 관찰한 결과를 증거로 남깁니다.
-                    <br />
-                    발견에서 끝나지 않고 수정 확인까지 이어가세요.
-                  </p>
+                    {uiText("승인된 자산을 검증하고, 관찰한 결과를 증거로 남깁니다.")}<br />
+                    {uiText("발견에서 끝나지 않고 수정 확인까지 이어가세요.")}</p>
                   <button
                     disabled={!canOperate}
                     onClick={() =>
@@ -1327,8 +1314,8 @@ function App() {
                     }
                   >
                     {overview.assets.length
-                      ? "검증 계획 만들기"
-                      : "첫 자산 연결하기"}
+                      ? uiText("검증 계획 만들기")
+                      : uiText("첫 자산 연결하기")}
                     <ArrowRight size={16} />
                   </button>
                 </div>
@@ -1354,33 +1341,33 @@ function App() {
               <div className="stats-grid">
                 {[
                   {
-                    label: "등록된 자산",
+                    label: uiText("등록된 자산"),
                     value: overview.stats.assets || 0,
                     icon: Globe2,
-                    note: "검증 범위에 등록된 대상",
+                    note: uiText("검증 범위에 등록된 대상"),
                     color: "cyan",
                   },
                   {
-                    label: "미조치 발견 사항",
+                    label: uiText("미조치 발견 사항"),
                     value: overview.stats.findings || 0,
                     icon: ShieldCheck,
-                    note: "설정 관찰과 권한 규칙 불일치",
+                    note: uiText("설정 관찰과 권한 규칙 불일치"),
                     color: "orange",
                   },
                   {
-                    label: "실행 중인 작업",
+                    label: uiText("실행 중인 작업"),
                     value: overview.stats.running || 0,
                     icon: Zap,
-                    note: `${overview.stats.pending || 0}개 작업이 승인 대기 중`,
+                    note: uiText("{0}개 작업이 승인 대기 중", [overview.stats.pending || 0]),
                     color: "purple",
                   },
                   {
-                    label: "도구별 검증 커버리지",
+                    label: uiText("도구별 검증 커버리지"),
                     value: overview.coverage_summary?.expected
                       ? `${overview.coverage_summary.percent}%`
                       : "—",
                     icon: Network,
-                    note: `${overview.coverage_summary?.completed || 0} / ${overview.coverage_summary?.expected || 0}개 검증 완료 · 최신 승인·현재 범위`,
+                    note: uiText("{0} / {1}개 검증 완료 · 최신 승인·현재 범위", [overview.coverage_summary?.completed || 0, overview.coverage_summary?.expected || 0]),
                     color: "green",
                   },
                 ].map((s) => (
@@ -1400,17 +1387,16 @@ function App() {
                 <section className="panel">
                   <div className="panel-head">
                     <h3>
-                      최근 검증 작업{" "}
+                      {uiText("최근 검증 작업")}{" "}
                       <span>
-                        {overview.tasks.length} / 전체 {overview.stats.tasks}
+                        {overview.tasks.length} {uiText(" / 전체 ")}{overview.stats.tasks}
                       </span>
                     </h3>
                     <button
                       className="text-button"
                       onClick={() => navigate("tasks")}
                     >
-                      전체 보기
-                      <ArrowRight size={14} />
+                      {uiText("전체 보기")}<ArrowRight size={14} />
                     </button>
                   </div>
                   {overview.tasks.length ? (
@@ -1429,8 +1415,7 @@ function App() {
                           <div>
                             <strong>{t.name}</strong>
                             <small>
-                              {t.asset_ids.length}개 자산 · {t.checks.length}개
-                              도구 · {date(t.created_at)}
+                              {t.asset_ids.length}{uiText("개 자산 · ")}{t.checks.length}{uiText("개 도구 · ")}{date(t.created_at)}
                             </small>
                           </div>
                           <Badge value={t.status} />
@@ -1440,24 +1425,23 @@ function App() {
                     </div>
                   ) : (
                     <Empty
-                      title="첫 검증을 시작하세요"
-                      description="자산을 등록하면 검증 계획을 만들 수 있습니다."
+                      title={uiText("첫 검증을 시작하세요")}
+                      description={uiText("자산을 등록하면 검증 계획을 만들 수 있습니다.")}
                       action={
                         <button
                           disabled={!canOperate}
                           onClick={() => openModal("asset")}
                         >
                           <Plus size={15} />
-                          자산 등록
-                        </button>
+                          {uiText("자산 등록")}</button>
                       }
                     />
                   )}
                 </section>
                 <section className="panel">
                   <div className="panel-head">
-                    <h3>발견 사항 분포</h3>
-                    <span className="subtle">미조치 기준</span>
+                    <h3>{uiText("발견 사항 분포")}</h3>
+                    <span className="subtle">{uiText("미조치 기준")}</span>
                   </div>
                   <div className="severity-chart">
                     <div
@@ -1488,11 +1472,10 @@ function App() {
               <CoverageOverview summary={overview.coverage_summary} />
               <section className="panel activity-panel">
                 <div className="panel-head">
-                  <h3>워크스페이스 활동</h3>
+                  <h3>{uiText("워크스페이스 활동")}</h3>
                   <span className="connection">
                     <span className="live-dot" />
-                    실시간
-                  </span>
+                    {uiText("실시간")}</span>
                 </div>
                 {overview.events.length ? (
                   <div className="event-feed">
@@ -1502,15 +1485,14 @@ function App() {
                       .map((e) => (
                         <div className="event-line" key={e.seq}>
                           <span className={"event-dot " + e.level} />
-                          <span>{e.message}</span>
+                          <span>{uiText(e.message)}</span>
                           <small>{date(e.ts)}</small>
                         </div>
                       ))}
                   </div>
                 ) : (
                   <div className="quiet-state">
-                    아직 활동이 없습니다. 자산 등록부터 시작하세요.
-                  </div>
+                    {uiText("아직 활동이 없습니다. 자산 등록부터 시작하세요.")}</div>
                 )}
               </section>
             </>
@@ -1523,7 +1505,7 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="이름, 주소, 소유자로 검색"
+                placeholder={uiText("이름, 주소, 소유자로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
@@ -1532,7 +1514,7 @@ function App() {
                   onClick={() => setShowArchived(!showArchived)}
                   aria-pressed={showArchived}
                 >
-                  {showArchived ? "활성 자산 보기" : "보관함 보기"}
+                  {showArchived ? uiText("활성 자산 보기") : uiText("보관함 보기")}
                 </button>
               </Toolbar>
               {!records.ready ? (
@@ -1545,19 +1527,19 @@ function App() {
                         <span className="asset-icon">
                           <Globe2 size={23} />
                         </span>
-                        <Badge value={a.archived_at ? "보관됨" : a.type} />
+                        <Badge value={a.archived_at ? uiText("보관됨") : a.type} />
                       </div>
                       <h3>{a.name}</h3>
                       <code>{a.url}</code>
                       <div className="asset-meta">
-                        <span>담당자</span>
-                        <strong>{a.owner || "미지정"}</strong>
+                        <span>{uiText("담당자")}</span>
+                        <strong>{a.owner || uiText("미지정")}</strong>
                       </div>
                       <div className="asset-meta">
                         <span>
                           {a.archived_at
-                            ? "과거 완료 검증 종류"
-                            : "현재 범위 완료 검증"}
+                            ? uiText("과거 완료 검증 종류")
+                            : uiText("현재 범위 완료 검증")}
                         </span>
                         <strong>
                           {a.archived_at
@@ -1567,7 +1549,7 @@ function App() {
                         </strong>
                       </div>
                       {a.coverage_summary && (
-                        <div className="tags" aria-label="검증 상태">
+                        <div className="tags" aria-label={uiText("검증 상태")}>
                           {Object.entries(a.coverage_summary.counts)
                             .filter(
                               ([status, count]) =>
@@ -1588,7 +1570,7 @@ function App() {
                       <div className="card-foot">
                         <span>
                           <ShieldCheck size={14} />
-                          {a.archived_at ? "이력 보존됨" : "범위 등록됨"}
+                          {a.archived_at ? uiText("이력 보존됨") : uiText("범위 등록됨")}
                         </span>
                         {!a.archived_at && (
                           <button
@@ -1600,13 +1582,12 @@ function App() {
                               setTaskAssetId(a.id);
                             }}
                           >
-                            검증 만들기
-                            <ArrowRight size={14} />
+                            {uiText("검증 만들기")}<ArrowRight size={14} />
                           </button>
                         )}
                       </div>
                       <div className="asset-actions">
-                        <button onClick={() => {openModal("sources"); setEditingAsset(a);}}>출처</button>
+                        <button onClick={() => {openModal("sources"); setEditingAsset(a);}}>{uiText("출처")}</button>
                         {!a.archived_at && (
                           <button
                             disabled={!canOperate}
@@ -1615,14 +1596,13 @@ function App() {
                               setEditingAsset(a);
                             }}
                           >
-                            수정
-                          </button>
+                            {uiText("수정")}</button>
                         )}
                         <button
                           disabled={!canOperate}
                           onClick={() => setArchivingAsset(a)}
                         >
-                          {a.archived_at ? "복원" : "보관"}
+                          {a.archived_at ? uiText("복원") : uiText("보관")}
                         </button>
                       </div>
                     </section>
@@ -1633,14 +1613,14 @@ function App() {
                   <Empty
                     title={
                       search
-                        ? "검색 결과가 없습니다"
+                        ? uiText("검색 결과가 없습니다")
                         : showArchived
-                          ? "보관된 자산이 없습니다"
+                          ? uiText("보관된 자산이 없습니다")
                           : overview.stats.assets
-                            ? "표시할 자산이 없습니다"
-                            : "아직 등록된 자산이 없습니다"
+                            ? uiText("표시할 자산이 없습니다")
+                            : uiText("아직 등록된 자산이 없습니다")
                     }
-                    description="검증 권한이 있는 웹사이트 또는 API 주소를 연결하세요."
+                    description={uiText("검증 권한이 있는 웹사이트 또는 API 주소를 연결하세요.")}
                     action={
                       <button
                         className="primary"
@@ -1648,7 +1628,7 @@ function App() {
                         onClick={() => openModal("asset")}
                       >
                         <Plus size={16} />
-                        {overview.stats.assets ? "자산 등록" : "첫 자산 등록"}
+                        {overview.stats.assets ? uiText("자산 등록") : uiText("첫 자산 등록")}
                       </button>
                     }
                   />
@@ -1657,32 +1637,28 @@ function App() {
               <section className="panel observed-panel">
                 <div className="panel-head">
                   <h3>
-                    관찰된 엔드포인트{" "}
+                    {uiText("관찰된 엔드포인트")}{" "}
                     <span>{overview.stats.observations || 0}</span>
                   </h3>
                   <button onClick={() => navigate("observations", true)}>
-                    전체 관찰 링크
-                  </button>
+                    {uiText("전체 관찰 링크")}</button>
                 </div>
                 {overview.observations.length ? (
                   <>
                     <p className="subtle">
-                      워크스페이스 전체 · 최근{" "}
-                      {Math.min(30, overview.observations.length)}개 · 링크 관찰
-                      · 자동 요청 없음
-                    </p>
+                      {uiText("워크스페이스 전체 · 최근")}{" "}
+                      {Math.min(30, overview.observations.length)}{uiText("개 · 링크 관찰 · 자동 요청 없음")}</p>
                     {overview.observations.slice(0, 30).map((o) => (
                       <div className="observation" key={o.id}>
                         <GitBranch size={14} />
                         <code>{o.url}</code>
-                        <span className="subtle">추가 등록 필요</span>
+                        <span className="subtle">{uiText("추가 등록 필요")}</span>
                       </div>
                     ))}
                   </>
                 ) : (
                   <div className="quiet-state">
-                    엔드포인트 관찰 도구를 실행하면 범위 내 링크가 표시됩니다.
-                  </div>
+                    {uiText("엔드포인트 관찰 도구를 실행하면 범위 내 링크가 표시됩니다.")}</div>
                 )}
               </section>
             </>
@@ -1693,7 +1669,7 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="링크·자산·작업으로 검색"
+                placeholder={uiText("링크·자산·작업으로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
@@ -1701,10 +1677,7 @@ function App() {
               <div className="info-strip">
                 <Link2 size={18} />
                 <span>
-                  HTML에서 관찰한 범위 내 링크를 작업별로 보존합니다. 관찰은 접근 가능 여부나
-                  취약점 검증 결과가 아닙니다. 이 화면은 링크에 요청하지
-                  않습니다.
-                </span>
+                  {uiText("HTML에서 관찰한 범위 내 링크를 작업별로 보존합니다. 관찰은 접근 가능 여부나 취약점 검증 결과가 아닙니다. 이 화면은 링크에 요청하지 않습니다.")}</span>
               </div>
               <section className="panel">
                 {!records.ready ? (
@@ -1714,10 +1687,10 @@ function App() {
                     <table>
                       <thead>
                         <tr>
-                          <th>관찰 링크</th>
-                          <th>자산</th>
-                          <th>관찰 작업</th>
-                          <th>관찰 시각</th>
+                          <th>{uiText("관찰 링크")}</th>
+                          <th>{uiText("자산")}</th>
+                          <th>{uiText("관찰 작업")}</th>
+                          <th>{uiText("관찰 시각")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1729,7 +1702,7 @@ function App() {
                               </code>
                             </td>
                             <td className="observation-source">
-                              {observation.asset_name || "자산 기록 없음"}
+                              {observation.asset_name || uiText("자산 기록 없음")}
                               <small>{observation.asset_id}</small>
                             </td>
                             <td className="observation-source">
@@ -1737,10 +1710,10 @@ function App() {
                                 type="button"
                                 className="text-button"
                                 disabled={!observation.task_name}
-                                aria-label={observation.task_name ? `${observation.task_name} 출처 작업 열기` : "출처 작업 기록 없음"}
+                                aria-label={observation.task_name ? uiText("{0} 출처 작업 열기", [observation.task_name]) : uiText("출처 작업 기록 없음")}
                                 onClick={() => navigation.openDetail({ kind: "task", id: observation.task_id })}
                               >
-                                {observation.task_name || "작업 기록 없음"}
+                                {observation.task_name || uiText("작업 기록 없음")}
                               </button>
                               <small>{observation.task_id}</small>
                             </td>
@@ -1753,9 +1726,9 @@ function App() {
                 ) : (
                   <Empty
                     title={
-                      search ? "검색 결과가 없습니다" : "관찰된 링크가 없습니다"
+                      search ? uiText("검색 결과가 없습니다") : uiText("관찰된 링크가 없습니다")
                     }
-                    description="엔드포인트 관찰 도구를 승인해 실행하면 범위 내 링크를 기록합니다."
+                    description={uiText("엔드포인트 관찰 도구를 승인해 실행하면 범위 내 링크를 기록합니다.")}
                   />
                 )}
               </section>
@@ -1780,17 +1753,17 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="작업 이름으로 검색"
+                placeholder={uiText("작업 이름으로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
               >
                 <select
-                  aria-label="작업 상태"
+                  aria-label={uiText("작업 상태")}
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 >
-                  <option value="all">모든 상태</option>
+                  <option value="all">{uiText("모든 상태")}</option>
                   {TASK_STATUSES.map((s) => (
                     <option key={s} value={s}>
                       {statusNames[s]}
@@ -1799,10 +1772,10 @@ function App() {
                 </select>
               </Toolbar>
               <div className="task-archive-toolbar">
-                <select aria-label="작업 보관 상태" value={showArchived ? "archived" : "active"} onChange={e => setShowArchived(e.target.value === "archived")}>
-                  <option value="active">일반 작업</option><option value="archived">보관된 작업</option>
+                <select aria-label={uiText("작업 보관 상태")} value={showArchived ? "archived" : "active"} onChange={e => setShowArchived(e.target.value === "archived")}>
+                  <option value="active">{uiText("일반 작업")}</option><option value="archived">{uiText("보관된 작업")}</option>
                 </select>
-                {canOperate && <><span>선택 {Object.keys(archiveSelection).length}/25 · 종료 작업만</span><button disabled={!Object.keys(archiveSelection).length} onClick={() => setTaskArchiveModal(Object.values(archiveSelection))}>{showArchived ? "선택 작업 복원" : "선택 작업 보관"}</button><button disabled={!Object.keys(archiveSelection).length} onClick={() => setArchiveSelection({})}>선택 해제</button></>}
+                {canOperate && <><span>{uiText("선택 ")}{Object.keys(archiveSelection).length}{uiText("/25 · 종료 작업만")}</span><button disabled={!Object.keys(archiveSelection).length} onClick={() => setTaskArchiveModal(Object.values(archiveSelection))}>{showArchived ? uiText("선택 작업 복원") : uiText("선택 작업 보관")}</button><button disabled={!Object.keys(archiveSelection).length} onClick={() => setArchiveSelection({})}>{uiText("선택 해제")}</button></>}
               </div>
               <section className="panel">
                 {!records.ready ? (
@@ -1812,19 +1785,19 @@ function App() {
                     <table>
                       <thead>
                         <tr>
-                          {canOperate && <th>보관 선택</th>}
-                          <th>검증 작업</th>
-                          <th>상태</th>
-                          <th>범위</th>
-                          <th>진행률</th>
-                          <th>생성 시각</th>
+                          {canOperate && <th>{uiText("보관 선택")}</th>}
+                          <th>{uiText("검증 작업")}</th>
+                          <th>{uiText("상태")}</th>
+                          <th>{uiText("범위")}</th>
+                          <th>{uiText("진행률")}</th>
+                          <th>{uiText("생성 시각")}</th>
                           <th />
                         </tr>
                       </thead>
                       <tbody>
                         {visibleTasks.map((t) => (
                           <tr key={t.id}>
-                            {canOperate && <td><input className="task-archive-selection" type="checkbox" aria-label={`${t.name} 보관 선택`} checked={Boolean(archiveSelection[t.id])}
+                            {canOperate && <td><input className="task-archive-selection" type="checkbox" aria-label={uiText("{0} 보관 선택", [t.name])} checked={Boolean(archiveSelection[t.id])}
                               disabled={!canArchive(t) || (!archiveSelection[t.id] && Object.keys(archiveSelection).length >= 25)}
                               onChange={e => setArchiveSelection(previous => { const next = {...previous}; if(e.target.checked) next[t.id] = t; else delete next[t.id]; return next; })}/></td>}
                             <td>
@@ -1853,7 +1826,7 @@ function App() {
                             <td>
                               <Badge value={t.status} />
                             </td>
-                            <td>{t.asset_ids.length}개 자산</td>
+                            <td>{t.asset_ids.length}{uiText("개 자산")}</td>
                             <td>
                               <div className="progress-cell">
                                 <div className="progress">
@@ -1881,7 +1854,7 @@ function App() {
                                     id: t.id,
                                   })
                                 }
-                                aria-label={t.name + " 상세"}
+                                aria-label={t.name + uiText(" 상세")}
                               >
                                 <ChevronRight size={17} />
                               </button>
@@ -1895,10 +1868,10 @@ function App() {
                   <Empty
                     title={
                       search || filter !== "all" || overview.stats.tasks
-                        ? "일치하는 작업이 없습니다"
-                        : "아직 검증 작업이 없습니다"
+                        ? uiText("일치하는 작업이 없습니다")
+                        : uiText("아직 검증 작업이 없습니다")
                     }
-                    description="등록한 자산을 선택해 첫 검증 계획을 만드세요."
+                    description={uiText("등록한 자산을 선택해 첫 검증 계획을 만드세요.")}
                   />
                 )}
               </section>
@@ -1912,17 +1885,17 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="발견 사항 또는 자산으로 검색"
+                placeholder={uiText("발견 사항 또는 자산으로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
               >
                 <select
-                  aria-label="심각도"
+                  aria-label={uiText("심각도")}
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 >
-                  <option value="all">모든 심각도</option>
+                  <option value="all">{uiText("모든 심각도")}</option>
                   {Object.keys(severityNames).map((s) => (
                     <option key={s} value={s}>
                       {severityNames[s]}
@@ -1938,11 +1911,11 @@ function App() {
                     <table>
                       <thead>
                         <tr>
-                          <th>발견 사항</th>
-                          <th>심각도</th>
-                          <th>자산</th>
-                          <th>판정 유형</th>
-                          <th>상태</th>
+                          <th>{uiText("발견 사항")}</th>
+                          <th>{uiText("심각도")}</th>
+                          <th>{uiText("자산")}</th>
+                          <th>{uiText("판정 유형")}</th>
+                          <th>{uiText("상태")}</th>
                           <th />
                         </tr>
                       </thead>
@@ -1978,7 +1951,7 @@ function App() {
                               <button
                                 className="icon-button"
                                 onClick={() => void openFinding(f.id)}
-                                aria-label={f.title + " 상세"}
+                                aria-label={f.title + uiText(" 상세")}
                               >
                                 <ChevronRight size={17} />
                               </button>
@@ -1990,8 +1963,8 @@ function App() {
                   </div>
                 ) : (
                   <Empty
-                    title="표시할 발견 사항이 없습니다"
-                    description="발견 사항이 없다는 사실만으로 전체 시스템의 안전을 보증하지는 않습니다."
+                    title={uiText("표시할 발견 사항이 없습니다")}
+                    description={uiText("발견 사항이 없다는 사실만으로 전체 시스템의 안전을 보증하지는 않습니다.")}
                   />
                 )}
               </section>
@@ -2003,7 +1976,7 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="승인할 작업으로 검색"
+                placeholder={uiText("승인할 작업으로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
@@ -2011,9 +1984,7 @@ function App() {
               <div className="info-strip">
                 <LockKeyhole size={18} />
                 <span>
-                  승인하면 표시된 자산과 도구에 한해 HTTP GET 검증이 실행됩니다.
-                  범위 밖 주소로는 이동하지 않습니다.
-                </span>
+                  {uiText("승인하면 표시된 자산과 도구에 한해 HTTP GET 검증이 실행됩니다. 범위 밖 주소로는 이동하지 않습니다.")}</span>
               </div>
               {!records.ready ? (
                 <RecordState records={records} />
@@ -2030,7 +2001,7 @@ function App() {
                       <h3>{t.name}</h3>
                       <p>{t.goal}</p>
                       <div className="approval-scope">
-                        <h4>요청 범위</h4>
+                        <h4>{uiText("요청 범위")}</h4>
                         {t.scope_snapshot.map((a) => (
                           <div key={a.id}>
                             <Globe2 size={14} />
@@ -2046,11 +2017,10 @@ function App() {
                         ))}
                       </div>
                       <div className="approval-budget">
-                        {t.workers} workers · 자산별 최대{" "}
+                        {t.workers} {uiText(" workers · 자산별 최대")}{" "}
                         {t.execution_policy?.request_budget ||
                           settings?.request_budget}{" "}
-                        요청 · GET only
-                      </div>
+                        {uiText("요청 · GET only")}</div>
                       {t.execution_policy && (
                         <PolicySummary policy={t.execution_policy} />
                       )}
@@ -2060,8 +2030,7 @@ function App() {
                       <WorkerDependencies dependencies={t.worker_dependencies} assets={t.scope_snapshot} />
                       <div className="approval-buttons">
                         <button disabled={busy || !canOperate} onClick={() => void replanPending(t.id)}>
-                          <RefreshCw size={15} />현재 범위로 새 계획
-                        </button>
+                          <RefreshCw size={15} />{uiText("현재 범위로 새 계획")}</button>
                         <button
                           disabled={busy || !canOperate}
                           onClick={() =>
@@ -2069,13 +2038,12 @@ function App() {
                               "/tasks/" + t.id + "/stop",
                               "POST",
                               undefined,
-                              "승인을 거절했습니다.",
+                              uiText("승인을 거절했습니다."),
                             )
                           }
                         >
                           <X size={15} />
-                          거절
-                        </button>
+                          {uiText("거절")}</button>
                         <button
                           className="primary"
                           disabled={busy || !canApprove || !toolContractsMatch(t.tool_contracts, t.checks, settings?.tool_contracts)}
@@ -2084,13 +2052,12 @@ function App() {
                               "/tasks/" + t.id + "/approve",
                               "POST",
                               undefined,
-                              "승인했습니다. 검증을 시작합니다.",
+                              uiText("승인했습니다. 검증을 시작합니다."),
                             )
                           }
                         >
                           <Check size={16} />
-                          승인하고 실행
-                        </button>
+                          {uiText("승인하고 실행")}</button>
                       </div>
                       {replanError?.id === t.id && <p className="form-error" role="alert">{replanError.message}</p>}
                     </section>
@@ -2099,8 +2066,8 @@ function App() {
               ) : (
                 <section className="panel">
                   <Empty
-                    title="표시할 승인 요청이 없습니다"
-                    description="새 검증 작업과 재검증은 이곳에서 범위를 확인하고 승인합니다."
+                    title={uiText("표시할 승인 요청이 없습니다")}
+                    description={uiText("새 검증 작업과 재검증은 이곳에서 범위를 확인하고 승인합니다.")}
                   />
                 </section>
               )}
@@ -2119,7 +2086,7 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="요청 URL로 검색"
+                placeholder={uiText("요청 URL로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
@@ -2132,11 +2099,11 @@ function App() {
                     <table>
                       <thead>
                         <tr>
-                          <th>요청</th>
-                          <th>응답</th>
-                          <th>소요 시간</th>
-                          <th>수신 크기</th>
-                          <th>시각</th>
+                          <th>{uiText("요청")}</th>
+                          <th>{uiText("응답")}</th>
+                          <th>{uiText("소요 시간")}</th>
+                          <th>{uiText("수신 크기")}</th>
+                          <th>{uiText("시각")}</th>
                           <th />
                         </tr>
                       </thead>
@@ -2162,7 +2129,7 @@ function App() {
                               <button
                                 className="icon-button"
                                 onClick={() => setTrafficDetail(t)}
-                                aria-label="트래픽 상세"
+                                aria-label={uiText("트래픽 상세")}
                               >
                                 <ChevronRight size={17} />
                               </button>
@@ -2174,15 +2141,13 @@ function App() {
                   </div>
                 ) : (
                   <Empty
-                    title="표시할 HTTP 요청이 없습니다"
-                    description="검증을 실행하면 응답 메타데이터와 본문 해시가 저장됩니다."
+                    title={uiText("표시할 HTTP 요청이 없습니다")}
+                    description={uiText("검증을 실행하면 응답 메타데이터와 본문 해시가 저장됩니다.")}
                   />
                 )}
               </section>
               <p className="footnote">
-                인증 헤더·쿠키 값·응답 본문·쿼리 값은 저장하지 않습니다. 이
-                기록은 검증 요청에 한정되며 전체 네트워크 패킷 캡처가 아닙니다.
-              </p>
+                {uiText("인증 헤더·쿠키 값·응답 본문·쿼리 값은 저장하지 않습니다. 이 기록은 검증 요청에 한정되며 전체 네트워크 패킷 캡처가 아닙니다.")}</p>
             </>
           )}
 
@@ -2191,7 +2156,7 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="보고서를 내보낼 작업으로 검색"
+                placeholder={uiText("보고서를 내보낼 작업으로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
@@ -2200,20 +2165,20 @@ function App() {
                 {[
                   {
                     format: "markdown",
-                    label: "Markdown 보고서",
-                    desc: "검증 범위, 발견 사항, 수정 가이드를 공유하세요.",
+                    label: uiText("Markdown 보고서"),
+                    desc: uiText("검증 범위, 발견 사항, 수정 가이드를 공유하세요."),
                     icon: FileText,
                   },
                   {
                     format: "json",
-                    label: "JSON 증거 묶음",
-                    desc: "작업·증거·트래픽·커버리지 원본 기록을 내보냅니다.",
+                    label: uiText("JSON 증거 묶음"),
+                    desc: uiText("작업·증거·트래픽·커버리지 원본 기록을 내보냅니다."),
                     icon: Code2,
                   },
                   {
                     format: "csv",
-                    label: "CSV 발견 사항",
-                    desc: "스프레드시트에서 상태와 우선순위를 관리하세요.",
+                    label: uiText("CSV 발견 사항"),
+                    desc: uiText("스프레드시트에서 상태와 우선순위를 관리하세요."),
                     icon: Layers3,
                   },
                 ].map((r) => (
@@ -2225,14 +2190,14 @@ function App() {
                     <p>{r.desc}</p>
                     <ReportDownload
                       format={r.format as ReportFormat}
-                      label="전체 내보내기"
+                      label={uiText("전체 내보내기")}
                     />
                   </section>
                 ))}
               </div>
               <section className="panel">
                 <div className="panel-head">
-                  <h3>작업별 보고서</h3>
+                  <h3>{uiText("작업별 보고서")}</h3>
                 </div>
                 {!records.ready ? (
                   <RecordState records={records} />
@@ -2251,15 +2216,15 @@ function App() {
                       <ReportDownload
                         format="markdown"
                         taskId={t.id}
-                        label="보고서"
+                        label={uiText("보고서")}
                       />
                     </div>
                   ))
                 ) : (
                   <div className="quiet-state">
                     {overview.stats.tasks
-                      ? "현재 조건에 맞는 작업이 없습니다."
-                      : "검증 작업을 만들면 작업별 보고서를 내보낼 수 있습니다."}
+                      ? uiText("현재 조건에 맞는 작업이 없습니다.")
+                      : uiText("검증 작업을 만들면 작업별 보고서를 내보낼 수 있습니다.")}
                   </div>
                 )}
               </section>
@@ -2271,27 +2236,25 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="예약 이름 또는 목표로 검색"
+                placeholder={uiText("예약 이름 또는 목표로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
               >
                 <select
-                  aria-label="예약 상태"
+                  aria-label={uiText("예약 상태")}
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 >
-                  <option value="all">모든 예약</option>
-                  <option value="true">활성</option>
-                  <option value="false">일시 중지</option>
+                  <option value="all">{uiText("모든 예약")}</option>
+                  <option value="true">{uiText("활성")}</option>
+                  <option value="false">{uiText("일시 중지")}</option>
                 </select>
               </Toolbar>
               <div className="info-strip">
                 <Clock3 size={18} />
                 <span>
-                  예약 시간마다 승인 대기 작업을 생성합니다. 예약만으로 실제
-                  요청이 실행되지는 않습니다.
-                </span>
+                  {uiText("예약 시간마다 승인 대기 작업을 생성합니다. 예약만으로 실제 요청이 실행되지는 않습니다.")}</span>
               </div>
               <section className="panel">
                 {!records.ready ? (
@@ -2305,25 +2268,25 @@ function App() {
                       <div>
                         <strong>{s.task.name}</strong>
                         <small>
-                          {s.interval_hours}시간 간격 · 다음 생성{" "}
+                          {s.interval_hours}{uiText("시간 간격 · 다음 생성")}{" "}
                           {date(s.next_at)}
                         </small>
                       </div>
-                      <Badge value={s.enabled ? "활성" : "일시 중지"} />
+                      <Badge value={s.enabled ? uiText("활성") : uiText("일시 중지")} />
                       <button
                         disabled={busy || !canOperate}
                         onClick={async () => {
                           await act("/schedules/" + s.id + "/toggle");
                         }}
                       >
-                        {s.enabled ? "일시 중지" : "재개"}
+                        {s.enabled ? uiText("일시 중지") : uiText("재개")}
                       </button>
                     </div>
                   ))
                 ) : (
                   <Empty
-                    title="표시할 예약이 없습니다"
-                    description="매일 또는 매주 필요한 검증 계획을 자동으로 준비하세요."
+                    title={uiText("표시할 예약이 없습니다")}
+                    description={uiText("매일 또는 매주 필요한 검증 계획을 자동으로 준비하세요.")}
                   />
                 )}
               </section>
@@ -2335,7 +2298,7 @@ function App() {
               <Toolbar
                 search={search}
                 setSearch={setSearch}
-                placeholder="노트 제목 또는 내용으로 검색"
+                placeholder={uiText("노트 제목 또는 내용으로 검색")}
                 count={records.total}
                 error={records.error}
                 loading={!records.ready && records.loading}
@@ -2350,14 +2313,14 @@ function App() {
                         <BookOpen size={18} />
                         <button
                           className="icon-button"
-                          aria-label={n.title + " 삭제"}
+                          aria-label={n.title + uiText(" 삭제")}
                           disabled={busy || !canOperate}
                           onClick={async () => {
                             await act(
                               "/notes/" + n.id,
                               "DELETE",
                               undefined,
-                              "노트를 삭제했습니다.",
+                              uiText("노트를 삭제했습니다."),
                             );
                           }}
                         >
@@ -2374,18 +2337,17 @@ function App() {
                     <Empty
                       title={
                         search
-                          ? "검색 결과가 없습니다"
-                          : "표시할 노트가 없습니다"
+                          ? uiText("검색 결과가 없습니다")
+                          : uiText("표시할 노트가 없습니다")
                       }
-                      description="검증 메모와 운영 지식을 저장하세요. 인증정보는 기록하지 마세요."
+                      description={uiText("검증 메모와 운영 지식을 저장하세요. 인증정보는 기록하지 마세요.")}
                       action={
                         <button
                           disabled={!canOperate}
                           onClick={() => openModal("note")}
                         >
                           <Plus size={15} />
-                          노트 작성
-                        </button>
+                          {uiText("노트 작성")}</button>
                       }
                     />
                   </section>
@@ -2409,15 +2371,15 @@ function App() {
                           <RefreshCw />
                         )}
                       </span>
-                      <Badge value="등록됨" />
+                      <Badge value={uiText("등록됨")} />
                     </div>
                     <h3>{a.name}</h3>
-                    <p>{a.role}</p>
+                    <p>{uiText(a.role)}</p>
                     <div className="agent-foot">
                       <span>
                         {a.id === "planner"
-                          ? "규칙 기반 / 선택적 LLM"
-                          : "검토된 도구 실행"}
+                          ? uiText("규칙 기반 / 선택적 LLM")
+                          : uiText("검토된 도구 실행")}
                       </span>
                       <ShieldCheck size={15} />
                     </div>
@@ -2427,11 +2389,10 @@ function App() {
               <section className="panel">
                 <div className="panel-head">
                   <h3>
-                    검증 도구 레지스트리 <span>{tools.length}</span>
+                    {uiText("검증 도구 레지스트리 ")}<span>{tools.length}</span>
                   </h3>
                   <span className="subtle">
-                    명령 실행 없이 검증 가능한 도구
-                  </span>
+                    {uiText("명령 실행 없이 검증 가능한 도구")}</span>
                 </div>
                 {tools.map((t) => (
                   <div className="tool-row" key={t.id}>
@@ -2476,21 +2437,21 @@ function App() {
               {auth.user?.role === "admin" && <MCPRegistryPanel />}
               <section className="panel settings-panel">
                 <div className="panel-head">
-                  <h3>실행 정책</h3>
-                  <Badge value="서버 설정" />
+                  <h3>{uiText("실행 정책")}</h3>
+                  <Badge value={uiText("서버 설정")} />
                 </div>
                 {[
-                  ["버전", settings.version],
+                  [uiText("버전"), settings.version],
                   [
-                    "실습 모드",
+                    uiText("실습 모드"),
                     settings.lab_mode
-                      ? "활성 · 사설 주소 검증 허용"
-                      : "비활성 · 공개 주소만 검증",
+                      ? uiText("활성 · 사설 주소 검증 허용")
+                      : uiText("비활성 · 공개 주소만 검증"),
                   ],
-                  ["자산별 HTTP 요청 예산", settings.request_budget + "회"],
-                  ["작업별 최대 Worker", settings.max_workers + "개"],
-                  ["실행 도구", "등록된 읽기 전용 검증 도구"],
-                  ["세션", "8시간 · HttpOnly · SameSite=Strict"],
+                  [uiText("자산별 HTTP 요청 예산"), settings.request_budget + uiText("회")],
+                  [uiText("작업별 최대 Worker"), settings.max_workers + uiText("개")],
+                  [uiText("실행 도구"), uiText("등록된 읽기 전용 검증 도구")],
+                  [uiText("세션"), uiText("8시간 · HttpOnly · SameSite=Strict")],
                 ].map(([label, value]) => (
                   <div className="setting-row" key={label}>
                     <span>{label}</span>
@@ -2500,33 +2461,27 @@ function App() {
               </section>
               <section className="panel settings-panel">
                 <div className="panel-head">
-                  <h3>선택적 LLM 연결</h3>
+                  <h3>{uiText("선택적 LLM 연결")}</h3>
                   <Badge
                     value={
-                      settings.llm_configured ? "연결 설정됨" : "규칙 기반 모드"
+                      settings.llm_configured ? uiText("연결 설정됨") : uiText("규칙 기반 모드")
                     }
                   />
                 </div>
                 <div className="setting-row">
-                  <span>모델</span>
-                  <strong>{settings.llm_model || "설정되지 않음"}</strong>
+                  <span>{uiText("모델")}</span>
+                  <strong>{settings.llm_model || uiText("설정되지 않음")}</strong>
                 </div>
                 <div className="setting-description">
                   <p>
-                    LLM은 승인된 도구의 실행 순서를 제안합니다. 응답 본문·테스트
-                    계정·쿠키는 전달하지 않습니다. 목표와 자산 이름은 제공자에게
-                    전송됩니다.
-                  </p>
+                    {uiText("LLM은 승인된 도구의 실행 순서를 제안합니다. 응답 본문·테스트 계정·쿠키는 전달하지 않습니다. 목표와 자산 이름은 제공자에게 전송됩니다.")}</p>
                   <pre>
                     AEGIS_LLM_API_KEY=…{`\n`}AEGIS_LLM_MODEL=…{`\n`}
                     AEGIS_LLM_BASE_URL=https://provider.example/v1
                   </pre>
                   <p>
-                    기본 환경 설정을 사용하거나 모델 프로필에서 검토한 설정을
-                    용도별로 선택하세요. 키는 브라우저에 반환하거나 데이터베이스에
-                    저장하지 않습니다.
-                  </p>
-                  <button onClick={() => navigation.navigate("models")}>모델 프로필 검토</button>
+                    {uiText("기본 환경 설정을 사용하거나 모델 프로필에서 검토한 설정을 용도별로 선택하세요. 키는 브라우저에 반환하거나 데이터베이스에 저장하지 않습니다.")}</p>
+                  <button onClick={() => navigation.navigate("models")}>{uiText("모델 프로필 검토")}</button>
                 </div>
               </section>
               <UsageSummary />
@@ -2537,7 +2492,7 @@ function App() {
             <span>
               <Shield size={13} /> Open Aegis · Evidence-first security
             </span>
-            <span>SELF-HOSTED / {settings?.version ? `v${settings.version}` : "버전 미확인"}</span>
+            <span>SELF-HOSTED / {settings?.version ? `v${settings.version}` : uiText("버전 미확인")}</span>
           </footer>
         </div>
       </main>
@@ -2553,68 +2508,64 @@ function App() {
         window.dispatchEvent(new Event("aegis-records-changed"));
       }} />}
       {modal === "sources" && editingAsset && <AssetSources key={editingAsset.id} asset={editingAsset} onClose={closeModal} />}
-      {modal === "task-model" && <TaskCreateModels key={auth.user?.id} actorId={auth.user?.id || ""} canAdmin={canApprove} tools={tools} onClose={closeModal} onCreated={taskId => { void refresh();window.dispatchEvent(new Event("aegis-records-changed"));setModal(null);navigation.navigate("tasks");navigation.openDetail({kind:"task",id:taskId});message("작업 저장 결과를 확인했습니다. 현재 작업 상태와 실행 범위를 검토하세요."); }} />}
+      {modal === "task-model" && <TaskCreateModels key={auth.user?.id} actorId={auth.user?.id || ""} canAdmin={canApprove} tools={tools} onClose={closeModal} onCreated={taskId => { void refresh();window.dispatchEvent(new Event("aegis-records-changed"));setModal(null);navigation.navigate("tasks");navigation.openDetail({kind:"task",id:taskId});message(uiText("작업 저장 결과를 확인했습니다. 현재 작업 상태와 실행 범위를 검토하세요.")); }} />}
       {modal && modal !== "scopesentry" && modal !== "sources" && modal !== "task-model" && (
         <Modal
           title={
             modal === "asset"
               ? editingAsset
-                ? "검증 자산 수정"
-                : "검증 자산 등록"
+                ? uiText("검증 자산 수정")
+                : uiText("검증 자산 등록")
               : modal === "task"
                 ? page === "schedules"
-                  ? "반복 검증 예약"
-                  : "새 검증 계획"
+                  ? uiText("반복 검증 예약")
+                  : uiText("새 검증 계획")
                 : modal === "import"
-                  ? "JSON 자산 가져오기"
-                  : "워크스페이스 노트"
+                  ? uiText("JSON 자산 가져오기")
+                  : uiText("워크스페이스 노트")
           }
           subtitle={
             modal === "asset"
               ? editingAsset
-                ? "수정하면 기존 승인 대기 계획을 새로 만들어야 합니다. 검증 이력이 있는 주소는 변경할 수 없습니다."
-                : "주소의 origin과 경로가 검증 범위가 됩니다."
+                ? uiText("수정하면 기존 승인 대기 계획을 새로 만들어야 합니다. 검증 이력이 있는 주소는 변경할 수 없습니다.")
+                : uiText("주소의 origin과 경로가 검증 범위가 됩니다.")
               : modal === "task"
-                ? "계획을 만든 후 실행 승인을 진행합니다."
+                ? uiText("계획을 만든 후 실행 승인을 진행합니다.")
                 : undefined
           }
           onClose={closeModal}
         >
           {busy && (
             <p className="subtle" role="status">
-              입력한 내용을 저장하고 있습니다. 완료될 때까지 내용을 변경할 수 없습니다.
-            </p>
+              {uiText("입력한 내용을 저장하고 있습니다. 완료될 때까지 내용을 변경할 수 없습니다.")}</p>
           )}
           <form onSubmit={submitForm} aria-busy={busy}>
-            <fieldset className="submission-fields" disabled={busy || !canOperate} aria-label="등록 내용">
+            <fieldset className="submission-fields" disabled={busy || !canOperate} aria-label={uiText("등록 내용")}>
             {modal === "asset" && (
               <>
                 <div className="form-grid">
                   <label>
-                    자산 이름
-                    <input
+                    {uiText("자산 이름")}<input
                       name="name"
                       defaultValue={editingAsset?.name}
                       maxLength={100}
                       required
-                      placeholder="예: 고객 포털"
+                      placeholder={uiText("예: 고객 포털")}
                     />
                   </label>
                   <label>
-                    유형
-                    <select
+                    {uiText("유형")}<select
                       name="type"
                       defaultValue={editingAsset?.type || "web"}
                     >
-                      <option value="web">웹 애플리케이션</option>
+                      <option value="web">{uiText("웹 애플리케이션")}</option>
                       <option value="api">API</option>
-                      <option value="service">서비스</option>
+                      <option value="service">{uiText("서비스")}</option>
                     </select>
                   </label>
                 </div>
                 <label>
-                  검증 주소
-                  <input
+                  {uiText("검증 주소")}<input
                     name="url"
                     defaultValue={editingAsset?.url}
                     type="url"
@@ -2624,17 +2575,15 @@ function App() {
                 </label>
                 <div className="form-grid">
                   <label>
-                    담당자
-                    <input
+                    {uiText("담당자")}<input
                       name="owner"
                       defaultValue={editingAsset?.owner}
                       maxLength={100}
-                      placeholder="예: 플랫폼팀"
+                      placeholder={uiText("예: 플랫폼팀")}
                     />
                   </label>
                   <label>
-                    태그
-                    <input
+                    {uiText("태그")}<input
                       name="tags"
                       defaultValue={editingAsset?.tags.join(", ")}
                       placeholder="production, customer"
@@ -2644,35 +2593,31 @@ function App() {
                 <PolicyRulesEditor key={editingAsset?.id || "new-asset"}
                   initial={editingAsset?.authorization_rules || []} disabled={busy} />
                 <label className="checkbox-label">
-                  <input name="authorized" type="checkbox" required />이 자산에
-                  대한 검증 권한이 있으며 등록 범위를 확인했습니다.
-                </label>
+                  <input name="authorized" type="checkbox" required />{uiText("이 자산에 대한 검증 권한이 있으며 등록 범위를 확인했습니다.")}</label>
               </>
             )}
             {modal === "task" && (
               <>
                 <label>
-                  작업 이름
-                  <input
+                  {uiText("작업 이름")}<input
                     name="name"
                     maxLength={120}
                     required
-                    placeholder="예: 고객 포털 배포 전 검증"
+                    placeholder={uiText("예: 고객 포털 배포 전 검증")}
                   />
                 </label>
                 <label>
-                  검증 목표
-                  <textarea
+                  {uiText("검증 목표")}<textarea
                     name="goal"
                     rows={2}
                     maxLength={2000}
-                    defaultValue="등록된 자산의 보안 설정과 접근 권한을 검증합니다."
+                    defaultValue={uiText("등록된 자산의 보안 설정과 접근 권한을 검증합니다.")}
                   />
                 </label>
                 <AssetPicker initialId={taskAssetId} initialAsset={visibleAssets.find(asset => asset.id === taskAssetId)} onDraftChange={() => setFormError("")} />
                 <RemoteExecutionPicker disabled={busy} onChecks={setRemoteChecks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))} />
                 <fieldset>
-                  <legend>검증 도구</legend>
+                  <legend>{uiText("검증 도구")}</legend>
                   <div className="check-grid">
                     {tools.map((t) => (
                       <label className="checkbox-label" key={t.id}>
@@ -2693,28 +2638,25 @@ function App() {
                   <label>
                     Planner
                     <select name="planner">
-                      <option value="rules">규칙 기반</option>
-                      <option value="ai">AI 계획 (LLM 설정 필요)</option>
+                      <option value="rules">{uiText("규칙 기반")}</option>
+                      <option value="ai">{uiText("AI 계획 (LLM 설정 필요)")}</option>
                     </select>
                   </label>
                   <label>
-                    병렬 Worker
-                    <select name="workers" defaultValue="3">
+                    {uiText("병렬 Worker")}<select name="workers" defaultValue="3">
                       {[1, 2, 3, 4].map((n) => (
                         <option value={n} key={n}>
-                          {n}개
-                        </option>
+                          {n}{uiText("개")}</option>
                       ))}
                     </select>
                   </label>
                 </div>
                 {page === "schedules" && (
                   <label>
-                    검증 계획 생성 간격
-                    <select name="interval">
-                      <option value="24">매일 · 24시간</option>
-                      <option value="168">매주 · 168시간</option>
-                      <option value="1">매시간</option>
+                    {uiText("검증 계획 생성 간격")}<select name="interval">
+                      <option value="24">{uiText("매일 · 24시간")}</option>
+                      <option value="168">{uiText("매주 · 168시간")}</option>
+                      <option value="1">{uiText("매시간")}</option>
                     </select>
                   </label>
                 )}
@@ -2723,12 +2665,9 @@ function App() {
             {modal === "import" && (
               <>
                 <p className="subtle">
-                  동일한 주소는 중복 등록할 수 없습니다. 모든 자산에 authorized:
-                  true가 필요합니다.
-                </p>
+                  {uiText("동일한 주소는 중복 등록할 수 없습니다. 모든 자산에 authorized: true가 필요합니다.")}</p>
                 <label>
-                  자산 JSON 배열
-                  <textarea
+                  {uiText("자산 JSON 배열")}<textarea
                     name="json"
                     rows={12}
                     required
@@ -2742,22 +2681,20 @@ function App() {
             {modal === "note" && (
               <>
                 <label>
-                  제목
-                  <input
+                  {uiText("제목")}<input
                     name="title"
                     maxLength={120}
                     required
-                    placeholder="예: 고객 포털 검증 메모"
+                    placeholder={uiText("예: 고객 포털 검증 메모")}
                   />
                 </label>
                 <label>
-                  내용
-                  <textarea
+                  {uiText("내용")}<textarea
                     name="content"
                     rows={9}
                     maxLength={10000}
                     required
-                    placeholder="확인한 내용과 다음 작업을 기록하세요."
+                    placeholder={uiText("확인한 내용과 다음 작업을 기록하세요.")}
                   />
                 </label>
               </>
@@ -2770,18 +2707,17 @@ function App() {
             )}
             <div className="modal-actions">
               <button type="button" onClick={closeModal}>
-                취소
-              </button>
+                {uiText("취소")}</button>
               <button
                 className="primary"
                 disabled={busy || !canOperate}
                 type="submit"
               >
                 {busy
-                  ? "저장 중…"
+                  ? uiText("저장 중…")
                   : modal === "task"
-                    ? "계획 만들기"
-                    : "저장하기"}
+                    ? uiText("계획 만들기")
+                    : uiText("저장하기")}
                 <ArrowRight size={15} />
               </button>
             </div>
@@ -2791,17 +2727,17 @@ function App() {
 
       {archivingAsset && (
         <Modal
-          title={archivingAsset.archived_at ? "자산 복원" : "자산 보관"}
+          title={archivingAsset.archived_at ? uiText("자산 복원") : uiText("자산 보관")}
           subtitle={archivingAsset.name}
           onClose={() => setArchivingAsset(null)}
         >
           <p className="remediation">
             {archivingAsset.archived_at
-              ? "자산을 활성 목록으로 복원합니다. 기존 예약은 직접 재개해야 하며, 새 검증 계획과 승인이 필요합니다."
-              : "증거와 검증 이력은 유지합니다. 이 자산을 포함한 예약은 중지되고, 기존 승인 대기 계획은 실행할 수 없게 됩니다."}
+              ? uiText("자산을 활성 목록으로 복원합니다. 기존 예약은 직접 재개해야 하며, 새 검증 계획과 승인이 필요합니다.")
+              : uiText("증거와 검증 이력은 유지합니다. 이 자산을 포함한 예약은 중지되고, 기존 승인 대기 계획은 실행할 수 없게 됩니다.")}
           </p>
           <div className="modal-actions">
-            <button onClick={() => setArchivingAsset(null)}>취소</button>
+            <button onClick={() => setArchivingAsset(null)}>{uiText("취소")}</button>
             <button
               className="primary"
               disabled={busy || !canOperate}
@@ -2811,13 +2747,13 @@ function App() {
                   "POST",
                   { archived: !archivingAsset.archived_at },
                   archivingAsset.archived_at
-                    ? "자산을 복원했습니다."
-                    : "자산을 보관했습니다.",
+                    ? uiText("자산을 복원했습니다.")
+                    : uiText("자산을 보관했습니다."),
                 );
                 if (result) setArchivingAsset(null);
               }}
             >
-              {archivingAsset.archived_at ? "복원하기" : "보관하기"}
+              {archivingAsset.archived_at ? uiText("복원하기") : uiText("보관하기")}
             </button>
           </div>
         </Modal>
@@ -2832,7 +2768,7 @@ function App() {
         ) && (
           <Modal
             title={
-              navigation.detail.kind === "task" ? "작업 상세" : "발견 상세"
+              navigation.detail.kind === "task" ? uiText("작업 상세") : uiText("발견 상세")
             }
             subtitle={navigation.detail.id}
             onClose={closeTask}
@@ -2842,11 +2778,10 @@ function App() {
               <>
                 <p role="alert">{detailError.message}</p>
                 <button onClick={() => setDetailReload((value) => value + 1)}>
-                  상세 다시 불러오기
-                </button>
+                  {uiText("상세 다시 불러오기")}</button>
               </>
             ) : (
-              <p role="status">상세 기록을 불러오는 중…</p>
+              <p role="status">{uiText("상세 기록을 불러오는 중…")}</p>
             )}
           </Modal>
         )}
@@ -2861,48 +2796,45 @@ function App() {
             {detailHistory}
             {detailError.key === detailKey && detailError.message && (
               <div role="alert">
-                <p>{detailError.message} · 마지막으로 받은 상세 기록입니다.</p>
+                <p>{detailError.message} {uiText(" · 마지막으로 받은 상세 기록입니다.")}</p>
                 <button onClick={() => setDetailReload((value) => value + 1)}>
-                  상세 다시 불러오기
-                </button>
+                  {uiText("상세 다시 불러오기")}</button>
               </div>
             )}
             <div className="detail-summary">
               <Badge value={selectedTask.status} />
               <span>
-                {selectedTask.done} / {selectedTask.asset_ids.length} 자산 처리
-              </span>
-              <span>{selectedTask.errors}개 오류</span>
+                {selectedTask.done} / {selectedTask.asset_ids.length} {uiText(" 자산 처리")}</span>
+              <span>{selectedTask.errors}{uiText("개 오류")}</span>
             </div>
             {selectedTask.termination_reason && (
               <p className="remediation">
-                종료 사유:{" "}
+                {uiText("종료 사유:")}{" "}
                 {{
-                  timeout: "작업 실행 시간 초과",
-                  queue_timeout: "대기열 시간 초과",
-                  operator_stop: "운영자 중지",
-                  shutdown: "서버 종료",
-                  internal_error: "내부 오류",
+                  timeout: uiText("작업 실행 시간 초과"),
+                  queue_timeout: uiText("대기열 시간 초과"),
+                  operator_stop: uiText("운영자 중지"),
+                  shutdown: uiText("서버 종료"),
+                  internal_error: uiText("내부 오류"),
                 }[selectedTask.termination_reason] ||
                   selectedTask.termination_reason}
               </p>
             )}
             {selectedTask.queue_wait_ms !== undefined && (
               <p className="subtle">
-                실행 전 대기: {(selectedTask.queue_wait_ms / 1000).toFixed(1)}초
-              </p>
+                {uiText("실행 전 대기: ")}{(selectedTask.queue_wait_ms / 1000).toFixed(1)}{uiText("초")}</p>
             )}
             {selectedTask.execution_policy && (
               <details>
-                <summary>승인한 실행 정책</summary>
+                <summary>{uiText("승인한 실행 정책")}</summary>
                 <PolicySummary policy={selectedTask.execution_policy} />
               </details>
             )}
             <TemplateOriginSummary origin={selectedTask.template_origin} />
             <TaskModels actorId={auth.user?.id || ""} key={`task-models-${auth.user?.id}-${selectedTask.id}`} taskId={selectedTask.id} canAdmin={canApprove} />
-            {selectedTask.archived_at && <p>보관된 작업 · 실행 결과와 증거가 보존됩니다.</p>}
+            {selectedTask.archived_at && <p>{uiText("보관된 작업 · 실행 결과와 증거가 보존됩니다.")}</p>}
             <TaskArchiveHistory key={`archive-history-${selectedTask.id}`} taskId={selectedTask.id}/>
-            {(selectedTask.category_ref || selectedTask.category_revision) && <p>작업 분류: <strong>{selectedTask.category_ref?.name || "미분류"}</strong> · 변경 버전 {selectedTask.category_revision || 0}{selectedTask.category_origin_task_id && " · 이전 작업에서 이어받음"} · 이름은 지정 당시 기록입니다.</p>}
+            {(selectedTask.category_ref || selectedTask.category_revision) && <p>{uiText("작업 분류: ")}<strong>{selectedTask.category_ref?.name || uiText("미분류")}</strong> {uiText(" · 변경 버전 ")}{selectedTask.category_revision || 0}{selectedTask.category_origin_task_id && uiText(" · 이전 작업에서 이어받음")} {uiText(" · 이름은 지정 당시 기록입니다.")}</p>}
             <ToolContracts snapshot={selectedTask.tool_contracts} current={settings?.tool_contracts}
               selected={selectedTask.checks} names={Object.fromEntries(tools.map(tool => [tool.id, tool.name]))}
               pending={selectedTask.status === "pending"} />
@@ -2910,8 +2842,8 @@ function App() {
             <WorkerDependencies dependencies={selectedTask.worker_dependencies} assets={selectedTask.scope_snapshot} />
             {replanError?.id === selectedTask.id && <p className="form-error" role="alert">{replanError.message}</p>}
             {selectedTask.followup_of && <p className="subtle">
-              결과 기반 후속 {selectedTask.planning_round}회차 · <button type="button" disabled={busy}
-                onClick={() => navigation.openDetail({kind:"task",id:selectedTask.followup_of!})}>이전 회차 보기</button>
+              {uiText("결과 기반 후속 ")}{selectedTask.planning_round}{uiText("회차 · ")}<button type="button" disabled={busy}
+                onClick={() => navigation.openDetail({kind:"task",id:selectedTask.followup_of!})}>{uiText("이전 회차 보기")}</button>
             </p>}
             {selectedTask.approved_at && !(selectedTask.observation_execution && selectedTask.retest_of) && !selectedTask.goal_retest && ["completed","failed","stopped","interrupted"].includes(selectedTask.status) && <NextPlan
               key={`next-plan-${selectedTask.id}`} taskId={selectedTask.id} canOperate={canOperate} busy={busy}
@@ -2919,7 +2851,7 @@ function App() {
               onTask={id=>navigation.openDetail({kind:"task",id})}
               onAccept={async (fingerprint,onFailure) => {
                 const result = await act("/tasks/"+encodeURIComponent(selectedTask.id)+"/next-plan","POST",{fingerprint},
-                  "후속 승인 대기 계획을 만들었습니다. 범위와 도구를 검토한 뒤 승인하세요.",onFailure) as Task | undefined;
+                  uiText("후속 승인 대기 계획을 만들었습니다. 범위와 도구를 검토한 뒤 승인하세요."),onFailure) as Task | undefined;
                 if (result) navigation.openDetail({kind:"task",id:result.id});
                 return result;
               }}
@@ -2932,19 +2864,19 @@ function App() {
             />}
             {selectedTask.retry_of && (
               <p className="subtle">
-                현재 범위로 만든 재실행 계획 · <button type="button" disabled={busy}
-                  onClick={() => navigation.openDetail({kind:"task",id:selectedTask.retry_of!})}>재실행 원본 보기</button>
+                {uiText("현재 범위로 만든 재실행 계획 · ")}<button type="button" disabled={busy}
+                  onClick={() => navigation.openDetail({kind:"task",id:selectedTask.retry_of!})}>{uiText("재실행 원본 보기")}</button>
               </p>
             )}
             {selectedTask.replan_of && <p className="subtle">
-              현재 범위로 다시 만든 계획 · <button type="button"
-                onClick={() => navigation.openDetail({kind: "task", id: selectedTask.replan_of!})}>원본 계획 보기</button>
+              {uiText("현재 범위로 다시 만든 계획 · ")}<button type="button"
+                onClick={() => navigation.openDetail({kind: "task", id: selectedTask.replan_of!})}>{uiText("원본 계획 보기")}</button>
             </p>}
             {selectedTask.replaced_by && <p className="subtle">
-              새 승인 계획으로 대체된 기록 · <button type="button"
-                onClick={() => navigation.openDetail({kind: "task", id: selectedTask.replaced_by!})}>새 계획 보기</button>
+              {uiText("새 승인 계획으로 대체된 기록 · ")}<button type="button"
+                onClick={() => navigation.openDetail({kind: "task", id: selectedTask.replaced_by!})}>{uiText("새 계획 보기")}</button>
             </p>}
-            <h4 className="detail-heading">승인 범위</h4>
+            <h4 className="detail-heading">{uiText("승인 범위")}</h4>
             <div className="scope-list">
               {selectedTask.scope_snapshot.map((a) => (
                 <code key={a.id}>{a.url}</code>
@@ -2955,7 +2887,7 @@ function App() {
                 <span key={c}>{tools.find((t) => t.id === c)?.name || c}</span>
               ))}
             </div>
-            <h4 className="detail-heading">도구별 실행 결과</h4>
+            <h4 className="detail-heading">{uiText("도구별 실행 결과")}</h4>
             {taskDetail && (
               <CoverageTable
                 rows={taskDetail.coverage}
@@ -2971,14 +2903,14 @@ function App() {
             <GoalObservationOrigin origin={selectedTask.goal_observation} onTask={id=>navigation.openDetail({kind:"task",id})}/>
             <GoalRetestOrigin origin={selectedTask.goal_retest} onTask={id=>navigation.openDetail({kind:"task",id})} onFinding={id=>navigation.openDetail({kind:"finding",id})} />
             <GoalPlanSummary plan={selectedTask.goal_plan} selection={selectedTask.goal_selection} names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))} assets={selectedTask.scope_snapshot} />
-            {selectedTask.goal_plan && <GoalProgress key={`goal-progress-${selectedTask.id}`} taskId={selectedTask.id} canObserve={!!selectedTask.approved_at && ["completed","failed","stopped","interrupted"].includes(selectedTask.status)} names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))} state={navigation.taskGoal} onChange={navigation.updateTaskGoal} actorId={auth.user?.id||""} canOperate={canOperate} busy={busy} onRetest={async(path,requestId,onFailure)=>{const view=captureActionView(),session=captureSession();const result=await act(path,"POST",{request_id:requestId},"목표 재검증 계획을 만들었습니다.",onFailure) as Task|undefined;if(result&&view()&&session()){navigation.openDetail({kind:"task",id:result.id});return true;}return false;}} onFinding={id=>navigation.openDetail({kind:"finding",id})} onTask={id=>navigation.openDetail({kind:"task",id})} />}
+            {selectedTask.goal_plan && <GoalProgress key={`goal-progress-${selectedTask.id}`} taskId={selectedTask.id} canObserve={!!selectedTask.approved_at && ["completed","failed","stopped","interrupted"].includes(selectedTask.status)} names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))} state={navigation.taskGoal} onChange={navigation.updateTaskGoal} actorId={auth.user?.id||""} canOperate={canOperate} busy={busy} onRetest={async(path,requestId,onFailure)=>{const view=captureActionView(),session=captureSession();const result=await act(path,"POST",{request_id:requestId},uiText("목표 재검증 계획을 만들었습니다."),onFailure) as Task|undefined;if(result&&view()&&session()){navigation.openDetail({kind:"task",id:result.id});return true;}return false;}} onFinding={id=>navigation.openDetail({kind:"finding",id})} onTask={id=>navigation.openDetail({kind:"task",id})} />}
             {auth.user && !selectedTask.observation_execution && ["pending","completed","failed","stopped","interrupted"].includes(selectedTask.status) && <GoalDraftPanel
               key={`goal-draft-${auth.user.id}-${selectedTask.id}`} taskId={selectedTask.id} actorId={auth.user.id}
               initialGoal={selectedTask.goal} busy={busy} canOperate={canOperate} captureView={captureActionView}
               names={Object.fromEntries(tools.map(tool=>[tool.id,tool.name]))}
               onAccept={async (draftId,fingerprint,onFailure)=>{
                 const result=await act("/tasks/"+encodeURIComponent(selectedTask.id)+"/goal-plans/"+encodeURIComponent(draftId)+"/accept","POST",{fingerprint},
-                  "목표 초안을 별도의 승인 대기 계획에 반영했습니다.",onFailure) as Task | undefined;
+                  uiText("목표 초안을 별도의 승인 대기 계획에 반영했습니다."),onFailure) as Task | undefined;
                 if(result)navigation.openDetail({kind:"task",id:result.id});
                 return result;
               }}
@@ -3008,7 +2940,7 @@ function App() {
                 onChange={navigation.updateTaskChat}
                 captureView={captureActionView}
                 onSaved={(currentView) => {
-                  if (!currentView) message("앞서 보낸 질문과 답변을 저장했습니다. 현재 대화 탐색은 유지했습니다.");
+                  if (!currentView) message(uiText("앞서 보낸 질문과 답변을 저장했습니다. 현재 대화 탐색은 유지했습니다."));
                   void refresh();
                 }}
               />
@@ -3019,7 +2951,7 @@ function App() {
                 key={`task-report-${selectedTask.id}`}
                 format="markdown"
                 taskId={selectedTask.id}
-                label="보고서"
+                label={uiText("보고서")}
               />
               {["failed", "interrupted", "stopped"].includes(
                 selectedTask.status,
@@ -3032,20 +2964,18 @@ function App() {
                       "/tasks/" + selectedTask.id + "/retry",
                       "POST",
                       undefined,
-                      "연결된 재실행 계획을 열었습니다. 현재 상태와 실행 범위를 확인하세요.",
+                      uiText("연결된 재실행 계획을 열었습니다. 현재 상태와 실행 범위를 확인하세요."),
                     ) as Task | undefined;
                     if (result) navigation.openDetail({kind:"task",id:result.id});
                   }}
                 >
                   <RefreshCw size={15} />
-                  재실행 계획
-                </button>
+                  {uiText("재실행 계획")}</button>
               )}
               {selectedTask.status === "pending" ? (
                 <>
                 <button disabled={busy || !canOperate} onClick={() => void replanPending(selectedTask.id)}>
-                  <RefreshCw size={15} />현재 범위로 새 계획
-                </button>
+                  <RefreshCw size={15} />{uiText("현재 범위로 새 계획")}</button>
                 <button
                   className="primary"
                   disabled={busy || !canApprove || !toolContractsMatch(selectedTask.tool_contracts, selectedTask.checks, settings?.tool_contracts)}
@@ -3054,8 +2984,7 @@ function App() {
                     if (result) closeTask();
                   }}
                 >
-                  승인하고 실행
-                  <Check size={15} />
+                  {uiText("승인하고 실행")}<Check size={15} />
                 </button>
                 </>
               ) : ["running", "queued", "stopping"].includes(
@@ -3071,10 +3000,9 @@ function App() {
                   }
                 >
                   <Square size={14} />
-                  작업 중지
-                </button>
+                  {uiText("작업 중지")}</button>
               ) : (
-                <button onClick={closeTask}>닫기</button>
+                <button onClick={closeTask}>{uiText("닫기")}</button>
               )}
             </div>
           </Modal>
@@ -3095,10 +3023,9 @@ function App() {
             {detailHistory}
             {detailError.key === detailKey && detailError.message && (
               <div role="alert">
-                <p>{detailError.message} · 마지막으로 받은 상세 기록입니다.</p>
+                <p>{detailError.message} {uiText(" · 마지막으로 받은 상세 기록입니다.")}</p>
                 <button onClick={() => setDetailReload((value) => value + 1)}>
-                  상세 다시 불러오기
-                </button>
+                  {uiText("상세 다시 불러오기")}</button>
               </div>
             )}
             <div className="detail-summary">
@@ -3124,17 +3051,17 @@ function App() {
                       : current,
                   );
                 } else {
-                  message("이전 화면의 조치 기록 저장을 확인했습니다. 작성 중인 내용은 유지했습니다.");
+                  message(uiText("이전 화면의 조치 기록 저장을 확인했습니다. 작성 중인 내용은 유지했습니다."));
                 }
                 window.dispatchEvent(new Event("aegis-records-changed"));
                 void refresh();
               }}
             />
-            <h4 className="detail-heading">관찰 증거</h4>
+            <h4 className="detail-heading">{uiText("관찰 증거")}</h4>
             <pre>
               {JSON.stringify(selectedFinding.finding.evidence, null, 2)}
             </pre>
-            <h4 className="detail-heading">수정 가이드</h4>
+            <h4 className="detail-heading">{uiText("수정 가이드")}</h4>
             <p className="remediation">{selectedFinding.finding.remediation}</p>
             <FindingRecords
               key={selectedFinding.finding.id}
@@ -3154,7 +3081,7 @@ function App() {
                     "/findings/" + selectedFinding.finding.id + "/retest",
                     "POST",
                     undefined,
-                    "재검증 계획을 만들었습니다. 범위를 승인하세요.",
+                    uiText("재검증 계획을 만들었습니다. 범위를 승인하세요."),
                   );
                   if (result) {
                     closeFinding();
@@ -3163,14 +3090,13 @@ function App() {
                 }}
               >
                 <RefreshCw size={15} />
-                재검증 계획
-              </button>
+                {uiText("재검증 계획")}</button>
             </div>
           </Modal>
         )}
       {trafficDetail && (
         <Modal
-          title="HTTP 요청 기록"
+          title={uiText("HTTP 요청 기록")}
           subtitle={trafficDetail.url}
           onClose={closeTraffic}
         >
@@ -3180,16 +3106,16 @@ function App() {
               value={
                 trafficDetail.status
                   ? String(trafficDetail.status)
-                  : "연결 실패"
+                  : uiText("연결 실패")
               }
             />
             <span>
               {trafficDetail.elapsed_ms} ms · {trafficDetail.bytes} B
             </span>
           </div>
-          <h4 className="detail-heading">응답 헤더</h4>
+          <h4 className="detail-heading">{uiText("응답 헤더")}</h4>
           <pre>{JSON.stringify(trafficDetail.headers, null, 2)}</pre>
-          <h4 className="detail-heading">증거 메타데이터</h4>
+          <h4 className="detail-heading">{uiText("증거 메타데이터")}</h4>
           <pre>
             {JSON.stringify(
               {
@@ -3202,9 +3128,7 @@ function App() {
             )}
           </pre>
           <p className="subtle">
-            본문은 저장하지 않았습니다. 해시는 수신한 최대 128 KiB 본문을
-            대상으로 계산합니다.
-          </p>
+            {uiText("본문은 저장하지 않았습니다. 해시는 수신한 최대 128 KiB 본문을 대상으로 계산합니다.")}</p>
         </Modal>
       )}
     </div>
@@ -3240,7 +3164,7 @@ function Toolbar({
         />
       </div>
       <span className="subtle">
-        {error ? "조회 실패" : loading ? "불러오는 중…" : `${count}개 항목`}
+        {error ? uiText("조회 실패") : loading ? uiText("불러오는 중…") : uiText("{0}개 항목", [count])}
       </span>
       {children}
     </div>

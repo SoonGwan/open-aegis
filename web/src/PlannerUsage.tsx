@@ -1,3 +1,4 @@
+import { t as uiText, getFormatLocale } from "./i18n-core.ts";
 import { CallCost, type CallCostRecord } from "./CallCost";
 
 export type PlannerCall = {
@@ -15,29 +16,29 @@ export type PlannerCall = {
 
 export function PlannerUsage({call}: {call: PlannerCall}) {
   const states = {
-    reported: "제공자 보고값 · 형식 검증됨",
-    partial: "일부 사용량만 보고됨",
-    missing: "사용량이 보고되지 않음",
-    invalid: "사용량 형식 또는 합계 불일치",
+    reported: uiText("제공자 보고값 · 형식 검증됨"),
+    partial: uiText("일부 사용량만 보고됨"),
+    missing: uiText("사용량이 보고되지 않음"),
+    invalid: uiText("사용량 형식 또는 합계 불일치"),
   };
   const outcomes = {
-    accepted: "AI 계획 수용",
-    invalid_plan: "계획 검증 실패 · 규칙 계획 사용",
-    request_failed: "호출 응답 확인 실패 · 규칙 계획 사용",
+    accepted: uiText("AI 계획 수용"),
+    invalid_plan: uiText("계획 검증 실패 · 규칙 계획 사용"),
+    request_failed: uiText("호출 응답 확인 실패 · 규칙 계획 사용"),
   };
   return (
-    <section className="planner-usage" aria-label="AI 계획 사용량">
-      <h4 className="detail-heading">AI 계획 사용량</h4>
+    <section className="planner-usage" aria-label={uiText("AI 계획 사용량")}>
+      <h4 className="detail-heading">{uiText("AI 계획 사용량")}</h4>
       <p>{call.model} · {outcomes[call.outcome]}</p>
       <p>{states[call.tokens.status]}</p>
       <dl>
-        {([["입력",call.tokens.prompt_tokens], ["출력",call.tokens.completion_tokens],
-          ["합계",call.tokens.total_tokens]] as const).map(([label,value]) => (
-          <div key={label}><dt>{label} 토큰</dt><dd>{value === null ? "미확인" : value.toLocaleString("ko-KR")}</dd></div>
+        {([[uiText("입력"),call.tokens.prompt_tokens], [uiText("출력"),call.tokens.completion_tokens],
+          [uiText("합계"),call.tokens.total_tokens]] as const).map(([label,value]) => (
+          <div key={label}><dt>{label} {uiText(" 토큰")}</dt><dd>{value === null ? uiText("미확인") : value.toLocaleString(getFormatLocale())}</dd></div>
         ))}
       </dl>
       <CallCost cost={call.cost} />
-      <p className="subtle">제공자가 반환한 값입니다. 실제 청구를 확인한 기록은 아닙니다.</p>
+      <p className="subtle">{uiText("제공자가 반환한 값입니다. 실제 청구를 확인한 기록은 아닙니다.")}</p>
     </section>
   );
 }

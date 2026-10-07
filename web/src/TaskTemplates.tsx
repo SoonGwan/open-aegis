@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { api } from "./api";
@@ -40,7 +41,7 @@ const base = "/task-templates";
 const message = (error: unknown) =>
   error instanceof Error
     ? error.message
-    : "처리하지 못했습니다. 입력을 확인하고 다시 시도하세요.";
+    : uiText("처리하지 못했습니다. 입력을 확인하고 다시 시도하세요.");
 const changed = () => window.dispatchEvent(new Event("aegis-records-changed"));
 
 function Fields({
@@ -60,23 +61,21 @@ function Fields({
   return (
     <>
       <label>
-        작업 이름
-        <input
+        {uiText("작업 이름")}<input
           name="task_name"
           required
           maxLength={120}
-          defaultValue={defaults?.name || template?.name || "정기 보안 검증"}
+          defaultValue={defaults?.name || template?.name || uiText("정기 보안 검증")}
         />
       </label>
       <label>
-        검증 목표
-        <textarea
+        {uiText("검증 목표")}<textarea
           name="goal"
           maxLength={2000}
           rows={3}
           defaultValue={
             defaults?.goal ||
-            "등록된 자산의 보안 설정과 접근 권한을 검증합니다."
+            uiText("등록된 자산의 보안 설정과 접근 권한을 검증합니다.")
           }
         />
       </label>
@@ -96,8 +95,8 @@ function Fields({
       ) : (
         <p className="subtle">
           {defaults?.asset_ids.length
-            ? `기본 자산 ${defaults.asset_ids.length}개와 Worker 의존 관계를 유지합니다. 적용할 때 자산을 변경할 수 있습니다.`
-            : "자산은 계획을 만들 때 선택합니다."}
+            ? uiText("기본 자산 {0}개와 Worker 의존 관계를 유지합니다. 적용할 때 자산을 변경할 수 있습니다.", [defaults.asset_ids.length])
+            : uiText("자산은 계획을 만들 때 선택합니다.")}
         </p>
       )}
       <RemoteExecutionPicker
@@ -107,7 +106,7 @@ function Fields({
         names={Object.fromEntries(tools.map((tool) => [tool.id, tool.name]))}
       />
       <fieldset>
-        <legend>검증 도구</legend>
+        <legend>{uiText("검증 도구")}</legend>
         <div className="check-grid">
           {tools.map((tool) => (
             <label className="checkbox-label" key={tool.id}>
@@ -135,19 +134,16 @@ function Fields({
       </fieldset>
       <div className="form-grid">
         <label>
-          계획 방식
-          <select name="planner" defaultValue={defaults?.planner || "rules"}>
-            <option value="rules">규칙 기반</option>
-            <option value="ai">AI 계획 (LLM 설정 필요)</option>
+          {uiText("계획 방식")}<select name="planner" defaultValue={defaults?.planner || "rules"}>
+            <option value="rules">{uiText("규칙 기반")}</option>
+            <option value="ai">{uiText("AI 계획 (LLM 설정 필요)")}</option>
           </select>
         </label>
         <label>
-          병렬 Worker
-          <select name="workers" defaultValue={defaults?.workers || 3}>
+          {uiText("병렬 Worker")}<select name="workers" defaultValue={defaults?.workers || 3}>
             {[1, 2, 3, 4].map((n) => (
               <option key={n} value={n}>
-                {n}개
-              </option>
+                {n}{uiText("개")}</option>
             ))}
           </select>
         </label>
@@ -171,9 +167,9 @@ function draft(
   if (apply || asset_ids.length)
     validateWorkerDependencies(asset_ids, worker_dependencies);
   const checks = data.getAll("check").map(String);
-  if (!checks.length) throw new Error("검증 도구를 한 개 이상 선택하세요.");
+  if (!checks.length) throw new Error(uiText("검증 도구를 한 개 이상 선택하세요."));
   if (apply && !asset_ids.length)
-    throw new Error("현재 검증 자산을 선택하세요.");
+    throw new Error(uiText("현재 검증 자산을 선택하세요."));
   return {
     name: String(data.get("task_name") || ""),
     goal: String(data.get("goal") || ""),
@@ -284,20 +280,20 @@ function TemplateForm({
     <Modal
       title={
         apply
-          ? "템플릿으로 검증 계획 만들기"
+          ? uiText("템플릿으로 검증 계획 만들기")
           : template
-            ? "작업 템플릿 수정"
-            : "작업 템플릿 만들기"
+            ? uiText("작업 템플릿 수정")
+            : uiText("작업 템플릿 만들기")
       }
-      subtitle="설정을 저장하고 반복 사용하세요. 적용한 계획은 관리자 실행 승인을 기다립니다."
+      subtitle={uiText("설정을 저장하고 반복 사용하세요. 적용한 계획은 관리자 실행 승인을 기다립니다.")}
       onClose={() => {
         if (!pending.current) onClose();
       }}
     >
       {template && (
         <p className="subtle">
-          {template.name} · 검토 버전 {expected} ·{" "}
-          {template.status === "active" ? "활성" : "보관됨"}
+          {template.name} {uiText(" · 검토 버전 ")}{expected} ·{" "}
+          {template.status === "active" ? uiText("활성") : uiText("보관됨")}
         </p>
       )}
       <form onSubmit={submit} aria-busy={busy}>
@@ -305,8 +301,7 @@ function TemplateForm({
           {!apply && (
             <>
               <label>
-                템플릿 이름
-                <input
+                {uiText("템플릿 이름")}<input
                   name="name"
                   required
                   maxLength={120}
@@ -314,8 +309,7 @@ function TemplateForm({
                 />
               </label>
               <label>
-                설명
-                <textarea
+                {uiText("설명")}<textarea
                   name="description"
                   maxLength={2000}
                   rows={2}
@@ -323,12 +317,11 @@ function TemplateForm({
                 />
               </label>
               <label>
-                분류
-                <input
+                {uiText("분류")}<input
                   name="category"
                   maxLength={80}
                   defaultValue={template?.category}
-                  placeholder="예: 배포 전, 웹 서비스"
+                  placeholder={uiText("예: 배포 전, 웹 서비스")}
                 />
               </label>
             </>
@@ -342,24 +335,20 @@ function TemplateForm({
         )}
         {template && error && (
           <button type="button" onClick={current} disabled={busy}>
-            현재 템플릿 확인
-          </button>
+            {uiText("현재 템플릿 확인")}</button>
         )}
         {latest && (
           <section className="template-conflict">
             <h4>
-              현재 버전 {latest.revision} · {latest.name}
+              {uiText("현재 버전 ")}{latest.revision} · {latest.name}
             </h4>
             <p>{latest.description}</p>
             <p>
-              분류 {latest.category || "미지정"} · 검사{" "}
+              {uiText("분류 ")}{latest.category || uiText("미지정")} {uiText(" · 검사")}{" "}
               {latest.definition.checks.join(", ")} · Worker{" "}
-              {latest.definition.workers}개
-            </p>
+              {latest.definition.workers}{uiText("개")}</p>
             <p className="subtle">
-              작성한 설정은 그대로 유지합니다. 현재 버전과 비교한 뒤 새 버전에
-              적용하세요.
-            </p>
+              {uiText("작성한 설정은 그대로 유지합니다. 현재 버전과 비교한 뒤 새 버전에 적용하세요.")}</p>
             <button
               type="button"
               disabled={busy || (latest.status !== "active" && apply)}
@@ -369,20 +358,18 @@ function TemplateForm({
                 setError("");
               }}
             >
-              이 버전을 검토했고 작성한 설정 유지
-            </button>
+              {uiText("이 버전을 검토했고 작성한 설정 유지")}</button>
           </section>
         )}
         <div className="modal-actions">
           <button type="button" disabled={busy} onClick={onClose}>
-            취소
-          </button>
+            {uiText("취소")}</button>
           <button type="submit" className="primary" disabled={busy}>
             {busy
-              ? "저장 중…"
+              ? uiText("저장 중…")
               : apply
-                ? "승인 대기 계획 만들기"
-                : "템플릿 저장"}
+                ? uiText("승인 대기 계획 만들기")
+                : uiText("템플릿 저장")}
           </button>
         </div>
       </form>
@@ -412,7 +399,7 @@ function TemplateHistory({
     false,
   );
   return (
-    <Modal title={`${template.name} · 버전 이력`} onClose={onClose}>
+    <Modal title={uiText("{0} · 버전 이력", [template.name])} onClose={onClose}>
       {!records.ready ? (
         <RecordState records={records} />
       ) : (
@@ -421,17 +408,17 @@ function TemplateHistory({
           {records.items.map((row) => (
             <article key={row.id} className="template-history">
               <h4>
-                버전 {row.revision} · {row.action}
+                {uiText("버전 ")}{row.revision} · {row.action}
               </h4>
               <p>
                 {row.actor.name} · {row.snapshot.name} ·{" "}
-                {row.snapshot.category || "분류 미지정"}
+                {row.snapshot.category || uiText("분류 미지정")}
               </p>
               <p>{row.snapshot.description}</p>
               <p className="subtle">
-                검사 {row.snapshot.definition.checks.join(", ")} · Worker{" "}
-                {row.snapshot.definition.workers}개 ·{" "}
-                {row.snapshot.status === "active" ? "활성" : "보관됨"}
+                {uiText("검사 ")}{row.snapshot.definition.checks.join(", ")} · Worker{" "}
+                {row.snapshot.definition.workers}{uiText("개 ·")}{" "}
+                {row.snapshot.status === "active" ? uiText("활성") : uiText("보관됨")}
               </p>
             </article>
           ))}
@@ -444,15 +431,13 @@ function TemplateHistory({
 export function TemplateOriginSummary({ origin }: { origin?: TemplateOrigin }) {
   if (!origin) return null;
   return (
-    <section className="remote-execution" aria-label="작업 템플릿 출처">
-      <h4>템플릿 · {origin.name}</h4>
+    <section className="remote-execution" aria-label={uiText("작업 템플릿 출처")}>
+      <h4>{uiText("템플릿 · ")}{origin.name}</h4>
       <p>
-        버전 {origin.revision} · {origin.category || "분류 미지정"}
+        {uiText("버전 ")}{origin.revision} · {origin.category || uiText("분류 미지정")}
       </p>
       <p className="subtle">
-        이 계획을 만든 당시 설정을 기록했습니다. 이후 템플릿 편집은 기존 승인
-        계획에 반영되지 않습니다.
-      </p>
+        {uiText("이 계획을 만든 당시 설정을 기록했습니다. 이후 템플릿 편집은 기존 승인 계획에 반영되지 않습니다.")}</p>
     </section>
   );
 }
@@ -522,44 +507,39 @@ export function TaskTemplates({
     }
   }
   return (
-    <section className="panel" aria-label="작업 템플릿">
+    <section className="panel" aria-label={uiText("작업 템플릿")}>
       <div className="panel-head">
         <div>
-          <h2>작업 템플릿</h2>
+          <h2>{uiText("작업 템플릿")}</h2>
           <p className="subtle">
-            검사와 Worker 설정을 저장해 반복 사용합니다. 계획마다 현재 범위를
-            확인하고 실행을 승인하세요.
-          </p>
+            {uiText("검사와 Worker 설정을 저장해 반복 사용합니다. 계획마다 현재 범위를 확인하고 실행을 승인하세요.")}</p>
         </div>
         <button
           className="primary"
           disabled={!canOperate || busy}
           onClick={() => setModal({ kind: "create" })}
         >
-          템플릿 만들기
-        </button>
+          {uiText("템플릿 만들기")}</button>
       </div>
       <div className="template-toolbar">
         <label>
-          템플릿 검색
-          <input
+          {uiText("템플릿 검색")}<input
             value={search}
             maxLength={200}
             onChange={(event) => onSearch(event.target.value)}
-            placeholder="이름, 설명, 분류, 검증 목표"
+            placeholder={uiText("이름, 설명, 분류, 검증 목표")}
           />
         </label>
         <label>
-          보관 상태
-          <select
+          {uiText("보관 상태")}<select
             value={
               ["active", "archived", "all"].includes(status) ? status : "active"
             }
             onChange={(event) => onStatus(event.target.value)}
           >
-            <option value="active">활성 템플릿</option>
-            <option value="archived">보관된 템플릿</option>
-            <option value="all">전체</option>
+            <option value="active">{uiText("활성 템플릿")}</option>
+            <option value="archived">{uiText("보관된 템플릿")}</option>
+            <option value="all">{uiText("전체")}</option>
           </select>
         </label>
       </div>
@@ -578,11 +558,11 @@ export function TaskTemplates({
               <article className="template-card" key={template.id}>
                 <h3>{template.name}</h3>
                 <p className="subtle">
-                  {template.category || "분류 미지정"} · 버전{" "}
+                  {template.category || uiText("분류 미지정")} {uiText(" · 버전")}{" "}
                   {template.revision} ·{" "}
-                  {template.status === "active" ? "활성" : "보관됨"}
+                  {template.status === "active" ? uiText("활성") : uiText("보관됨")}
                 </p>
-                <p>{template.description || "설명 없음"}</p>
+                <p>{template.description || uiText("설명 없음")}</p>
                 <p>
                   {template.definition.checks
                     .map(
@@ -591,11 +571,11 @@ export function TaskTemplates({
                     .join(", ")}
                 </p>
                 <p className="subtle">
-                  Worker {template.definition.workers}개 ·{" "}
+                  Worker {template.definition.workers}{uiText("개 ·")}{" "}
                   {template.definition.planner === "ai"
-                    ? "AI 계획"
-                    : "규칙 기반"}{" "}
-                  · {template.definition.remote_connection_id || "현재 서버"}
+                    ? uiText("AI 계획")
+                    : uiText("규칙 기반")}{" "}
+                  · {template.definition.remote_connection_id || uiText("현재 서버")}
                 </p>
                 <div className="template-actions">
                   <button
@@ -604,25 +584,22 @@ export function TaskTemplates({
                     }
                     onClick={() => setModal({ kind: "apply", template })}
                   >
-                    계획 만들기
-                  </button>
+                    {uiText("계획 만들기")}</button>
                   <button
                     disabled={!canOperate || busy}
                     onClick={() => setModal({ kind: "edit", template })}
                   >
-                    수정
-                  </button>
+                    {uiText("수정")}</button>
                   <button
                     disabled={busy}
                     onClick={() => setModal({ kind: "history", template })}
                   >
-                    버전 이력
-                  </button>
+                    {uiText("버전 이력")}</button>
                   <button
                     disabled={!canOperate || busy}
                     onClick={() => void archive(template)}
                   >
-                    {template.status === "active" ? "보관" : "복원"}
+                    {template.status === "active" ? uiText("보관") : uiText("복원")}
                   </button>
                 </div>
               </article>
@@ -631,8 +608,8 @@ export function TaskTemplates({
           {!records.items.length && (
             <p className="empty">
               {search
-                ? "검색 결과가 없습니다."
-                : "저장된 템플릿이 없습니다. 반복 사용할 검사 설정을 저장하세요."}
+                ? uiText("검색 결과가 없습니다.")
+                : uiText("저장된 템플릿이 없습니다. 반복 사용할 검사 설정을 저장하세요.")}
             </p>
           )}
         </>

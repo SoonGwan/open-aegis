@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 import { validateWorkerDependencies, type Dependencies } from "./worker-dependency-state.ts";
 import { PendingModelError, type PendingStorage } from "./model-pending.ts";
 
@@ -38,7 +39,7 @@ function valid(value: unknown): value is PendingTaskCreation {
   return object(value) && exact(value, ["version", "actor", "body", "created_at"]) && value.version === 1 &&
     typeof value.actor === "string" && ID.test(value.actor) && typeof value.created_at === "number" && Number.isSafeInteger(value.created_at) && value.created_at >= 0 && validTaskCreationBody(value.body);
 }
-function prefix(actor: string) { if (!ID.test(actor)) throw new PendingModelError("작업 생성 요청의 계정을 확인하세요.");return PREFIX + encodeURIComponent(actor) + "."; }
+function prefix(actor: string) { if (!ID.test(actor)) throw new PendingModelError(uiText("작업 생성 요청의 계정을 확인하세요."));return PREFIX + encodeURIComponent(actor) + "."; }
 function keys(storage: PendingStorage, actor: string) {
   const found: string[] = [], scope = prefix(actor);
   for (let index = 0; index < storage.length; index++) { const key = storage.key(index);if (key?.startsWith(scope)) found.push(key); }
@@ -57,10 +58,10 @@ export function loadTaskCreationPending(storage: PendingStorage, actor: string, 
     }
     if (rows.length > 20) throw new Error();
     return rows.sort((a, b) => a.created_at - b.created_at || a.body.request_id.localeCompare(b.body.request_id));
-  } catch { throw new PendingModelError("모델을 선택한 작업 생성 기록을 읽지 못했습니다. 이력을 확인하거나 브라우저 기록을 정리하세요."); }
+  } catch { throw new PendingModelError(uiText("모델을 선택한 작업 생성 기록을 읽지 못했습니다. 이력을 확인하거나 브라우저 기록을 정리하세요.")); }
 }
 export function storeTaskCreationPending(storage: PendingStorage, request: PendingTaskCreation): void {
-  if (!valid(request)) throw new PendingModelError("보존할 작업 생성 입력·모델·의존 관계를 확인하세요.");
+  if (!valid(request)) throw new PendingModelError(uiText("보존할 작업 생성 입력·모델·의존 관계를 확인하세요."));
   try {
     const key = prefix(request.actor) + request.body.request_id, text = JSON.stringify(request), previous = storage.getItem(key);
     if (new TextEncoder().encode(text).length > 16384) throw new Error();
@@ -71,7 +72,7 @@ export function storeTaskCreationPending(storage: PendingStorage, request: Pendi
     }
     if (loadTaskCreationPending(storage, request.actor, request.created_at).length >= 20) throw new Error();
     storage.setItem(key, text);if (storage.getItem(key) !== text) throw new Error();
-  } catch { throw new PendingModelError("작업 생성 요청을 브라우저에 보존하지 못해 서버로 보내지 않았습니다. 저장소 권한·용량을 확인하세요."); }
+  } catch { throw new PendingModelError(uiText("작업 생성 요청을 브라우저에 보존하지 못해 서버로 보내지 않았습니다. 저장소 권한·용량을 확인하세요.")); }
 }
 export function finishTaskCreationPending(storage: PendingStorage, request: PendingTaskCreation): void {
   try {
@@ -81,7 +82,7 @@ export function finishTaskCreationPending(storage: PendingStorage, request: Pend
       if (!valid(row) || row.actor !== request.actor || canonical(row.body) !== canonical(request.body)) throw new Error();
       storage.removeItem(key);
     }
-  } catch { throw new PendingModelError("서버 결과는 받았지만 작업 생성의 브라우저 기록을 정리하지 못했습니다. 같은 요청으로 확인할 수 있습니다."); }
+  } catch { throw new PendingModelError(uiText("서버 결과는 받았지만 작업 생성의 브라우저 기록을 정리하지 못했습니다. 같은 요청으로 확인할 수 있습니다.")); }
 }
 export function clearTaskCreationPending(storage: PendingStorage, actor: string): void {
   for (const key of keys(storage, actor)) storage.removeItem(key);

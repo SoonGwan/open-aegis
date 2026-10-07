@@ -1,3 +1,4 @@
+import { t as uiText, localizeLabels, getFormatLocale } from "./i18n-core.ts";
 import { useCallback } from "react";
 import {
   readDetail,
@@ -37,18 +38,18 @@ type Event = {
   message: string;
   detail: Record<string, unknown>;
 };
-const severity: Record<string, string> = {
+const severity: Record<string, string> = localizeLabels({
   critical: "치명적",
   high: "높음",
   medium: "보통",
   low: "낮음",
   info: "정보",
-};
-const status: Record<string, string> = {
+});
+const status: Record<string, string> = localizeLabels({
   open: "미조치",
   accepted: "위험 수용",
   resolved: "해결됨",
-};
+});
 
 export function TaskRecords({
   taskId,
@@ -132,21 +133,21 @@ function TaskCollection({
   );
   const name =
     kind === "findings"
-      ? "작업의 발견 사항"
+      ? uiText("작업의 발견 사항")
       : kind === "observations"
-        ? "Worker 관찰 링크"
-        : "작업 실행 기록";
+        ? uiText("Worker 관찰 링크")
+        : uiText("작업 실행 기록");
   return (
     <section className="finding-collection" aria-label={name}>
       <h4 className="detail-heading">{name}</h4>
       <label className="task-record-search">
         {kind === "findings"
-          ? "발견 제목·자산·심각도·상태로 검색"
+          ? uiText("발견 제목·자산·심각도·상태로 검색")
           : kind === "observations"
-            ? "링크·자산·작업으로 검색"
-            : "메시지·수준으로 검색"}
+            ? uiText("링크·자산·작업으로 검색")
+            : uiText("메시지·수준으로 검색")}
         <input
-          aria-label={`${name} 검색`}
+          aria-label={uiText("{0} 검색", [name])}
           maxLength={200}
           value={search}
           onChange={(e) =>
@@ -156,9 +157,7 @@ function TaskCollection({
       </label>
       {kind === "observations" && (
         <p className="subtle">
-          HTML의 범위 내 링크 관찰입니다. 링크를 방문하거나 실행을 승인하지
-          않습니다. 출처 일치는 저장된 메타데이터 비교입니다.
-        </p>
+          {uiText("HTML의 범위 내 링크 관찰입니다. 링크를 방문하거나 실행을 승인하지 않습니다. 출처 일치는 저장된 메타데이터 비교입니다.")}</p>
       )}
       <Pagination records={records} />
       {!records.ready ? (
@@ -194,12 +193,12 @@ function TaskCollection({
             >
               <strong>{(record as Event).message}</strong>
               <small>
-                {new Date((record as Event).ts * 1000).toLocaleString("ko-KR")}{" "}
+                {new Date((record as Event).ts * 1000).toLocaleString(getFormatLocale())}{" "}
                 · {(record as Event).level}
               </small>
               {Object.keys((record as Event).detail).length > 0 && (
                 <details>
-                  <summary>기록 상세</summary>
+                  <summary>{uiText("기록 상세")}</summary>
                   <pre>{JSON.stringify((record as Event).detail, null, 2)}</pre>
                 </details>
               )}
@@ -208,7 +207,7 @@ function TaskCollection({
         )
       ) : (
         <p className="subtle">
-          {search ? "검색 결과가 없습니다." : `${name}이 없습니다.`}
+          {search ? uiText("검색 결과가 없습니다.") : uiText("{0}이 없습니다.", [name])}
         </p>
       )}
     </section>
@@ -221,19 +220,19 @@ export function ObservationRecord({ record }: { record: Observation }) {
     <article className="finding-record">
       <code className="observation-url">{record.url}</code>
       <p>
-        {record.asset_name || "자산 기록 없음"} ·{" "}
-        {matched ? "출처 메타데이터 일치" : "출처 미확인"}
+        {record.asset_name || uiText("자산 기록 없음")} ·{" "}
+        {matched ? uiText("출처 메타데이터 일치") : uiText("출처 미확인")}
       </p>
       <small>
         {typeof record.created_at === "number"
-          ? new Date(record.created_at * 1000).toLocaleString("ko-KR")
-          : "관찰 시각 미확인"}
+          ? new Date(record.created_at * 1000).toLocaleString(getFormatLocale())
+          : uiText("관찰 시각 미확인")}
       </small>
       <p className="subtle">
-        {record.provenance?.reason || "관찰 출처를 확인할 수 없습니다."}
+        {record.provenance?.reason || uiText("관찰 출처를 확인할 수 없습니다.")}
       </p>
       <details>
-        <summary>관찰 출처 상세</summary>
+        <summary>{uiText("관찰 출처 상세")}</summary>
         <pre>
           {JSON.stringify(
             {

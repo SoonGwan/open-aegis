@@ -56,7 +56,7 @@ test("future timestamp and payload credentials are rejected without storing anyt
 });
 test("storage quota failure is observable before any caller can dispatch the request", () => {
   const storage = new Memory();storage.setItem = () => { throw new Error("owned quota failure"); };
-  assert.throws(() => storeModelPending(storage, request()), /서버로 보내지 않았습니다/);assert.equal(storage.length, 0);
+  assert.throws(() => storeModelPending(storage, request()), /request was not sent because it could not be retained/);assert.equal(storage.length, 0);
 });
 test("maximum pending receipts rejects a new UUID without discarding existing operations", () => {
   const storage = new Memory();for (let index = 0; index < 20; index++) storeModelPending(storage, request("owned-boundary-request-" + index));

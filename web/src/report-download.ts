@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 export type ReportFormat = "json" | "csv" | "markdown";
 export class ReportDownloadError extends Error {
   status: number | null;
@@ -61,7 +62,7 @@ async function fetchFile(
       signal,
     });
     if (!response.ok) {
-      let message = "파일을 다운로드하지 못했습니다.";
+      let message = uiText("파일을 다운로드하지 못했습니다.");
       try {
         const data = await response.json();
         if (typeof data.detail === "string") message = data.detail;
@@ -82,13 +83,13 @@ async function fetchFile(
         .toLowerCase() !== media
     )
       throw new ReportDownloadError(
-        "파일 형식을 확인할 수 없습니다. 다시 시도하세요.",
+        uiText("파일 형식을 확인할 수 없습니다. 다시 시도하세요."),
         response.status,
       );
     const blob = await response.blob();
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
     if (!blob.size)
-      throw new ReportDownloadError("빈 파일을 받았습니다. 다시 시도하세요.");
+      throw new ReportDownloadError(uiText("빈 파일을 받았습니다. 다시 시도하세요."));
     return {
       blob,
       filename,
@@ -96,7 +97,7 @@ async function fetchFile(
   } catch (error) {
     if (signal.aborted || error instanceof ReportDownloadError) throw error;
     throw new ReportDownloadError(
-      "파일 다운로드를 완료하지 못했습니다. 연결 상태를 확인하고 다시 시도하세요.",
+      uiText("파일 다운로드를 완료하지 못했습니다. 연결 상태를 확인하고 다시 시도하세요."),
     );
   }
 }

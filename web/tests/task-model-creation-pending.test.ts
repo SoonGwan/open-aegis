@@ -52,7 +52,7 @@ test("malformed and oversized stored creation blocks until explicit actor-scoped
 });
 test("write failure means no caller receives a durable creation request to dispatch", () => {
   const storage = new Memory();storage.setItem = () => { throw new Error("Owned quota"); };
-  assert.throws(() => storeTaskCreationPending(storage, request()), /서버로 보내지 않았습니다/);assert.equal(storage.length, 0);
+  assert.throws(() => storeTaskCreationPending(storage, request()), /request was not sent because it could not be retained/);assert.equal(storage.length, 0);
 });
 test("pending creation bound preserves all twenty original UUIDs when refusing another", () => {
   const storage = new Memory();for (let index = 0; index < 20; index++) storeTaskCreationPending(storage, request("owned-create-boundary-" + index));

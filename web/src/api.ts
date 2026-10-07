@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 export class ApiError extends Error {
   readonly status: number;
   constructor(message: string, status: number) {
@@ -44,11 +45,11 @@ export async function api<T>(
     )
       throw error;
     throw new Error(
-      "서버에 연결할 수 없습니다. 연결 상태를 확인하고 다시 시도하세요.",
+      uiText("서버에 연결할 수 없습니다. 연결 상태를 확인하고 다시 시도하세요."),
     );
   }
   if (!response.ok) {
-    let text = "요청을 처리하지 못했습니다.";
+    let text = uiText("요청을 처리하지 못했습니다.");
     try {
       const data = await response.json();
       text =
@@ -72,7 +73,7 @@ export async function api<T>(
   if (changesSession) {
     if (!isCurrentSession())
       throw new DOMException(
-        "세션이 변경된 이전 인증 요청입니다.",
+        uiText("세션이 변경된 이전 인증 요청입니다."),
         "AbortError",
       );
     sessionRevision++;
@@ -84,7 +85,7 @@ export async function api<T>(
       (!isCurrentSession() || signal?.aborted)
     )
       throw new DOMException(
-        "세션이 변경되거나 중단된 이전 조회입니다.",
+        uiText("세션이 변경되거나 중단된 이전 조회입니다."),
         "AbortError",
       );
   };
@@ -92,6 +93,6 @@ export async function api<T>(
   const result = await response.json();
   assertCurrentRead();
   if (changesSession && !completionSession())
-    throw new DOMException("세션이 변경된 이전 인증 요청입니다.", "AbortError");
+    throw new DOMException(uiText("세션이 변경된 이전 인증 요청입니다."), "AbortError");
   return result;
 }

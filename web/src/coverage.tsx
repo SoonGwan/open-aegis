@@ -1,4 +1,5 @@
-export const coverageNames: Record<string, string> = {
+import { t as uiText, localizeLabels } from "./i18n-core.ts";
+export const coverageNames: Record<string, string> = localizeLabels({
   not_started: "미실행",
   running: "실행 중",
   completed: "완료",
@@ -8,7 +9,7 @@ export const coverageNames: Record<string, string> = {
   interrupted: "중단",
   not_recorded: "기록 없음",
   stale: "이전 범위",
-};
+});
 export type Coverage = {
   targets?: {
     observation_id: string;
@@ -37,16 +38,13 @@ export function CoverageOverview({ summary }: { summary?: CoverageSummary }) {
   return (
     <section className="panel coverage-panel">
       <div className="panel-head">
-        <h3>도구별 검증 커버리지</h3>
+        <h3>{uiText("도구별 검증 커버리지")}</h3>
         <span className="subtle">
-          완료 {summary.completed} / {summary.expected}
+          {uiText("완료 ")}{summary.completed} / {summary.expected}
         </span>
       </div>
       <p className="footnote">
-        활성 자산 × 등록된 6개 도구 기준입니다. 도구마다 가장 최근 승인한 계획의
-        결과를 사용하며, 자산을 수정하면 이전 범위의 결과로 표시합니다. 완료는
-        검증 수행 여부입니다.
-      </p>
+        {uiText("활성 자산 × 등록된 6개 도구 기준입니다. 도구마다 가장 최근 승인한 계획의 결과를 사용하며, 자산을 수정하면 이전 범위의 결과로 표시합니다. 완료는 검증 수행 여부입니다.")}</p>
       <div className="coverage-statuses">
         {Object.entries(coverageNames).map(([status, name]) => (
           <div key={status} className={`coverage-count ${status}`}>
@@ -73,16 +71,16 @@ export function CoverageTable({
       className="table-scroll coverage-table"
       tabIndex={0}
       role="region"
-      aria-label="도구별 결과표 · 좌우 스크롤로 근거 확인"
+      aria-label={uiText("도구별 결과표 · 좌우 스크롤로 근거 확인")}
     >
       <table>
-        <caption>선택한 자산과 도구별 실행 결과</caption>
+        <caption>{uiText("선택한 자산과 도구별 실행 결과")}</caption>
         <thead>
           <tr>
-            <th scope="col">자산</th>
-            <th scope="col">검증 도구</th>
-            <th scope="col">결과</th>
-            <th scope="col">근거</th>
+            <th scope="col">{uiText("자산")}</th>
+            <th scope="col">{uiText("검증 도구")}</th>
+            <th scope="col">{uiText("결과")}</th>
+            <th scope="col">{uiText("근거")}</th>
           </tr>
         </thead>
         <tbody>
@@ -97,22 +95,22 @@ export function CoverageTable({
               </td>
               <td>
                 <span className={`coverage-state ${row.status}`}>
-                  {coverageNames[row.status] || "기록 없음"}
+                  {coverageNames[row.status] || uiText("기록 없음")}
                 </span>
               </td>
               <td>
                 {row.reason ||
                   (row.status === "completed"
-                    ? "이전 기록의 완료 결과"
-                    : "상세 기록 없음")}
+                    ? uiText("이전 기록의 완료 결과")
+                    : uiText("상세 기록 없음"))}
                 {row.error_type && <small> ({row.error_type})</small>}
                 {row.targets && (
                   <details>
-                    <summary>관찰 URL별 결과 · {row.targets.length}개</summary>
+                    <summary>{uiText("관찰 URL별 결과 · ")}{row.targets.length}{uiText("개")}</summary>
                     {row.targets.map((target) => (
                       <p key={target.observation_id}>
                         <code>{target.url}</code> ·{" "}
-                        {coverageNames[target.status] || "기록 없음"}
+                        {coverageNames[target.status] || uiText("기록 없음")}
                         {target.error_type && (
                           <small> ({target.error_type})</small>
                         )}

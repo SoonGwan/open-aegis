@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 import { useId } from "react";
 import {
   validateWorkerDependencies,
@@ -36,14 +37,11 @@ export function WorkerDependencyEditor({
   return (
     <fieldset
       className="worker-dependency-editor"
-      aria-label="Worker 실행 순서 설정"
+      aria-label={uiText("Worker 실행 순서 설정")}
     >
-      <legend>Worker 실행 순서 · {count} / 최대 40개 연결</legend>
+      <legend>{uiText("Worker 실행 순서 · ")}{count} {uiText(" / 최대 40개 연결")}</legend>
       <p id={helpId} className="subtle">
-        선행 자산의 검증이 모두 완료된 후 후행 자산을 시작합니다. 지정하지
-        않으면 독립적으로 실행합니다. 선행 검증이 실패하거나 건너뛰면 후행은
-        실행하지 않습니다. 자산 선택을 해제하면 관련 의존 관계도 제거합니다.
-      </p>
+        {uiText("선행 자산의 검증이 모두 완료된 후 후행 자산을 시작합니다. 지정하지 않으면 독립적으로 실행합니다. 선행 검증이 실패하거나 건너뛰면 후행은 실행하지 않습니다. 자산 선택을 해제하면 관련 의존 관계도 제거합니다.")}</p>
       <input
         type="hidden"
         name="worker_dependencies"
@@ -51,21 +49,19 @@ export function WorkerDependencyEditor({
       />
       {assets.length < 2 ? (
         <p className="subtle">
-          2개 이상의 자산을 선택하면 선행 자산을 지정할 수 있습니다.
-        </p>
+          {uiText("2개 이상의 자산을 선택하면 선행 자산을 지정할 수 있습니다.")}</p>
       ) : (
         assets.map((child) => (
           <details className="finding-record" key={child.id}>
             <summary>
-              {child.name} · 선행 {parentsFor(child.id).length}개
-            </summary>
+              {child.name} {uiText(" · 선행 ")}{parentsFor(child.id).length}{uiText("개")}</summary>
             <code className="observation-url">{child.url || child.id}</code>
             <div
               className="worker-predecessors"
               role="group"
-              aria-label={`${child.name}의 선행 자산`}
+              aria-label={uiText("{0}의 선행 자산", [child.name])}
             >
-              <p className="subtle">선행 자산</p>
+              <p className="subtle">{uiText("선행 자산")}</p>
               {assets
                 .filter((parent) => parent.id !== child.id)
                 .map((parent) => (
@@ -74,7 +70,7 @@ export function WorkerDependencyEditor({
                       type="checkbox"
                       data-worker-dependency
                       data-worker-child={child.id}
-                      aria-label={`${child.name}의 선행 자산 ${parent.name} (${parent.url || parent.id})`}
+                      aria-label={uiText("{0}의 선행 자산 {1} ({2})", [child.name, parent.name, parent.url || parent.id])}
                       aria-describedby={`${helpId}${error ? ` ${errorId}` : ""}`}
                       aria-invalid={!!error}
                       checked={parentsFor(child.id).includes(parent.id)}
@@ -109,8 +105,7 @@ export function WorkerDependencyEditor({
       )}
       {count > 0 && (
         <button type="button" onClick={() => onChange({})}>
-          의존 관계 모두 해제
-        </button>
+          {uiText("의존 관계 모두 해제")}</button>
       )}
     </fieldset>
   );

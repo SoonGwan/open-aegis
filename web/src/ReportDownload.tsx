@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 import { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { captureSession, expireSession } from "./api";
@@ -71,7 +72,7 @@ export function ReportDownload({
       setSaved(true);
     } catch (e) {
       if (!active.current || !isCurrentSession()) return;
-      if (request.signal.aborted) setError("다운로드를 중단했습니다.");
+      if (request.signal.aborted) setError(uiText("다운로드를 중단했습니다."));
       else {
         const error = e as ReportDownloadError;
         if (error.status === 401)
@@ -95,23 +96,22 @@ export function ReportDownload({
           <Download size={15} />
           {busy
             ? format === "policy"
-              ? "정책 파일 받는 중…"
-              : "보고서 받는 중…"
+              ? uiText("정책 파일 받는 중…")
+              : uiText("보고서 받는 중…")
             : seconds > 0
-              ? `${seconds}초 후 재시도`
+              ? uiText("{0}초 후 재시도", [seconds])
               : error
-                ? "다운로드 다시 시도"
+                ? uiText("다운로드 다시 시도")
                 : label}
         </button>
         {busy && (
           <button type="button" onClick={() => controller.current?.abort()}>
-            다운로드 중단
-          </button>
+            {uiText("다운로드 중단")}</button>
         )}
       </div>
-      {busy && <p role="status">파일을 모두 받은 뒤 저장을 시작합니다.</p>}
+      {busy && <p role="status">{uiText("파일을 모두 받은 뒤 저장을 시작합니다.")}</p>}
       {error && <p role="alert">{error}</p>}
-      {saved && <p role="status">파일 다운로드를 시작했습니다.</p>}
+      {saved && <p role="status">{uiText("파일 다운로드를 시작했습니다.")}</p>}
     </div>
   );
 }

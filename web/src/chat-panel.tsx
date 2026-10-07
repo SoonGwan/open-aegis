@@ -1,3 +1,4 @@
+import { t as uiText, getFormatLocale } from "./i18n-core.ts";
 import {
   useCallback,
   useEffect,
@@ -104,7 +105,7 @@ export function ChatPanel({
       controller?.abort(); const request = new AbortController(); controller = request;
       api<{ conversation_enabled: boolean; items: { purpose: string; configuration_available: boolean; task_archived: boolean }[] }>(`/tasks/${encodeURIComponent(taskId)}/models`, "GET", undefined, request.signal)
         .then(value => { if (current && !request.signal.aborted) { setAiReady(value.conversation_enabled && value.items.some(item => item.purpose === "conversation" && item.configuration_available && !item.task_archived)); setAiConfigurationError(""); } })
-        .catch(() => { if (current && !request.signal.aborted) { setAiReady(false); setAiConfigurationError("작업의 AI 설정을 확인하지 못했습니다. 다음 갱신에서 다시 확인합니다."); } });
+        .catch(() => { if (current && !request.signal.aborted) { setAiReady(false); setAiConfigurationError(uiText("작업의 AI 설정을 확인하지 못했습니다. 다음 갱신에서 다시 확인합니다.")); } });
     }
     load(); const timer = window.setInterval(load, 4000); window.addEventListener("aegis-records-changed", load);
     return () => { current = false; controller?.abort(); window.clearInterval(timer); window.removeEventListener("aegis-records-changed", load); };
@@ -153,7 +154,7 @@ export function ChatPanel({
     setStorageWarning(
       persisted
         ? ""
-        : "이 탭에 질문을 보관할 수 없습니다. 화면을 닫거나 새로고침하면 재시도 정보가 사라집니다.",
+        : uiText("이 탭에 질문을 보관할 수 없습니다. 화면을 닫거나 새로고침하면 재시도 정보가 사라집니다."),
     );
     setUnconfirmed(true);
     submitting.current = true;
@@ -179,7 +180,7 @@ export function ChatPanel({
       setUnconfirmed(false);
       setStorageWarning(
         !cleared && persistedAttempt.current === pending.request_id
-          ? "답변은 저장됐지만 이 탭의 재시도 정보를 지우지 못했습니다. 다시 열면 기존 답변을 다시 확인할 수 있습니다."
+          ? uiText("답변은 저장됐지만 이 탭의 재시도 정보를 지우지 못했습니다. 다시 열면 기존 답변을 다시 확인할 수 있습니다.")
           : "",
       );
       if (cleared) persistedAttempt.current = null;
@@ -208,30 +209,27 @@ export function ChatPanel({
           onChange({ expanded: !open });
         }}
       >
-        검증 기록에 질문하기 <span>{mode === "ai" ? "AI 초안 선택 · 대상 실행 없음" : "규칙 기반 · 추가 요청 없음"}</span>
+        {uiText("검증 기록에 질문하기 ")}<span>{mode === "ai" ? uiText("AI 초안 선택 · 대상 실행 없음") : uiText("규칙 기반 · 추가 요청 없음")}</span>
       </summary>
       {open && (
-        <section aria-label="검증 대화 이력">
+        <section aria-label={uiText("검증 대화 이력")}>
           <label className="task-record-search">
-            메시지 내용·역할로 검색
-            <input
-              aria-label="검증 대화 검색"
+            {uiText("메시지 내용·역할로 검색")}<input
+              aria-label={uiText("검증 대화 검색")}
               value={search}
               maxLength={200}
               onChange={(e) => onChange({ search: e.target.value }, "replace")}
             />
           </label>
           <p className="subtle">
-            최신 25개부터 표시합니다. 다음 페이지에서 과거 대화를 확인하세요.
-            페이지 안에서는 오래된 메시지부터 표시합니다.
-          </p>
+            {uiText("최신 25개부터 표시합니다. 다음 페이지에서 과거 대화를 확인하세요. 페이지 안에서는 오래된 메시지부터 표시합니다.")}</p>
           <Pagination records={records} />
           <div
             ref={messageBox}
             className="chat-messages"
             role="region"
             tabIndex={0}
-            aria-label="대화 메시지"
+            aria-label={uiText("대화 메시지")}
           >
             {!records.ready ? (
               <RecordState records={records} />
@@ -239,39 +237,37 @@ export function ChatPanel({
               [...records.items].reverse().map((m) => (
                 <article className={`chat-message ${m.role}`} key={m.id}>
                   <small>
-                    {m.role === "user" ? "질문" : "Evidence Assistant"} ·{" "}
+                    {m.role === "user" ? uiText("질문") : "Evidence Assistant"} ·{" "}
                     <time
                       dateTime={new Date(m.created_at * 1000).toISOString()}
                     >
-                      {new Date(m.created_at * 1000).toLocaleString("ko-KR")}
+                      {new Date(m.created_at * 1000).toLocaleString(getFormatLocale())}
                     </time>
                   </small>
                   <p>{m.content}</p>
                   {m.assistant_generation && <div className="message-generation">
-                    <p>AI 대화 · {m.assistant_generation.model} · {m.assistant_generation.outcome === "accepted" ? "초안 저장" : "규칙 요약으로 복구"}</p>
-                    <p>사용량: {m.assistant_generation.tokens.status} · 입력 {m.assistant_generation.tokens.prompt_tokens ?? "미확인"} / 출력 {m.assistant_generation.tokens.completion_tokens ?? "미확인"} / 합계 {m.assistant_generation.tokens.total_tokens ?? "미확인"}</p>
+                    <p>{uiText("AI 대화 · ")}{m.assistant_generation.model} · {m.assistant_generation.outcome === "accepted" ? uiText("초안 저장") : uiText("규칙 요약으로 복구")}</p>
+                    <p>{uiText("사용량: ")}{m.assistant_generation.tokens.status} {uiText(" · 입력 ")}{m.assistant_generation.tokens.prompt_tokens ?? uiText("미확인")} {uiText(" / 출력 ")}{m.assistant_generation.tokens.completion_tokens ?? uiText("미확인")} {uiText(" / 합계 ")}{m.assistant_generation.tokens.total_tokens ?? uiText("미확인")}</p>
                     <CallCost cost={m.assistant_generation.cost} />
                   </div>}
                   <MessageProvenance provenance={m.provenance} />
                   {!!m.finding_ids?.length && (
-                    <small>연결된 발견 사항 {m.finding_ids.length}개</small>
+                    <small>{uiText("연결된 발견 사항 ")}{m.finding_ids.length}{uiText("개")}</small>
                   )}
                 </article>
               ))
             ) : (
               <p className="subtle">
                 {search
-                  ? "검색 결과가 없습니다."
-                  : "저장된 대화가 없습니다. 검증 결과나 수정 우선순위를 질문해 보세요."}
+                  ? uiText("검색 결과가 없습니다.")
+                  : uiText("저장된 대화가 없습니다. 검증 결과나 수정 우선순위를 질문해 보세요.")}
               </p>
             )}
           </div>
           {unconfirmed && !busy && (
             <div className="chat-recovery">
               <p role="status">
-                응답을 확인하지 못한 질문이 있습니다. 같은 내용으로 다시 보내면
-                저장된 답변을 확인하고, 없으면 새 답변을 요청합니다. 내용을 바꾸면 새 질문으로 보냅니다.
-                {mode === "ai" && " AI를 다시 호출하면 추가 비용이 발생할 수 있습니다. 호출 시도 기록은 시스템 설정에서 확인하세요."}
+                {uiText("응답을 확인하지 못한 질문이 있습니다. 같은 내용으로 다시 보내면 저장된 답변을 확인하고, 없으면 새 답변을 요청합니다. 내용을 바꾸면 새 질문으로 보냅니다.")}{mode === "ai" && uiText(" AI를 다시 호출하면 추가 비용이 발생할 수 있습니다. 호출 시도 기록은 시스템 설정에서 확인하세요.")}
               </p>
               <button
                 type="button"
@@ -289,7 +285,7 @@ export function ChatPanel({
                       persistedAttempt.current === attempt.current.request_id
                     ) {
                       setStorageWarning(
-                        "이 탭의 재시도 정보를 지우지 못했습니다. 브라우저 저장소 설정을 확인하고 다시 시도하세요.",
+                        uiText("이 탭의 재시도 정보를 지우지 못했습니다. 브라우저 저장소 설정을 확인하고 다시 시도하세요."),
                       );
                       return;
                     }
@@ -302,12 +298,9 @@ export function ChatPanel({
                   setStorageWarning("");
                 }}
               >
-                미확인 전송 지우기
-              </button>
+                {uiText("미확인 전송 지우기")}</button>
               <p className="subtle">
-                이 탭의 재시도 정보만 지웁니다. 서버에 저장된 대화는 이력에
-                남습니다.
-              </p>
+                {uiText("이 탭의 재시도 정보만 지웁니다. 서버에 저장된 대화는 이력에 남습니다.")}</p>
             </div>
           )}
           {storageWarning && (
@@ -316,24 +309,22 @@ export function ChatPanel({
             </p>
           )}
           <form onSubmit={submit}>
-            <label>답변 방식
-              <select value={mode} disabled={busy || unconfirmed || !canOperate}
+            <label>{uiText("답변 방식")}<select value={mode} disabled={busy || unconfirmed || !canOperate}
                 onChange={e=>setMode(e.target.value as "rules"|"ai")}>
-                <option value="rules">기록의 규칙 기반 요약</option>
-                <option value="ai" disabled={!aiReady}>AI 초안{aiReady ? "" : " · 서버 설정 필요"}</option>
+                <option value="rules">{uiText("기록의 규칙 기반 요약")}</option>
+                <option value="ai" disabled={!aiReady}>{uiText("AI 초안")}{aiReady ? "" : uiText(" · 서버 설정 필요")}</option>
               </select>
             </label>
-            {mode === "ai" && <p className="subtle">질문과 저장된 작업·발견·관찰 발췌를 서버에 설정된 AI 제공자로 보냅니다. 인용 소속을 검사한 초안이며 사실성은 직접 검토하세요. 추가 실행은 하지 않습니다.</p>}
+            {mode === "ai" && <p className="subtle">{uiText("질문과 저장된 작업·발견·관찰 발췌를 서버에 설정된 AI 제공자로 보냅니다. 인용 소속을 검사한 초안이며 사실성은 직접 검토하세요. 추가 실행은 하지 않습니다.")}</p>}
             {aiConfigurationError && <p role="status">{aiConfigurationError}</p>}
             <label>
-              검증 질문
-              <input
+              {uiText("검증 질문")}<input
                 maxLength={2000}
                 required
                 value={question}
                 disabled={busy || !canOperate}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="저장된 검증 기록에 대해 질문하세요"
+                placeholder={uiText("저장된 검증 기록에 대해 질문하세요")}
               />
             </label>
             <button
@@ -341,19 +332,18 @@ export function ChatPanel({
               disabled={busy || !canOperate || !question.trim()}
             >
               {busy
-                ? "요약 중…"
+                ? uiText("요약 중…")
                 : unconfirmed || error
-                  ? "질문 다시 보내기"
-                  : "질문하기"}
+                  ? uiText("질문 다시 보내기")
+                  : uiText("질문하기")}
               <ArrowRight size={14} />
             </button>
           </form>
           {!canOperate && (
             <p className="subtle">
-              조회 권한으로 저장된 대화를 확인할 수 있습니다.
-            </p>
+              {uiText("조회 권한으로 저장된 대화를 확인할 수 있습니다.")}</p>
           )}
-          {saved && <p role="status">질문과 답변을 저장했습니다.</p>}
+          {saved && <p role="status">{uiText("질문과 답변을 저장했습니다.")}</p>}
           {error && (
             <p className="form-error" role="alert">
               {error}

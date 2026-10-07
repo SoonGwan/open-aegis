@@ -37,16 +37,16 @@ def build(output: Path, site_url: str) -> None:
         content = (source / filename).read_text()
         content = content.replace(DEFAULT_URL, html.escape(site_url, quote=True))
         content = content.replace('href="style.css"', 'href="/style.css"').replace('href="assets/', 'href="/assets/').replace('src="assets/', 'src="/assets/')
-        content = content.replace('href="demo/"', 'href="/demo/"').replace('href="demo/?lang=en"', 'href="/demo/?lang=en"').replace('href="./"', 'href="/"').replace('href="index.html"', 'href="/en/"').replace('href="ko.html"', 'href="/"')
+        content = content.replace('href="demo/"', 'href="/demo/"').replace('href="demo/?lang=en"', 'href="/demo/?lang=en"').replace('href="demo/?lang=ko"', 'href="/demo/?lang=ko"').replace('href="./"', 'href="/"').replace('href="index.html"', 'href="/en/"').replace('href="ko.html"', 'href="/ko/"')
         destination = output / language / 'index.html'
         destination.parent.mkdir()
         destination.write_text(content)
         (output / ('ko.html' if language == 'ko' else 'en.html')).write_text(content)
-        if language == 'ko':
+        if language == 'en':
             (output / 'index.html').write_text(content)
     escaped = html.escape(site_url, quote=True)
     (output / 'robots.txt').write_text('User-agent: *\nAllow: /\nSitemap: ' + site_url + 'sitemap.xml\n')
-    (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' + escaped + '</loc></url><url><loc>' + escaped + 'en/</loc></url><url><loc>' + escaped + 'demo/</loc></url></urlset>\n')
+    (output / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>' + escaped + '</loc></url><url><loc>' + escaped + 'ko/</loc></url><url><loc>' + escaped + 'demo/</loc></url></urlset>\n')
     print('Built static landing at ' + str(output))
 
 

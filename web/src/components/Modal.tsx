@@ -1,3 +1,4 @@
+import { t as uiText } from "../i18n-core.ts";
 import { X } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useRef, useId } from "react";
 
@@ -142,7 +143,7 @@ export default function Modal({
             <h2 id={titleId}>{title}</h2>
             {subtitle && <p id={subtitleId}>{subtitle}</p>}
           </div>
-          <button className="icon-button" onClick={onClose} aria-label="닫기">
+          <button className="icon-button" onClick={onClose} aria-label={uiText("닫기")}>
             <X size={20} />
           </button>
         </div>

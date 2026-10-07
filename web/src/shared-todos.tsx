@@ -1,3 +1,4 @@
+import { t as uiText, localizeLabels } from "./i18n-core.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { todoCollectionMatches } from "./navigation-state";
 import type {
@@ -22,12 +23,12 @@ import {
   type TodoStatus,
 } from "./todo-state";
 
-const statuses: Record<TodoStatus, string> = {
+const statuses: Record<TodoStatus, string> = localizeLabels({
   open: "미완료",
   in_progress: "진행 중",
   done: "완료",
   cancelled: "취소",
-};
+});
 type Person = { id: string; name: string; username: string };
 type History = {
   id: string;
@@ -38,7 +39,7 @@ type History = {
   actor: { name: string };
   changes: Record<string, { before: unknown; after: unknown }>;
 };
-const labels: Record<string, string> = {
+const labels: Record<string, string> = localizeLabels({
   title: "제목",
   description: "설명",
   status: "상태",
@@ -46,9 +47,9 @@ const labels: Record<string, string> = {
   assignee_name: "담당자",
   resolution_note: "완료·취소 사유",
   check_ids: "다음 계획에 요청할 검증 도구",
-};
+});
 function display(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "없음";
+  if (value === null || value === undefined || value === "") return uiText("없음");
   return typeof value === "string"
     ? statuses[value as TodoStatus] || value
     : JSON.stringify(value);
@@ -68,12 +69,9 @@ function TodoChecks({
 }) {
   return (
     <fieldset className="todo-checks" disabled={disabled}>
-      <legend>다음 계획에 요청할 검증 도구</legend>
+      <legend>{uiText("다음 계획에 요청할 검증 도구")}</legend>
       <p>
-        미완료·진행 중인 할 일의 요청을 다음 계획에 반영합니다. 실행은 새 계획의
-        별도 승인이 필요합니다. AI 계획 모드에서는 제목·설명·도구 요청을 설정된
-        AI 제공자에게 전송합니다.
-      </p>
+        {uiText("미완료·진행 중인 할 일의 요청을 다음 계획에 반영합니다. 실행은 새 계획의 별도 승인이 필요합니다. AI 계획 모드에서는 제목·설명·도구 요청을 설정된 AI 제공자에게 전송합니다.")}</p>
       {choices.map((c) => (
         <label key={c.id}>
           <input
@@ -148,9 +146,8 @@ function AssigneePicker({
   return (
     <div className="todo-assignee">
       <label>
-        담당자 검색
-        <input
-          aria-label="할 일 담당자 검색"
+        {uiText("담당자 검색")}<input
+          aria-label={uiText("할 일 담당자 검색")}
           value={search}
           maxLength={100}
           disabled={disabled}
@@ -161,16 +158,15 @@ function AssigneePicker({
         />
       </label>
       <label>
-        담당자
-        <select
-          aria-label="할 일 담당자"
+        {uiText("담당자")}<select
+          aria-label={uiText("할 일 담당자")}
           value={value || ""}
           disabled={disabled || loading || !!error}
           onChange={(e) =>
             onChange(options.find((p) => p.id === e.target.value) || null)
           }
         >
-          <option value="">미지정</option>
+          <option value="">{uiText("미지정")}</option>
           {options.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name} · {p.username}
@@ -178,7 +174,7 @@ function AssigneePicker({
           ))}
         </select>
       </label>
-      {loading && <p role="status">담당자 목록을 불러오는 중…</p>}
+      {loading && <p role="status">{uiText("담당자 목록을 불러오는 중…")}</p>}
       {error && (
         <div role="alert">
           {error}{" "}
@@ -187,8 +183,7 @@ function AssigneePicker({
             disabled={disabled}
             onClick={() => setReload((n) => n + 1)}
           >
-            담당자 목록 다시 불러오기
-          </button>
+            {uiText("담당자 목록 다시 불러오기")}</button>
         </div>
       )}
       <div className="pagination">
@@ -197,15 +192,13 @@ function AssigneePicker({
           disabled={disabled || loading || offset === 0}
           onClick={() => setOffset((n) => Math.max(0, n - 25))}
         >
-          이전 담당자
-        </button>
+          {uiText("이전 담당자")}</button>
         <button
           type="button"
           disabled={disabled || loading || !!error || !page.has_more}
           onClick={() => setOffset((n) => n + 25)}
         >
-          다음 담당자
-        </button>
+          {uiText("다음 담당자")}</button>
       </div>
     </div>
   );
@@ -255,7 +248,7 @@ function TodoEditor({
     if (submitting.current) return;
     const changes = changesOf(draftOf(base), draft);
     if (!Object.keys(changes).length) {
-      setError("변경한 내용이 없습니다.");
+      setError(uiText("변경한 내용이 없습니다."));
       return;
     }
     submitting.current = true;
@@ -312,14 +305,12 @@ function TodoEditor({
     }
   }
   return (
-    <form className="todo-form" onSubmit={save} aria-label="할 일 편집">
+    <form className="todo-form" onSubmit={save} aria-label={uiText("할 일 편집")}>
       <p>
-        편집 기준 버전 {base.revision} · 목록이 갱신되어도 입력은 유지됩니다.
-      </p>
+        {uiText("편집 기준 버전 ")}{base.revision} {uiText(" · 목록이 갱신되어도 입력은 유지됩니다.")}</p>
       <label>
-        제목
-        <input
-          aria-label="할 일 편집 제목"
+        {uiText("제목")}<input
+          aria-label={uiText("할 일 편집 제목")}
           required
           maxLength={200}
           value={draft.title}
@@ -328,9 +319,8 @@ function TodoEditor({
         />
       </label>
       <label>
-        설명
-        <textarea
-          aria-label="할 일 편집 설명"
+        {uiText("설명")}<textarea
+          aria-label={uiText("할 일 편집 설명")}
           maxLength={4000}
           value={draft.description}
           disabled={busy}
@@ -353,9 +343,8 @@ function TodoEditor({
         }}
       />
       <label>
-        상태
-        <select
-          aria-label="할 일 상태"
+        {uiText("상태")}<select
+          aria-label={uiText("할 일 상태")}
           value={draft.status}
           disabled={busy}
           onChange={(e) =>
@@ -374,9 +363,8 @@ function TodoEditor({
         </select>
       </label>
       <label>
-        완료·취소 사유
-        <textarea
-          aria-label="할 일 완료·취소 사유"
+        {uiText("완료·취소 사유")}<textarea
+          aria-label={uiText("할 일 완료·취소 사유")}
           required={draft.status === "done" || draft.status === "cancelled"}
           maxLength={2000}
           value={draft.resolution_note}
@@ -390,15 +378,12 @@ function TodoEditor({
       {conflict && (
         <div className="todo-conflict">
           <p>
-            내 입력은 유지했습니다. 최신 기록을 비교한 후 편집 기준을
-            선택하세요.
-          </p>
+            {uiText("내 입력은 유지했습니다. 최신 기록을 비교한 후 편집 기준을 선택하세요.")}</p>
           <button type="button" disabled={busy} onClick={() => void compare()}>
-            최신 기록 비교
-          </button>
+            {uiText("최신 기록 비교")}</button>
           {latest && (
             <>
-              <h5>최신 기록 · 버전 {latest.revision}</h5>
+              <h5>{uiText("최신 기록 · 버전 ")}{latest.revision}</h5>
               <dl>
                 {Object.entries(draftOf(latest)).map(([k, v]) => (
                   <div key={k}>
@@ -423,8 +408,7 @@ function TodoEditor({
                   setConflict(false);
                 }}
               >
-                내 변경을 최신 기준으로 다시 준비
-              </button>
+                {uiText("내 변경을 최신 기준으로 다시 준비")}</button>
               <button
                 type="button"
                 disabled={busy}
@@ -436,19 +420,17 @@ function TodoEditor({
                   setConflict(false);
                 }}
               >
-                내 입력을 버리고 최신 내용으로 편집
-              </button>
+                {uiText("내 입력을 버리고 최신 내용으로 편집")}</button>
             </>
           )}
         </div>
       )}
       <div className="modal-actions">
         <button type="submit" disabled={busy || conflict}>
-          {busy ? "저장 처리 중…" : "할 일 변경 저장"}
+          {busy ? uiText("저장 처리 중…") : uiText("할 일 변경 저장")}
         </button>
         <button type="button" disabled={busy} onClick={onClose}>
-          편집 닫기
-        </button>
+          {uiText("편집 닫기")}</button>
       </div>
     </form>
   );
@@ -476,11 +458,10 @@ function TodoHistory({
     `/tasks/${taskId}/todos/${todoId}/history`,
   );
   return (
-    <section aria-label="할 일 변경 이력">
-      <h5>변경 이력</h5>
+    <section aria-label={uiText("할 일 변경 이력")}>
+      <h5>{uiText("변경 이력")}</h5>
       <label>
-        이력 검색
-        <input
+        {uiText("이력 검색")}<input
           value={state.search}
           maxLength={200}
           onChange={(e) => onChange({ search: e.target.value })}
@@ -491,7 +472,7 @@ function TodoHistory({
         records.items.map((h) => (
           <article key={h.id}>
             <p>
-              {h.action === "created" ? "생성" : "변경"} · 버전 {h.revision} ·{" "}
+              {h.action === "created" ? uiText("생성") : uiText("변경")} {uiText(" · 버전 ")}{h.revision} ·{" "}
               {h.actor.name} · {new Date(h.created_at * 1000).toLocaleString()}
             </p>
             <dl>
@@ -507,7 +488,7 @@ function TodoHistory({
           </article>
         ))}
       {records.ready && !records.error && !records.items.length && (
-        <p>변경 이력이 없습니다.</p>
+        <p>{uiText("변경 이력이 없습니다.")}</p>
       )}
       <Pagination records={records} />
     </section>
@@ -650,13 +631,13 @@ export function SharedTodos({
       ).join(""),
     };
     if (!request.title) {
-      setError("할 일 제목을 입력하세요.");
+      setError(uiText("할 일 제목을 입력하세요."));
       return;
     }
     // Persist before dispatch: an unknown commit must be retried with exactly the same payload.
     if (!writeTodoPending(pendingStorage(), actorId, taskId, request)) {
       setError(
-        "재시도 정보를 보관할 수 없어 전송하지 않았습니다. 브라우저 저장소 사용을 확인하세요.",
+        uiText("재시도 정보를 보관할 수 없어 전송하지 않았습니다. 브라우저 저장소 사용을 확인하세요."),
       );
       return;
     }
@@ -689,9 +670,9 @@ export function SharedTodos({
           setNotice(
             cleared
               ? ownsView
-                ? "할 일을 저장했습니다."
-                : "앞서 보낸 할 일을 저장했습니다. 현재 탐색은 유지했습니다."
-              : "저장은 확인했지만 재시도 정보 정리에 실패했습니다. 같은 요청을 다시 확인하세요.",
+                ? uiText("할 일을 저장했습니다.")
+                : uiText("앞서 보낸 할 일을 저장했습니다. 현재 탐색은 유지했습니다.")
+              : uiText("저장은 확인했지만 재시도 정보 정리에 실패했습니다. 같은 요청을 다시 확인하세요."),
           );
           if (ownsView) {
             setSelected(row);
@@ -722,18 +703,15 @@ export function SharedTodos({
     }
   }
   return (
-    <section className="shared-todos" aria-label="계획 회차 공유 할 일">
-      <h4 className="detail-heading">공유 할 일</h4>
+    <section className="shared-todos" aria-label={uiText("계획 회차 공유 할 일")}>
+      <h4 className="detail-heading">{uiText("공유 할 일")}</h4>
       <p>
-        후속·재실행·교체 계획에서 함께 보는 검증 과제입니다. 완료 표시는 사람의
-        조치 기록이며 실행 승인이나 검증 성공을 뜻하지 않습니다.
-      </p>
+        {uiText("후속·재실행·교체 계획에서 함께 보는 검증 과제입니다. 완료 표시는 사람의 조치 기록이며 실행 승인이나 검증 성공을 뜻하지 않습니다.")}</p>
       {canOperate && (
-        <form className="todo-form" onSubmit={create} aria-label="새 할 일">
+        <form className="todo-form" onSubmit={create} aria-label={uiText("새 할 일")}>
           <label>
-            제목
-            <input
-              aria-label="새 할 일 제목"
+            {uiText("제목")}<input
+              aria-label={uiText("새 할 일 제목")}
               required
               maxLength={200}
               value={title}
@@ -742,9 +720,8 @@ export function SharedTodos({
             />
           </label>
           <label>
-            설명
-            <textarea
-              aria-label="새 할 일 설명"
+            {uiText("설명")}<textarea
+              aria-label={uiText("새 할 일 설명")}
               maxLength={4000}
               value={description}
               disabled={busy || !!pending}
@@ -765,25 +742,22 @@ export function SharedTodos({
           />
           {pending && (
             <p role="status">
-              저장 응답 확인이 필요합니다. 내용을 유지한 채 같은 요청을 다시
-              보내 중복 생성을 방지합니다.
-            </p>
+              {uiText("저장 응답 확인이 필요합니다. 내용을 유지한 채 같은 요청을 다시 보내 중복 생성을 방지합니다.")}</p>
           )}
           {error && <p role="alert">{error}</p>}
           {notice && <p role="status">{notice}</p>}
           <button type="submit" disabled={busy}>
             {busy
-              ? "저장 확인 중…"
+              ? uiText("저장 확인 중…")
               : pending
-                ? "같은 할 일 저장 다시 확인"
-                : "할 일 추가"}
+                ? uiText("같은 할 일 저장 다시 확인")
+                : uiText("할 일 추가")}
           </button>
         </form>
       )}
       <label>
-        할 일 검색
-        <input
-          aria-label="공유 할 일 검색"
+        {uiText("할 일 검색")}<input
+          aria-label={uiText("공유 할 일 검색")}
           value={state.list.search}
           maxLength={200}
           onChange={(e) =>
@@ -806,19 +780,19 @@ export function SharedTodos({
               {row.title}
             </button>
             <span>
-              {statuses[row.status]} · {row.assignee_name || "미지정"} · 버전{" "}
+              {statuses[row.status]} · {row.assignee_name || uiText("미지정")} {uiText(" · 버전")}{" "}
               {row.revision}
             </span>
           </article>
         ))}
       {records.ready && !records.error && !records.items.length && (
-        <p>공유 할 일이 없습니다.</p>
+        <p>{uiText("공유 할 일이 없습니다.")}</p>
       )}
       <Pagination records={records} />
       {state.todoId && (
         <div aria-busy={selectionLoading}>
           {selectionLoading && (
-            <p role="status">할 일 현재 기록을 불러오는 중…</p>
+            <p role="status">{uiText("할 일 현재 기록을 불러오는 중…")}</p>
           )}
           {selectionError && <p role="alert">{selectionError}</p>}
           <button
@@ -826,35 +800,32 @@ export function SharedTodos({
             disabled={selectionLoading}
             onClick={() => setSelectionReload((n) => n + 1)}
           >
-            현재 할 일 다시 조회
-          </button>
+            {uiText("현재 할 일 다시 조회")}</button>
           {!selected && (
             <button type="button" onClick={() => onChange({ todoId: "" })}>
-              할 일 선택 닫기
-            </button>
+              {uiText("할 일 선택 닫기")}</button>
           )}
         </div>
       )}
       {selected && (
-        <section className="todo-detail" aria-label="선택한 할 일">
+        <section className="todo-detail" aria-label={uiText("선택한 할 일")}>
           <h5>{selected.title}</h5>
-          <p>{selected.description || "설명 없음"}</p>
-          {selected.automatic_origin && <section aria-label="자동 관찰 할 일의 출처">
-            <p>관찰 검사 미완료 결과에서 자동 기록한 할 일입니다. 사람이 수정하거나 완료한 내용은 자동으로 덮어쓰지 않습니다. 실행 승인이나 검증 성공 판정은 별도입니다.</p>
-            {onTask && <button type="button" onClick={()=>onTask(selected.automatic_origin!.source_task_id)}>원본 관찰 검사 작업 열기</button>}
+          <p>{selected.description || uiText("설명 없음")}</p>
+          {selected.automatic_origin && <section aria-label={uiText("자동 관찰 할 일의 출처")}>
+            <p>{uiText("관찰 검사 미완료 결과에서 자동 기록한 할 일입니다. 사람이 수정하거나 완료한 내용은 자동으로 덮어쓰지 않습니다. 실행 승인이나 검증 성공 판정은 별도입니다.")}</p>
+            {onTask && <button type="button" onClick={()=>onTask(selected.automatic_origin!.source_task_id)}>{uiText("원본 관찰 검사 작업 열기")}</button>}
           </section>}
           <p>
-            {statuses[selected.status]} · {selected.assignee_name || "미지정"} ·
-            버전 {selected.revision}
+            {statuses[selected.status]} · {selected.assignee_name || uiText("미지정")} {uiText(" · 버전 ")}{selected.revision}
           </p>
           <p>
-            요청한 검증 도구:{" "}
+            {uiText("요청한 검증 도구:")}{" "}
             {(selected.check_ids || [])
               .map((id) => choices.find((c) => c.id === id)?.name || id)
-              .join(", ") || "없음"}
+              .join(", ") || uiText("없음")}
           </p>
           {selected.resolution_note && (
-            <p>완료·취소 사유: {selected.resolution_note}</p>
+            <p>{uiText("완료·취소 사유: ")}{selected.resolution_note}</p>
           )}
           {!editing && canOperate && (
             <button
@@ -862,8 +833,7 @@ export function SharedTodos({
               disabled={selectionLoading || !!selectionError}
               onClick={() => setEditing(true)}
             >
-              할 일 편집
-            </button>
+              {uiText("할 일 편집")}</button>
           )}
           <button
             type="button"
@@ -873,8 +843,7 @@ export function SharedTodos({
               onChange({ todoId: "" });
             }}
           >
-            할 일 상세 닫기
-          </button>
+            {uiText("할 일 상세 닫기")}</button>
           {editing && canOperate && (
             <TodoEditor
               key={`editor-${selected.id}`}
@@ -884,7 +853,7 @@ export function SharedTodos({
               choices={choices}
               onSaved={(value) => {
                 setSelected(value);
-                setNotice("변경을 저장했습니다.");
+                setNotice(uiText("변경을 저장했습니다."));
               }}
               onClose={() => setEditing(false)}
             />

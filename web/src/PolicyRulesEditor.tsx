@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 import { useEffect, useId, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
@@ -32,7 +33,7 @@ function SchemaField({
   try {
     parseSchema(row.schema);
   } catch {
-    error = "유효한 JSON 객체 스키마를 입력하세요. 최대 UTF-8 16 KiB입니다.";
+    error = uiText("유효한 JSON 객체 스키마를 입력하세요. 최대 UTF-8 16 KiB입니다.");
   }
   useEffect(() => {
     ref.current?.setCustomValidity(error);
@@ -40,8 +41,7 @@ function SchemaField({
   return (
     <div className="rule-wide">
       <label>
-        응답 스키마 JSON
-        <textarea
+        {uiText("응답 스키마 JSON")}<textarea
           ref={ref}
           required
           rows={6}
@@ -54,13 +54,9 @@ function SchemaField({
         />
       </label>
       <button type="button" onClick={() => change({ schema: example })}>
-        스키마 예시 적용
-      </button>
+        {uiText("스키마 예시 적용")}</button>
       <p id={`${id}-help`} className="subtle">
-        예시는 현재 스키마 입력을 대체합니다. type·properties·required·items 등
-        제한된 JSON Schema를 지원합니다. 상세 형식은 저장할 때 서버에서
-        검사합니다.
-      </p>
+        {uiText("예시는 현재 스키마 입력을 대체합니다. type·properties·required·items 등 제한된 JSON Schema를 지원합니다. 상세 형식은 저장할 때 서버에서 검사합니다.")}</p>
       {error && row.schema && (
         <p id={`${id}-error`} className="form-error" role="alert">
           {error}
@@ -107,7 +103,7 @@ export function PolicyRulesEditor({
     try {
       parseRules(json);
     } catch {
-      jsonError = "JSON 객체의 배열을 입력하세요. 규칙은 최대 20개입니다.";
+      jsonError = uiText("JSON 객체의 배열을 입력하세요. 규칙은 최대 20개입니다.");
     }
   }
   useEffect(() => {
@@ -133,7 +129,7 @@ export function PolicyRulesEditor({
     } catch (error) {
       setSwitchError(
         error instanceof SyntaxError
-          ? "스키마 또는 규칙의 JSON 문법을 확인하세요."
+          ? uiText("스키마 또는 규칙의 JSON 문법을 확인하세요.")
           : (error as Error).message,
       );
     }
@@ -155,30 +151,26 @@ export function PolicyRulesEditor({
       className="form-details policy-rule-editor"
       open={initial.length > 0}
     >
-      <summary>API 권한 규칙 설정 (선택)</summary>
+      <summary>{uiText("API 권한 규칙 설정 (선택)")}</summary>
       <fieldset disabled={disabled} className="policy-editor-controls">
-        <legend>GET 접근·응답 정책</legend>
+        <legend>{uiText("GET 접근·응답 정책")}</legend>
         <p id={`${id}-intro`}>
-          자산 범위 안의 GET 경로를 정의하세요. 테스트 계정은 서버의
-          AEGIS_TEST_* 환경변수 이름으로 연결합니다. 인증 값을 입력하지 마세요.
-        </p>
-        <div className="rule-toolbar" role="group" aria-label="규칙 편집 방식">
+          {uiText("자산 범위 안의 GET 경로를 정의하세요. 테스트 계정은 서버의 AEGIS_TEST_* 환경변수 이름으로 연결합니다. 인증 값을 입력하지 마세요.")}</p>
+        <div className="rule-toolbar" role="group" aria-label={uiText("규칙 편집 방식")}>
           <button
             type="button"
             aria-pressed={mode === "form"}
             aria-describedby={switchError ? `${id}-switch-error` : undefined}
             onClick={() => switchMode("form")}
           >
-            입력 폼
-          </button>
+            {uiText("입력 폼")}</button>
           <button
             type="button"
             aria-pressed={mode === "json"}
             aria-describedby={switchError ? `${id}-switch-error` : undefined}
             onClick={() => switchMode("json")}
           >
-            JSON 편집
-          </button>
+            {uiText("JSON 편집")}</button>
         </div>
         {switchError && (
           <p id={`${id}-switch-error`} className="form-error" role="alert">
@@ -187,8 +179,7 @@ export function PolicyRulesEditor({
         )}
         {mode === "json" ? (
           <label>
-            권한 규칙 JSON
-            <textarea
+            {uiText("권한 규칙 JSON")}<textarea
               name="rules"
               ref={advanced}
               value={json}
@@ -205,14 +196,13 @@ export function PolicyRulesEditor({
         ) : (
           <>
             <input type="hidden" name="rules" value={serialized} />
-            <p className="subtle">규칙 {drafts.length}개 / 최대 20개</p>
+            <p className="subtle">{uiText("규칙 ")}{drafts.length}{uiText("개 / 최대 20개")}</p>
             {drafts.map((row, index) => (
               <fieldset key={row.key} className="policy-rule-card">
-                <legend>규칙 {index + 1}</legend>
+                <legend>{uiText("규칙 ")}{index + 1}</legend>
                 <div className="policy-rule-grid">
                   <label>
-                    GET 경로
-                    <input
+                    {uiText("GET 경로")}<input
                       ref={(element) => {
                         if (element) paths.current.set(row.key, element);
                         else paths.current.delete(row.key);
@@ -228,20 +218,18 @@ export function PolicyRulesEditor({
                     />
                   </label>
                   <label>
-                    테스트 역할
-                    <input
+                    {uiText("테스트 역할")}<input
                       value={row.role}
                       required
                       maxLength={80}
                       onChange={(event) =>
                         change(row.key, { role: event.target.value })
                       }
-                      placeholder="예: customer-a-test"
+                      placeholder={uiText("예: customer-a-test")}
                     />
                   </label>
                   <label>
-                    예상 접근 결과
-                    <select
+                    {uiText("예상 접근 결과")}<select
                       value={row.allowed ? "allow" : "deny"}
                       onChange={(event) =>
                         change(row.key, {
@@ -249,20 +237,19 @@ export function PolicyRulesEditor({
                         })
                       }
                     >
-                      <option value="deny">거절 (401/403)</option>
-                      <option value="allow">허용 (2xx)</option>
+                      <option value="deny">{uiText("거절 (401/403)")}</option>
+                      <option value="allow">{uiText("허용 (2xx)")}</option>
                     </select>
                   </label>
                   <label>
-                    테스트 계정 환경변수
-                    <input
+                    {uiText("테스트 계정 환경변수")}<input
                       value={row.credential}
                       maxLength={100}
                       pattern="AEGIS_TEST_[A-Z0-9_]+"
                       onChange={(event) =>
                         change(row.key, { credential: event.target.value })
                       }
-                      placeholder="비우면 인증 없이 요청"
+                      placeholder={uiText("비우면 인증 없이 요청")}
                       aria-describedby={`${id}-intro`}
                     />
                   </label>
@@ -274,8 +261,7 @@ export function PolicyRulesEditor({
                         change(row.key, { schemaEnabled: event.target.checked })
                       }
                     />
-                    응답 스키마 확인
-                  </label>
+                    {uiText("응답 스키마 확인")}</label>
                   {row.schemaEnabled && (
                     <SchemaField
                       row={row}
@@ -290,13 +276,11 @@ export function PolicyRulesEditor({
                         change(row.key, { ownerEnabled: event.target.checked })
                       }
                     />
-                    소유권 필드 확인
-                  </label>
+                    {uiText("소유권 필드 확인")}</label>
                   {row.ownerEnabled && (
                     <>
                       <label>
-                        소유권 JSON Pointer
-                        <input
+                        {uiText("소유권 JSON Pointer")}<input
                           value={row.pointer}
                           required
                           maxLength={256}
@@ -307,27 +291,24 @@ export function PolicyRulesEditor({
                         />
                       </label>
                       <label>
-                        기대 소유권 값
-                        <input
+                        {uiText("기대 소유권 값")}<input
                           value={row.expected}
                           required
                           maxLength={200}
                           onChange={(event) =>
                             change(row.key, { expected: event.target.value })
                           }
-                          placeholder="예: synthetic-customer-a"
+                          placeholder={uiText("예: synthetic-customer-a")}
                         />
                       </label>
                       <p className="subtle rule-wide">
-                        응답의 지정 필드를 이 문자열과 비교합니다. 기대 값은
-                        자산과 보고서에 저장되므로 비밀번호·토큰을 넣지 마세요.
-                      </p>
+                        {uiText("응답의 지정 필드를 이 문자열과 비교합니다. 기대 값은 자산과 보고서에 저장되므로 비밀번호·토큰을 넣지 마세요.")}</p>
                     </>
                   )}
                 </div>
                 <button
                   type="button"
-                  aria-label={`규칙 ${index + 1} 삭제`}
+                  aria-label={uiText("규칙 {0} 삭제", [index + 1])}
                   onClick={() => {
                     const remaining = drafts.filter(
                       (item) => item.key !== row.key,
@@ -341,8 +322,7 @@ export function PolicyRulesEditor({
                   }}
                 >
                   <Trash2 size={15} />
-                  규칙 삭제
-                </button>
+                  {uiText("규칙 삭제")}</button>
               </fieldset>
             ))}
             <button
@@ -356,8 +336,7 @@ export function PolicyRulesEditor({
               }}
             >
               <Plus size={15} />
-              규칙 추가
-            </button>
+              {uiText("규칙 추가")}</button>
           </>
         )}
         {jsonError && (
@@ -366,9 +345,7 @@ export function PolicyRulesEditor({
           </p>
         )}
         <p id={`${id}-help`} className="subtle">
-          경로 범위·스키마·소유권 형식의 최종 검사는 서버에서 수행합니다. 정책을
-          수정하면 기존 승인 대기 계획을 다시 만들어야 합니다.
-        </p>
+          {uiText("경로 범위·스키마·소유권 형식의 최종 검사는 서버에서 수행합니다. 정책을 수정하면 기존 승인 대기 계획을 다시 만들어야 합니다.")}</p>
       </fieldset>
     </details>
   );

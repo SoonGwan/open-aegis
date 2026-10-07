@@ -1,3 +1,4 @@
+import { t as uiText } from "./i18n-core.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WorkerDependencyEditor } from "./WorkerDependencyEditor";
 import {
@@ -172,11 +173,10 @@ export function RecordState({
             onClick={records.reload}
             disabled={records.loading}
           >
-            목록 다시 불러오기
-          </button>
+            {uiText("목록 다시 불러오기")}</button>
         </>
       ) : (
-        <p role="status">목록을 불러오는 중…</p>
+        <p role="status">{uiText("목록을 불러오는 중…")}</p>
       )}
     </div>
   );
@@ -188,19 +188,19 @@ export function Pagination({
   records: ReturnType<typeof useRecords>;
 }) {
   return (
-    <nav className="pagination" aria-label="목록 페이지">
+    <nav className="pagination" aria-label={uiText("목록 페이지")}>
       <span aria-live="polite">
         {records.error
           ? records.ready
-            ? "조회 실패 · 마지막으로 받은 목록"
-            : "목록 조회 실패"
+            ? uiText("조회 실패 · 마지막으로 받은 목록")
+            : uiText("목록 조회 실패")
           : records.loading
             ? records.ready
-              ? "목록 갱신 중"
-              : "불러오는 중"
+              ? uiText("목록 갱신 중")
+              : uiText("불러오는 중")
             : records.total
-              ? `${records.offset + 1}–${records.offset + records.items.length} / 전체 ${records.total.toLocaleString()}개`
-              : "검색 결과 0개"}
+              ? uiText("{0}–{1} / 전체 {2}개", [records.offset + 1, records.offset + records.items.length, records.total.toLocaleString()])
+              : uiText("검색 결과 0개")}
       </span>
       {records.error && records.ready && (
         <span role="alert">{records.error}</span>
@@ -210,18 +210,15 @@ export function Pagination({
         onClick={records.previous}
         disabled={records.loading || !records.offset}
       >
-        이전
-      </button>
+        {uiText("이전")}</button>
       <button
         type="button"
         onClick={records.next}
         disabled={records.loading || !records.has_more}
       >
-        다음
-      </button>
+        {uiText("다음")}</button>
       <button type="button" onClick={records.reload} disabled={records.loading}>
-        최신 목록
-      </button>
+        {uiText("최신 목록")}</button>
     </nav>
   );
 }
@@ -259,14 +256,13 @@ export function AssetPicker({
     <>
       <fieldset className="asset-picker">
         <legend>
-          검증 자산 <span>{count} / 최대 20개 선택</span>
+          {uiText("검증 자산 ")}<span>{count} {uiText(" / 최대 20개 선택")}</span>
         </legend>
         <label>
-          자산 검색
-          <input
+          {uiText("자산 검색")}<input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="이름, 주소, 소유자"
+            placeholder={uiText("이름, 주소, 소유자")}
             maxLength={200}
           />
         </label>
@@ -282,10 +278,9 @@ export function AssetPicker({
                   selectWorkerAsset(current, asset, false),
                 );
               }}
-              aria-label={`${asset.name} 선택 해제`}
+              aria-label={uiText("{0} 선택 해제", [asset.name])}
             >
-              선택 해제
-            </button>
+              {uiText("선택 해제")}</button>
           </div>
         ))}
         {!records.ready && <RecordState records={records} />}

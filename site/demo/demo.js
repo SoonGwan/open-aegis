@@ -47,7 +47,7 @@ const responses = {
   cors: 'HTTP/1.1 200 OK\nAccess-Control-Allow-Origin: *\nContent-Type: application/json\n\n{"example": true}',
 };
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let language = new URLSearchParams(location.search).get('lang') === 'en' ? 'en' : 'ko';
+let language = new URLSearchParams(location.search).get('lang') === 'ko' ? 'ko' : 'en';
 let state = initialState();
 let timer = null;
 const app = document.querySelector('#app');

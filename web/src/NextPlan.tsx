@@ -1,3 +1,4 @@
+import { t as uiText, localizeLabels } from "./i18n-core.ts";
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { PolicySummary, type ExecutionPolicy } from "./runtime";
@@ -80,45 +81,37 @@ export function WorkerObservationBasis({
         row.scope_revision < 1,
     )
   )
-    return <p role="alert">저장된 Worker 관찰 계획 맥락을 확인하세요.</p>;
+    return <p role="alert">{uiText("저장된 Worker 관찰 계획 맥락을 확인하세요.")}</p>;
   const labels: Record<string, string> = {
-    api_path: "API 경로",
-    session_path: "세션 경로",
-    management_path: "관리 경로",
-    other: "기타 경로",
+    api_path: uiText("API 경로"),
+    session_path: uiText("세션 경로"),
+    management_path: uiText("관리 경로"),
+    other: uiText("기타 경로"),
   };
   return (
     <section
       className="todo-plan-basis next-plan"
-      aria-label="계획에 저장된 Worker 관찰"
+      aria-label={uiText("계획에 저장된 Worker 관찰")}
     >
       <details>
         <summary>
-          계획에 저장된 Worker 관찰 · {context.counts.included}개
-        </summary>
+          {uiText("계획에 저장된 Worker 관찰 · ")}{context.counts.included}{uiText("개")}</summary>
         <p>
-          생성 당시 출처·완료 근거·현재 범위가 일치한 관찰입니다. 경로 유형을
-          도구 순서의 참고로 사용하며 링크 방문·취약점 판정·새 실행 권한을
-          뜻하지 않습니다.
-        </p>
+          {uiText("생성 당시 출처·완료 근거·현재 범위가 일치한 관찰입니다. 경로 유형을 도구 순서의 참고로 사용하며 링크 방문·취약점 판정·새 실행 권한을 뜻하지 않습니다.")}</p>
         <p>
-          전체 {context.counts.total}개 · 확인 {context.counts.inspected}개 ·
-          제외 {context.counts.excluded}개 · 표본 밖 {context.counts.omitted}개
-        </p>
+          {uiText("전체 ")}{context.counts.total}{uiText("개 · 확인 ")}{context.counts.inspected}{uiText("개 · 제외 ")}{context.counts.excluded}{uiText("개 · 표본 밖 ")}{context.counts.omitted}{uiText("개")}</p>
         <p>
-          AI 모드에서는 관찰 ID·출처 작업/자산 ID·범위 버전·경로 유형만 설정된
-          제공자에게 전송합니다. URL·경로 원문은 전송하지 않습니다.
-        </p>
+          {uiText("AI 모드에서는 관찰 ID·출처 작업/자산 ID·범위 버전·경로 유형만 설정된 제공자에게 전송합니다. URL·경로 원문은 전송하지 않습니다.")}</p>
         {context.items.map((row) => (
           <article key={row.id}>
             <code className="observation-url">{row.url}</code>
             <p>
-              {labels[row.category] || row.category} · 범위 버전{" "}
-              {row.scope_revision} · 작업 {row.task_id}
+              {labels[row.category] || row.category} {uiText(" · 범위 버전")}{" "}
+              {row.scope_revision} {uiText(" · 작업 ")}{row.task_id}
             </p>
           </article>
         ))}
-        {!context.items.length && <p>계획 순서에 사용할 관찰이 없습니다.</p>}
+        {!context.items.length && <p>{uiText("계획 순서에 사용할 관찰이 없습니다.")}</p>}
       </details>
     </section>
   );
@@ -149,46 +142,42 @@ export function TodoPlanBasis({
         row.check_ids.some((id) => typeof id !== "string"),
     )
   )
-    return <p role="alert">저장된 할 일 계획 맥락의 형식을 확인하세요.</p>;
+    return <p role="alert">{uiText("저장된 할 일 계획 맥락의 형식을 확인하세요.")}</p>;
   return (
     <section
       className="next-plan todo-plan-basis"
-      aria-label="계획에 저장된 공유 할 일"
+      aria-label={uiText("계획에 저장된 공유 할 일")}
     >
       <details>
-        <summary>계획에 저장된 공유 할 일 · {context.items.length}개</summary>
+        <summary>{uiText("계획에 저장된 공유 할 일 · ")}{context.items.length}{uiText("개")}</summary>
         <p>
-          계획 생성 시점의 항목과 버전입니다. 현재 할 일과 다를 수 있으며 새
-          내용으로 계획을 바꾸려면 재계획하세요.
-        </p>
+          {uiText("계획 생성 시점의 항목과 버전입니다. 현재 할 일과 다를 수 있으며 새 내용으로 계획을 바꾸려면 재계획하세요.")}</p>
         {planner === "ai" && (
           <p>
-            미완료·진행 중 항목의 제목·설명·도구 요청을 설정된 AI 제공자에게
-            전송해 승인된 도구의 순서를 정합니다.
-          </p>
+            {uiText("미완료·진행 중 항목의 제목·설명·도구 요청을 설정된 AI 제공자에게 전송해 승인된 도구의 순서를 정합니다.")}</p>
         )}
         {context.items.map((row) => (
           <article key={row.id}>
             <strong>{row.title}</strong>
             <p>
-              버전 {row.revision} ·{" "}
+              {uiText("버전 ")}{row.revision} ·{" "}
               {(
                 {
-                  open: "미완료",
-                  in_progress: "진행 중",
-                  done: "완료",
-                  cancelled: "취소",
+                  open: uiText("미완료"),
+                  in_progress: uiText("진행 중"),
+                  done: uiText("완료"),
+                  cancelled: uiText("취소"),
                 } as Record<string, string>
               )[row.status] || row.status}
             </p>
             <p>{row.description}</p>
             <p>
-              요청 도구:{" "}
-              {row.check_ids.map((id) => names[id] || id).join(", ") || "없음"}
+              {uiText("요청 도구:")}{" "}
+              {row.check_ids.map((id) => names[id] || id).join(", ") || uiText("없음")}
             </p>
           </article>
         ))}
-        {!context.items.length && <p>참조한 공유 할 일이 없습니다.</p>}
+        {!context.items.length && <p>{uiText("참조한 공유 할 일이 없습니다.")}</p>}
       </details>
     </section>
   );
@@ -247,7 +236,7 @@ type Proposal = {
   accepted_task_id?: string | null;
   accepted_kind?: "followup" | "retry" | null;
 };
-const reasons: Record<string, string> = {
+const reasons: Record<string, string> = localizeLabels({
   no_remaining_observation_checks:"선택한 관찰 응답에 추가·재시도 요청이 없습니다. 취약점이 없거나 목표를 달성했다는 판정은 아닙니다.",
   observation_scope_change_required:"공유 할 일의 요청이 원래 관찰 검사를 벗어납니다. 출처 관찰에서 새 선택 계획을 검토하세요.",
   already_accepted: "이 결과에서 이미 연결된 계획을 만들었습니다.",
@@ -259,8 +248,8 @@ const reasons: Record<string, string> = {
   no_remaining_goal_checks:"선택한 목표 검사에 추가·재시도 요청이 없습니다. 자연어 목표 달성 판정은 아닙니다.",
   no_remaining_checks:
     "현재 결과에서 제안할 추가·재시도 검증이 없습니다. 자산의 안전성을 보장하는 판정은 아닙니다.",
-};
-const statuses: Record<string, string> = {
+});
+const statuses: Record<string, string> = localizeLabels({
   completed: "완료",
   failed: "실패",
   cancelled: "취소",
@@ -270,7 +259,7 @@ const statuses: Record<string, string> = {
   running: "완료 미확인",
   stale: "오래된 결과",
   skipped: "건너뜀",
-};
+});
 
 function AutomaticPlanStatus({
   taskId,
@@ -280,7 +269,7 @@ function AutomaticPlanStatus({
   displayedFingerprint?: string;
 }) {
   const [notice, setNotice] = useState(
-    "자동 계획 준비 상태를 확인하고 있습니다.",
+    uiText("자동 계획 준비 상태를 확인하고 있습니다."),
   );
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -309,25 +298,25 @@ function AutomaticPlanStatus({
           row.format !== "aegis-event-planner-v1" ||
           row.source_task_id !== taskId
         )
-          throw new Error("다른 작업의 자동 계획 상태입니다. 다시 조회하세요.");
+          throw new Error(uiText("다른 작업의 자동 계획 상태입니다. 다시 조회하세요."));
         setFailed(false);
         setNotice(
           (row.stale
-            ? "자동 계획 근거가 변경되었습니다. 최신 제안을 조회해 검토하세요."
+            ? uiText("자동 계획 근거가 변경되었습니다. 최신 제안을 조회해 검토하세요.")
             : row.proposal &&
                 displayedFingerprint &&
                 row.proposal?.fingerprint !== displayedFingerprint
-              ? "새 이벤트가 반영됐습니다. 현재 표시된 제안은 이전 내용이므로 다시 조회하세요."
+              ? uiText("새 이벤트가 반영됐습니다. 현재 표시된 제안은 이전 내용이므로 다시 조회하세요.")
               : row.status === "ready"
-                ? "이벤트 " +
+                ? uiText("이벤트 ") +
                   row.event_seq +
-                  "를 반영해 다음 계획을 자동으로 준비했습니다. 아래에서 제안을 검토하세요."
+                  uiText("를 반영해 다음 계획을 자동으로 준비했습니다. 아래에서 제안을 검토하세요.")
                 : row.status === "no_proposal"
-                  ? "이벤트를 반영했습니다. 추가 제안이 없거나 이미 연결된 계획이 있습니다."
+                  ? uiText("이벤트를 반영했습니다. 추가 제안이 없거나 이미 연결된 계획이 있습니다.")
                   : row.status === "blocked"
-                    ? "자동 계획 준비가 보류됐습니다. 계획 근거·범위·공유 할 일을 확인하세요."
-                    : "종료·변경 이벤트의 자동 계획 처리를 기다리고 있습니다.") +
-          (row.automatic_todo?.status === "limited" ? " 공유 할 일 한도 때문에 새 실패 기록은 추가하지 않았습니다. 기존 할 일을 정리하세요." : ""),
+                    ? uiText("자동 계획 준비가 보류됐습니다. 계획 근거·범위·공유 할 일을 확인하세요.")
+                    : uiText("종료·변경 이벤트의 자동 계획 처리를 기다리고 있습니다.")) +
+          (row.automatic_todo?.status === "limited" ? uiText(" 공유 할 일 한도 때문에 새 실패 기록은 추가하지 않았습니다. 기존 할 일을 정리하세요.") : ""),
         );
         timer = setTimeout(() => void read(), 4000);
       } catch (error) {
@@ -348,8 +337,7 @@ function AutomaticPlanStatus({
       <p role={failed ? "alert" : "status"}>{notice}</p>
       {failed && (
         <button type="button" onClick={() => setAttempt((value) => value + 1)}>
-          자동 계획 상태 다시 조회
-        </button>
+          {uiText("자동 계획 상태 다시 조회")}</button>
       )}
     </div>
   );
@@ -415,7 +403,7 @@ export function NextPlan({
         result.format !== "aegis-next-plan-v1" ||
         result.source_task_id !== taskId
       )
-        throw new Error("다른 작업의 제안입니다. 다시 조회하세요.");
+        throw new Error(uiText("다른 작업의 제안입니다. 다시 조회하세요."));
       setProposal(result);
     } catch (e) {
       if (
@@ -446,7 +434,7 @@ export function NextPlan({
       await onAccept(proposal.fingerprint, (message) => {
         if (!mounted.current) return;
         focusError.current = true;
-        setError(message + " 제안을 다시 조회한 뒤 검토하세요.");
+        setError(message + uiText(" 제안을 다시 조회한 뒤 검토하세요."));
         setProposal(null);
       });
     } finally {
@@ -457,18 +445,15 @@ export function NextPlan({
   const assetName = (id: string) =>
     proposal?.scope_snapshot.find((a) => a.id === id)?.name || id;
   const checkNames = (checks: string[]) =>
-    checks.map((c) => names[c] || c).join(", ") || "없음";
+    checks.map((c) => names[c] || c).join(", ") || uiText("없음");
   return (
     <section
       className="next-plan finding-collection"
-      aria-label="결과 기반 다음 계획"
+      aria-label={uiText("결과 기반 다음 계획")}
     >
-      <h4 className="detail-heading">결과 기반 다음 계획</h4>
+      <h4 className="detail-heading">{uiText("결과 기반 다음 계획")}</h4>
       <p className="subtle">
-        종료된 작업과 이전 회차의 결과에서 추가·재시도 검증을 제안합니다.
-        반영하면 새 승인 대기 계획을 만들며 실행은 별도 관리자 승인이
-        필요합니다.
-      </p>
+        {uiText("종료된 작업과 이전 회차의 결과에서 추가·재시도 검증을 제안합니다. 반영하면 새 승인 대기 계획을 만들며 실행은 별도 관리자 승인이 필요합니다.")}</p>
       <AutomaticPlanStatus
         key={taskId}
         taskId={taskId}
@@ -481,10 +466,10 @@ export function NextPlan({
         onClick={() => void load()}
       >
         {loading
-          ? "다음 계획 조회 중…"
+          ? uiText("다음 계획 조회 중…")
           : proposal
-            ? "제안 다시 조회"
-            : "다음 계획 제안 보기"}
+            ? uiText("제안 다시 조회")
+            : uiText("다음 계획 제안 보기")}
       </button>
       {error && (
         <p className="form-error" role="alert">
@@ -492,13 +477,13 @@ export function NextPlan({
         </p>
       )}
       <div aria-live="polite">
-        {saving && <p>후속 승인 계획을 저장하고 있습니다.</p>}
+        {saving && <p>{uiText("후속 승인 계획을 저장하고 있습니다.")}</p>}
       </div>
       {proposal && (
         <>
           {!proposal.available && (
             <p>
-              {reasons[proposal.reason] || "현재 제안을 반영할 수 없습니다."}
+              {reasons[proposal.reason] || uiText("현재 제안을 반영할 수 없습니다.")}
             </p>
           )}
           {proposal.accepted_task_id && (
@@ -508,26 +493,25 @@ export function NextPlan({
               onClick={() => onTask(proposal.accepted_task_id!)}
             >
               {proposal.accepted_kind === "retry"
-                ? "이미 만든 재실행 계획 보기"
-                : "이미 만든 후속 계획 보기"}
+                ? uiText("이미 만든 재실행 계획 보기")
+                : uiText("이미 만든 후속 계획 보기")}
             </button>
           )}
           <ObservationCellsSummary selection={proposal.observation_cells} execution={proposal.observation_execution} names={names} />
           {proposal.goal_plan && <>
             <GoalPlanSummary plan={proposal.goal_plan} selection={proposal.goal_selection} names={names} assets={proposal.scope_snapshot} />
-            <p>{proposal.goal_selection ? "원래 과제와 Worker 의존 관계를 유지하며 이번 회차에 표시한 조합만 다시 검사합니다. 선행 Worker나 공유 할 일 요청으로 반복하는 완료 검사는 아래 근거에서 확인하고 새로 승인합니다." : "목표 후속 회차는 원래 과제의 전체 선택 조합과 Worker 의존 관계를 유지해 다시 검사합니다. 완료된 검사도 포함되며 아래 반복 근거를 검토한 뒤 새로 승인합니다."}</p>
-            {!!proposal.basis.todo_outside_goal_checks?.length && <p role="alert">목표 밖의 요청: {checkNames(proposal.basis.todo_outside_goal_checks)}</p>}
+            <p>{proposal.goal_selection ? uiText("원래 과제와 Worker 의존 관계를 유지하며 이번 회차에 표시한 조합만 다시 검사합니다. 선행 Worker나 공유 할 일 요청으로 반복하는 완료 검사는 아래 근거에서 확인하고 새로 승인합니다.") : uiText("목표 후속 회차는 원래 과제의 전체 선택 조합과 Worker 의존 관계를 유지해 다시 검사합니다. 완료된 검사도 포함되며 아래 반복 근거를 검토한 뒤 새로 승인합니다.")}</p>
+            {!!proposal.basis.todo_outside_goal_checks?.length && <p role="alert">{uiText("목표 밖의 요청: ")}{checkNames(proposal.basis.todo_outside_goal_checks)}</p>}
           </>}
           {proposal.available && proposal.task && (
             <>
               <p>
-                <strong>{proposal.task.name}</strong> · 후속{" "}
-                {proposal.planning_round} / 최대 {proposal.round_limit}회차
-              </p>
-              <p>추가 검증: {checkNames(proposal.basis.missing_checks)}</p>
-              <p>재시도 검증: {checkNames(proposal.basis.retry_checks)}</p>
+                <strong>{proposal.task.name}</strong> {uiText(" · 후속")}{" "}
+                {proposal.planning_round} {uiText(" / 최대 ")}{proposal.round_limit}{uiText("회차")}</p>
+              <p>{uiText("추가 검증: ")}{checkNames(proposal.basis.missing_checks)}</p>
+              <p>{uiText("재시도 검증: ")}{checkNames(proposal.basis.retry_checks)}</p>
               <p>
-                공유 할 일의 검증 요청:{" "}
+                {uiText("공유 할 일의 검증 요청:")}{" "}
                 {checkNames(proposal.basis.todo_requested_checks || [])}
               </p>
               <WorkerObservationBasis
@@ -536,29 +520,25 @@ export function NextPlan({
               {proposal.shared_todo_context && (
                 <section
                   className="todo-plan-basis"
-                  aria-label="다음 계획이 참조한 공유 할 일"
+                  aria-label={uiText("다음 계획이 참조한 공유 할 일")}
                 >
                   <details>
                     <summary>
-                      참조한 공유 할 일 ·{" "}
-                      {proposal.shared_todo_context.items.length}개
-                    </summary>
+                      {uiText("참조한 공유 할 일 ·")}{" "}
+                      {proposal.shared_todo_context.items.length}{uiText("개")}</summary>
                     <p>
-                      생성 시점의 항목과 버전을 저장합니다. AI 계획을 선택하면
-                      미완료·진행 중 항목의 제목·설명·도구 요청을 설정된
-                      제공자에게 전송합니다.
-                    </p>
+                      {uiText("생성 시점의 항목과 버전을 저장합니다. AI 계획을 선택하면 미완료·진행 중 항목의 제목·설명·도구 요청을 설정된 제공자에게 전송합니다.")}</p>
                     {proposal.shared_todo_context.items.map((row) => (
                       <article key={row.id}>
                         <strong>{row.title}</strong>
                         <p>
-                          버전 {row.revision} ·{" "}
+                          {uiText("버전 ")}{row.revision} ·{" "}
                           {(
                             {
-                              open: "미완료",
-                              in_progress: "진행 중",
-                              done: "완료",
-                              cancelled: "취소",
+                              open: uiText("미완료"),
+                              in_progress: uiText("진행 중"),
+                              done: uiText("완료"),
+                              cancelled: uiText("취소"),
                             } as Record<string, string>
                           )[row.status] || row.status}{" "}
                           · {checkNames(row.check_ids)}
@@ -566,19 +546,19 @@ export function NextPlan({
                       </article>
                     ))}
                     {!proposal.shared_todo_context.items.length && (
-                      <p>참조할 공유 할 일이 없습니다.</p>
+                      <p>{uiText("참조할 공유 할 일이 없습니다.")}</p>
                     )}
                   </details>
                 </section>
               )}
 
               <p>
-                {proposal.task.workers}개 Worker ·{" "}
+                {proposal.task.workers}{uiText("개 Worker ·")}{" "}
                 {proposal.task.planner === "ai"
-                  ? "AI 도구 순서 계획"
-                  : "규칙 기반 도구 순서"}
+                  ? uiText("AI 도구 순서 계획")
+                  : uiText("규칙 기반 도구 순서")}
               </p>
-              <h4 className="detail-heading">새 계획의 현재 자산 범위</h4>
+              <h4 className="detail-heading">{uiText("새 계획의 현재 자산 범위")}</h4>
               {proposal.scope_snapshot.map((asset) => (
                 <div className="finding-record" key={asset.id}>
                   <strong>{asset.name}</strong> · revision {asset.revision || 1}
@@ -590,7 +570,7 @@ export function NextPlan({
                 assets={proposal.scope_snapshot}
               />
               <details>
-                <summary>새 계획의 실행 제한</summary>
+                <summary>{uiText("새 계획의 실행 제한")}</summary>
                 <PolicySummary policy={proposal.execution_policy} />
               </details>
               <ToolContracts
@@ -602,40 +582,35 @@ export function NextPlan({
               />
               <p className="subtle">
                 {proposal.observation_cells
-                  ? "표시한 관찰 URL과 검사 조합만 실행합니다. 공유 할 일에서 요청한 기존 검사는 완료 조합도 새 승인 후 반복할 수 있습니다."
+                  ? uiText("표시한 관찰 URL과 검사 조합만 실행합니다. 공유 할 일에서 요청한 기존 검사는 완료 조합도 새 승인 후 반복할 수 있습니다.")
                   : proposal.goal_plan
-                  ? "원래 과제별 자산·검사 조합에서 수행합니다. 완료된 선택 검사도 반복될 수 있습니다."
-                  : "한 도구를 선택하면 모든 선택 자산에서 수행합니다. 다른 자산의 완료 검증도 반복될 수 있습니다."}
+                  ? uiText("원래 과제별 자산·검사 조합에서 수행합니다. 완료된 선택 검사도 반복될 수 있습니다.")
+                  : uiText("한 도구를 선택하면 모든 선택 자산에서 수행합니다. 다른 자산의 완료 검증도 반복될 수 있습니다.")}
               </p>
               <p>
-                반복될 완료 검증{" "}
-                {proposal.basis.repeated_completed_cells.length}개 · 건너뛴 결과{" "}
-                {proposal.basis.skipped_cells.length}개
-              </p>
+                {uiText("반복될 완료 검증")}{" "}
+                {proposal.basis.repeated_completed_cells.length}{uiText("개 · 건너뛴 결과")}{" "}
+                {proposal.basis.skipped_cells.length}{uiText("개")}</p>
               <button
                 type="button"
                 disabled={!canOperate || busy || saving || loading}
                 onClick={() => void accept()}
               >
                 {saving
-                  ? "승인 대기 계획 저장 중…"
-                  : "제안을 승인 대기 계획으로 반영"}
+                  ? uiText("승인 대기 계획 저장 중…")
+                  : uiText("제안을 승인 대기 계획으로 반영")}
               </button>
               {!canOperate && (
                 <p className="subtle">
-                  후속 계획 생성은 운영자 또는 관리자가 할 수 있습니다.
-                </p>
+                  {uiText("후속 계획 생성은 운영자 또는 관리자가 할 수 있습니다.")}</p>
               )}
             </>
           )}
           <details>
             <summary>
-              제안 근거 · 자산별 최신 검증 {proposal.basis.coverage.length}개
-            </summary>
+              {uiText("제안 근거 · 자산별 최신 검증 ")}{proposal.basis.coverage.length}{uiText("개")}</summary>
             <p className="subtle">
-              건너뜀은 완료나 안전성의 근거가 아닙니다. 오래된 결과는 현재 자산
-              revision 또는 도구 계약과 다릅니다.
-            </p>
+              {uiText("건너뜀은 완료나 안전성의 근거가 아닙니다. 오래된 결과는 현재 자산 revision 또는 도구 계약과 다릅니다.")}</p>
             {proposal.basis.coverage.map((cell) => {
               const suffix = ":" + cell.asset_id + ":" + cell.check;
               const origin = cell.id.endsWith(suffix)
@@ -651,9 +626,9 @@ export function NextPlan({
                     {names[cell.check] || cell.check}
                   </strong>
                   <p>
-                    {statuses[cell.status] || "상태 미확인"} · 당시 revision{" "}
+                    {statuses[cell.status] || uiText("상태 미확인")} {uiText(" · 당시 revision")}{" "}
                     {cell.asset_revision}
-                    {repeated ? " · 새 계획에서 반복 예정" : ""}
+                    {repeated ? uiText(" · 새 계획에서 반복 예정") : ""}
                   </p>
                   {origin && (
                     <button
@@ -661,8 +636,7 @@ export function NextPlan({
                       disabled={saving || busy}
                       onClick={() => onTask(origin)}
                     >
-                      근거 작업 보기
-                    </button>
+                      {uiText("근거 작업 보기")}</button>
                   )}
                 </div>
               );

@@ -1,3 +1,4 @@
+import { t as uiText, getFormatLocale } from "./i18n-core.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { CoverageTable, type Coverage } from "./coverage";
@@ -30,17 +31,16 @@ export function WorkerProcess({ taskId, assets, tools, state, onChange }: {
     if (readDetail(location.search)?.id !== taskId || JSON.stringify(readTaskWorker(location.search)) !== JSON.stringify(state)) return;
     onChange(changes, mode);
   }, [taskId, state, onChange]);
-  return <section className="worker-process" aria-label="Worker 실행 과정">
-    <h4 className="detail-heading">Worker 실행 과정</h4>
-    <p className="subtle">자산별 검증 결과와 실행 기록을 확인하세요. 작업에 저장된 승인 범위로 조회합니다.</p>
-    <label className="task-record-search">과정을 확인할 자산
-      <select aria-label="Worker 자산" value={assetId} onChange={e => change({assetId:e.target.value})}>
-        <option value="">자산 선택</option>
-        {assetId && !validAsset && <option value={assetId}>범위에 없는 자산</option>}
+  return <section className="worker-process" aria-label={uiText("Worker 실행 과정")}>
+    <h4 className="detail-heading">{uiText("Worker 실행 과정")}</h4>
+    <p className="subtle">{uiText("자산별 검증 결과와 실행 기록을 확인하세요. 작업에 저장된 승인 범위로 조회합니다.")}</p>
+    <label className="task-record-search">{uiText("과정을 확인할 자산")}<select aria-label={uiText("Worker 자산")} value={assetId} onChange={e => change({assetId:e.target.value})}>
+        <option value="">{uiText("자산 선택")}</option>
+        {assetId && !validAsset && <option value={assetId}>{uiText("범위에 없는 자산")}</option>}
         {assets.map(a => <option key={a.id} value={a.id}>{a.name} · revision {a.revision ?? 1}</option>)}
       </select>
     </label>
-    {assetId && !validAsset && <p role="alert">저장된 작업 범위에 없는 Worker입니다. 자산을 다시 선택하세요.</p>}
+    {assetId && !validAsset && <p role="alert">{uiText("저장된 작업 범위에 없는 Worker입니다. 자산을 다시 선택하세요.")}</p>}
     {validAsset && <ProcessDetail key={`${taskId}:${assetId}`} taskId={taskId} assetId={assetId} tools={tools} state={state} onChange={change} />}
   </section>;
 }
@@ -77,7 +77,7 @@ function ProcessDetail({ taskId, assetId, tools, state, onChange }: {
       if (!mounted.current || controller.current !== request) return;
       if (data.format !== "aegis-worker-process-v1" || data.worker?.task_id !== taskId ||
           data.worker.asset_id !== assetId || data.execution_authorized !== false)
-        throw new Error("Worker 출처가 일치하지 않습니다. 다시 조회하세요.");
+        throw new Error(uiText("Worker 출처가 일치하지 않습니다. 다시 조회하세요."));
       setResult(data);
     } catch (e) {
       if (mounted.current && controller.current === request && !request.signal.aborted) {
@@ -89,13 +89,13 @@ function ProcessDetail({ taskId, assetId, tools, state, onChange }: {
   }
   return <div aria-busy={loading}>
     <button type="button" ref={queryButton} disabled={loading} onClick={() => state.expanded ? void load() : onChange({expanded:true})}>
-      {loading ? "과정 조회 중…" : "Worker 과정 조회"}
+      {loading ? uiText("과정 조회 중…") : uiText("Worker 과정 조회")}
     </button>
     {error && <p className="form-error" role="alert">{error}</p>}
     {result && <>
-      <p><strong>{result.worker.asset_name}</strong> · 승인 범위 revision {result.worker.scope_revision}</p>
+      <p><strong>{result.worker.asset_name}</strong> {uiText(" · 승인 범위 revision ")}{result.worker.scope_revision}</p>
       <code className="observation-url">{result.worker.scope_url}</code>
-      <p className="subtle">{result.approved_at ? "실행 승인 기록 있음" : "실행 승인 기록 없음"} · 저장된 출처 메타데이터의 일치이며 실행 성공이나 자산의 안전성을 보장하지 않습니다.</p>
+      <p className="subtle">{result.approved_at ? uiText("실행 승인 기록 있음") : uiText("실행 승인 기록 없음")} {uiText(" · 저장된 출처 메타데이터의 일치이며 실행 성공이나 자산의 안전성을 보장하지 않습니다.")}</p>
       <CoverageTable rows={result.coverage} assets={[{ id: assetId, name: result.worker.asset_name }]} tools={tools} />
       <WorkerCollection key={`${path}:events`} taskId={taskId} path={path} kind="events" state={state.events}
         onChange={(changes,mode)=>onChange({events:{...state.events,...changes}},mode)} />
@@ -115,23 +115,23 @@ function WorkerCollection({ path, kind, state, onChange, taskId }: {
     onChange(position,mode);
   }, [taskId,kind,state,onChange]);
   const records = useRecords<WorkerEvent | Observation>(kind, search, {}, { ...state, onPositionChange:changePosition }, `${path}/${kind}`);
-  const name = kind === "events" ? "선택 Worker 실행 기록" : "선택 Worker 관찰";
+  const name = kind === "events" ? uiText("선택 Worker 실행 기록") : uiText("선택 Worker 관찰");
   return <section className="finding-collection" aria-label={name}>
     <h4 className="detail-heading">{name}</h4>
-    <label className="task-record-search">{kind === "events" ? "메시지·수준으로 검색" : "링크·제목으로 검색"}
-      <input aria-label={`${name} 검색`} maxLength={200} value={search} onChange={e => onChange({search:e.target.value},"replace")} />
+    <label className="task-record-search">{kind === "events" ? uiText("메시지·수준으로 검색") : uiText("링크·제목으로 검색")}
+      <input aria-label={uiText("{0} 검색", [name])} maxLength={200} value={search} onChange={e => onChange({search:e.target.value},"replace")} />
     </label>
-    {kind === "observations" && <p className="subtle">관찰한 링크를 방문하거나 실행하지 않습니다. 출처 확인은 저장 메타데이터 비교입니다.</p>}
+    {kind === "observations" && <p className="subtle">{uiText("관찰한 링크를 방문하거나 실행하지 않습니다. 출처 확인은 저장 메타데이터 비교입니다.")}</p>}
     <Pagination records={records} />
     {!records.ready ? <RecordState records={records} /> : records.items.length ? records.items.map(row => {
       if (kind === "observations") return <ObservationRecord key={(row as Observation).id} record={row as Observation} />;
       const event = row as WorkerEvent;
       return <article className="finding-record execution-entry task-event-record" key={event.seq}>
         <strong>{event.message}</strong>
-        <small>{new Date(event.ts * 1000).toLocaleString("ko-KR")} · {event.level}</small>
-        <p className="subtle">{event.worker_provenance?.status === "matched" ? "Worker 출처 메타데이터 일치" : "Worker 출처 미확인"}</p>
-        <details><summary>실행 기록 상세</summary><pre>{JSON.stringify(event.detail, null, 2)}</pre></details>
+        <small>{new Date(event.ts * 1000).toLocaleString(getFormatLocale())} · {event.level}</small>
+        <p className="subtle">{event.worker_provenance?.status === "matched" ? uiText("Worker 출처 메타데이터 일치") : uiText("Worker 출처 미확인")}</p>
+        <details><summary>{uiText("실행 기록 상세")}</summary><pre>{JSON.stringify(event.detail, null, 2)}</pre></details>
       </article>;
-    }) : <p className="subtle">{search ? "검색 결과가 없습니다." : `${name}이 없습니다.`}</p>}
+    }) : <p className="subtle">{search ? uiText("검색 결과가 없습니다.") : uiText("{0}이 없습니다.", [name])}</p>}
   </section>;
 }

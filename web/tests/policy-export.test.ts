@@ -11,25 +11,25 @@ test("policy export explains approval, selection and legacy limitations", () => 
     scope_snapshot: [{ authorization_rules: [{}] }],
   };
   assert.equal(policyExportReason(task), null);
-  assert.match(policyExportReason({ ...task, checks: [] })!, /API 권한 검증/);
-  assert.match(policyExportReason({ ...task, approved_at: 0 })!, /승인한 작업/);
+  assert.match(policyExportReason({ ...task, checks: [] })!, /no API authorization checks/);
+  assert.match(policyExportReason({ ...task, approved_at: 0 })!, /download policies from approved tasks/);
   assert.match(
     policyExportReason({ ...task, execution_policy: undefined })!,
-    /이전 작업/,
+    /For older tasks, approve a new plan/,
   );
   assert.match(
     policyExportReason({ ...task, scope_snapshot: [] })!,
-    /규칙이 없습니다/,
+    /No API authorization rules in the approved scope/,
   );
   assert.match(
     policyExportReason({ ...task, scope_snapshot: [{}] })!,
-    /규칙이 없습니다/,
+    /No API authorization rules in the approved scope/,
   );
   assert.match(
     policyExportReason({
       ...task,
       scope_snapshot: [{ authorization_rules: null }],
     })!,
-    /규칙이 없습니다/,
+    /No API authorization rules in the approved scope/,
   );
 });
