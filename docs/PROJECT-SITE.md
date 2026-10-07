@@ -6,8 +6,10 @@ contracts. It presents version 1.0.0 and links to implementation
 status, release validation and remaining work. The security workspace is installed
 and operated separately.
 
-The pages use local CSS and an image, with no JavaScript, forms, account collection,
-analytics or external font loading. Responsive CSS includes narrow-screen layouts,
+The introduction pages use local CSS and an image, with no JavaScript, forms,
+account collection, analytics or external font loading. The separate
+[interactive demo](INTERACTIVE-DEMO.md) uses local JavaScript with sample data
+and no workflow network calls. Responsive CSS includes narrow-screen layouts,
 visible keyboard focus, a skip link and reduced-motion handling. Desktop browser
 review covers the English hero/install anchor, language switching and Korean hero.
 Owned desktop iframe fixtures review English at320/390px and Korean at320/768px.

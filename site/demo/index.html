@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Open Aegis 체험 데모. 샘플 자산에서 계획 검토, 실행 승인, 증거 확인과 재검증 흐름을 체험하세요." />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'self'; form-action 'none'; connect-src 'none'" />
+  <meta name="theme-color" content="#f8f5ed" />
+  <title>Open Aegis — Interactive demo</title>
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="demo.css" />
+  <script type="module" src="demo.js"></script>
+</head>
+<body>
+  <a class="skip" href="#workspace">본문으로 건너뛰기 / Skip to workspace</a>
+  <header class="topbar">
+    <a class="brand" href="../"><span class="mark" aria-hidden="true">A</span><span>OPEN AEGIS<small>INTERACTIVE DEMO</small></span></a>
+    <div class="top-actions"><button id="language" type="button">English</button><a href="https://github.com/SoonGwan/open-aegis/releases/tag/v1.0.0">1.0.0 ↗</a></div>
+  </header>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Demo navigation">
+      <p class="eyebrow">WORKSPACE</p>
+      <nav id="navigation"></nav>
+      <div class="side-note"><span class="live-dot" aria-hidden="true"></span><strong id="local-label">브라우저 안에서 실행</strong><p id="local-description">샘플 데이터만 사용합니다.<br />실제 자산을 검사하지 않습니다.</p></div>
+      <a class="back" href="../" id="back-link">← 프로젝트 소개</a>
+    </aside>
+    <main id="workspace" tabindex="-1">
+      <div class="demo-banner"><span aria-hidden="true">✳</span><p id="demo-disclosure"></p><button type="button" data-action="reset" id="reset-button">처음부터</button></div>
+      <div id="announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div id="app"></div>
+      <noscript><p class="no-script">This interactive sample requires JavaScript. No external assets are scanned. <a href="https://github.com/SoonGwan/open-aegis">View the source and install Open Aegis.</a></p></noscript>
+    </main>
+  </div>
+</body>
+</html>

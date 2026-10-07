@@ -564,3 +564,4 @@ html:lang(ko) h3 {
 .faq summary:focus-visible { outline: 3px solid #6741d9; outline-offset: 5px; }
 .faq details p { max-width: 780px; margin: 18px 0 0; }
 .faq details a { text-decoration: underline; text-underline-offset: 4px; }
+.header nav { flex-wrap: wrap; row-gap: 14px; }

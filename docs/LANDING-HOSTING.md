@@ -6,11 +6,12 @@ sources also remain publishable by the existing GitHub Pages workflow.
 
 - Domain: `https://aegis.no-money-do-you-have-money.com/` (Korean)
 - English: `/en/`; Korean alias: `/ko/`
+- Interactive sample demo: `/demo/`; English: `/demo/?lang=en`
 - Origin: `127.0.0.1:4190`
 - App/tunnel identity: `open-aegis-landing`
 - Services: `com.open-aegis.landing.web`, `com.open-aegis.landing.tunnel`
 
-Only the generated static landing directory is served. The application console,
+Only the generated static landing/demo directory is served. The application console,
 API, operational records and repository are installed/operated separately.
 
 ## Deploy and verify
