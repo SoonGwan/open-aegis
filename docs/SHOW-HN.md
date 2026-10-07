@@ -22,4 +22,5 @@ This is scoped configuration and policy verification, not a claim to find every 
 
 ## Published result
 
-The live submission URL is added here after Hacker News confirms publication.
+Not published: Hacker News temporarily restricted Show HN submissions.
+[Observed submission status](SHOW-HN-STATUS-2026-10-08.md).
