@@ -1,6 +1,6 @@
 # Open Aegis
 
-[English](README.en.md) · [프로젝트 소개](https://soongwan.github.io/open-aegis/ko.html)
+[English](README.en.md) · [프로젝트 소개](https://aegis.no-money-do-you-have-money.com/)
 
 **자산부터 증거, 수정 확인까지 연결하는 오픈소스 보안 검증 워크스페이스.**
 

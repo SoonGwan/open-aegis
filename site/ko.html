@@ -13,6 +13,19 @@
     />
     <meta name="theme-color" content="#f8f5ed" />
     <title>Open Aegis — 자산부터 증거까지.</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://aegis.no-money-do-you-have-money.com/" />
+    <link rel="alternate" hreflang="ko" href="https://aegis.no-money-do-you-have-money.com/" />
+    <link rel="alternate" hreflang="en" href="https://aegis.no-money-do-you-have-money.com/en/" />
+    <link rel="alternate" hreflang="x-default" href="https://aegis.no-money-do-you-have-money.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Open Aegis" />
+    <meta property="og:title" content="Open Aegis — 자산부터 증거까지." />
+    <meta property="og:description" content="자산, 승인, 증거와 독립 재검증을 연결하는 직접 설치형 MIT 오픈소스 보안 검증 워크스페이스." />
+    <meta property="og:url" content="https://aegis.no-money-do-you-have-money.com/" />
+    <meta property="og:image" content="https://aegis.no-money-do-you-have-money.com/assets/dashboard.jpg" />
+    <meta property="og:image:alt" content="Open Aegis security validation console" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -48,8 +61,8 @@
           <div class="actions">
             <a class="button primary" href="#install"
               >로컬에서 시작 <span aria-hidden="true">↗</span></a
-            ><a class="button" href="https://github.com/SoonGwan/open-aegis"
-              >소스 살펴보기</a
+            ><a class="button" href="https://github.com/SoonGwan/open-aegis/releases/tag/v1.0.0"
+              >1.0.0 다운로드</a
             >
           </div>
           <p class="version">
@@ -166,7 +179,7 @@
             <article>
               <h3>검토한 모델 설정</h3>
               <p>
-                고정 수신처 모델 프로필, 작업 생성 시 계획·대화 모델 선택, 모델
+                OpenAI·Claude 연동, 고정 수신처 모델 프로필, 작업 생성 시 계획·대화 모델 선택, 모델
                 목록 조회, 연결 시험과 미확인 요청 복구를 제공합니다.
               </p>
             </article>
@@ -204,6 +217,10 @@
           <p>
             Python 3.11+와 Node.js 22, npm을 준비한 뒤 터미널에서 다음 명령을
             실행하세요.
+          </p>
+          <p>
+            빌드된 콘솔이 포함된 <a class="text-link" href="https://github.com/SoonGwan/open-aegis/blob/v1.0.0/docs/INSTALL-RELEASE.md">서명된 배포 파일 설치 안내 ↗</a>도 제공합니다.
+            배포 파일로 설치하면 Node.js가 필요 없습니다.
           </p>
           <p>
             <code>http://127.0.0.1:8787</code>을 열고 12자 이상의 관리자
@@ -257,6 +274,12 @@ cd open-aegis
             >기여 안내 <span aria-hidden="true">↗</span></a
           >
         </div>
+      </section>
+      <section class="section wrap faq" aria-labelledby="faq-title">
+        <div class="section-heading"><p class="eyebrow">시작하기 전에</p><h2 id="faq-title">궁금한 점.</h2></div>
+        <details><summary>무료로 사용할 수 있나요?</summary><p>전체 구현은 MIT 오픈소스입니다. 직접 설치하고 수정할 수 있습니다. 선택적으로 연결한 AI 제공자의 이용료와 자신의 서버 비용은 별도입니다.</p></details>
+        <details><summary>이 웹사이트에서 검사를 실행하나요?</summary><p>이곳은 프로젝트 소개 페이지입니다. 애플리케이션을 자신의 환경에 설치한 뒤 자산과 기록을 직접 관리하세요.</p></details>
+        <details><summary>무엇을 검사할 수 있나요?</summary><p>소유하거나 검사 권한을 받은 자산의 HTTP·TLS·쿠키·CORS 설정과 운영자가 정의한 API 접근 기대값 등을 확인합니다. 실행 전 범위와 계획을 검토하고 별도로 승인합니다. <a href="https://github.com/SoonGwan/open-aegis/blob/main/docs/FEATURES.md">구현 범위 보기 ↗</a></p></details>
       </section>
     </main>
     <footer class="wrap footer">

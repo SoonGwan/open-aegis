@@ -13,6 +13,19 @@
     />
     <meta name="theme-color" content="#f8f5ed" />
     <title>Open Aegis — From assets to evidence.</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://aegis.no-money-do-you-have-money.com/en/" />
+    <link rel="alternate" hreflang="ko" href="https://aegis.no-money-do-you-have-money.com/" />
+    <link rel="alternate" hreflang="en" href="https://aegis.no-money-do-you-have-money.com/en/" />
+    <link rel="alternate" hreflang="x-default" href="https://aegis.no-money-do-you-have-money.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Open Aegis" />
+    <meta property="og:title" content="Open Aegis — From assets to evidence." />
+    <meta property="og:description" content="Self-hosted, MIT open source security validation. Connect your assets, reviewed plans, evidence and independent retests." />
+    <meta property="og:url" content="https://aegis.no-money-do-you-have-money.com/en/" />
+    <meta property="og:image" content="https://aegis.no-money-do-you-have-money.com/assets/dashboard.jpg" />
+    <meta property="og:image:alt" content="Open Aegis security validation console" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -48,8 +61,8 @@
           <div class="actions">
             <a class="button primary" href="#install"
               >Start locally <span aria-hidden="true">↗</span></a
-            ><a class="button" href="https://github.com/SoonGwan/open-aegis"
-              >Explore the source</a
+            ><a class="button" href="https://github.com/SoonGwan/open-aegis/releases/tag/v1.0.0"
+              >Download 1.0.0</a
             >
           </div>
           <p class="version">
@@ -171,7 +184,7 @@
             <article>
               <h3>Reviewed model settings</h3>
               <p>
-                Fixed-recipient model profiles, planner/conversation choices at
+                OpenAI/direct Claude integrations, fixed-recipient model profiles, planner/conversation choices at
                 task creation, catalog lookup, connection checks and request
                 recovery.
               </p>
@@ -210,6 +223,10 @@
           <p>
             Install Python 3.11+ and Node.js 22 with npm. Then run these
             commands from your terminal.
+          </p>
+          <p>
+            Prefer a prebuilt console? Follow the <a class="text-link" href="https://github.com/SoonGwan/open-aegis/blob/v1.0.0/docs/INSTALL-RELEASE.md">signed release installation guide ↗</a>.
+            Node.js is not needed to run that bundle.
           </p>
           <p>
             Open <code>http://127.0.0.1:8787</code> and create an administrator
@@ -267,6 +284,12 @@ cd open-aegis
             >Contribute <span aria-hidden="true">↗</span></a
           >
         </div>
+      </section>
+      <section class="section wrap faq" aria-labelledby="faq-title">
+        <div class="section-heading"><p class="eyebrow">BEFORE YOU START</p><h2 id="faq-title">A few questions.</h2></div>
+        <details><summary>Is it free to use?</summary><p>The full implementation is MIT open source. Install and modify it yourself. Optional AI-provider usage and your own hosting costs are separate.</p></details>
+        <details><summary>Can I run checks on this website?</summary><p>This is the project introduction. Install the application in your own environment to manage your assets and records.</p></details>
+        <details><summary>What can I check?</summary><p>Review HTTP/TLS, cookie and CORS settings, and operator-defined API access expectations on assets you own or are authorized to test. Review the scope and plan, then approve execution separately. <a href="https://github.com/SoonGwan/open-aegis/blob/main/docs/FEATURES.md">See the implemented scope ↗</a></p></details>
       </section>
     </main>
     <footer class="wrap footer">

@@ -35,3 +35,11 @@ passed Pages workflow 37414561869. Anonymous HTTPS200 downloads of root/index,
 Korean HTML, CSS and the image match the source bytes. The separate
 [v1.0.0 release](https://github.com/SoonGwan/open-aegis/releases/tag/v1.0.0)
 is published with signed installable files; the website remains static documentation.
+
+## Cloudflare primary domain
+
+The shared source now also builds a Korean-default landing for
+`aegis.no-money-do-you-have-money.com`, with English at`/en/`, release download,
+signed-install guide, FAQ, favicon and canonical/OG/hreflang metadata. See the
+[Mac/Cloudflare deployment contract](LANDING-HOSTING.md). GitHub Pages remains
+available; public Cloudflare deployment verification is recorded separately.

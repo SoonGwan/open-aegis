@@ -556,3 +556,11 @@ html:lang(ko) h2,
 html:lang(ko) h3 {
   word-break: keep-all;
 }
+
+.faq { padding-top: 0; }
+.faq details { border-top: var(--line); padding: 22px 0; }
+.faq details:last-child { border-bottom: var(--line); }
+.faq summary { cursor: pointer; font-weight: 750; line-height: 1.5; }
+.faq summary:focus-visible { outline: 3px solid #6741d9; outline-offset: 5px; }
+.faq details p { max-width: 780px; margin: 18px 0 0; }
+.faq details a { text-decoration: underline; text-underline-offset: 4px; }
