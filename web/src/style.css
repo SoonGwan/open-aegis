@@ -3679,3 +3679,9 @@ pre,
 .language-switcher { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--montage-label-neutral); }
 .language-switcher select { width:auto; min-width:98px; padding:7px 9px; font:inherit; background:var(--montage-background-normal-normal); color:inherit; border:1px solid currentColor; border-radius:6px; }
 .auth-card > .language-switcher { justify-content:flex-end; margin-bottom:20px; }
+@media (max-width: 600px) {
+  .topbar { flex-wrap:wrap; height:auto; min-height:55px; gap:8px; padding-block:10px; }
+  .topbar > div { min-width:0; max-width:100%; }
+  .topbar-right { margin-left:auto; gap:10px !important; }
+  .topbar .language-switcher > span { display:none; }
+}
