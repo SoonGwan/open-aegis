@@ -57,3 +57,5 @@ not an always-on cloud origin. See [Cloudflare's macOS service documentation](ht
 Scripts `deploy_landing_mac.py` and `serve_landing.py` are adapted from
 [SoonGwan/questionable-hires](https://github.com/SoonGwan/questionable-hires)
 under MIT, copyright2026 SoonGwan. The project MIT license retains that notice.
+
+[Verified publication on2026-10-07](LANDING-HOSTING-2026-10-07.md).

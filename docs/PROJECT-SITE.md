@@ -42,4 +42,5 @@ The shared source now also builds a Korean-default landing for
 `aegis.no-money-do-you-have-money.com`, with English at`/en/`, release download,
 signed-install guide, FAQ, favicon and canonical/OG/hreflang metadata. See the
 [Mac/Cloudflare deployment contract](LANDING-HOSTING.md). GitHub Pages remains
-available; public Cloudflare deployment verification is recorded separately.
+available; public Cloudflare deployment verification is recorded in the
+[2026-10-07 publication record](LANDING-HOSTING-2026-10-07.md).
