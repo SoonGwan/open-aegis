@@ -48,3 +48,5 @@ language switching, cancellation/reset and isolated new tabs. Narrow desktop
 iframe reviews are bounded layout checks, not full physical-mobile or
 screen-reader certification. Public hosting must pass actual HTTPS source-byte
 and app/revision checks; local success alone is not publication evidence.
+
+[Public deployment and observed results — 2026-10-07](INTERACTIVE-DEMO-2026-10-07.md).
